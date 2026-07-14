@@ -5,11 +5,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS OFF)
 
-set(FFMS2_SOURCE_DIR "" CACHE PATH "Pinned FFMS2 source checkout")
+set(YOAKE_FFMS2_SOURCE_ROOT "" CACHE PATH "Pinned FFMS2 source checkout")
 set(FFMPEG_ROOT "" CACHE PATH "Pinned dynamic FFmpeg vcpkg prefix")
-if(NOT IS_DIRECTORY "${FFMS2_SOURCE_DIR}/src/core")
-    message(FATAL_ERROR "FFMS2_SOURCE_DIR does not contain FFMS2 sources")
+if(NOT IS_DIRECTORY "${YOAKE_FFMS2_SOURCE_ROOT}/src/core")
+    message(FATAL_ERROR
+        "YOAKE_FFMS2_SOURCE_ROOT does not contain FFMS2 sources: "
+        "'${YOAKE_FFMS2_SOURCE_ROOT}'"
+    )
 endif()
+message(STATUS "Using pinned FFMS2 sources at ${YOAKE_FFMS2_SOURCE_ROOT}")
 
 find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h PATHS "${FFMPEG_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
 foreach(component avformat avcodec swscale avutil swresample zlib)
@@ -23,19 +27,19 @@ foreach(component avformat avcodec swscale avutil swresample zlib)
 endforeach()
 
 add_library(ffms2 SHARED
-    "${FFMS2_SOURCE_DIR}/src/core/audiosource.cpp"
-    "${FFMS2_SOURCE_DIR}/src/core/ffms.cpp"
-    "${FFMS2_SOURCE_DIR}/src/core/filehandle.cpp"
-    "${FFMS2_SOURCE_DIR}/src/core/indexing.cpp"
-    "${FFMS2_SOURCE_DIR}/src/core/track.cpp"
-    "${FFMS2_SOURCE_DIR}/src/core/utils.cpp"
-    "${FFMS2_SOURCE_DIR}/src/core/videosource.cpp"
-    "${FFMS2_SOURCE_DIR}/src/core/videoutils.cpp"
-    "${FFMS2_SOURCE_DIR}/src/core/zipfile.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/audiosource.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/ffms.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/filehandle.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/indexing.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/track.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/utils.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/videosource.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/videoutils.cpp"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/zipfile.cpp"
 )
 target_include_directories(ffms2
-    PUBLIC "${FFMS2_SOURCE_DIR}/include"
-    PRIVATE "${FFMS2_SOURCE_DIR}" "${FFMS2_SOURCE_DIR}/src" "${AVCODEC_INCLUDE_DIR}"
+    PUBLIC "${YOAKE_FFMS2_SOURCE_ROOT}/include"
+    PRIVATE "${YOAKE_FFMS2_SOURCE_ROOT}" "${YOAKE_FFMS2_SOURCE_ROOT}/src" "${AVCODEC_INCLUDE_DIR}"
 )
 target_compile_definitions(ffms2 PRIVATE
     FFMS_EXPORTS
@@ -65,7 +69,7 @@ install(TARGETS ffms2
     ARCHIVE DESTINATION lib
 )
 install(FILES
-    "${FFMS2_SOURCE_DIR}/include/ffms.h"
-    "${FFMS2_SOURCE_DIR}/include/ffmscompat.h"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/include/ffms.h"
+    "${YOAKE_FFMS2_SOURCE_ROOT}/include/ffmscompat.h"
     DESTINATION include
 )

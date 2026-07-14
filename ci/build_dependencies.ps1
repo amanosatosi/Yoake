@@ -8,7 +8,7 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $versions = Get-Content -LiteralPath (Join-Path $repoRoot 'third_party\versions.json') -Raw | ConvertFrom-Json
 $workRoot = Join-Path ([IO.Path]::GetFullPath($env:RUNNER_TEMP)) 'yoake-native-build'
-$binaryCache = Join-Path ([IO.Path]::GetFullPath($env:RUNNER_TEMP)) 'yoake-vcpkg-binaries'
+$binaryCache = Join-Path (Split-Path -Parent $OutputRoot) 'vcpkg-binaries'
 
 function Assert-LastExitCode([string]$operation) {
     if ($LASTEXITCODE -ne 0) {
@@ -73,7 +73,7 @@ $ffmsInstall = Join-Path $OutputRoot 'ffms2'
 Checkout-Pinned 'https://github.com/FFMS/ffms2.git' $versions.ffms2.commit $ffmsSource
 cmake -S (Join-Path $repoRoot 'third_party\ffms2') -B $ffmsBuild -G Ninja `
     -DCMAKE_BUILD_TYPE=Release `
-    -DFFMS2_SOURCE_DIR=$ffmsSource `
+    "-DYOAKE_FFMS2_SOURCE_ROOT:PATH=$ffmsSource" `
     -DFFMPEG_ROOT=$ffmpegPrefix `
     -DCMAKE_INSTALL_PREFIX=$ffmsInstall
 Assert-LastExitCode 'FFMS2 configure'
