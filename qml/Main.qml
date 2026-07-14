@@ -208,7 +208,10 @@ ApplicationWindow {
         title: qsTr("Open subtitle document")
         nameFilters: [qsTr("Advanced SubStation Alpha (*.ass)"), qsTr("All files (*)")]
         fileMode: Dialogs.FileDialog.OpenFiles
-        onAccepted: for (let file of selectedFiles) Documents.openDocument(file)
+        onAccepted: {
+            for (let index = 0; index < selectedFiles.length; ++index)
+                Documents.openDocument(selectedFiles[index])
+        }
     }
     Dialogs.FileDialog {
         id: subtitleSaveDialog
