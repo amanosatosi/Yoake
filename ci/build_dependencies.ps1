@@ -21,8 +21,11 @@ function Checkout-Pinned([string]$url, [string]$commit, [string]$path, [bool]$ve
         Remove-Item -LiteralPath $path -Recurse -Force
     }
     if ($versionedRegistry) {
-        git clone --filter=blob:none --no-checkout $url $path
-        Assert-LastExitCode "non-shallow registry clone for $url"
+        # vcpkg's version registry checks historical port trees out through Git.
+        # Keep the clone complete so that install never needs a promisor-remote
+        # fetch halfway through dependency resolution on a busy CI runner.
+        git clone --no-checkout $url $path
+        Assert-LastExitCode "complete versioned registry clone for $url"
         git -C $path checkout --detach $commit
         Assert-LastExitCode "git checkout $commit from $url"
     } else {
