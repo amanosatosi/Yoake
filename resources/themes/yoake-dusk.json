@@ -1,0 +1,15 @@
+{
+  "name": "Yoake Dusk",
+  "colors": {
+    "background": "#15171c", "panel": "#1c1f26", "surface": "#252933", "surfaceRaised": "#2d323e",
+    "text": "#e9e7e2", "textMuted": "#aaa7a0", "textDisabled": "#686b73",
+    "border": "#383e4b", "separator": "#303541", "accent": "#ff8066",
+    "selection": "#5c3d3b", "hover": "#303641", "pressed": "#3a414e", "active": "#302829", "inactive": "#20242c",
+    "tab": "#1a1d23", "tabActive": "#272b34", "gridAlternate": "#20232b", "gridComment": "#a88c85",
+    "waveform": "#69c2bd", "waveformBackground": "#101319", "timingRegion": "#3c9d7580", "timingSelected": "#f0a83f99", "timingBoundary": "#ffd166",
+    "videoOverlay": "#090a0dd0", "error": "#ff6174", "warning": "#f3ad57", "success": "#5dc995",
+    "syntaxBrace": "#c792ea", "syntaxTag": "#ff8066", "syntaxParameter": "#82aaff", "syntaxNumber": "#c3a6ff",
+    "syntaxColor": "#f0719b", "syntaxAlpha": "#d783ba", "syntaxTransform": "#f4b56b", "syntaxKaraoke": "#62d6a7",
+    "syntaxDrawing": "#67c6d4", "syntaxLineBreak": "#ff79a8", "syntaxExtension": "#aa9cff", "syntaxError": "#ff405a"
+  }
+}

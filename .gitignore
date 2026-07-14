@@ -1,0 +1,7 @@
+/build*/
+/.cache/
+/.qmlls.ini
+CMakeUserPresets.json
+*.user
+*.autosave
+

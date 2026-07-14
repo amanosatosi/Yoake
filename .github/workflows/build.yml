@@ -1,0 +1,90 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main, "codex/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: Windows MSVC / Qt 6.8
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "6.8.3"
+          arch: win64_msvc2022_64
+          modules: qtmultimedia
+          cache: true
+
+      - name: Configure
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+
+      - name: Build
+        run: cmake --build build --parallel 2
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Stage application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path stage | Out-Null
+          Copy-Item -LiteralPath build\yoake.exe -Destination stage\yoake.exe
+          windeployqt --release --qmldir qml stage\yoake.exe
+
+      - name: Verify renderer policy
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath stage\yoake.exe)) {
+            throw "Staging is missing yoake.exe"
+          }
+          $forbidden = Get-ChildItem -LiteralPath stage -File | Where-Object {
+            $_.Name -match '^(libass|ass|xy-vsfilter|vsfilter).*\.dll$'
+          }
+          if ($forbidden) {
+            throw "Yoake must not package a fallback ASS renderer: $($forbidden.Name -join ', ')"
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: yoake-windows-foundation
+          path: stage
+          if-no-files-found: error
+
+  source-policy:
+    name: Source policy checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate JSON and source manifest
+        shell: python
+        run: |
+          import json
+          import pathlib
+          import re
+
+          root = pathlib.Path(".")
+          for path in root.glob("resources/themes/*.json"):
+              data = json.loads(path.read_text(encoding="utf-8"))
+              assert data.get("name"), f"{path}: missing name"
+              assert len(data.get("colors", {})) >= 30, f"{path}: incomplete semantic palette"
+
+          cmake = (root / "CMakeLists.txt").read_text(encoding="utf-8")
+          for path in re.findall(r"(?:src|qml|resources|tests)/[^\s\)]+\.[A-Za-z0-9]+", cmake):
+              assert (root / path).is_file(), f"CMake source does not exist: {path}"
+
+          forbidden = ["libass", "vsfilter", "xy-vsfilter"]
+          renderer = (root / "src/renderer/mangetsu_library.cpp").read_text(encoding="utf-8").lower()
+          assert all(name not in renderer for name in forbidden), "Renderer loader contains a fallback backend"
