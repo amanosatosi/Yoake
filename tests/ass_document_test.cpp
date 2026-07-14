@@ -1,5 +1,6 @@
 #include "ass/ass_document.h"
 #include "ass/ass_text_boundaries.h"
+#include "media/frame_time_map.h"
 
 #include <QtTest/QTest>
 
@@ -13,6 +14,7 @@ private slots:
     void selectsFontNameValues();
     void rejectsUnsafeEventFormats();
     void keepsValidEventlessDocumentsEventless();
+    void mapsVariableFrameRateTimesWithoutFpsArithmetic();
 };
 
 void AssDocumentTest::parsesAndPreservesUnknownSections()
@@ -85,6 +87,21 @@ void AssDocumentTest::keepsValidEventlessDocumentsEventless()
     QVERIFY2(error.isEmpty(), qPrintable(error));
     QVERIFY(document.events().isEmpty());
     QVERIFY(!document.serialize().contains("Dialogue:"));
+}
+
+void AssDocumentTest::mapsVariableFrameRateTimesWithoutFpsArithmetic()
+{
+    yoake::media::FrameTimeMap map;
+    map.reset({0, 40, 81, 121, 201, 241}, 301);
+    QVERIFY(map.variableFrameRate());
+    QCOMPARE(map.frameAtTime(0), 0);
+    QCOMPARE(map.frameAtTime(80), 1);
+    QCOMPARE(map.frameAtTime(81), 2);
+    QCOMPARE(map.frameAtTime(200), 3);
+    QCOMPARE(map.frameAtTime(201), 4);
+    QCOMPARE(map.frameStartMs(4), 201);
+    QCOMPARE(map.frameEndMs(4), 241);
+    QCOMPARE(map.frameEndMs(5), 301);
 }
 
 QTEST_GUILESS_MAIN(AssDocumentTest)

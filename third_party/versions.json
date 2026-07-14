@@ -1,0 +1,28 @@
+{
+  "vcpkg": {
+    "commit": "f3419f137f1a1e79b33b880ae6845f873d87820b"
+  },
+  "ffmpeg": {
+    "version": "7.1.1",
+    "tagCommit": "a1328e68877e12ab5a6e5d92a84aefa566783ea5",
+    "vcpkgPortVersion": 6,
+    "linkage": "dynamic"
+  },
+  "ffms2": {
+    "version": "5.0",
+    "commit": "7ed5e4d039ca9a6236bd2ebdfdd656c4304fbe04",
+    "linkage": "dynamic"
+  },
+  "mangetsu": {
+    "commit": "9c8aa3ebc7499f033b6939aa4d315b97e6b872f8",
+    "linkage": "dynamic",
+    "transitiveLinkage": "static"
+  },
+  "mangetsuFontStack": {
+    "freetype": "534ad3456055ee1f65ecde3bcf22a656a31514d1",
+    "fribidi": "9123b467f080c7ea15509bd7cbd457817544a7e1",
+    "harfbuzz": "b39fe1a920f628201b6dad5e4266a5124dc92ef8",
+    "zlib": "1.2.11 / SHA-256 c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1"
+  },
+  "qt": "6.8.3"
+}

@@ -1,161 +1,515 @@
 #include "media/media_session.h"
 
-#include "media/waveform_worker.h"
+#include "media/ffms_audio_worker.h"
+#include "media/ffms_video_worker.h"
 
+#include <QtCore/QFileInfo>
+#include <QtCore/QIODevice>
 #include <QtCore/QMetaObject>
-#include <QtMultimedia/QMediaMetaData>
+#include <QtMultimedia/QAudioDevice>
+#include <QtMultimedia/QAudioFormat>
+#include <QtMultimedia/QMediaDevices>
 
 #include <algorithm>
 #include <cmath>
 
 namespace yoake::media {
+namespace {
+constexpr int pcmBytesPerFrame = 4;
+constexpr int playbackBufferFrames = 8192;
+}
 
 MediaSession::MediaSession(QObject *parent)
     : QObject(parent), m_waveform(this)
 {
-    m_player.setAudioOutput(&m_audioOutput);
-    m_waveformThread.setObjectName(QStringLiteral("Yoake waveform decoder"));
-
-    connect(&m_player, &QMediaPlayer::durationChanged, this, &MediaSession::durationChanged);
-    connect(&m_player, &QMediaPlayer::positionChanged, this, &MediaSession::positionChanged);
-    connect(&m_player, &QMediaPlayer::positionChanged, this, [this](qint64 position) {
-        if (m_rangeEndMs >= 0 && position >= m_rangeEndMs) {
-            m_rangeEndMs = -1;
-            m_player.pause();
-        }
-    });
-    connect(&m_player, &QMediaPlayer::playbackStateChanged, this, &MediaSession::playbackStateChanged);
-    connect(&m_player, &QMediaPlayer::metaDataChanged, this, &MediaSession::updateMetadata);
-    connect(&m_player, &QMediaPlayer::errorOccurred, this,
-        [this](QMediaPlayer::Error, const QString &message) {
-            m_errorString = message;
-            emit errorChanged();
-        });
+    m_videoThread.setObjectName(QStringLiteral("Yoake FFMS2 video source"));
+    m_audioThread.setObjectName(QStringLiteral("Yoake FFMS2 audio source"));
+    m_playbackTimer.setInterval(10);
+    connect(&m_playbackTimer, &QTimer::timeout, this, &MediaSession::playbackTick);
 }
 
 MediaSession::~MediaSession()
 {
-    m_player.stop();
-    if (m_waveformWorker && m_waveformThread.isRunning())
-        QMetaObject::invokeMethod(m_waveformWorker, &WaveformWorker::cancel, Qt::BlockingQueuedConnection);
-    m_waveformThread.quit();
-    m_waveformThread.wait();
+    stopPlayback(true);
+    if (m_videoWorker) {
+        m_videoWorker->invalidate(++m_generation, ++m_frameRequestId);
+        if (m_videoThread.isRunning())
+            QMetaObject::invokeMethod(m_videoWorker, &FfmsVideoWorker::shutdown, Qt::BlockingQueuedConnection);
+        m_videoThread.quit();
+        m_videoThread.wait();
+    }
+    if (m_audioWorker) {
+        m_audioWorker->invalidate(m_generation);
+        if (m_audioThread.isRunning())
+            QMetaObject::invokeMethod(m_audioWorker, &FfmsAudioWorker::shutdown, Qt::BlockingQueuedConnection);
+        m_audioThread.quit();
+        m_audioThread.wait();
+    }
 }
 
-qint64 MediaSession::currentFrame() const
+void MediaSession::ensureWorkers()
 {
-    return static_cast<qint64>(std::floor(positionMs() * m_frameRate / 1000.0));
+    if (m_videoWorker)
+        return;
+
+    m_videoWorker = new FfmsVideoWorker;
+    m_videoWorker->moveToThread(&m_videoThread);
+    connect(&m_videoThread, &QThread::finished, m_videoWorker, &QObject::deleteLater);
+    connect(m_videoWorker, &FfmsVideoWorker::indexingProgress, this,
+        [this](quint64 generation, double progress) {
+            if (generation != m_generation)
+                return;
+            m_indexingProgress = std::clamp(progress, 0.0, 1.0);
+            emit indexingProgressChanged();
+        }, Qt::QueuedConnection);
+    connect(m_videoWorker, &FfmsVideoWorker::opened, this,
+        [this](quint64 generation,
+            const QString &indexPath,
+            const QVariantList &videoTracks,
+            const QVariantList &audioTracks,
+            int videoTrack,
+            int audioTrack,
+            const QVector<qint64> &frameStartsMs,
+            qint64 durationMs,
+            int width,
+            int height,
+            int sourcePixelFormat,
+            double sourceFrameRate) {
+            if (generation != m_generation)
+                return;
+            m_indexPath = indexPath;
+            m_videoTracks = videoTracks;
+            m_audioTracks = audioTracks;
+            m_selectedVideoTrack = videoTrack;
+            m_selectedAudioTrack = audioTrack;
+            m_videoDurationMs = durationMs;
+            m_durationMs = durationMs;
+            m_timeMap.reset(frameStartsMs, durationMs);
+            m_sourceWidth = width;
+            m_sourceHeight = height;
+            m_sourcePixelFormat = sourcePixelFormat;
+            m_sourceFrameRate = sourceFrameRate;
+            m_indexing = false;
+            m_indexingProgress = 1.0;
+            emit tracksChanged();
+            emit metadataChanged();
+            emit durationChanged();
+            emit indexingChanged();
+            emit indexingProgressChanged();
+            if (hasVideo())
+                requestFrameInternal(0);
+            if (m_selectedAudioTrack >= 0) {
+                QMetaObject::invokeMethod(m_audioWorker,
+                    [worker = m_audioWorker, generation, path = m_sourcePath,
+                        indexPath, track = m_selectedAudioTrack] {
+                        worker->open(generation, path, indexPath, track);
+                    },
+                    Qt::QueuedConnection);
+            } else {
+                m_waveform.clear();
+                m_audioReady = false;
+            }
+        }, Qt::QueuedConnection);
+    connect(m_videoWorker, &FfmsVideoWorker::frameReady, this,
+        [this](quint64 generation, quint64 requestId, int frameNumber,
+            qint64 startMs, qint64 endMs, const QImage &image) {
+            if (generation != m_generation || requestId != m_frameRequestId)
+                return;
+            m_frameImage = image;
+            m_currentFrame = frameNumber;
+            m_requestedFrame = frameNumber;
+            m_positionMs = startMs;
+            m_displayedFrameEndMs = endMs;
+            setFramePending(false);
+            emit frameImageChanged();
+            emit positionChanged();
+        }, Qt::QueuedConnection);
+    connect(m_videoWorker, &FfmsVideoWorker::failed, this,
+        [this](quint64 generation, const QString &message) {
+            if (generation != m_generation)
+                return;
+            if (m_indexing) {
+                m_indexing = false;
+                emit indexingChanged();
+            }
+            setFramePending(false);
+            setError(message);
+        }, Qt::QueuedConnection);
+
+    m_audioWorker = new FfmsAudioWorker;
+    m_audioWorker->moveToThread(&m_audioThread);
+    connect(&m_audioThread, &QThread::finished, m_audioWorker, &QObject::deleteLater);
+    connect(m_audioWorker, &FfmsAudioWorker::opened, this,
+        [this](quint64 generation, int sampleRate, int channels, qint64 totalSamples,
+            qint64 firstTimeMs, qint64 durationMs, int, int) {
+            if (generation != m_generation)
+                return;
+            m_audioSampleRate = sampleRate;
+            m_audioChannels = channels;
+            m_audioTotalSamples = totalSamples;
+            m_audioFirstTimeMs = firstTimeMs;
+            m_audioReady = true;
+            const qint64 oldDuration = m_durationMs;
+            m_durationMs = std::max(m_videoDurationMs, durationMs);
+            if (oldDuration != m_durationMs)
+                emit durationChanged();
+            emit metadataChanged();
+        }, Qt::QueuedConnection);
+    connect(m_audioWorker, &FfmsAudioWorker::waveformChunk,
+        &m_waveform, &WaveformModel::appendPeaks, Qt::QueuedConnection);
+    connect(m_audioWorker, &FfmsAudioWorker::pcmReady, this,
+        [this](quint64 generation, quint64 playbackId, qint64 startSample,
+            int frameCount, const QByteArray &pcm, bool finished) {
+            if (generation != m_generation || playbackId != m_playbackId || !m_playing)
+                return;
+            m_pcmPending = false;
+            if (m_audioDevice && !pcm.isEmpty()) {
+                const qint64 written = m_audioDevice->write(pcm);
+                if (written != pcm.size()) {
+                    setError(QStringLiteral("The platform audio sink could not accept decoded PCM"));
+                    stopPlayback(true);
+                    return;
+                }
+            }
+            m_nextPcmSample = startSample + frameCount;
+            m_audioFinished = finished;
+            pumpAudio();
+        }, Qt::QueuedConnection);
+    connect(m_audioWorker, &FfmsAudioWorker::failed, this,
+        [this](quint64 generation, const QString &message) {
+            if (generation != m_generation)
+                return;
+            m_audioReady = false;
+            m_waveform.fail(generation, message);
+            setError(message);
+        }, Qt::QueuedConnection);
+
+    m_videoThread.start();
+    m_audioThread.start();
 }
 
 void MediaSession::open(const QUrl &source)
 {
-    if (source.isEmpty())
+    if (!source.isLocalFile()) {
+        setError(QStringLiteral("FFMS2 media sources must be local files"));
         return;
-    ++m_generation;
-    emit generationChanged(m_generation);
-    m_player.stop();
-    m_rangeEndMs = -1;
-    if (!qFuzzyCompare(m_frameRate, 24.0)) {
-        m_frameRate = 24.0;
-        emit frameRateChanged();
     }
+    m_selectedVideoTrack = -1;
+    m_selectedAudioTrack = -1;
     m_source = source;
-    m_errorString.clear();
-    emit errorChanged();
+    m_sourcePath = QFileInfo(source.toLocalFile()).absoluteFilePath();
     emit sourceChanged();
-    m_player.setSource(source);
+    beginOpen(m_sourcePath);
+}
+
+void MediaSession::beginOpen(const QString &path)
+{
+    ensureWorkers();
+    stopPlayback(true);
+    ++m_generation;
+    ++m_frameRequestId;
+    emit generationChanged(m_generation);
+    resetMediaState();
+    m_sourcePath = path;
+    m_indexing = true;
+    m_indexingProgress = 0.0;
     m_waveform.beginDecode(m_generation);
-    ensureWaveformWorker();
-    QMetaObject::invokeMethod(m_waveformWorker,
-        [worker = m_waveformWorker, source, generation = m_generation] { worker->decode(source, generation); },
+    emit indexingChanged();
+    emit indexingProgressChanged();
+    setError({});
+    m_videoWorker->invalidate(m_generation, m_frameRequestId);
+    m_audioWorker->invalidate(m_generation);
+    QMetaObject::invokeMethod(m_videoWorker,
+        [worker = m_videoWorker, generation = m_generation, path,
+            videoTrack = m_selectedVideoTrack, audioTrack = m_selectedAudioTrack] {
+            worker->open(generation, path, videoTrack, audioTrack);
+        },
         Qt::QueuedConnection);
 }
 
 void MediaSession::close()
 {
+    stopPlayback(true);
     ++m_generation;
+    ++m_frameRequestId;
     emit generationChanged(m_generation);
-    m_player.stop();
-    m_rangeEndMs = -1;
-    m_player.setSource({});
+    if (m_videoWorker) {
+        m_videoWorker->invalidate(m_generation, m_frameRequestId);
+        QMetaObject::invokeMethod(m_videoWorker,
+            [worker = m_videoWorker, generation = m_generation] { worker->close(generation); },
+            Qt::QueuedConnection);
+    }
+    if (m_audioWorker) {
+        m_audioWorker->invalidate(m_generation);
+        QMetaObject::invokeMethod(m_audioWorker,
+            [worker = m_audioWorker, generation = m_generation] { worker->close(generation); },
+            Qt::QueuedConnection);
+    }
     m_source = {};
+    m_sourcePath.clear();
+    m_selectedVideoTrack = -1;
+    m_selectedAudioTrack = -1;
+    resetMediaState();
     m_waveform.clear();
-    if (m_waveformWorker)
-        QMetaObject::invokeMethod(m_waveformWorker, &WaveformWorker::cancel, Qt::QueuedConnection);
-    if (!qFuzzyCompare(m_frameRate, 24.0)) {
-        m_frameRate = 24.0;
-        emit frameRateChanged();
-    }
-    if (!m_errorString.isEmpty()) {
-        m_errorString.clear();
-        emit errorChanged();
-    }
+    setError({});
     emit sourceChanged();
 }
 
-void MediaSession::play() { m_rangeEndMs = -1; m_player.play(); }
-void MediaSession::pause() { m_player.pause(); }
-void MediaSession::stop() { m_rangeEndMs = -1; m_player.stop(); }
-void MediaSession::togglePlayback() { playing() ? pause() : play(); }
-
-void MediaSession::playRange(qint64 startMs, qint64 endMs)
+void MediaSession::resetMediaState()
 {
-    if (endMs <= startMs)
+    const bool hadFrame = !m_frameImage.isNull();
+    m_indexPath.clear();
+    m_timeMap.reset();
+    m_videoTracks.clear();
+    m_audioTracks.clear();
+    m_videoDurationMs = 0;
+    m_durationMs = 0;
+    m_positionMs = 0;
+    m_displayedFrameEndMs = 0;
+    m_currentFrame = -1;
+    m_requestedFrame = -1;
+    m_sourceWidth = 0;
+    m_sourceHeight = 0;
+    m_sourcePixelFormat = -1;
+    m_sourceFrameRate = 0.0;
+    m_audioTotalSamples = 0;
+    m_audioFirstTimeMs = 0;
+    m_audioReady = false;
+    m_indexing = false;
+    m_indexingProgress = 0.0;
+    m_frameImage = {};
+    setFramePending(false);
+    emit tracksChanged();
+    emit metadataChanged();
+    emit durationChanged();
+    emit positionChanged();
+    emit indexingChanged();
+    emit indexingProgressChanged();
+    if (hadFrame)
+        emit frameImageChanged();
+}
+
+void MediaSession::requestFrame(int frameNumber)
+{
+    if (m_playing)
+        pause();
+    requestFrameInternal(frameNumber);
+}
+
+void MediaSession::requestFrameInternal(int frameNumber)
+{
+    if (!m_videoWorker || m_timeMap.isEmpty())
         return;
-    seek(startMs);
-    m_rangeEndMs = endMs;
-    m_player.play();
+    const int bounded = std::clamp(frameNumber, 0, m_timeMap.frameCount() - 1);
+    if (m_framePending && bounded == m_requestedFrame)
+        return;
+    m_requestedFrame = bounded;
+    ++m_frameRequestId;
+    m_videoWorker->invalidate(m_generation, m_frameRequestId);
+    setFramePending(true);
+    QMetaObject::invokeMethod(m_videoWorker,
+        [worker = m_videoWorker, generation = m_generation,
+            requestId = m_frameRequestId, bounded] {
+            worker->requestFrame(generation, requestId, bounded);
+        },
+        Qt::QueuedConnection);
 }
 
 void MediaSession::seek(qint64 positionMs)
 {
-    m_player.setPosition(std::clamp<qint64>(positionMs, 0, std::max<qint64>(0, durationMs())));
+    const qint64 bounded = std::clamp<qint64>(positionMs, 0, std::max<qint64>(0, m_durationMs));
+    if (hasVideo()) {
+        requestFrameInternal(m_timeMap.frameAtTime(bounded));
+    } else if (m_positionMs != bounded) {
+        m_positionMs = bounded;
+        emit positionChanged();
+    }
 }
 
 void MediaSession::stepFrames(int amount)
 {
-    if (m_frameRate <= 0.0)
+    if (!hasVideo() || amount == 0)
         return;
-    const qint64 targetFrame = std::max<qint64>(0, currentFrame() + amount);
-    seek(static_cast<qint64>(std::llround(targetFrame * 1000.0 / m_frameRate)));
+    if (m_playing)
+        pause();
+    const int base = m_currentFrame >= 0 ? m_currentFrame : 0;
+    requestFrameInternal(base + amount);
 }
 
-void MediaSession::attachVideoOutput(QObject *output)
+void MediaSession::selectVideoTrack(int track)
 {
-    m_videoOutput = output;
-    m_player.setVideoOutput(output);
-}
-
-void MediaSession::detachVideoOutput(QObject *output)
-{
-    if (m_videoOutput != output)
+    if (track == m_selectedVideoTrack || m_sourcePath.isEmpty())
         return;
-    m_player.setVideoOutput(nullptr);
-    m_videoOutput = nullptr;
+    m_selectedVideoTrack = track;
+    beginOpen(m_sourcePath);
 }
 
-void MediaSession::ensureWaveformWorker()
+void MediaSession::selectAudioTrack(int track)
 {
-    if (m_waveformWorker)
+    if (track == m_selectedAudioTrack || m_sourcePath.isEmpty())
         return;
-    m_waveformWorker = new WaveformWorker;
-    m_waveformWorker->moveToThread(&m_waveformThread);
-    connect(&m_waveformThread, &QThread::finished, m_waveformWorker, &QObject::deleteLater);
-    connect(m_waveformWorker, &WaveformWorker::peaksReady,
-        &m_waveform, &WaveformModel::updatePeaks, Qt::QueuedConnection);
-    connect(m_waveformWorker, &WaveformWorker::failed,
-        &m_waveform, &WaveformModel::fail, Qt::QueuedConnection);
-    m_waveformThread.start();
+    m_selectedAudioTrack = track;
+    beginOpen(m_sourcePath);
 }
 
-void MediaSession::updateMetadata()
+void MediaSession::play()
 {
-    bool ok = false;
-    const double rate = m_player.metaData().value(QMediaMetaData::VideoFrameRate).toDouble(&ok);
-    if (ok && rate > 0.0 && !qFuzzyCompare(rate, m_frameRate)) {
-        m_frameRate = rate;
-        emit frameRateChanged();
+    playRange(m_positionMs, m_durationMs);
+}
+
+void MediaSession::playRange(qint64 startMs, qint64 endMs)
+{
+    const qint64 start = std::clamp<qint64>(startMs, 0, std::max<qint64>(0, m_durationMs));
+    const qint64 end = std::clamp<qint64>(endMs, start, std::max(start, m_durationMs));
+    if (end <= start)
+        return;
+
+    stopPlayback(true);
+    ++m_playbackId;
+    m_playbackStartMs = start;
+    m_playbackEndMs = end;
+    m_nextPcmSample = sampleForTime(start, false);
+    m_endPcmSample = sampleForTime(end, true);
+    m_pcmPending = false;
+    m_audioFinished = false;
+    m_silentPlaybackClock.restart();
+    if (m_audioReady)
+        startAudioSink();
+    setPlaying(true);
+    seek(start);
+    m_playbackTimer.start();
+    pumpAudio();
+}
+
+void MediaSession::pause()
+{
+    stopPlayback(true);
+}
+
+void MediaSession::stop()
+{
+    stopPlayback(true);
+    if (hasVideo())
+        requestFrameInternal(0);
+    else if (m_positionMs != 0) {
+        m_positionMs = 0;
+        emit positionChanged();
     }
+}
+
+void MediaSession::togglePlayback()
+{
+    m_playing ? pause() : play();
+}
+
+void MediaSession::startAudioSink()
+{
+    QAudioFormat format;
+    format.setSampleRate(m_audioSampleRate);
+    format.setChannelCount(m_audioChannels);
+    format.setSampleFormat(QAudioFormat::Int16);
+    const QAudioDevice device = QMediaDevices::defaultAudioOutput();
+    if (device.isNull() || !device.isFormatSupported(format)) {
+        setError(QStringLiteral("The default audio device does not support FFMS2's 48 kHz stereo PCM output"));
+        return;
+    }
+    m_audioSink = std::make_unique<QAudioSink>(device, format);
+    m_audioSink->setBufferSize(m_audioSampleRate * pcmBytesPerFrame / 4);
+    m_audioDevice = m_audioSink->start();
+    if (!m_audioDevice) {
+        setError(QStringLiteral("The platform audio sink could not start"));
+        m_audioSink.reset();
+    }
+}
+
+void MediaSession::pumpAudio()
+{
+    if (!m_playing || !m_audioReady || !m_audioSink || !m_audioDevice
+        || m_pcmPending || m_audioFinished || !m_audioWorker)
+        return;
+    const int writableFrames = static_cast<int>(m_audioSink->bytesFree() / pcmBytesPerFrame);
+    if (writableFrames <= 0)
+        return;
+    const int requestFrames = std::min(playbackBufferFrames, writableFrames);
+    m_pcmPending = true;
+    QMetaObject::invokeMethod(m_audioWorker,
+        [worker = m_audioWorker, generation = m_generation, playbackId = m_playbackId,
+            start = m_nextPcmSample, end = m_endPcmSample, requestFrames] {
+            worker->requestPcm(generation, playbackId, start, end, requestFrames);
+        },
+        Qt::QueuedConnection);
+}
+
+void MediaSession::playbackTick()
+{
+    if (!m_playing)
+        return;
+    qint64 elapsedMs = m_silentPlaybackClock.elapsed();
+    if (m_audioSink && m_audioDevice)
+        elapsedMs = m_audioSink->processedUSecs() / 1000;
+    const qint64 mediaTime = std::min(m_playbackEndMs, m_playbackStartMs + elapsedMs);
+    if (hasVideo()) {
+        const int frame = m_timeMap.frameAtTime(mediaTime);
+        if (frame >= 0 && frame != m_currentFrame && frame != m_requestedFrame)
+            requestFrameInternal(frame);
+    } else if (mediaTime != m_positionMs) {
+        m_positionMs = mediaTime;
+        emit positionChanged();
+    }
+    pumpAudio();
+    if (mediaTime >= m_playbackEndMs) {
+        stopPlayback(true);
+        return;
+    }
+    if (m_audioFinished && m_audioSink
+        && m_audioSink->bytesFree() >= m_audioSink->bufferSize()) {
+        stopPlayback(true);
+    }
+}
+
+void MediaSession::stopPlayback(bool)
+{
+    ++m_playbackId;
+    m_playbackTimer.stop();
+    m_pcmPending = false;
+    m_audioFinished = false;
+    if (m_audioSink)
+        m_audioSink->stop();
+    m_audioDevice = nullptr;
+    m_audioSink.reset();
+    setPlaying(false);
+}
+
+qint64 MediaSession::sampleForTime(qint64 timeMs, bool roundUp) const
+{
+    const long double relativeMs = static_cast<long double>(timeMs - m_audioFirstTimeMs);
+    const long double exact = relativeMs * static_cast<long double>(m_audioSampleRate) / 1000.0L;
+    const qint64 sample = static_cast<qint64>(roundUp ? std::ceil(exact) : std::floor(exact));
+    return std::clamp<qint64>(sample, 0, m_audioTotalSamples);
+}
+
+void MediaSession::setError(const QString &error)
+{
+    if (m_errorString == error)
+        return;
+    m_errorString = error;
+    emit errorChanged();
+}
+
+void MediaSession::setFramePending(bool pending)
+{
+    if (m_framePending == pending)
+        return;
+    m_framePending = pending;
+    emit framePendingChanged();
+}
+
+void MediaSession::setPlaying(bool playing)
+{
+    if (m_playing == playing)
+        return;
+    m_playing = playing;
+    emit playbackStateChanged();
 }
 
 } // namespace yoake::media

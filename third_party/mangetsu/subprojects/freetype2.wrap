@@ -1,0 +1,9 @@
+[wrap-git]
+directory = freetype2
+url = https://github.com/freetype/freetype.git
+revision = 534ad3456055ee1f65ecde3bcf22a656a31514d1
+depth = 1
+
+[provide]
+freetype = freetype_dep
+freetype2 = freetype_dep

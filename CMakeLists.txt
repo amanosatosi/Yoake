@@ -18,6 +18,32 @@ find_package(Qt6 6.8 REQUIRED COMPONENTS
     Multimedia
 )
 
+set(FFMS2_ROOT "" CACHE PATH "FFMS2 install prefix")
+find_path(FFMS2_INCLUDE_DIR
+    NAMES ffms.h
+    HINTS "${FFMS2_ROOT}"
+    PATH_SUFFIXES include
+    REQUIRED
+)
+find_library(FFMS2_LIBRARY
+    NAMES ffms2
+    HINTS "${FFMS2_ROOT}"
+    PATH_SUFFIXES lib
+    REQUIRED
+)
+find_file(FFMS2_RUNTIME
+    NAMES ffms2.dll
+    HINTS "${FFMS2_ROOT}"
+    PATH_SUFFIXES bin
+    REQUIRED
+)
+add_library(FFMS2::FFMS2 SHARED IMPORTED)
+set_target_properties(FFMS2::FFMS2 PROPERTIES
+    IMPORTED_IMPLIB "${FFMS2_LIBRARY}"
+    IMPORTED_LOCATION "${FFMS2_RUNTIME}"
+    INTERFACE_INCLUDE_DIRECTORIES "${FFMS2_INCLUDE_DIR}"
+)
+
 qt_standard_project_setup(REQUIRES 6.8)
 
 set(YOAKE_SOURCES
@@ -27,15 +53,18 @@ set(YOAKE_SOURCES
     src/app/theme_manager.cpp
     src/ass/ass_document.cpp
     src/ass/ass_text_boundaries.cpp
+    src/media/ffms_audio_worker.cpp
+    src/media/ffms_video_worker.cpp
+    src/media/frame_time_map.cpp
     src/media/media_session.cpp
     src/media/waveform_model.cpp
-    src/media/waveform_worker.cpp
     src/models/subtitle_model.cpp
     src/renderer/mangetsu_library.cpp
     src/renderer/mangetsu_session.cpp
     src/timing/karaoke_session.cpp
     src/ui/ass_highlighter.cpp
     src/ui/subtitle_overlay_item.cpp
+    src/ui/video_frame_item.cpp
 )
 
 set(YOAKE_HEADERS
@@ -45,9 +74,11 @@ set(YOAKE_HEADERS
     src/ass/ass_document.h
     src/ass/ass_event.h
     src/ass/ass_text_boundaries.h
+    src/media/ffms_audio_worker.h
+    src/media/ffms_video_worker.h
+    src/media/frame_time_map.h
     src/media/media_session.h
     src/media/waveform_model.h
-    src/media/waveform_worker.h
     src/models/subtitle_model.h
     src/renderer/mangetsu_abi.h
     src/renderer/mangetsu_library.h
@@ -55,6 +86,7 @@ set(YOAKE_HEADERS
     src/timing/karaoke_session.h
     src/ui/ass_highlighter.h
     src/ui/subtitle_overlay_item.h
+    src/ui/video_frame_item.h
 )
 
 qt_add_executable(yoake WIN32 ${YOAKE_SOURCES} ${YOAKE_HEADERS})
@@ -89,6 +121,7 @@ target_link_libraries(yoake PRIVATE
     Qt6::QuickControls2
     Qt6::Concurrent
     Qt6::Multimedia
+    FFMS2::FFMS2
 )
 
 if(MSVC)
@@ -105,6 +138,7 @@ if(BUILD_TESTING)
         tests/ass_document_test.cpp
         src/ass/ass_document.cpp
         src/ass/ass_text_boundaries.cpp
+        src/media/frame_time_map.cpp
     )
     target_include_directories(yoake_core_tests PRIVATE src)
     target_link_libraries(yoake_core_tests PRIVATE Qt6::Core Qt6::Test)

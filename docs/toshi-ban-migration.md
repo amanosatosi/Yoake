@@ -16,6 +16,13 @@ wx-coupled.
 | Themes | `themes/*.json`, `theme_preset.*` | Named atomic semantic palettes; never copy colors into scattered global options. |
 | Responsive media | provider/controller/render files | Strong per-document source leases, explicit generations, background analysis, GUI-only presentation. |
 
+The responsive-media row now has a concrete Yoake implementation: FFMS2 5.0
+owns indexed video/audio sources; `FrameTimeMap` owns VFR timecodes; two
+controlled per-document workers own video and audio access; Qt Quick paints only
+accepted frames; and Qt's media API is limited to final PCM output. The fork's
+FFMS2 cache-validation and monotonic-request lessons were retained without
+porting its wx/provider object graph.
+
 ## First usable milestone
 
 - normal file/new/save/save-as/close and unsaved-document workflows;
