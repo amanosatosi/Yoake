@@ -98,13 +98,13 @@ void appendOverride(QString &source, QStringView contents)
 
 QVector<KaraokeSession::Slot> parseSlots(const QString &text, bool *hadKaraoke)
 {
-    QVector<KaraokeSession::Slot> slots;
+    QVector<KaraokeSession::Slot> parsedSlots;
     KaraokeSession::Slot current;
     *hadKaraoke = false;
 
     const auto pushCurrent = [&] {
         current.label = visibleText(current.source).replace(QStringLiteral("\\N"), QStringLiteral("↵"));
-        slots.push_back(current);
+        parsedSlots.push_back(current);
         current = {};
     };
 
@@ -142,7 +142,7 @@ QVector<KaraokeSession::Slot> parseSlots(const QString &text, bool *hadKaraoke)
         cursor = close + 1;
     }
     pushCurrent();
-    return slots;
+    return parsedSlots;
 }
 
 QVector<KaraokeSession::Slot> splitAtSpaces(const KaraokeSession::Slot &slot)
@@ -348,27 +348,27 @@ void KaraokeSession::reload()
     const int previousSelection = m_selectedIndex;
     m_originalText = m_context->activeText();
     bool hadKaraoke = false;
-    QVector<Slot> slots = parseSlots(m_originalText, &hadKaraoke);
-    if (!hadKaraoke && slots.size() == 1)
-        slots = splitAtSpaces(slots.front());
+    QVector<Slot> parsedSlots = parseSlots(m_originalText, &hadKaraoke);
+    if (!hadKaraoke && parsedSlots.size() == 1)
+        parsedSlots = splitAtSpaces(parsedSlots.front());
 
     const qint64 lineStart = m_context->activeStartMs();
     const qint64 lineEnd = std::max(lineStart, m_context->activeEndMs());
     if (hadKaraoke) {
         qint64 cursor = lineStart;
-        for (Slot &slot : slots) {
+        for (Slot &slot : parsedSlots) {
             slot.startMs = cursor;
             slot.endMs = std::min(lineEnd, cursor + std::max<qint64>(0, slot.sourceDurationMs));
             cursor = slot.endMs;
         }
-        if (!slots.isEmpty())
-            slots.back().endMs = lineEnd;
+        if (!parsedSlots.isEmpty())
+            parsedSlots.back().endMs = lineEnd;
     } else {
         int totalCharacters = 0;
-        for (const Slot &slot : slots)
+        for (const Slot &slot : parsedSlots)
             totalCharacters += std::max(1, visibleCharacters(slot.source));
         int consumedCharacters = 0;
-        for (Slot &slot : slots) {
+        for (Slot &slot : parsedSlots) {
             slot.startMs = lineStart + (lineEnd - lineStart) * consumedCharacters / std::max(1, totalCharacters);
             consumedCharacters += std::max(1, visibleCharacters(slot.source));
             slot.endMs = lineStart + (lineEnd - lineStart) * consumedCharacters / std::max(1, totalCharacters);
@@ -376,7 +376,7 @@ void KaraokeSession::reload()
     }
 
     beginResetModel();
-    m_slots = std::move(slots);
+    m_slots = std::move(parsedSlots);
     endResetModel();
     if (!m_slots.isEmpty()) {
         m_tagType = isSupportedTag(m_slots.front().tagType)
