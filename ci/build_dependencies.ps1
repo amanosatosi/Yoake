@@ -16,19 +16,26 @@ function Assert-LastExitCode([string]$operation) {
     }
 }
 
-function Checkout-Pinned([string]$url, [string]$commit, [string]$path) {
+function Checkout-Pinned([string]$url, [string]$commit, [string]$path, [bool]$versionedRegistry = $false) {
     if (Test-Path -LiteralPath $path) {
         Remove-Item -LiteralPath $path -Recurse -Force
     }
-    New-Item -ItemType Directory -Force -Path $path | Out-Null
-    git -C $path init --quiet
-    Assert-LastExitCode "git init for $url"
-    git -C $path remote add origin $url
-    Assert-LastExitCode "git remote add for $url"
-    git -C $path fetch --depth 1 origin $commit
-    Assert-LastExitCode "git fetch $commit from $url"
-    git -C $path checkout --detach FETCH_HEAD
-    Assert-LastExitCode "git checkout $commit from $url"
+    if ($versionedRegistry) {
+        git clone --filter=blob:none --no-checkout $url $path
+        Assert-LastExitCode "non-shallow registry clone for $url"
+        git -C $path checkout --detach $commit
+        Assert-LastExitCode "git checkout $commit from $url"
+    } else {
+        New-Item -ItemType Directory -Force -Path $path | Out-Null
+        git -C $path init --quiet
+        Assert-LastExitCode "git init for $url"
+        git -C $path remote add origin $url
+        Assert-LastExitCode "git remote add for $url"
+        git -C $path fetch --depth 1 origin $commit
+        Assert-LastExitCode "git fetch $commit from $url"
+        git -C $path checkout --detach FETCH_HEAD
+        Assert-LastExitCode "git checkout $commit from $url"
+    }
     $actual = (git -C $path rev-parse HEAD).Trim()
     Assert-LastExitCode "git rev-parse for $url"
     if ($actual -ne $commit) {
@@ -40,10 +47,11 @@ New-Item -ItemType Directory -Force -Path $workRoot, $OutputRoot, $binaryCache |
 
 Write-Host "Building pinned FFmpeg $($versions.ffmpeg.version) through vcpkg $($versions.vcpkg.commit)"
 $vcpkgRoot = Join-Path $workRoot 'vcpkg'
-Checkout-Pinned 'https://github.com/microsoft/vcpkg.git' $versions.vcpkg.commit $vcpkgRoot
+Checkout-Pinned 'https://github.com/microsoft/vcpkg.git' $versions.vcpkg.commit $vcpkgRoot $true
 & (Join-Path $vcpkgRoot 'bootstrap-vcpkg.bat') -disableMetrics
 Assert-LastExitCode 'vcpkg bootstrap'
 $env:VCPKG_DISABLE_METRICS = '1'
+Remove-Item Env:VCPKG_ROOT -ErrorAction SilentlyContinue
 $env:VCPKG_BINARY_SOURCES = "clear;files,$binaryCache,readwrite"
 $ffmpegInstall = Join-Path $OutputRoot 'ffmpeg'
 $ffmpegManifest = Join-Path $repoRoot 'third_party\ffmpeg'
