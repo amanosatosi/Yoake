@@ -10,7 +10,7 @@
 
 namespace yoake::ui {
 
-class SubtitleOverlayItem final : public QQuickPaintedItem {
+class SubtitleOverlayItem : public QQuickPaintedItem {
     Q_OBJECT
     Q_PROPERTY(yoake::app::DocumentContext *document READ document WRITE setDocument NOTIFY documentChanged)
     Q_PROPERTY(qint64 timeMs READ timeMs WRITE setTimeMs NOTIFY timeMsChanged)

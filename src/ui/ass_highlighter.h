@@ -8,7 +8,7 @@
 
 namespace yoake::ui {
 
-class AssHighlighter final : public QSyntaxHighlighter {
+class AssHighlighter : public QSyntaxHighlighter {
     Q_OBJECT
     Q_PROPERTY(QQuickTextDocument *textDocument READ textDocument WRITE setTextDocument NOTIFY textDocumentChanged)
     Q_PROPERTY(yoake::app::ThemeManager *theme READ theme WRITE setTheme NOTIFY themeChanged)
