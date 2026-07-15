@@ -16,7 +16,7 @@ endif()
 message(STATUS "Using pinned FFMS2 sources at ${YOAKE_FFMS2_SOURCE_ROOT}")
 
 find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h PATHS "${FFMPEG_ROOT}/include" NO_DEFAULT_PATH REQUIRED)
-foreach(component avformat avcodec swscale avutil swresample zlib)
+foreach(component avformat avcodec swscale avutil swresample)
     string(TOUPPER "${component}" upper_component)
     find_library(${upper_component}_LIBRARY
         NAMES ${component}
@@ -25,6 +25,14 @@ foreach(component avformat avcodec swscale avutil swresample zlib)
         REQUIRED
     )
 endforeach()
+# The pinned vcpkg zlib port names its release import library z.lib and its
+# runtime zlib1.dll. Keep lookup restricted to Yoake's pinned FFmpeg prefix.
+find_library(ZLIB_LIBRARY
+    NAMES z zlib zlib1
+    PATHS "${FFMPEG_ROOT}/lib"
+    NO_DEFAULT_PATH
+    REQUIRED
+)
 
 add_library(ffms2 SHARED
     "${YOAKE_FFMS2_SOURCE_ROOT}/src/core/audiosource.cpp"
