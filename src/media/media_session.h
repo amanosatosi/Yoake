@@ -37,6 +37,7 @@ class MediaSession final : public QObject {
     Q_PROPERTY(bool hasMedia READ hasMedia NOTIFY sourceChanged)
     Q_PROPERTY(bool hasVideo READ hasVideo NOTIFY metadataChanged)
     Q_PROPERTY(bool hasAudio READ hasAudio NOTIFY metadataChanged)
+    Q_PROPERTY(bool audioReady READ audioReady NOTIFY metadataChanged)
     Q_PROPERTY(bool indexing READ indexing NOTIFY indexingChanged)
     Q_PROPERTY(double indexingProgress READ indexingProgress NOTIFY indexingProgressChanged)
     Q_PROPERTY(bool framePending READ framePending NOTIFY framePendingChanged)
@@ -67,6 +68,7 @@ public:
     [[nodiscard]] bool hasMedia() const { return !m_source.isEmpty(); }
     [[nodiscard]] bool hasVideo() const { return !m_timeMap.isEmpty(); }
     [[nodiscard]] bool hasAudio() const { return m_selectedAudioTrack >= 0; }
+    [[nodiscard]] bool audioReady() const { return m_audioReady; }
     [[nodiscard]] bool indexing() const { return m_indexing; }
     [[nodiscard]] double indexingProgress() const { return m_indexingProgress; }
     [[nodiscard]] bool framePending() const { return m_framePending; }

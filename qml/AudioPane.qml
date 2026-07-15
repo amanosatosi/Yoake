@@ -326,7 +326,13 @@ Rectangle {
             Layout.rightMargin: 6
             Label {
                 text: root.context.media.waveform.busy ? qsTr("Generating indexed waveform…")
-                      : root.context.media.waveform.errorString
+                      : root.context.media.waveform.errorString.length > 0
+                        ? root.context.media.waveform.errorString
+                        : !root.context.media.hasAudio
+                          ? qsTr("No FFMS2 audio track")
+                          : root.context.media.audioReady
+                            ? qsTr("FFMS2 audio ready")
+                            : qsTr("Opening FFMS2 audio track...")
                 color: root.context.media.waveform.errorString.length > 0
                        ? Theme.palette.warning : Theme.palette.textMuted
             }

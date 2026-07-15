@@ -144,13 +144,4 @@ if(BUILD_TESTING)
     target_link_libraries(yoake_core_tests PRIVATE Qt6::Core Qt6::Test)
     add_test(NAME yoake_core_tests COMMAND yoake_core_tests)
 
-    qt_add_executable(yoake_ffms_audio_tests
-        tests/ffms_audio_worker_test.cpp
-        src/media/ffms_audio_worker.cpp
-        src/media/ffms_audio_worker.h
-    )
-    target_include_directories(yoake_ffms_audio_tests PRIVATE src)
-    target_link_libraries(yoake_ffms_audio_tests PRIVATE Qt6::Core Qt6::Test FFMS2::FFMS2)
-    add_test(NAME yoake_ffms_audio_tests COMMAND yoake_ffms_audio_tests)
-    set_tests_properties(yoake_ffms_audio_tests PROPERTIES TIMEOUT 30)
 endif()

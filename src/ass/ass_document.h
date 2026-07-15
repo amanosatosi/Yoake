@@ -10,6 +10,14 @@ namespace yoake::ass {
 
 class Document final {
 public:
+    struct ProjectProperties {
+        QString audioFile;
+        QString videoFile;
+        int videoPosition = 0;
+        int activeRow = 0;
+        int scrollPosition = 0;
+    };
+
     struct Record {
         enum class Kind { Raw, Event };
         Kind kind = Kind::Raw;
@@ -23,11 +31,13 @@ public:
     [[nodiscard]] QByteArray serialize() const;
     [[nodiscard]] const QVector<Event> &events() const noexcept { return m_events; }
     [[nodiscard]] QVector<Event> &events() noexcept { return m_events; }
+    [[nodiscard]] const ProjectProperties &projectProperties() const noexcept { return m_projectProperties; }
     [[nodiscard]] int eventIndex(const QUuid &id) const noexcept;
 
 private:
     QVector<Record> m_records;
     QVector<Event> m_events;
+    ProjectProperties m_projectProperties;
     int m_eventOutputRecord = -1;
 };
 

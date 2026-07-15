@@ -6,11 +6,14 @@
 
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtCore/QFileInfo>
+#include <QtCore/QDir>
 #include <QtCore/QFutureWatcher>
+#include <QtCore/QMetaObject>
 #include <QtCore/QPointer>
 #include <QtCore/QSaveFile>
 
 #include <algorithm>
+#include <utility>
 
 namespace yoake::app {
 namespace {
@@ -171,6 +174,23 @@ DocumentContext::DocumentContext(ass::Document document, QUrl fileUrl, QObject *
     connect(&m_undo, &QUndoStack::redoTextChanged, this, &DocumentContext::commandStateChanged);
     connect(m_karaoke, &timing::KaraokeSession::dirtyChanged,
         this, &DocumentContext::modifiedChanged);
+    const auto &project = m_document.projectProperties();
+    if (!m_document.events().isEmpty())
+        m_lines->setActiveRow(std::clamp(
+            project.activeRow, 0, static_cast<int>(m_document.events().size()) - 1));
+    connect(m_media, &media::MediaSession::metadataChanged, this, [this] {
+        if (m_pendingLinkedVideoFrame < 0 || !m_media->hasVideo())
+            return;
+        const int frame = std::exchange(m_pendingLinkedVideoFrame, -1);
+        QMetaObject::invokeMethod(this, [this, frame] {
+            if (m_media->hasVideo())
+                m_media->requestFrame(frame);
+        }, Qt::QueuedConnection);
+    });
+    if (m_fileUrl.isLocalFile()
+        && (!project.videoFile.isEmpty() || !project.audioFile.isEmpty())) {
+        QMetaObject::invokeMethod(this, &DocumentContext::loadLinkedMedia, Qt::QueuedConnection);
+    }
 }
 
 DocumentContext::~DocumentContext()
@@ -213,6 +233,60 @@ void DocumentContext::setActiveActor(const QString &v) { if (const auto *e = act
 void DocumentContext::setActiveEffect(const QString &v) { if (const auto *e = activeEvent()) editEvent(e->id, models::SubtitleModel::EffectRole, v); }
 void DocumentContext::setActiveLayer(int v) { if (const auto *e = activeEvent()) editEvent(e->id, models::SubtitleModel::LayerRole, v); }
 void DocumentContext::setActiveComment(bool v) { if (const auto *e = activeEvent()) editEvent(e->id, models::SubtitleModel::CommentRole, v); }
+
+QString DocumentContext::resolveLinkedPath(const QString &value) const
+{
+    const QString trimmed = value.trimmed();
+    if (trimmed.isEmpty() || trimmed.startsWith(QStringLiteral("?dummy"), Qt::CaseInsensitive)
+        || trimmed.startsWith(QStringLiteral("dummy-audio:"), Qt::CaseInsensitive)) {
+        return {};
+    }
+    QString pathValue = trimmed;
+    if (pathValue.startsWith(QStringLiteral("?script"), Qt::CaseInsensitive)) {
+        pathValue.remove(0, 7);
+        while (pathValue.startsWith(u'/') || pathValue.startsWith(u'\\'))
+            pathValue.removeFirst();
+    }
+    const QUrl asUrl(pathValue);
+    if (asUrl.isLocalFile())
+        return QFileInfo(asUrl.toLocalFile()).absoluteFilePath();
+    const QString native = QDir::fromNativeSeparators(pathValue);
+    if (QFileInfo(native).isAbsolute())
+        return QFileInfo(native).absoluteFilePath();
+    if (!m_fileUrl.isLocalFile())
+        return {};
+    return QFileInfo(QDir(QFileInfo(m_fileUrl.toLocalFile()).absolutePath()).absoluteFilePath(native))
+        .absoluteFilePath();
+}
+
+void DocumentContext::loadLinkedMedia()
+{
+    const auto &project = m_document.projectProperties();
+    const QString linkedValue = !project.videoFile.isEmpty() ? project.videoFile : project.audioFile;
+    const QString path = resolveLinkedPath(linkedValue);
+    QString error;
+    if (path.isEmpty()) {
+        error = tr("The ASS linked-media entry is empty, unsupported, or uses dummy media: %1")
+                    .arg(linkedValue);
+    } else if (!QFileInfo(path).isFile()) {
+        error = tr("The media referenced by the ASS file was not found: %1").arg(path);
+    }
+    if (!error.isEmpty()) {
+        m_pendingLinkedVideoFrame = -1;
+        if (m_linkedMediaError != error) {
+            m_linkedMediaError = error;
+            emit linkedMediaStatusChanged();
+        }
+        return;
+    }
+
+    if (!m_linkedMediaError.isEmpty()) {
+        m_linkedMediaError.clear();
+        emit linkedMediaStatusChanged();
+    }
+    m_pendingLinkedVideoFrame = project.videoFile.isEmpty() ? -1 : project.videoPosition;
+    m_media->open(QUrl::fromLocalFile(path));
+}
 
 void DocumentContext::undo() { if (!m_karaoke->active()) m_undo.undo(); }
 void DocumentContext::redo() { if (!m_karaoke->active()) m_undo.redo(); }

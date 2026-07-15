@@ -119,6 +119,7 @@ Document Document::parse(const QByteArray &contents, QString *error)
 
     const QStringList lines = source.split(u'\n', Qt::KeepEmptyParts);
     bool inEvents = false;
+    bool inProjectProperties = false;
     bool sawEvents = false;
     bool sawCanonicalEventFormat = false;
     int lineNumber = 0;
@@ -133,7 +134,30 @@ Document Document::parse(const QByteArray &contents, QString *error)
         const QString trimmed = line.trimmed();
         if (trimmed.startsWith(u'[') && trimmed.endsWith(u']')) {
             inEvents = trimmed.compare(QStringLiteral("[Events]"), Qt::CaseInsensitive) == 0;
+            inProjectProperties = trimmed.compare(
+                QStringLiteral("[Aegisub Project Garbage]"), Qt::CaseInsensitive) == 0;
             sawEvents = sawEvents || inEvents;
+        }
+
+        if (inProjectProperties) {
+            const qsizetype colon = trimmed.indexOf(u':');
+            if (colon > 0) {
+                const QString key = trimmed.left(colon).trimmed().toLower();
+                const QString value = trimmed.mid(colon + 1).trimmed();
+                if (key == QStringLiteral("video file"))
+                    document.m_projectProperties.videoFile = value;
+                else if (key == QStringLiteral("audio file") || key == QStringLiteral("audio uri"))
+                    document.m_projectProperties.audioFile = value;
+                else if (key == QStringLiteral("video position")
+                    || key == QStringLiteral("aegisub video position"))
+                    document.m_projectProperties.videoPosition = std::max(0, value.toInt());
+                else if (key == QStringLiteral("active line")
+                    || key == QStringLiteral("aegisub active line"))
+                    document.m_projectProperties.activeRow = std::max(0, value.toInt());
+                else if (key == QStringLiteral("scroll position")
+                    || key == QStringLiteral("aegisub scroll position"))
+                    document.m_projectProperties.scrollPosition = std::max(0, value.toInt());
+            }
         }
 
         if (inEvents && trimmed.startsWith(QStringLiteral("Format:"), Qt::CaseInsensitive)) {

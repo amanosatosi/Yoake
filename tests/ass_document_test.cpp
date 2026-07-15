@@ -14,6 +14,7 @@ private slots:
     void selectsFontNameValues();
     void rejectsUnsafeEventFormats();
     void keepsValidEventlessDocumentsEventless();
+    void readsAegisubLinkedMediaMetadata();
     void mapsVariableFrameRateTimesWithoutFpsArithmetic();
 };
 
@@ -87,6 +88,26 @@ void AssDocumentTest::keepsValidEventlessDocumentsEventless()
     QVERIFY2(error.isEmpty(), qPrintable(error));
     QVERIFY(document.events().isEmpty());
     QVERIFY(!document.serialize().contains("Dialogue:"));
+}
+
+void AssDocumentTest::readsAegisubLinkedMediaMetadata()
+{
+    const auto document = yoake::ass::Document::parse(QByteArrayLiteral(
+        "[Aegisub Project Garbage]\n"
+        "Audio URI: audio/commentary.flac\n"
+        "Video File: ../video/episode.mkv\n"
+        "Aegisub Video Position: 1421\n"
+        "Active Line: 27\n"
+        "Scroll Position: 20\n\n"
+        "[Events]\n"
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"));
+    const auto &properties = document.projectProperties();
+    QCOMPARE(properties.videoFile, QStringLiteral("../video/episode.mkv"));
+    QCOMPARE(properties.audioFile, QStringLiteral("audio/commentary.flac"));
+    QCOMPARE(properties.videoPosition, 1421);
+    QCOMPARE(properties.activeRow, 27);
+    QCOMPARE(properties.scrollPosition, 20);
+    QVERIFY(document.serialize().contains("Video File: ../video/episode.mkv"));
 }
 
 void AssDocumentTest::mapsVariableFrameRateTimesWithoutFpsArithmetic()

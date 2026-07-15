@@ -40,6 +40,9 @@ class DocumentContext final : public QObject {
     Q_PROPERTY(QString activeEffect READ activeEffect WRITE setActiveEffect NOTIFY activeLineChanged)
     Q_PROPERTY(int activeLayer READ activeLayer WRITE setActiveLayer NOTIFY activeLineChanged)
     Q_PROPERTY(bool activeComment READ activeComment WRITE setActiveComment NOTIFY activeLineChanged)
+    Q_PROPERTY(QString linkedVideoFile READ linkedVideoFile CONSTANT)
+    Q_PROPERTY(QString linkedAudioFile READ linkedAudioFile CONSTANT)
+    Q_PROPERTY(QString linkedMediaError READ linkedMediaError NOTIFY linkedMediaStatusChanged)
 
 public:
     explicit DocumentContext(ass::Document document, QUrl fileUrl = {}, QObject *parent = nullptr);
@@ -67,6 +70,9 @@ public:
     [[nodiscard]] QString activeEffect() const;
     [[nodiscard]] int activeLayer() const;
     [[nodiscard]] bool activeComment() const;
+    [[nodiscard]] QString linkedVideoFile() const { return m_document.projectProperties().videoFile; }
+    [[nodiscard]] QString linkedAudioFile() const { return m_document.projectProperties().audioFile; }
+    [[nodiscard]] QString linkedMediaError() const { return m_linkedMediaError; }
 
     void setActiveText(const QString &value);
     void setActiveStartMs(qint64 value);
@@ -84,6 +90,7 @@ public:
     Q_INVOKABLE void deleteSelected();
     Q_INVOKABLE void toggleSelectedComments();
     Q_INVOKABLE void setSelectedTiming(qint64 startMs, qint64 endMs);
+    Q_INVOKABLE void loadLinkedMedia();
     Q_INVOKABLE void save(const QUrl &target = {});
 
     void editEvent(const QUuid &id, int role, const QVariant &value);
@@ -98,6 +105,7 @@ signals:
     void savingChanged();
     void commandStateChanged();
     void activeLineChanged();
+    void linkedMediaStatusChanged();
     void rendererRevisionChanged(quint64 revision);
     void savePathRequired();
     void saveFinished(bool success, const QString &error);
@@ -111,6 +119,7 @@ private:
         const QString &description,
         const QUuid &preferredActive = {});
     void transitionToState(quint64 stateId);
+    [[nodiscard]] QString resolveLinkedPath(const QString &value) const;
     quint64 allocateStateId() { return m_nextStateId++; }
 
     ass::Document m_document;
@@ -125,6 +134,8 @@ private:
     quint64 m_savedStateId = 0;
     quint64 m_rendererRevision = 0;
     quint64 m_mergeEpoch = 0;
+    int m_pendingLinkedVideoFrame = -1;
+    QString m_linkedMediaError;
     bool m_saving = false;
 };
 

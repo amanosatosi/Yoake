@@ -206,6 +206,7 @@ void MediaSession::ensureWorkers()
             if (generation != m_generation)
                 return;
             m_audioReady = false;
+            emit metadataChanged();
             setError(message);
         }, Qt::QueuedConnection);
 
