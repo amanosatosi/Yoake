@@ -1,0 +1,28 @@
+# Mangetsu is the only shared library in this stage. Its font and compression
+# dependencies are deliberately static to keep the portable runtime chain
+# explicit and avoid a second set of generic transitive DLLs.
+-Ddefault_library=shared
+-Dfontconfig=disabled
+-Ddirectwrite=enabled
+-Dlibunibreak=disabled
+-Dasm=disabled
+-Dtest=disabled
+-Dcompare=disabled
+-Dprofile=disabled
+-Dfuzz=disabled
+-Dcheckasm=disabled
+-Dfreetype2:default_library=static
+-Dfreetype2:harfbuzz=disabled
+-Dfribidi:default_library=static
+-Dfribidi:tests=false
+-Dfribidi:docs=false
+-Dharfbuzz:default_library=static
+-Dharfbuzz:freetype=disabled
+-Dharfbuzz:cairo=disabled
+-Dharfbuzz:glib=disabled
+-Dharfbuzz:gobject=disabled
+-Dharfbuzz:tests=disabled
+-Dharfbuzz:docs=disabled
+-Dharfbuzz:icu=disabled
+-Dlibpng:default_library=static
+-Dzlib:default_library=static

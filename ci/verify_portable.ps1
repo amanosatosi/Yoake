@@ -62,6 +62,15 @@ foreach ($symbol in @('ass_render_frame_auto', 'ass_free_images_rgba', 'ass_read
         throw "mangetsu.dll is missing required renderer symbol $symbol"
     }
 }
+$mangetsuDependencies = (dumpbin /dependents (Join-Path $PortableRoot 'mangetsu.dll')) -join "`n"
+if ($LASTEXITCODE -ne 0) {
+    throw 'dumpbin failed for mangetsu.dll'
+}
+foreach ($unexpected in @('png', 'freetype', 'harfbuzz', 'fribidi', 'zlib')) {
+    if ($mangetsuDependencies -match "(?im)^\s*[^\s]*$unexpected[^\s]*\.dll\s*$") {
+        throw "mangetsu.dll unexpectedly requires a separately deployed $unexpected runtime"
+    }
+}
 
 if (-not (Test-Path -LiteralPath (Join-Path $PortableRoot 'THIRD-PARTY-LICENSES\FFmpeg-COPYRIGHT.txt'))) {
     throw 'Portable package is missing third-party license material'

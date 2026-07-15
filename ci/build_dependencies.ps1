@@ -138,36 +138,15 @@ if ($Stage -in @('Mangetsu', 'All')) {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\mangetsu\subprojects\harfbuzz.wrap') -Destination $mangetsuSubprojects
     Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\mangetsu\subprojects\zlib.wrap') -Destination $mangetsuSubprojects
 
+    $mangetsuOptions = Get-Content -LiteralPath (Join-Path $repoRoot 'third_party\mangetsu\meson-options.txt') |
+        Where-Object { $_ -and -not $_.StartsWith('#') }
     python -m mesonbuild.mesonmain setup $mangetsuBuild $mangetsuSource `
-    --backend=ninja `
-    --buildtype=release `
-    --prefix=$mangetsuInstall `
-    --libdir=bin `
-    --force-fallback-for=freetype2,fribidi,harfbuzz `
-    -Ddefault_library=shared `
-    -Dfontconfig=disabled `
-    -Ddirectwrite=enabled `
-    -Dlibunibreak=disabled `
-    -Dasm=disabled `
-    -Dtest=disabled `
-    -Dcompare=disabled `
-    -Dprofile=disabled `
-    -Dfuzz=disabled `
-    -Dcheckasm=disabled `
-    -Dfreetype2:default_library=static `
-    -Dfreetype2:harfbuzz=disabled `
-    -Dfribidi:default_library=static `
-    -Dfribidi:tests=false `
-    -Dfribidi:docs=false `
-    -Dharfbuzz:default_library=static `
-    -Dharfbuzz:freetype=disabled `
-    -Dharfbuzz:cairo=disabled `
-    -Dharfbuzz:glib=disabled `
-    -Dharfbuzz:gobject=disabled `
-    -Dharfbuzz:tests=disabled `
-    -Dharfbuzz:docs=disabled `
-    -Dharfbuzz:icu=disabled `
-    -Dzlib:default_library=static
+        --backend=ninja `
+        --buildtype=release `
+        "--prefix=$mangetsuInstall" `
+        --libdir=bin `
+        --force-fallback-for=freetype2,fribidi,harfbuzz `
+        @mangetsuOptions
     Assert-LastExitCode 'Mangetsu configure'
     python -m mesonbuild.mesonmain compile -C $mangetsuBuild
     Assert-LastExitCode 'Mangetsu build'
@@ -176,10 +155,10 @@ if ($Stage -in @('Mangetsu', 'All')) {
 
     $mangetsuBin = Join-Path $mangetsuInstall 'bin'
     $builtRenderer = Get-ChildItem -LiteralPath $mangetsuBin -File | Where-Object {
-        $_.Name -in @('ass.dll', 'libass.dll')
+        $_.Name -match '^(?:lib)?ass(?:-[0-9]+)?\.dll$'
     } | Select-Object -First 1
     if (-not $builtRenderer) {
-        throw "Mangetsu build did not install ass.dll/libass.dll under $mangetsuBin"
+        throw "Mangetsu build did not install an ass DLL under $mangetsuBin"
     }
     Copy-Item -LiteralPath $builtRenderer.FullName -Destination (Join-Path $mangetsuBin 'mangetsu.dll') -Force
 
@@ -193,6 +172,8 @@ if ($Stage -in @('Mangetsu', 'All')) {
         -Destination (Join-Path $componentLicenses 'FriBidi-COPYING.txt')
     Copy-Item -LiteralPath (Join-Path $mangetsuSource 'subprojects\harfbuzz\COPYING') `
         -Destination (Join-Path $componentLicenses 'HarfBuzz-COPYING.txt')
+    Copy-Item -LiteralPath (Join-Path $mangetsuSource 'subprojects\libpng-1.6.43\LICENSE') `
+        -Destination (Join-Path $componentLicenses 'libpng-LICENSE.txt')
     Copy-Item -LiteralPath (Join-Path $mangetsuSource 'subprojects\zlib-1.2.11\README') `
         -Destination (Join-Path $componentLicenses 'zlib-1.2.11-README.txt')
     New-Item -ItemType File -Force -Path (Join-Path $mangetsuInstall '.complete') | Out-Null
