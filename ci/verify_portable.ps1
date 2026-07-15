@@ -87,13 +87,27 @@ if (-not (Test-Path -LiteralPath (Join-Path $PortableRoot 'THIRD-PARTY-LICENSES\
 
 Push-Location $PortableRoot
 try {
-    $process = Start-Process -FilePath (Join-Path $PortableRoot 'yoake.exe') `
-        -ArgumentList '--smoke-test' -Wait -PassThru -WindowStyle Hidden
-    if ($process.ExitCode -ne 0) {
-        throw "Packaged Yoake startup smoke test failed with exit code $($process.ExitCode)"
+    foreach ($mode in @('--smoke-test', '--ui-smoke-test')) {
+        $startupLog = Join-Path $PortableRoot 'yoake-startup-smoke.log'
+        $env:YOAKE_STARTUP_LOG = $startupLog
+        $process = Start-Process -FilePath (Join-Path $PortableRoot 'yoake.exe') `
+            -ArgumentList $mode -PassThru -WindowStyle Hidden
+        if (-not $process.WaitForExit(15000)) {
+            Stop-Process -Id $process.Id -Force
+            throw "Packaged Yoake $mode timed out"
+        }
+        if ($process.ExitCode -ne 0) {
+            if (Test-Path -LiteralPath $startupLog) {
+                Write-Host '--- Yoake startup diagnostic ---'
+                Get-Content -LiteralPath $startupLog
+            }
+            throw "Packaged Yoake $mode failed with exit code $($process.ExitCode)"
+        }
+        Remove-Item -LiteralPath $startupLog -Force -ErrorAction SilentlyContinue
     }
 } finally {
+    Remove-Item Env:YOAKE_STARTUP_LOG -ErrorAction SilentlyContinue
     Pop-Location
 }
 
-Write-Host 'Portable runtime, ABI, renderer-export, and startup checks passed.'
+Write-Host 'Portable runtime, ABI, renderer-export, native startup, and visible QML window checks passed.'

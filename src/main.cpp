@@ -13,11 +13,72 @@
 
 #include <ffms.h>
 
+#include <QtCore/QDateTime>
 #include <QtCore/QDebug>
+#include <QtCore/QDir>
+#include <QtCore/QFile>
+#include <QtCore/QStandardPaths>
+#include <QtCore/QTextStream>
+#include <QtCore/QTimer>
 #include <QtGui/QGuiApplication>
+#include <QtGui/QWindow>
 #include <QtQml/QQmlApplicationEngine>
 #include <QtQml/QQmlContext>
+#include <QtQml/QQmlError>
 #include <QtQuickControls2/QQuickStyle>
+
+#if defined(Q_OS_WIN)
+#include <windows.h>
+#endif
+
+namespace {
+
+QString startupLogPath()
+{
+    const QString overridePath = qEnvironmentVariable("YOAKE_STARTUP_LOG");
+    if (!overridePath.isEmpty())
+        return overridePath;
+    const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
+    QDir().mkpath(directory);
+    return QDir(directory).filePath(QStringLiteral("yoake-startup.log"));
+}
+
+void writeStartupLog(const QString &summary, const QStringList &details = {})
+{
+    QFile file(startupLogPath());
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text))
+        return;
+    QTextStream stream(&file);
+    stream << "Yoake startup diagnostic\n"
+           << "Timestamp: " << QDateTime::currentDateTimeUtc().toString(Qt::ISODate) << " UTC\n"
+           << "Executable: " << QCoreApplication::applicationFilePath() << '\n'
+           << "Working directory: " << QDir::currentPath() << '\n'
+           << "Qt: " << qVersion() << "\n\n"
+           << summary << '\n';
+    for (const QString &detail : details)
+        stream << detail << '\n';
+}
+
+void reportStartupFailure(const QString &summary, const QStringList &details, bool showDialog)
+{
+    writeStartupLog(summary, details);
+    QString message = summary;
+    if (!details.isEmpty())
+        message += QStringLiteral("\n\n") + details.join(QLatin1Char('\n'));
+    message += QStringLiteral("\n\nDiagnostic log:\n") + startupLogPath();
+    qCritical().noquote() << message;
+#if defined(Q_OS_WIN)
+    if (showDialog) {
+        const QString title = QStringLiteral("Yoake could not start");
+        MessageBoxW(nullptr, reinterpret_cast<LPCWSTR>(message.utf16()),
+            reinterpret_cast<LPCWSTR>(title.utf16()), MB_OK | MB_ICONERROR);
+    }
+#else
+    Q_UNUSED(showDialog);
+#endif
+}
+
+} // namespace
 
 int main(int argc, char *argv[])
 {
@@ -32,8 +93,12 @@ int main(int argc, char *argv[])
     qputenv("QT_MEDIA_BACKEND", "windows");
 #endif
     bool smokeTest = false;
-    for (int index = 1; index < argc; ++index)
-        smokeTest = smokeTest || QString::fromLocal8Bit(argv[index]) == QStringLiteral("--smoke-test");
+    bool uiSmokeTest = false;
+    for (int index = 1; index < argc; ++index) {
+        const QString argument = QString::fromLocal8Bit(argv[index]);
+        smokeTest = smokeTest || argument == QStringLiteral("--smoke-test");
+        uiSmokeTest = uiSmokeTest || argument == QStringLiteral("--ui-smoke-test");
+    }
     QGuiApplication application(argc, argv);
     if (smokeTest) {
         if (FFMS_GetVersion() <= 0) {
@@ -72,8 +137,35 @@ int main(int argc, char *argv[])
     engine.rootContext()->setContextProperty(QStringLiteral("Documents"), &documents);
     engine.rootContext()->setContextProperty(QStringLiteral("Theme"), &theme);
     engine.rootContext()->setContextProperty(QStringLiteral("AssBoundaries"), &textBoundaries);
-    QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed,
-        &application, [] { QCoreApplication::exit(EXIT_FAILURE); }, Qt::QueuedConnection);
+    QStringList qmlWarnings;
+    QObject::connect(&engine, &QQmlEngine::warnings, &engine,
+        [&qmlWarnings](const QList<QQmlError> &warnings) {
+            for (const QQmlError &warning : warnings)
+                qmlWarnings.push_back(warning.toString());
+        });
     engine.loadFromModule(QStringLiteral("Yoake"), QStringLiteral("Main"));
+
+    if (engine.rootObjects().isEmpty()) {
+        reportStartupFailure(QStringLiteral("The main QML window could not be created."),
+            qmlWarnings, !uiSmokeTest);
+        return EXIT_FAILURE;
+    }
+
+    if (uiSmokeTest) {
+        QTimer::singleShot(250, &application, [&application, &engine, &qmlWarnings] {
+            QWindow *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst());
+            if (!window || !window->isVisible()) {
+                reportStartupFailure(QStringLiteral("The QML root object did not produce a visible window."),
+                    qmlWarnings, false);
+                application.exit(EXIT_FAILURE);
+                return;
+            }
+            writeStartupLog(QStringLiteral("The packaged QML window was created successfully."), qmlWarnings);
+            window->setVisible(false);
+            application.exit(EXIT_SUCCESS);
+        });
+    } else {
+        writeStartupLog(QStringLiteral("The QML window was created successfully."), qmlWarnings);
+    }
     return application.exec();
 }
