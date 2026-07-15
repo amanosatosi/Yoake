@@ -96,6 +96,7 @@ private slots:
         int audioTrack = -1;
         const QString indexPath = createIndex(sourcePath, directory.path(), &audioTrack);
         QVERIFY2(!indexPath.isEmpty(), "FFMS2 could not index the temporary PCM WAV fixture");
+        qInfo() << "FFMS2 audio fixture indexed";
 
         yoake::media::FfmsAudioWorker playback;
         yoake::media::FfmsAudioWorker waveform;
@@ -110,6 +111,7 @@ private slots:
         waveform.open(1, sourcePath, indexPath, audioTrack, true);
         QCOMPARE(playbackOpened.count(), 1);
         QCOMPARE(waveformOpened.count(), 1);
+        qInfo() << "Independent FFMS2 playback and waveform sources opened";
 
         playback.requestPcm(1, 7, 24000, 32000, 4096);
         QCOMPARE(pcmReady.count(), 1);
@@ -118,9 +120,11 @@ private slots:
         QCOMPARE(decoded.at(2).toLongLong(), qint64{24000});
         QCOMPARE(decoded.at(3).toInt(), 4096);
         QCOMPARE(decoded.at(4).toByteArray().size(), 4096 * 2 * static_cast<int>(sizeof(qint16)));
+        qInfo() << "Random FFMS2 PCM range decoded";
 
         QTRY_VERIFY_WITH_TIMEOUT(!waveformChunks.isEmpty(), 5000);
         QTRY_VERIFY_WITH_TIMEOUT(waveformChunks.constLast().at(6).toBool(), 5000);
+        qInfo() << "FFMS2 waveform aggregation completed";
     }
 };
 

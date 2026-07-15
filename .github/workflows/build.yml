@@ -145,7 +145,7 @@ jobs:
         run: cmake --build build --parallel 2
 
       - name: Test exact timing and document core
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure --timeout 30
 
       - name: Stage portable application and licenses
         shell: pwsh
