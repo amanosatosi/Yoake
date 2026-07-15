@@ -8,16 +8,19 @@ The Windows chain is deliberately:
 
 ```text
 Yoake -> FFMS2 5.0 DLL -> FFmpeg 7.1.1 DLLs
+Yoake playback worker -> FFmpeg 7.1.1 swresample/avutil -> Qt QAudioSink
 Yoake -> Mangetsu DLL -> statically linked FreeType/FriBidi/HarfBuzz helpers
 Yoake -> Qt 6.8.3 (UI and platform PCM output only)
 ```
 
 FFmpeg is installed with the pinned vcpkg baseline and only the `avcodec`,
 `avformat`, `avutil`, `swresample`, and `swscale` library features needed by
-FFMS2. FFMS2 is compiled from its pinned source commit as a DLL against that
-dynamic FFmpeg prefix. Mangetsu is compiled from the pinned fork commit as a
-separate DLL. Its font stack is pinned and linked statically so the portable
-directory has one unambiguous renderer runtime.
+FFMS2 and device-format audio conversion. FFMS2 is compiled from its pinned
+source commit as a DLL against that dynamic FFmpeg prefix. Yoake links
+`swresample`/`avutil` from the same prefix; it does not introduce a second
+FFmpeg ABI. Mangetsu is compiled from the pinned fork commit as a separate DLL.
+Its font stack is pinned and linked statically so the portable directory has
+one unambiguous renderer runtime.
 
 Qt Multimedia is not a decode backend. Yoake links it only for `QAudioSink`.
 Packaging removes Qt's FFmpeg media plugin and rejects every FFmpeg ABI DLL

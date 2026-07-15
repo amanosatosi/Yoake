@@ -19,7 +19,7 @@ Application
 │  │  │  ├─ FfmsSpectrumWorker             on-demand FFT tile/cache lane
 │  │  │  ├─ FrameTimeMap                   indexed VFR source-frame timeline
 │  │  │  ├─ WaveformModel                  aggregated numeric cache levels
-│  │  │  └─ QAudioSink                     PCM output only; never decoding
+│  │  │  └─ swresample → QAudioSink         device conversion/output only
 │  │  └─ MangetsuSession                   independent renderer + serial lane
 │  └─ DocumentContext …
 └─ ThemeManager                            named immutable semantic palette
@@ -105,8 +105,11 @@ does not fall back to libass, VSFilter, or another renderer.
 FFMS2 decodes the selected audio track at its real indexed sample rate and
 normalizes only the channel/sample representation to stereo signed 16-bit PCM.
 FFMS2 does not support arbitrary output-rate conversion, so Yoake never forces
-a track to 48 kHz. `QAudioSink` sends that PCM to the operating system; it does
-not open, decode, seek, or index media.
+a track to 48 kHz. The playback worker converts only the audition stream to the
+audio device's supported/preferred PCM format through the pinned FFmpeg
+`swresample`/`avutil` ABI. Waveform, spectrum, and sample/time mapping remain at
+the indexed source rate. `QAudioSink` only sends converted PCM to the operating
+system; it does not open, decode, seek, or index media.
 
 Sample/time conversion includes the FFMS2 audio timeline origin. Playback is a
 range operation even for ordinary continuous play. Repeating a karaoke split
@@ -166,8 +169,9 @@ Implemented and CI-validated:
 - independent Qt Quick document tabs, themes, models, undo, and loss-safe I/O;
 - FFMS2 track discovery, reusable validated indexes, exact indexed source-frame
   access, VFR time mapping, rapid-seek stale-result rejection, and frame stepping;
-- FFMS2 indexed audio, random range access, native-rate Qt PCM output, scalable
-  asynchronous waveform levels, and cached spectrogram tiles;
+- FFMS2 indexed audio, random range access, worker-owned device-rate PCM
+  conversion, scalable asynchronous waveform levels, and cached spectrogram
+  tiles;
 - Original K-Timing range audition and commit flow;
 - Mangetsu-only asynchronous overlay rendering at accepted source-frame time;
   and

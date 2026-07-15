@@ -200,9 +200,19 @@ ApplicationWindow {
                 }
                 Item { Layout.fillWidth: true }
                 Label {
-                    text: Documents.currentDocument && Documents.currentDocument.media.hasMedia
-                          ? (Documents.currentDocument.media.variableFrameRate ? qsTr("FFMS2 VFR") : qsTr("FFMS2 indexed"))
-                          : qsTr("No media")
+                    text: {
+                        if (!Documents.currentDocument || !Documents.currentDocument.media.hasMedia)
+                            return qsTr("No media")
+                        const media = Documents.currentDocument.media
+                        if (media.indexing)
+                            return qsTr("FFMS2 indexing %1%").arg(Math.round(media.indexingProgress * 100))
+                        if (!media.hasVideo && !media.hasAudio)
+                            return qsTr("FFMS2 index unavailable")
+                        const timing = media.variableFrameRate ? qsTr("FFMS2 VFR") : qsTr("FFMS2")
+                        return timing + (media.indexCacheReused
+                                         ? qsTr(" · index cache reused")
+                                         : qsTr(" · index built"))
+                    }
                     color: Theme.palette.textMuted
                 }
             }

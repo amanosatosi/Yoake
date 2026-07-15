@@ -13,6 +13,7 @@
 #include <QtGui/QColor>
 #include <QtGui/QImage>
 #include <QtMultimedia/QAudioSink>
+#include <QtMultimedia/QAudioFormat>
 
 #include <memory>
 
@@ -42,6 +43,7 @@ class MediaSession final : public QObject {
     Q_PROPERTY(bool audioReady READ audioReady NOTIFY metadataChanged)
     Q_PROPERTY(int audioSampleRate READ audioSampleRate NOTIFY metadataChanged)
     Q_PROPERTY(bool indexing READ indexing NOTIFY indexingChanged)
+    Q_PROPERTY(bool indexCacheReused READ indexCacheReused NOTIFY metadataChanged)
     Q_PROPERTY(double indexingProgress READ indexingProgress NOTIFY indexingProgressChanged)
     Q_PROPERTY(bool framePending READ framePending NOTIFY framePendingChanged)
     Q_PROPERTY(bool playing READ playing NOTIFY playbackStateChanged)
@@ -77,6 +79,7 @@ public:
     [[nodiscard]] bool audioReady() const { return m_audioReady; }
     [[nodiscard]] int audioSampleRate() const { return m_audioSampleRate; }
     [[nodiscard]] bool indexing() const { return m_indexing; }
+    [[nodiscard]] bool indexCacheReused() const { return m_indexCacheReused; }
     [[nodiscard]] double indexingProgress() const { return m_indexingProgress; }
     [[nodiscard]] bool framePending() const { return m_framePending; }
     [[nodiscard]] bool playing() const { return m_playing; }
@@ -164,6 +167,7 @@ private:
     QTimer m_playbackTimer;
     QElapsedTimer m_silentPlaybackClock;
     std::unique_ptr<QAudioSink> m_audioSink;
+    QAudioFormat m_audioOutputFormat;
     QIODevice *m_audioDevice = nullptr;
     QImage m_frameImage;
     QImage m_spectrumImage;
@@ -196,12 +200,14 @@ private:
     int m_sourcePixelFormat = -1;
     int m_audioSampleRate = 0;
     int m_audioChannels = 2;
+    int m_audioOutputBytesPerFrame = 0;
     double m_sourceFrameRate = 0.0;
     double m_indexingProgress = 0.0;
     QString m_errorString;
     QString m_spectrumErrorString;
     QByteArray m_pendingPcm;
     bool m_indexing = false;
+    bool m_indexCacheReused = false;
     bool m_framePending = false;
     bool m_playing = false;
     bool m_audioReady = false;

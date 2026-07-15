@@ -61,6 +61,16 @@ if ($ffmsDependencies -notmatch [regex]::Escape($zlibRuntime)) {
     throw "ffms2.dll is not linked to the staged pinned zlib runtime $zlibRuntime"
 }
 
+$yoakeDependencies = (dumpbin /dependents (Join-Path $PortableRoot 'yoake.exe')) -join "`n"
+if ($LASTEXITCODE -ne 0) {
+    throw 'dumpbin failed for yoake.exe'
+}
+foreach ($runtime in @('swresample-5.dll', 'avutil-59.dll')) {
+    if ($yoakeDependencies -notmatch [regex]::Escape($runtime)) {
+        throw "yoake.exe is not linked to the pinned audio converter runtime $runtime"
+    }
+}
+
 $ffmsExports = (dumpbin /exports (Join-Path $PortableRoot 'ffms2.dll')) -join "`n"
 if ($ffmsExports -notmatch 'FFMS_GetFrame' -or $ffmsExports -notmatch 'FFMS_GetAudio') {
     throw 'ffms2.dll is missing required indexed media APIs'
@@ -110,4 +120,4 @@ try {
     Pop-Location
 }
 
-Write-Host 'Portable runtime, ABI, renderer-export, native startup, and visible QML window checks passed.'
+Write-Host 'Portable runtime, FFMS2/converter ABI, renderer-export, native startup, and visible QML window checks passed.'

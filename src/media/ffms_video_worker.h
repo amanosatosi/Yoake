@@ -33,6 +33,7 @@ signals:
     void indexingProgress(quint64 generation, double progress);
     void opened(quint64 generation,
         const QString &indexPath,
+        bool indexCacheReused,
         const QVariantList &videoTracks,
         const QVariantList &audioTracks,
         int videoTrack,

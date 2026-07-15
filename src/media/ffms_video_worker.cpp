@@ -166,6 +166,7 @@ void FfmsVideoWorker::open(
         m_index = nullptr;
         QFile::remove(cachePath);
     }
+    const bool indexCacheReused = m_index != nullptr;
 
     if (!m_index) {
         FFMS_TrackTypeIndexSettings(indexer, FFMS_TYPE_VIDEO, 1, 0);
@@ -274,7 +275,7 @@ void FfmsVideoWorker::open(
     }
 
     emit indexingProgress(generation, 1.0);
-    emit opened(generation, cachePath, videoTracks, audioTracks, videoTrack, audioTrack,
+    emit opened(generation, cachePath, indexCacheReused, videoTracks, audioTracks, videoTrack, audioTrack,
         m_frameStartsMs, m_durationMs, width, height, sourcePixelFormat, sourceFrameRate);
 }
 

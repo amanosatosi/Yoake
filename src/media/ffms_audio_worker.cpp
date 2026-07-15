@@ -2,6 +2,13 @@
 
 #include <ffms.h>
 
+extern "C" {
+#include <libavutil/channel_layout.h>
+#include <libavutil/error.h>
+#include <libavutil/samplefmt.h>
+#include <libswresample/swresample.h>
+}
+
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
 #include <QtCore/QTimer>
@@ -15,8 +22,8 @@
 namespace yoake::media {
 namespace {
 
-constexpr int outputChannels = 2;
-constexpr int bytesPerOutputFrame = outputChannels * static_cast<int>(sizeof(qint16));
+constexpr int decodedOutputChannels = 2;
+constexpr int bytesPerOutputFrame = decodedOutputChannels * static_cast<int>(sizeof(qint16));
 constexpr int samplesPerWaveformPeak = 256;
 constexpr int waveformFramesPerChunk = 64 * 1024;
 
@@ -39,6 +46,28 @@ void initializeFfms()
 QByteArray nativePath(const QString &path)
 {
     return QDir::toNativeSeparators(path).toUtf8();
+}
+
+AVSampleFormat avSampleFormat(PcmSampleFormat format)
+{
+    switch (format) {
+    case PcmSampleFormat::UInt8:
+        return AV_SAMPLE_FMT_U8;
+    case PcmSampleFormat::Int16:
+        return AV_SAMPLE_FMT_S16;
+    case PcmSampleFormat::Int32:
+        return AV_SAMPLE_FMT_S32;
+    case PcmSampleFormat::Float32:
+        return AV_SAMPLE_FMT_FLT;
+    }
+    return AV_SAMPLE_FMT_NONE;
+}
+
+QString ffmpegError(int code, const QString &fallback)
+{
+    char text[AV_ERROR_MAX_STRING_SIZE]{};
+    return av_strerror(code, text, sizeof(text)) == 0
+        ? QString::fromUtf8(text) : fallback;
 }
 
 } // namespace
@@ -66,6 +95,7 @@ bool FfmsAudioWorker::stillWanted(quint64 generation) const noexcept
 void FfmsAudioWorker::clearSource()
 {
     m_waveformScheduled = false;
+    clearResampler();
     if (m_audio) {
         FFMS_DestroyAudioSource(m_audio);
         m_audio = nullptr;
@@ -79,6 +109,17 @@ void FfmsAudioWorker::clearSource()
     m_waveformCursor = 0;
     m_waveformBucket = 0;
     m_generateWaveform = false;
+}
+
+void FfmsAudioWorker::clearResampler()
+{
+    if (m_resampler)
+        swr_free(&m_resampler);
+    m_outputSampleRate = 0;
+    m_outputChannels = 0;
+    m_outputSampleFormat = PcmSampleFormat::Int16;
+    m_resamplerPlaybackId = 0;
+    m_resamplerNextSample = -1;
 }
 
 void FfmsAudioWorker::open(
@@ -152,7 +193,7 @@ void FfmsAudioWorker::open(
     // FFMS_AudioProperties describes the indexed source rather than the
     // post-conversion channel layout. The byte stream requested above is
     // always stereo, so the Qt sink and all PCM consumers must use 2 here.
-    m_channels = outputChannels;
+    m_channels = decodedOutputChannels;
     m_totalSamples = properties->NumSamples;
     m_firstTimeMs = static_cast<qint64>(std::llround(properties->FirstTime * 1000.0));
     const qint64 durationMs = static_cast<qint64>(std::llround(properties->LastEndTime * 1000.0));
@@ -194,8 +235,8 @@ void FfmsAudioWorker::processWaveformChunk()
         qint16 minimum = std::numeric_limits<qint16>::max();
         qint16 maximum = std::numeric_limits<qint16>::min();
         for (int frame = firstFrame; frame < endFrame; ++frame) {
-            for (int channel = 0; channel < outputChannels; ++channel) {
-                const qint16 sample = samples[frame * outputChannels + channel];
+            for (int channel = 0; channel < decodedOutputChannels; ++channel) {
+                const qint16 sample = samples[frame * decodedOutputChannels + channel];
                 minimum = std::min(minimum, sample);
                 maximum = std::max(maximum, sample);
             }
@@ -221,7 +262,10 @@ void FfmsAudioWorker::requestPcm(quint64 generation,
     quint64 playbackId,
     qint64 startSample,
     qint64 endSample,
-    int maximumFrames)
+    int maximumFrames,
+    int outputSampleRate,
+    int outputChannels,
+    PcmSampleFormat outputSampleFormat)
 {
     if (!m_audio || generation != m_generation || !stillWanted(generation))
         return;
@@ -230,6 +274,7 @@ void FfmsAudioWorker::requestPcm(quint64 generation,
     const int frameCount = static_cast<int>(std::min<qint64>(
         std::max(0, maximumFrames), boundedEnd - boundedStart));
     if (frameCount <= 0) {
+        clearResampler();
         emit pcmReady(generation, playbackId, boundedStart, 0, {}, true);
         return;
     }
@@ -238,11 +283,111 @@ void FfmsAudioWorker::requestPcm(quint64 generation,
     pcm.resize(static_cast<qsizetype>(frameCount) * bytesPerOutputFrame);
     ErrorBuffer error;
     if (FFMS_GetAudio(m_audio, pcm.data(), boundedStart, frameCount, &error.info) != 0) {
-        emit failed(generation, error.message(QStringLiteral("FFMS2 range playback decoding failed")));
+        emit pcmFailed(generation, playbackId,
+            error.message(QStringLiteral("FFMS2 range playback decoding failed")));
         return;
     }
-    emit pcmReady(generation, playbackId, boundedStart, frameCount, pcm,
-        boundedStart + frameCount >= boundedEnd);
+
+    const bool finished = boundedStart + frameCount >= boundedEnd;
+    const AVSampleFormat targetFormat = avSampleFormat(outputSampleFormat);
+    if (outputSampleRate <= 0 || outputChannels <= 0 || targetFormat == AV_SAMPLE_FMT_NONE) {
+        emit pcmFailed(generation, playbackId,
+            QStringLiteral("The platform audio sink requested an invalid PCM format"));
+        return;
+    }
+
+    const bool directCopy = outputSampleRate == m_sampleRate
+        && outputChannels == m_channels
+        && outputSampleFormat == PcmSampleFormat::Int16;
+    if (directCopy) {
+        clearResampler();
+        emit pcmReady(generation, playbackId, boundedStart, frameCount, pcm, finished);
+        return;
+    }
+
+    const bool resamplerChanged = !m_resampler
+        || m_resamplerPlaybackId != playbackId
+        || m_resamplerNextSample != boundedStart
+        || m_outputSampleRate != outputSampleRate
+        || m_outputChannels != outputChannels
+        || m_outputSampleFormat != outputSampleFormat;
+    if (resamplerChanged) {
+        clearResampler();
+        AVChannelLayout inputLayout{};
+        AVChannelLayout outputLayout{};
+        av_channel_layout_default(&inputLayout, m_channels);
+        av_channel_layout_default(&outputLayout, outputChannels);
+        int result = swr_alloc_set_opts2(&m_resampler,
+            &outputLayout, targetFormat, outputSampleRate,
+            &inputLayout, AV_SAMPLE_FMT_S16, m_sampleRate,
+            0, nullptr);
+        av_channel_layout_uninit(&inputLayout);
+        av_channel_layout_uninit(&outputLayout);
+        if (result >= 0)
+            result = swr_init(m_resampler);
+        if (result < 0) {
+            clearResampler();
+            emit pcmFailed(generation, playbackId,
+                ffmpegError(result, QStringLiteral("FFmpeg could not initialize audio output conversion")));
+            return;
+        }
+        m_resamplerPlaybackId = playbackId;
+        m_outputSampleRate = outputSampleRate;
+        m_outputChannels = outputChannels;
+        m_outputSampleFormat = outputSampleFormat;
+        m_resamplerNextSample = boundedStart;
+    }
+
+    const int bytesPerSample = av_get_bytes_per_sample(targetFormat);
+    const int outputCapacity = swr_get_out_samples(m_resampler, frameCount);
+    const qint64 outputBytes = static_cast<qint64>(outputCapacity)
+        * outputChannels * bytesPerSample;
+    if (bytesPerSample <= 0 || outputCapacity < 0
+        || outputBytes > std::numeric_limits<int>::max()) {
+        emit pcmFailed(generation, playbackId,
+            QStringLiteral("FFmpeg reported an invalid converted audio buffer size"));
+        clearResampler();
+        return;
+    }
+
+    QByteArray converted;
+    converted.resize(static_cast<int>(outputBytes));
+    auto *outputData = reinterpret_cast<uint8_t *>(converted.data());
+    const auto *inputData = reinterpret_cast<const uint8_t *>(pcm.constData());
+    const int outputFrames = swr_convert(m_resampler,
+        &outputData, outputCapacity, &inputData, frameCount);
+    if (outputFrames < 0) {
+        emit pcmFailed(generation, playbackId,
+            ffmpegError(outputFrames, QStringLiteral("FFmpeg audio output conversion failed")));
+        clearResampler();
+        return;
+    }
+    const int outputBytesPerFrame = outputChannels * bytesPerSample;
+    converted.resize(outputFrames * outputBytesPerFrame);
+    m_resamplerNextSample = boundedStart + frameCount;
+
+    if (finished) {
+        for (;;) {
+            const int flushCapacity = swr_get_out_samples(m_resampler, 0);
+            if (flushCapacity <= 0)
+                break;
+            QByteArray tail;
+            tail.resize(flushCapacity * outputBytesPerFrame);
+            auto *tailData = reinterpret_cast<uint8_t *>(tail.data());
+            const int flushed = swr_convert(m_resampler, &tailData, flushCapacity, nullptr, 0);
+            if (flushed < 0) {
+                emit pcmFailed(generation, playbackId,
+                    ffmpegError(flushed, QStringLiteral("FFmpeg audio conversion flush failed")));
+                clearResampler();
+                return;
+            }
+            if (flushed == 0)
+                break;
+            converted.append(tail.constData(), flushed * outputBytesPerFrame);
+        }
+        clearResampler();
+    }
+    emit pcmReady(generation, playbackId, boundedStart, frameCount, converted, finished);
 }
 
 void FfmsAudioWorker::close(quint64 generation)

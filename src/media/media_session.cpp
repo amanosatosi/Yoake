@@ -16,8 +16,24 @@
 
 namespace yoake::media {
 namespace {
-constexpr int pcmBytesPerFrame = 4;
 constexpr int playbackBufferFrames = 8192;
+
+PcmSampleFormat workerSampleFormat(QAudioFormat::SampleFormat format)
+{
+    switch (format) {
+    case QAudioFormat::UInt8:
+        return PcmSampleFormat::UInt8;
+    case QAudioFormat::Int16:
+        return PcmSampleFormat::Int16;
+    case QAudioFormat::Int32:
+        return PcmSampleFormat::Int32;
+    case QAudioFormat::Float:
+        return PcmSampleFormat::Float32;
+    case QAudioFormat::Unknown:
+        break;
+    }
+    return PcmSampleFormat::Int16;
+}
 }
 
 MediaSession::MediaSession(QObject *parent)
@@ -83,6 +99,7 @@ void MediaSession::ensureWorkers()
     connect(m_videoWorker, &FfmsVideoWorker::opened, this,
         [this](quint64 generation,
             const QString &indexPath,
+            bool indexCacheReused,
             const QVariantList &videoTracks,
             const QVariantList &audioTracks,
             int videoTrack,
@@ -96,6 +113,7 @@ void MediaSession::ensureWorkers()
             if (generation != m_generation)
                 return;
             m_indexPath = indexPath;
+            m_indexCacheReused = indexCacheReused;
             m_videoTracks = videoTracks;
             m_audioTracks = audioTracks;
             m_selectedVideoTrack = videoTrack;
@@ -223,6 +241,14 @@ void MediaSession::ensureWorkers()
             m_nextPcmSample = startSample + frameCount;
             m_audioFinished = finished;
             pumpAudio();
+        }, Qt::QueuedConnection);
+    connect(m_audioWorker, &FfmsAudioWorker::pcmFailed, this,
+        [this](quint64 generation, quint64 playbackId, const QString &message) {
+            if (generation != m_generation || playbackId != m_playbackId || !m_playing)
+                return;
+            m_pcmPending = false;
+            setError(message);
+            stopPlayback(true);
         }, Qt::QueuedConnection);
     connect(m_audioWorker, &FfmsAudioWorker::failed, this,
         [this](quint64 generation, const QString &message) {
@@ -364,6 +390,7 @@ void MediaSession::resetMediaState()
 {
     const bool hadFrame = !m_frameImage.isNull();
     m_indexPath.clear();
+    m_indexCacheReused = false;
     m_timeMap.reset();
     m_videoTracks.clear();
     m_audioTracks.clear();
@@ -567,18 +594,28 @@ void MediaSession::togglePlayback()
 
 bool MediaSession::startAudioSink()
 {
-    QAudioFormat format;
-    format.setSampleRate(m_audioSampleRate);
-    format.setChannelCount(m_audioChannels);
-    format.setSampleFormat(QAudioFormat::Int16);
     const QAudioDevice device = QMediaDevices::defaultAudioOutput();
-    if (device.isNull() || !device.isFormatSupported(format)) {
-        setError(QStringLiteral("The default audio device does not support the source's %1 Hz stereo PCM output")
-            .arg(m_audioSampleRate));
+    if (device.isNull()) {
+        setError(QStringLiteral("Windows did not provide a default audio output device"));
         return false;
     }
+
+    QAudioFormat sourceFormat;
+    sourceFormat.setSampleRate(m_audioSampleRate);
+    sourceFormat.setChannelCount(m_audioChannels);
+    sourceFormat.setSampleFormat(QAudioFormat::Int16);
+    QAudioFormat format = device.isFormatSupported(sourceFormat)
+        ? sourceFormat : device.preferredFormat();
+    if (!format.isValid() || format.sampleFormat() == QAudioFormat::Unknown
+        || format.bytesPerFrame() <= 0 || !device.isFormatSupported(format)) {
+        setError(QStringLiteral("The default audio device did not expose a usable preferred PCM format"));
+        return false;
+    }
+
+    m_audioOutputFormat = format;
+    m_audioOutputBytesPerFrame = format.bytesPerFrame();
     m_audioSink = std::make_unique<QAudioSink>(device, format);
-    m_audioSink->setBufferSize(m_audioSampleRate * pcmBytesPerFrame / 4);
+    m_audioSink->setBufferSize(format.sampleRate() * m_audioOutputBytesPerFrame / 4);
     QAudioSink *sink = m_audioSink.get();
     connect(sink, &QAudioSink::stateChanged, this,
         [this, sink](QAudio::State state) {
@@ -597,6 +634,8 @@ bool MediaSession::startAudioSink()
     if (!m_audioDevice) {
         setError(QStringLiteral("The platform audio sink could not start"));
         m_audioSink.reset();
+        m_audioOutputFormat = {};
+        m_audioOutputBytesPerFrame = 0;
         return false;
     }
     return true;
@@ -626,15 +665,26 @@ void MediaSession::pumpAudio()
     }
     if (m_pcmPending || m_audioFinished)
         return;
-    const int writableFrames = static_cast<int>(m_audioSink->bytesFree() / pcmBytesPerFrame);
-    if (writableFrames <= 0)
+    if (m_audioOutputBytesPerFrame <= 0 || m_audioOutputFormat.sampleRate() <= 0)
         return;
-    const int requestFrames = std::min(playbackBufferFrames, writableFrames);
+    const int writableOutputFrames = static_cast<int>(
+        m_audioSink->bytesFree() / m_audioOutputBytesPerFrame);
+    if (writableOutputFrames <= 0)
+        return;
+    const qint64 estimatedSourceFrames = static_cast<qint64>(std::ceil(
+        static_cast<long double>(writableOutputFrames) * m_audioSampleRate
+        / m_audioOutputFormat.sampleRate()));
+    const int requestFrames = std::min(playbackBufferFrames,
+        static_cast<int>(std::max<qint64>(1024, estimatedSourceFrames)));
     m_pcmPending = true;
     QMetaObject::invokeMethod(m_audioWorker,
         [worker = m_audioWorker, generation = m_generation, playbackId = m_playbackId,
-            start = m_nextPcmSample, end = m_endPcmSample, requestFrames] {
-            worker->requestPcm(generation, playbackId, start, end, requestFrames);
+            start = m_nextPcmSample, end = m_endPcmSample, requestFrames,
+            outputSampleRate = m_audioOutputFormat.sampleRate(),
+            outputChannels = m_audioOutputFormat.channelCount(),
+            outputSampleFormat = workerSampleFormat(m_audioOutputFormat.sampleFormat())] {
+            worker->requestPcm(generation, playbackId, start, end, requestFrames,
+                outputSampleRate, outputChannels, outputSampleFormat);
         },
         Qt::QueuedConnection);
 }
@@ -679,6 +729,8 @@ void MediaSession::stopPlayback(bool)
         m_audioSink->stop();
     m_audioDevice = nullptr;
     m_audioSink.reset();
+    m_audioOutputFormat = {};
+    m_audioOutputBytesPerFrame = 0;
     setPlaying(false);
 }
 

@@ -140,6 +140,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=Release
           -DBUILD_TESTING=ON
           -DFFMS2_ROOT=${{ github.workspace }}\.ci-cache\native\ffms2
+          -DFFMPEG_ROOT=${{ github.workspace }}\.ci-cache\native\ffmpeg\x64-windows
 
       - name: Build Yoake
         shell: pwsh
@@ -212,6 +213,7 @@ jobs:
           for path in re.findall(r"(?:src|qml|resources|tests)/[^\s\)]+\.[A-Za-z0-9]+", cmake):
               assert (root / path).is_file(), f"CMake source does not exist: {path}"
           assert "FFMS2::FFMS2" in cmake, "Yoake must link the FFMS2 source layer"
+          assert "FFmpeg::swresample" in cmake and "FFmpeg::avutil" in cmake, "Yoake must link the pinned audio converter ABI"
 
           media_source = "\n".join(
               path.read_text(encoding="utf-8")
@@ -229,3 +231,4 @@ jobs:
           workflow = (root / ".github/workflows/build.yml").read_text(encoding="utf-8")
           assert "Yoake-Windows-x64-portable.zip" in workflow
           assert "verify_portable.ps1" in workflow
+          assert "-DFFMPEG_ROOT=" in workflow and ".ci-cache\\native\\ffmpeg\\x64-windows" in workflow

@@ -44,6 +44,50 @@ set_target_properties(FFMS2::FFMS2 PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${FFMS2_INCLUDE_DIR}"
 )
 
+set(FFMPEG_ROOT "" CACHE PATH "Pinned FFmpeg install prefix")
+find_path(FFMPEG_INCLUDE_DIR
+    NAMES libswresample/swresample.h
+    PATHS "${FFMPEG_ROOT}/include"
+    NO_DEFAULT_PATH
+    REQUIRED
+)
+find_library(FFMPEG_SWRESAMPLE_LIBRARY
+    NAMES swresample
+    PATHS "${FFMPEG_ROOT}/lib"
+    NO_DEFAULT_PATH
+    REQUIRED
+)
+find_library(FFMPEG_AVUTIL_LIBRARY
+    NAMES avutil
+    PATHS "${FFMPEG_ROOT}/lib"
+    NO_DEFAULT_PATH
+    REQUIRED
+)
+find_file(FFMPEG_SWRESAMPLE_RUNTIME
+    NAMES swresample-5.dll
+    PATHS "${FFMPEG_ROOT}/bin"
+    NO_DEFAULT_PATH
+    REQUIRED
+)
+find_file(FFMPEG_AVUTIL_RUNTIME
+    NAMES avutil-59.dll
+    PATHS "${FFMPEG_ROOT}/bin"
+    NO_DEFAULT_PATH
+    REQUIRED
+)
+add_library(FFmpeg::swresample SHARED IMPORTED)
+set_target_properties(FFmpeg::swresample PROPERTIES
+    IMPORTED_IMPLIB "${FFMPEG_SWRESAMPLE_LIBRARY}"
+    IMPORTED_LOCATION "${FFMPEG_SWRESAMPLE_RUNTIME}"
+    INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIR}"
+)
+add_library(FFmpeg::avutil SHARED IMPORTED)
+set_target_properties(FFmpeg::avutil PROPERTIES
+    IMPORTED_IMPLIB "${FFMPEG_AVUTIL_LIBRARY}"
+    IMPORTED_LOCATION "${FFMPEG_AVUTIL_RUNTIME}"
+    INTERFACE_INCLUDE_DIRECTORIES "${FFMPEG_INCLUDE_DIR}"
+)
+
 qt_standard_project_setup(REQUIRES 6.8)
 
 set(YOAKE_SOURCES
@@ -128,6 +172,8 @@ target_link_libraries(yoake PRIVATE
     Qt6::Concurrent
     Qt6::Multimedia
     FFMS2::FFMS2
+    FFmpeg::swresample
+    FFmpeg::avutil
 )
 
 if(MSVC)
