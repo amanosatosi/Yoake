@@ -38,11 +38,17 @@ foreach ($runtime in @(
     'avformat-61.dll',
     'avutil-59.dll',
     'swresample-5.dll',
-    'swscale-8.dll',
-    'zlib1.dll'
+    'swscale-8.dll'
 )) {
     Copy-Item -LiteralPath (Join-Path $ffmpegBin $runtime) -Destination $stage
 }
+$zlibRuntimes = @(Get-ChildItem -LiteralPath $ffmpegBin -File | Where-Object {
+    $_.Name -match '^(?:z|zlib1?)\.dll$'
+})
+if ($zlibRuntimes.Count -ne 1) {
+    throw "Expected exactly one pinned zlib runtime, found: $($zlibRuntimes.Name -join ', ')"
+}
+Copy-Item -LiteralPath $zlibRuntimes[0].FullName -Destination $stage
 
 $licenses = Join-Path $stage 'THIRD-PARTY-LICENSES'
 New-Item -ItemType Directory -Force -Path $licenses | Out-Null

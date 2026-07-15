@@ -12,14 +12,20 @@ $expected = @(
     'avformat-61.dll',
     'avutil-59.dll',
     'swresample-5.dll',
-    'swscale-8.dll',
-    'zlib1.dll'
+    'swscale-8.dll'
 )
 foreach ($name in $expected) {
     if (-not (Test-Path -LiteralPath (Join-Path $PortableRoot $name))) {
         throw "Portable package is missing required runtime: $name"
     }
 }
+$zlibRuntimes = @(Get-ChildItem -LiteralPath $PortableRoot -File | Where-Object {
+    $_.Name -match '^(?:z|zlib1?)\.dll$'
+})
+if ($zlibRuntimes.Count -ne 1) {
+    throw "Portable package must contain exactly one pinned zlib runtime: $($zlibRuntimes.Name -join ', ')"
+}
+$zlibRuntime = $zlibRuntimes[0].Name
 
 $ffmpegDlls = Get-ChildItem -LiteralPath $PortableRoot -File | Where-Object {
     $_.Name -match '^(avcodec|avformat|avutil|swresample|swscale)-.*\.dll$'
@@ -50,6 +56,9 @@ foreach ($runtime in $expectedFfmpeg) {
     if ($ffmsDependencies -notmatch [regex]::Escape($runtime)) {
         throw "ffms2.dll is not linked to expected runtime $runtime"
     }
+}
+if ($ffmsDependencies -notmatch [regex]::Escape($zlibRuntime)) {
+    throw "ffms2.dll is not linked to the staged pinned zlib runtime $zlibRuntime"
 }
 
 $ffmsExports = (dumpbin /exports (Join-Path $PortableRoot 'ffms2.dll')) -join "`n"
