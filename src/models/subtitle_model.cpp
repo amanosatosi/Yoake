@@ -49,7 +49,7 @@ QVariant SubtitleModel::data(const QModelIndex &index, int role) const
 QHash<int, QByteArray> SubtitleModel::roleNames() const
 {
     return {
-        {IdRole, "lineId"}, {LayerRole, "layer"}, {StartMsRole, "startMs"},
+        {IdRole, "lineId"}, {LayerRole, "subtitleLayer"}, {StartMsRole, "startMs"},
         {EndMsRole, "endMs"}, {StyleRole, "style"}, {ActorRole, "actor"},
         {MarginLeftRole, "marginLeft"}, {MarginRightRole, "marginRight"},
         {MarginVerticalRole, "marginVertical"}, {EffectRole, "effect"},

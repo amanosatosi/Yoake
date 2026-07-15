@@ -49,7 +49,7 @@ Rectangle {
             delegate: Rectangle {
                 id: rowDelegate
                 required property int index
-                required property int layer
+                required property int subtitleLayer
                 required property int startMs
                 required property int endMs
                 required property string style
@@ -67,7 +67,7 @@ Rectangle {
                     anchors.leftMargin: 8
                     spacing: 8
                     Label { width: 42; text: rowDelegate.index + 1; color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
-                    Label { width: 46; text: rowDelegate.layer; color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
+                    Label { width: 46; text: rowDelegate.subtitleLayer; color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
                     Label { width: 92; text: root.timeText(rowDelegate.startMs); color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
                     Label { width: 92; text: root.timeText(rowDelegate.endMs); color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
                     Label { width: 100; text: rowDelegate.style; color: Theme.palette.textMuted; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
