@@ -11,7 +11,7 @@ namespace yoake::media { class MediaSession; }
 
 namespace yoake::ui {
 
-class SpectrumItem final : public QQuickItem {
+class SpectrumItem : public QQuickItem {
     Q_OBJECT
     Q_PROPERTY(yoake::media::MediaSession *session READ session WRITE setSession NOTIFY sessionChanged)
     Q_PROPERTY(qint64 startMs READ startMs WRITE setStartMs NOTIFY startMsChanged)
