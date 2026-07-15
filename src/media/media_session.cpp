@@ -23,7 +23,8 @@ MediaSession::MediaSession(QObject *parent)
     : QObject(parent), m_waveform(this)
 {
     m_videoThread.setObjectName(QStringLiteral("Yoake FFMS2 video source"));
-    m_audioThread.setObjectName(QStringLiteral("Yoake FFMS2 audio source"));
+    m_audioThread.setObjectName(QStringLiteral("Yoake FFMS2 audio playback source"));
+    m_waveformThread.setObjectName(QStringLiteral("Yoake FFMS2 waveform source"));
     m_playbackTimer.setInterval(10);
     connect(&m_playbackTimer, &QTimer::timeout, this, &MediaSession::playbackTick);
 }
@@ -44,6 +45,13 @@ MediaSession::~MediaSession()
             QMetaObject::invokeMethod(m_audioWorker, &FfmsAudioWorker::shutdown, Qt::BlockingQueuedConnection);
         m_audioThread.quit();
         m_audioThread.wait();
+    }
+    if (m_waveformWorker) {
+        m_waveformWorker->invalidate(m_generation);
+        if (m_waveformThread.isRunning())
+            QMetaObject::invokeMethod(m_waveformWorker, &FfmsAudioWorker::shutdown, Qt::BlockingQueuedConnection);
+        m_waveformThread.quit();
+        m_waveformThread.wait();
     }
 }
 
@@ -102,7 +110,13 @@ void MediaSession::ensureWorkers()
                 QMetaObject::invokeMethod(m_audioWorker,
                     [worker = m_audioWorker, generation, path = m_sourcePath,
                         indexPath, track = m_selectedAudioTrack] {
-                        worker->open(generation, path, indexPath, track);
+                        worker->open(generation, path, indexPath, track, false);
+                    },
+                    Qt::QueuedConnection);
+                QMetaObject::invokeMethod(m_waveformWorker,
+                    [worker = m_waveformWorker, generation, path = m_sourcePath,
+                        indexPath, track = m_selectedAudioTrack] {
+                        worker->open(generation, path, indexPath, track, true);
                     },
                     Qt::QueuedConnection);
             } else {
@@ -118,8 +132,10 @@ void MediaSession::ensureWorkers()
             m_frameImage = image;
             m_currentFrame = frameNumber;
             m_requestedFrame = frameNumber;
-            m_positionMs = startMs;
+            m_displayedFrameStartMs = startMs;
             m_displayedFrameEndMs = endMs;
+            if (!m_playing)
+                m_positionMs = startMs;
             setFramePending(false);
             emit frameImageChanged();
             emit positionChanged();
@@ -154,23 +170,33 @@ void MediaSession::ensureWorkers()
             if (oldDuration != m_durationMs)
                 emit durationChanged();
             emit metadataChanged();
+            if (m_playing && !m_audioSink) {
+                const qint64 resumeAt = std::min(
+                    m_playbackEndMs, m_playbackStartMs + m_silentPlaybackClock.elapsed());
+                m_playbackStartMs = resumeAt;
+                m_positionMs = resumeAt;
+                m_nextPcmSample = sampleForTime(resumeAt, false);
+                m_endPcmSample = sampleForTime(m_playbackEndMs, true);
+                m_audioFinished = false;
+                m_pendingPcm.clear();
+                m_pendingPcmOffset = 0;
+                m_silentPlaybackClock.restart();
+                if (!startAudioSink()) {
+                    stopPlayback(true);
+                    return;
+                }
+                emit positionChanged();
+                pumpAudio();
+            }
         }, Qt::QueuedConnection);
-    connect(m_audioWorker, &FfmsAudioWorker::waveformChunk,
-        &m_waveform, &WaveformModel::appendPeaks, Qt::QueuedConnection);
     connect(m_audioWorker, &FfmsAudioWorker::pcmReady, this,
         [this](quint64 generation, quint64 playbackId, qint64 startSample,
             int frameCount, const QByteArray &pcm, bool finished) {
             if (generation != m_generation || playbackId != m_playbackId || !m_playing)
                 return;
             m_pcmPending = false;
-            if (m_audioDevice && !pcm.isEmpty()) {
-                const qint64 written = m_audioDevice->write(pcm);
-                if (written != pcm.size()) {
-                    setError(QStringLiteral("The platform audio sink could not accept decoded PCM"));
-                    stopPlayback(true);
-                    return;
-                }
-            }
+            m_pendingPcm = pcm;
+            m_pendingPcmOffset = 0;
             m_nextPcmSample = startSample + frameCount;
             m_audioFinished = finished;
             pumpAudio();
@@ -180,12 +206,23 @@ void MediaSession::ensureWorkers()
             if (generation != m_generation)
                 return;
             m_audioReady = false;
-            m_waveform.fail(generation, message);
             setError(message);
+        }, Qt::QueuedConnection);
+
+    m_waveformWorker = new FfmsAudioWorker;
+    m_waveformWorker->moveToThread(&m_waveformThread);
+    connect(&m_waveformThread, &QThread::finished, m_waveformWorker, &QObject::deleteLater);
+    connect(m_waveformWorker, &FfmsAudioWorker::waveformChunk,
+        &m_waveform, &WaveformModel::appendPeaks, Qt::QueuedConnection);
+    connect(m_waveformWorker, &FfmsAudioWorker::failed, this,
+        [this](quint64 generation, const QString &message) {
+            if (generation == m_generation)
+                m_waveform.fail(generation, message);
         }, Qt::QueuedConnection);
 
     m_videoThread.start();
     m_audioThread.start();
+    m_waveformThread.start();
 }
 
 void MediaSession::open(const QUrl &source)
@@ -219,6 +256,7 @@ void MediaSession::beginOpen(const QString &path)
     setError({});
     m_videoWorker->invalidate(m_generation, m_frameRequestId);
     m_audioWorker->invalidate(m_generation);
+    m_waveformWorker->invalidate(m_generation);
     QMetaObject::invokeMethod(m_videoWorker,
         [worker = m_videoWorker, generation = m_generation, path,
             videoTrack = m_selectedVideoTrack, audioTrack = m_selectedAudioTrack] {
@@ -245,6 +283,12 @@ void MediaSession::close()
             [worker = m_audioWorker, generation = m_generation] { worker->close(generation); },
             Qt::QueuedConnection);
     }
+    if (m_waveformWorker) {
+        m_waveformWorker->invalidate(m_generation);
+        QMetaObject::invokeMethod(m_waveformWorker,
+            [worker = m_waveformWorker, generation = m_generation] { worker->close(generation); },
+            Qt::QueuedConnection);
+    }
     m_source = {};
     m_sourcePath.clear();
     m_selectedVideoTrack = -1;
@@ -265,6 +309,7 @@ void MediaSession::resetMediaState()
     m_videoDurationMs = 0;
     m_durationMs = 0;
     m_positionMs = 0;
+    m_displayedFrameStartMs = 0;
     m_displayedFrameEndMs = 0;
     m_currentFrame = -1;
     m_requestedFrame = -1;
@@ -275,6 +320,8 @@ void MediaSession::resetMediaState()
     m_audioTotalSamples = 0;
     m_audioFirstTimeMs = 0;
     m_audioReady = false;
+    m_pendingPcm.clear();
+    m_pendingPcmOffset = 0;
     m_indexing = false;
     m_indexingProgress = 0.0;
     m_frameImage = {};
@@ -318,12 +365,14 @@ void MediaSession::requestFrameInternal(int frameNumber)
 void MediaSession::seek(qint64 positionMs)
 {
     const qint64 bounded = std::clamp<qint64>(positionMs, 0, std::max<qint64>(0, m_durationMs));
-    if (hasVideo()) {
-        requestFrameInternal(m_timeMap.frameAtTime(bounded));
-    } else if (m_positionMs != bounded) {
+    if (m_playing)
+        stopPlayback(true);
+    if (m_positionMs != bounded) {
         m_positionMs = bounded;
         emit positionChanged();
     }
+    if (hasVideo())
+        requestFrameInternal(m_timeMap.frameAtTime(bounded));
 }
 
 void MediaSession::stepFrames(int amount)
@@ -372,11 +421,16 @@ void MediaSession::playRange(qint64 startMs, qint64 endMs)
     m_endPcmSample = sampleForTime(end, true);
     m_pcmPending = false;
     m_audioFinished = false;
+    m_pendingPcm.clear();
+    m_pendingPcmOffset = 0;
+    m_positionMs = start;
+    emit positionChanged();
+    if (hasVideo())
+        requestFrameInternal(m_timeMap.frameAtTime(start));
     m_silentPlaybackClock.restart();
-    if (m_audioReady)
-        startAudioSink();
+    if (m_audioReady && !startAudioSink())
+        return;
     setPlaying(true);
-    seek(start);
     m_playbackTimer.start();
     pumpAudio();
 }
@@ -402,7 +456,7 @@ void MediaSession::togglePlayback()
     m_playing ? pause() : play();
 }
 
-void MediaSession::startAudioSink()
+bool MediaSession::startAudioSink()
 {
     QAudioFormat format;
     format.setSampleRate(m_audioSampleRate);
@@ -411,21 +465,56 @@ void MediaSession::startAudioSink()
     const QAudioDevice device = QMediaDevices::defaultAudioOutput();
     if (device.isNull() || !device.isFormatSupported(format)) {
         setError(QStringLiteral("The default audio device does not support FFMS2's 48 kHz stereo PCM output"));
-        return;
+        return false;
     }
     m_audioSink = std::make_unique<QAudioSink>(device, format);
     m_audioSink->setBufferSize(m_audioSampleRate * pcmBytesPerFrame / 4);
+    QAudioSink *sink = m_audioSink.get();
+    connect(sink, &QAudioSink::stateChanged, this,
+        [this, sink](QAudio::State state) {
+            if (!m_audioSink || m_audioSink.get() != sink || !m_playing
+                || state != QAudio::StoppedState || sink->error() == QAudio::NoError)
+                return;
+            QMetaObject::invokeMethod(this, [this, sink] {
+                if (!m_audioSink || m_audioSink.get() != sink)
+                    return;
+                setError(QStringLiteral("The Windows audio output stopped with error %1")
+                    .arg(static_cast<int>(sink->error())));
+                stopPlayback(true);
+            }, Qt::QueuedConnection);
+        });
     m_audioDevice = m_audioSink->start();
     if (!m_audioDevice) {
         setError(QStringLiteral("The platform audio sink could not start"));
         m_audioSink.reset();
+        return false;
     }
+    return true;
 }
 
 void MediaSession::pumpAudio()
 {
-    if (!m_playing || !m_audioReady || !m_audioSink || !m_audioDevice
-        || m_pcmPending || m_audioFinished || !m_audioWorker)
+    if (!m_playing || !m_audioReady || !m_audioSink || !m_audioDevice || !m_audioWorker)
+        return;
+    if (m_pendingPcmOffset < m_pendingPcm.size()) {
+        const qint64 available = std::min<qint64>(
+            m_audioSink->bytesFree(), m_pendingPcm.size() - m_pendingPcmOffset);
+        if (available <= 0)
+            return;
+        const qint64 written = m_audioDevice->write(
+            m_pendingPcm.constData() + m_pendingPcmOffset, available);
+        if (written < 0) {
+            setError(QStringLiteral("The platform audio sink rejected decoded FFMS2 PCM"));
+            stopPlayback(true);
+            return;
+        }
+        m_pendingPcmOffset += written;
+        if (m_pendingPcmOffset < m_pendingPcm.size())
+            return;
+        m_pendingPcm.clear();
+        m_pendingPcmOffset = 0;
+    }
+    if (m_pcmPending || m_audioFinished)
         return;
     const int writableFrames = static_cast<int>(m_audioSink->bytesFree() / pcmBytesPerFrame);
     if (writableFrames <= 0)
@@ -448,20 +537,21 @@ void MediaSession::playbackTick()
     if (m_audioSink && m_audioDevice)
         elapsedMs = m_audioSink->processedUSecs() / 1000;
     const qint64 mediaTime = std::min(m_playbackEndMs, m_playbackStartMs + elapsedMs);
+    if (mediaTime != m_positionMs) {
+        m_positionMs = mediaTime;
+        emit positionChanged();
+    }
     if (hasVideo()) {
         const int frame = m_timeMap.frameAtTime(mediaTime);
         if (frame >= 0 && frame != m_currentFrame && frame != m_requestedFrame)
             requestFrameInternal(frame);
-    } else if (mediaTime != m_positionMs) {
-        m_positionMs = mediaTime;
-        emit positionChanged();
     }
     pumpAudio();
     if (mediaTime >= m_playbackEndMs) {
         stopPlayback(true);
         return;
     }
-    if (m_audioFinished && m_audioSink
+    if (m_audioFinished && m_pendingPcm.isEmpty() && !m_pcmPending && m_audioSink
         && m_audioSink->bytesFree() >= m_audioSink->bufferSize()) {
         stopPlayback(true);
     }
@@ -473,6 +563,8 @@ void MediaSession::stopPlayback(bool)
     m_playbackTimer.stop();
     m_pcmPending = false;
     m_audioFinished = false;
+    m_pendingPcm.clear();
+    m_pendingPcmOffset = 0;
     if (m_audioSink)
         m_audioSink->stop();
     m_audioDevice = nullptr;

@@ -6,11 +6,11 @@
 #include <QtCore/QPointer>
 #include <QtCore/QTimer>
 #include <QtGui/QImage>
-#include <QtQuick/QQuickPaintedItem>
+#include <QtQuick/QQuickItem>
 
 namespace yoake::ui {
 
-class SubtitleOverlayItem : public QQuickPaintedItem {
+class SubtitleOverlayItem : public QQuickItem {
     Q_OBJECT
     Q_PROPERTY(yoake::app::DocumentContext *document READ document WRITE setDocument NOTIFY documentChanged)
     Q_PROPERTY(qint64 timeMs READ timeMs WRITE setTimeMs NOTIFY timeMsChanged)
@@ -20,7 +20,6 @@ class SubtitleOverlayItem : public QQuickPaintedItem {
 public:
     explicit SubtitleOverlayItem(QQuickItem *parent = nullptr);
 
-    void paint(QPainter *painter) override;
     [[nodiscard]] app::DocumentContext *document() const { return m_document.data(); }
     [[nodiscard]] qint64 timeMs() const { return m_timeMs; }
     [[nodiscard]] bool rendering() const { return m_rendering; }
@@ -37,6 +36,7 @@ signals:
 
 protected:
     void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
+    QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
 
 private:
     void scheduleRender();
@@ -54,6 +54,7 @@ private:
     quint64 m_clientId = 0;
     quint64 m_requestId = 0;
     bool m_rendering = false;
+    bool m_textureDirty = true;
     QString m_errorString;
 };
 

@@ -22,7 +22,11 @@ public:
     void invalidate(quint64 generation) noexcept;
 
 public slots:
-    void open(quint64 generation, const QString &sourcePath, const QString &indexPath, int audioTrack);
+    void open(quint64 generation,
+        const QString &sourcePath,
+        const QString &indexPath,
+        int audioTrack,
+        bool generateWaveform);
     void requestPcm(quint64 generation,
         quint64 playbackId,
         qint64 startSample,
@@ -72,6 +76,7 @@ private:
     int m_sampleRate = 48000;
     int m_channels = 2;
     bool m_waveformScheduled = false;
+    bool m_generateWaveform = false;
     std::atomic<quint64> m_wantedGeneration{0};
 };
 

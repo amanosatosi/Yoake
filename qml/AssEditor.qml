@@ -13,59 +13,94 @@ Rectangle {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 6
+        anchors.margins: 4
+        spacing: 3
 
         RowLayout {
             Layout.fillWidth: true
-            Label { text: qsTr("Layer"); color: Theme.palette.textMuted }
-            SpinBox {
-                from: 0; to: 9999; editable: true
-                value: root.context ? root.context.activeLayer : 0
-                onValueModified: root.context.activeLayer = value
-            }
-            Label { text: qsTr("Start ms"); color: Theme.palette.textMuted }
-            SpinBox {
-                Layout.preferredWidth: 125
-                from: 0; to: 2147483647; editable: true
-                value: root.context ? root.context.activeStartMs : 0
-                onValueModified: root.context.activeStartMs = value
-            }
-            Label { text: qsTr("End ms"); color: Theme.palette.textMuted }
-            SpinBox {
-                Layout.preferredWidth: 125
-                from: 0; to: 2147483647; editable: true
-                value: root.context ? root.context.activeEndMs : 0
-                onValueModified: root.context.activeEndMs = value
-            }
             CheckBox {
                 text: qsTr("Comment")
                 checked: root.context ? root.context.activeComment : false
                 onToggled: if (root.context && root.context.activeComment !== checked) root.context.activeComment = checked
             }
-            Item { Layout.fillWidth: true }
+            TextField {
+                Layout.preferredWidth: 125
+                placeholderText: qsTr("Style")
+                text: root.context ? root.context.activeStyle : ""
+                onEditingFinished: root.context.activeStyle = text
+            }
+            TextField {
+                Layout.preferredWidth: 115
+                placeholderText: qsTr("Actor")
+                text: root.context ? root.context.activeActor : ""
+                onEditingFinished: root.context.activeActor = text
+            }
+            TextField {
+                Layout.fillWidth: true
+                placeholderText: qsTr("Effect")
+                text: root.context ? root.context.activeEffect : ""
+                onEditingFinished: root.context.activeEffect = text
+            }
+            Label { text: qsTr("Layer"); color: Theme.palette.textMuted }
+            SpinBox {
+                Layout.preferredWidth: 78
+                from: 0; to: 9999; editable: true
+                value: root.context ? root.context.activeLayer : 0
+                onValueModified: root.context.activeLayer = value
+            }
         }
 
         RowLayout {
             Layout.fillWidth: true
-            Label { text: qsTr("Style"); color: Theme.palette.textMuted }
-            TextField {
-                Layout.preferredWidth: 150
-                text: root.context ? root.context.activeStyle : ""
-                onEditingFinished: root.context.activeStyle = text
+            ToolButton {
+                text: qsTr("Play line")
+                enabled: root.context.media.hasAudio
+                onClicked: root.context.media.playRange(root.context.activeStartMs, root.context.activeEndMs)
             }
-            Label { text: qsTr("Actor"); color: Theme.palette.textMuted }
-            TextField {
-                Layout.preferredWidth: 150
-                text: root.context ? root.context.activeActor : ""
-                onEditingFinished: root.context.activeActor = text
+            Label { text: qsTr("Start"); color: Theme.palette.textMuted }
+            SpinBox {
+                Layout.preferredWidth: 112
+                from: 0; to: 2147483647; editable: true
+                value: root.context ? root.context.activeStartMs : 0
+                onValueModified: root.context.activeStartMs = value
             }
-            Label { text: qsTr("Effect"); color: Theme.palette.textMuted }
-            TextField {
-                Layout.fillWidth: true
-                text: root.context ? root.context.activeEffect : ""
-                onEditingFinished: root.context.activeEffect = text
+            Label { text: qsTr("End"); color: Theme.palette.textMuted }
+            SpinBox {
+                Layout.preferredWidth: 112
+                from: 0; to: 2147483647; editable: true
+                value: root.context ? root.context.activeEndMs : 0
+                onValueModified: root.context.activeEndMs = value
             }
+            Label {
+                text: qsTr("Duration %1 ms").arg(Math.max(0,
+                    root.context.activeEndMs - root.context.activeStartMs))
+                color: Theme.palette.textMuted
+            }
+            Item { Layout.fillWidth: true }
+            ToolButton {
+                text: qsTr("Start <- video")
+                enabled: root.context.media.hasVideo
+                onClicked: root.context.activeStartMs = root.context.media.displayedFrameStartMs
+            }
+            ToolButton {
+                text: qsTr("End <- video")
+                enabled: root.context.media.hasVideo
+                onClicked: root.context.activeEndMs = root.context.media.displayedFrameEndMs
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 2
+            ToolButton { text: "B"; font.bold: true; onClicked: editor.insert(editor.cursorPosition, "{\\b1}") }
+            ToolButton { text: "I"; font.italic: true; onClicked: editor.insert(editor.cursorPosition, "{\\i1}") }
+            ToolButton { text: "U"; font.underline: true; onClicked: editor.insert(editor.cursorPosition, "{\\u1}") }
+            ToolButton { text: "\\N"; onClicked: editor.insert(editor.cursorPosition, "\\N") }
+            ToolSeparator { }
+            Label { text: qsTr("Text"); color: Theme.palette.textMuted }
+            Item { Layout.fillWidth: true }
+            ToolButton { text: qsTr("Duplicate"); onClicked: root.context.duplicateSelected() }
+            ToolButton { text: qsTr("Insert after"); onClicked: root.context.insertAfterActive() }
         }
 
         ScrollView {
@@ -78,7 +113,7 @@ Rectangle {
                 selectedTextColor: Theme.palette.text
                 wrapMode: TextEdit.Wrap
                 font.family: "Cascadia Mono"
-                font.pixelSize: 15
+                font.pixelSize: 14
                 text: root.context ? root.context.activeText : ""
                 background: Rectangle { color: Theme.palette.surfaceRaised; border.color: Theme.palette.border; radius: 3 }
                 onTextChanged: {

@@ -19,7 +19,7 @@ constexpr int outputSampleRate = 48000;
 constexpr int outputChannels = 2;
 constexpr int bytesPerOutputFrame = outputChannels * static_cast<int>(sizeof(qint16));
 constexpr int samplesPerWaveformPeak = 256;
-constexpr int waveformFramesPerChunk = 256 * 1024;
+constexpr int waveformFramesPerChunk = 64 * 1024;
 
 struct ErrorBuffer {
     char text[2048]{};
@@ -79,13 +79,19 @@ void FfmsAudioWorker::clearSource()
     m_firstTimeMs = 0;
     m_waveformCursor = 0;
     m_waveformBucket = 0;
+    m_generateWaveform = false;
 }
 
 void FfmsAudioWorker::open(
-    quint64 generation, const QString &sourcePath, const QString &indexPath, int audioTrack)
+    quint64 generation,
+    const QString &sourcePath,
+    const QString &indexPath,
+    int audioTrack,
+    bool generateWaveform)
 {
     clearSource();
     m_generation = generation;
+    m_generateWaveform = generateWaveform;
     if (!stillWanted(generation) || audioTrack < 0)
         return;
 
@@ -142,14 +148,16 @@ void FfmsAudioWorker::open(
     emit opened(generation, m_sampleRate, m_channels, m_totalSamples, m_firstTimeMs,
         durationMs, sourceSampleRate, sourceChannels);
 
-    m_waveformScheduled = true;
-    QTimer::singleShot(0, this, &FfmsAudioWorker::processWaveformChunk);
+    if (m_generateWaveform) {
+        m_waveformScheduled = true;
+        QTimer::singleShot(0, this, &FfmsAudioWorker::processWaveformChunk);
+    }
 }
 
 void FfmsAudioWorker::processWaveformChunk()
 {
     m_waveformScheduled = false;
-    if (!m_audio || !stillWanted(m_generation))
+    if (!m_audio || !m_generateWaveform || !stillWanted(m_generation))
         return;
     if (m_waveformCursor >= m_totalSamples) {
         emit waveformChunk(m_generation, m_waveformBucket, {}, samplesPerWaveformPeak,

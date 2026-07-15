@@ -128,9 +128,90 @@ ApplicationWindow {
         anchors.fill: parent
         spacing: 0
 
+        ToolBar {
+            Layout.fillWidth: true
+            implicitHeight: 36
+            background: Rectangle {
+                color: Theme.palette.surface
+                border.color: Theme.palette.border
+            }
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 4
+                anchors.rightMargin: 4
+                spacing: 2
+
+                ToolButton { text: qsTr("New"); onClicked: Documents.createDocument() }
+                ToolButton { text: qsTr("Open"); onClicked: subtitleOpenDialog.open() }
+                ToolButton {
+                    text: qsTr("Save")
+                    enabled: Documents.currentDocument !== null
+                    onClicked: Documents.saveCurrent()
+                }
+                ToolSeparator { }
+                ToolButton {
+                    text: qsTr("Video")
+                    enabled: Documents.currentDocument !== null
+                    onClicked: mediaOpenDialog.open()
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Open indexed video/audio")
+                }
+                ToolSeparator { }
+                ToolButton {
+                    text: qsTr("Undo")
+                    enabled: Documents.currentDocument
+                             ? Documents.currentDocument.canUndo && !Documents.currentDocument.karaoke.active : false
+                    onClicked: Documents.currentDocument.undo()
+                }
+                ToolButton {
+                    text: qsTr("Redo")
+                    enabled: Documents.currentDocument
+                             ? Documents.currentDocument.canRedo && !Documents.currentDocument.karaoke.active : false
+                    onClicked: Documents.currentDocument.redo()
+                }
+                ToolSeparator { }
+                ToolButton {
+                    text: qsTr("Insert")
+                    enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active
+                    onClicked: Documents.currentDocument.insertAfterActive()
+                }
+                ToolButton {
+                    text: qsTr("Delete")
+                    enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active
+                    onClicked: Documents.currentDocument.deleteSelected()
+                }
+                ToolSeparator { }
+                ToolButton {
+                    text: qsTr("Prev")
+                    enabled: Documents.currentDocument && Documents.currentDocument.media.hasVideo
+                    onClicked: Documents.currentDocument.media.stepFrames(-1)
+                }
+                ToolButton {
+                    text: Documents.currentDocument && Documents.currentDocument.media.playing
+                          ? qsTr("Pause") : qsTr("Play")
+                    enabled: Documents.currentDocument
+                             && (Documents.currentDocument.media.hasVideo || Documents.currentDocument.media.hasAudio)
+                    onClicked: Documents.currentDocument.media.togglePlayback()
+                }
+                ToolButton {
+                    text: qsTr("Next")
+                    enabled: Documents.currentDocument && Documents.currentDocument.media.hasVideo
+                    onClicked: Documents.currentDocument.media.stepFrames(1)
+                }
+                Item { Layout.fillWidth: true }
+                Label {
+                    text: Documents.currentDocument && Documents.currentDocument.media.hasMedia
+                          ? (Documents.currentDocument.media.variableFrameRate ? qsTr("FFMS2 VFR") : qsTr("FFMS2 indexed"))
+                          : qsTr("No media")
+                    color: Theme.palette.textMuted
+                }
+            }
+        }
+
         TabBar {
             id: tabs
             Layout.fillWidth: true
+            implicitHeight: 32
             currentIndex: Documents.currentIndex
             onCurrentIndexChanged: if (currentIndex >= 0) Documents.currentIndex = currentIndex
             background: Rectangle { color: Theme.palette.tab; border.color: Theme.palette.border }
@@ -144,6 +225,7 @@ ApplicationWindow {
                     required property var documentContext
                     required property int index
                     width: Math.max(150, Math.min(260, implicitWidth))
+                    height: 32
                     contentItem: RowLayout {
                         spacing: 6
                         Label {
@@ -155,6 +237,9 @@ ApplicationWindow {
                         ToolButton {
                             text: "×"
                             flat: true
+                            Layout.preferredWidth: 24
+                            Layout.preferredHeight: 24
+                            padding: 0
                             onClicked: Documents.requestClose(tabButton.documentContext)
                             ToolTip.visible: hovered
                             ToolTip.text: qsTr("Close tab")
@@ -184,7 +269,7 @@ ApplicationWindow {
 
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: 28
+            implicitHeight: 24
             color: Theme.palette.surface
             border.color: Theme.palette.border
             RowLayout {

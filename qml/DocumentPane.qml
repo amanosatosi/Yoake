@@ -8,28 +8,42 @@ Item {
 
     SplitView {
         anchors.fill: parent
-        orientation: Qt.Horizontal
+        orientation: Qt.Vertical
 
-        Item {
-            SplitView.preferredWidth: parent.width * 0.47
-            SplitView.minimumWidth: 360
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: 1
-                VideoPane { Layout.fillWidth: true; Layout.fillHeight: true; context: root.context }
-                AudioPane { Layout.fillWidth: true; Layout.preferredHeight: 190; context: root.context }
+        SplitView {
+            SplitView.preferredHeight: parent.height * 0.54
+            SplitView.minimumHeight: 350
+            orientation: Qt.Horizontal
+
+            VideoPane {
+                SplitView.preferredWidth: parent.width * 0.51
+                SplitView.minimumWidth: 440
+                context: root.context
+            }
+
+            SplitView {
+                SplitView.fillWidth: true
+                SplitView.minimumWidth: 480
+                orientation: Qt.Vertical
+
+                AudioPane {
+                    SplitView.preferredHeight: 160
+                    SplitView.minimumHeight: 125
+                    context: root.context
+                }
+
+                AssEditor {
+                    SplitView.fillHeight: true
+                    SplitView.minimumHeight: 190
+                    context: root.context
+                }
             }
         }
 
-        Item {
-            SplitView.fillWidth: true
-            SplitView.minimumWidth: 480
-            ColumnLayout {
-                anchors.fill: parent
-                spacing: 1
-                AssEditor { Layout.fillWidth: true; Layout.preferredHeight: 245; context: root.context }
-                SubtitleGrid { Layout.fillWidth: true; Layout.fillHeight: true; context: root.context }
-            }
+        SubtitleGrid {
+            SplitView.fillHeight: true
+            SplitView.minimumHeight: 180
+            context: root.context
         }
     }
 }

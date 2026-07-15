@@ -3,7 +3,9 @@
 #include "app/document_context.h"
 #include "renderer/mangetsu_session.h"
 
-#include <QtGui/QPainter>
+#include <QtQuick/QQuickWindow>
+#include <QtQuick/QSGSimpleTextureNode>
+#include <QtQuick/QSGTexture>
 
 #include <atomic>
 
@@ -13,18 +15,12 @@ std::atomic<quint64> nextClientId{1};
 }
 
 SubtitleOverlayItem::SubtitleOverlayItem(QQuickItem *parent)
-    : QQuickPaintedItem(parent), m_clientId(nextClientId.fetch_add(1))
+    : QQuickItem(parent), m_clientId(nextClientId.fetch_add(1))
 {
-    setAntialiasing(false);
+    setFlag(ItemHasContents, true);
     m_coalesceTimer.setSingleShot(true);
     m_coalesceTimer.setInterval(16);
     connect(&m_coalesceTimer, &QTimer::timeout, this, &SubtitleOverlayItem::renderNow);
-}
-
-void SubtitleOverlayItem::paint(QPainter *painter)
-{
-    if (!m_image.isNull())
-        painter->drawImage(boundingRect(), m_image);
 }
 
 void SubtitleOverlayItem::setDocument(app::DocumentContext *document)
@@ -61,6 +57,7 @@ void SubtitleOverlayItem::setDocument(app::DocumentContext *document)
                 if (clientId != m_clientId || requestId != m_requestId)
                     return;
                 m_image = image;
+                m_textureDirty = true;
                 m_errorString = error;
                 m_rendering = false;
                 emit errorStringChanged();
@@ -83,9 +80,37 @@ void SubtitleOverlayItem::setTimeMs(qint64 timeMs)
 
 void SubtitleOverlayItem::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry)
 {
-    QQuickPaintedItem::geometryChange(newGeometry, oldGeometry);
-    if (newGeometry.size().toSize() != oldGeometry.size().toSize())
+    QQuickItem::geometryChange(newGeometry, oldGeometry);
+    if (newGeometry.size().toSize() != oldGeometry.size().toSize()) {
         scheduleRender();
+        update();
+    }
+}
+
+QSGNode *SubtitleOverlayItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
+{
+    if (m_image.isNull()) {
+        delete oldNode;
+        m_textureDirty = false;
+        return nullptr;
+    }
+    auto *node = static_cast<QSGSimpleTextureNode *>(oldNode);
+    if (!node) {
+        node = new QSGSimpleTextureNode;
+        node->setOwnsTexture(true);
+    }
+    if (m_textureDirty) {
+        QSGTexture *oldTexture = node->texture();
+        QSGTexture *newTexture = window() ? window()->createTextureFromImage(m_image) : nullptr;
+        node->setOwnsTexture(false);
+        node->setTexture(newTexture);
+        node->setOwnsTexture(true);
+        delete oldTexture;
+        m_textureDirty = false;
+    }
+    node->setRect(boundingRect());
+    node->setFiltering(QSGTexture::Linear);
+    return node;
 }
 
 void SubtitleOverlayItem::scheduleRender()
@@ -115,6 +140,7 @@ void SubtitleOverlayItem::clearPresentation()
     const bool wasRendering = m_rendering;
     const bool hadError = !m_errorString.isEmpty();
     m_image = {};
+    m_textureDirty = true;
     m_rendering = false;
     m_errorString.clear();
     if (wasRendering)

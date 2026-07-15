@@ -17,21 +17,28 @@ Rectangle {
         return hours + ":" + String(minutes).padStart(2, "0") + ":" + String(seconds).padStart(2, "0") + "." + String(cs).padStart(2, "0")
     }
 
+    function cps(text, startMs, endMs) {
+        const duration = Math.max(1, endMs - startMs)
+        const plain = text.replace(/\{[^}]*\}/g, "").replace(/\\[Nnh]/g, " ")
+        return Math.round(plain.length * 1000 / duration)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: 30
+            implicitHeight: 25
             color: Theme.palette.surface
             Row {
                 anchors.fill: parent
-                anchors.leftMargin: 8
-                spacing: 8
-                Label { width: 42; text: "#"; color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
-                Label { width: 46; text: qsTr("Layer"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
-                Label { width: 92; text: qsTr("Start"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
-                Label { width: 92; text: qsTr("End"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
+                anchors.leftMargin: 4
+                spacing: 4
+                Label { width: 34; text: "#"; color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
+                Label { width: 32; text: qsTr("L"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
+                Label { width: 86; text: qsTr("Start"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
+                Label { width: 86; text: qsTr("End"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
+                Label { width: 38; text: qsTr("CPS"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
                 Label { width: 100; text: qsTr("Style"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
                 Label { text: qsTr("Text"); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
             }
@@ -58,21 +65,22 @@ Rectangle {
                 required property bool selected
                 required property bool active
                 width: ListView.view.width
-                height: 30
+                height: 25
                 color: active ? Theme.palette.active
                               : selected ? Theme.palette.selection
                               : index % 2 ? Theme.palette.gridAlternate : Theme.palette.panel
                 Row {
                     anchors.fill: parent
-                    anchors.leftMargin: 8
-                    spacing: 8
-                    Label { width: 42; text: rowDelegate.index + 1; color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
-                    Label { width: 46; text: rowDelegate.subtitleLayer; color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
-                    Label { width: 92; text: root.timeText(rowDelegate.startMs); color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
-                    Label { width: 92; text: root.timeText(rowDelegate.endMs); color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
+                    anchors.leftMargin: 4
+                    spacing: 4
+                    Label { width: 34; text: rowDelegate.index + 1; color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
+                    Label { width: 32; text: rowDelegate.subtitleLayer; color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
+                    Label { width: 86; text: root.timeText(rowDelegate.startMs); color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
+                    Label { width: 86; text: root.timeText(rowDelegate.endMs); color: Theme.palette.text; anchors.verticalCenter: parent.verticalCenter }
+                    Label { width: 38; text: root.cps(rowDelegate.subtitleText, rowDelegate.startMs, rowDelegate.endMs); color: Theme.palette.textMuted; anchors.verticalCenter: parent.verticalCenter }
                     Label { width: 100; text: rowDelegate.style; color: Theme.palette.textMuted; elide: Text.ElideRight; anchors.verticalCenter: parent.verticalCenter }
                     Label {
-                        width: Math.max(0, rowDelegate.width - 420)
+                        width: Math.max(0, rowDelegate.width - 414)
                         text: rowDelegate.subtitleText.replace(/\\N/g, " ↵ ")
                         color: rowDelegate.comment ? Theme.palette.gridComment : Theme.palette.text
                         elide: Text.ElideRight

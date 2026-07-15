@@ -12,6 +12,7 @@ Rectangle {
     property int dragBoundaryIndex: -1
     property real viewStartMs: 0
     property real viewEndMs: Math.max(1, context.media.durationMs)
+    property bool fittedInitialLine: false
 
     function fitMedia() {
         viewStartMs = 0
@@ -20,12 +21,21 @@ Rectangle {
     }
 
     function fitActiveLine() {
-        const padding = Math.max(250, (context.activeEndMs - context.activeStartMs) * 0.15)
+        const padding = Math.max(1000, context.activeEndMs - context.activeStartMs)
         viewStartMs = Math.max(0, context.activeStartMs - padding)
         viewEndMs = Math.min(Math.max(1, context.media.durationMs), context.activeEndMs + padding)
         if (viewEndMs <= viewStartMs)
             fitMedia()
         waveform.requestPaint()
+    }
+
+    function ensureActiveLineVisible() {
+        if (context.media.durationMs <= 0)
+            return
+        if (context.activeStartMs < viewStartMs || context.activeEndMs > viewEndMs)
+            fitActiveLine()
+        else
+            waveform.requestPaint()
     }
 
     function timeAt(x) {
@@ -46,6 +56,21 @@ Rectangle {
             Layout.leftMargin: 4
             Layout.rightMargin: 4
 
+            ToolButton {
+                text: root.context.media.playing ? qsTr("Pause") : qsTr("Play line")
+                enabled: root.context.media.hasAudio
+                onClicked: root.context.media.playing
+                           ? root.context.media.pause()
+                           : root.context.media.playRange(root.context.activeStartMs, root.context.activeEndMs)
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Play the active timing range")
+            }
+            ToolButton {
+                text: qsTr("Stop")
+                enabled: root.context.media.playing
+                onClicked: root.context.media.stop()
+            }
+            ToolSeparator { }
             ToolButton {
                 text: qsTr("K-Timing")
                 checkable: true
@@ -133,6 +158,20 @@ Rectangle {
                 painter.reset()
                 painter.fillStyle = Theme.palette.waveformBackground
                 painter.fillRect(0, 0, width, height)
+
+                painter.strokeStyle = Theme.palette.border
+                painter.fillStyle = Theme.palette.textMuted
+                painter.lineWidth = 1
+                painter.font = "10px sans-serif"
+                for (let tick = 0; tick <= 8; ++tick) {
+                    const tickX = tick * width / 8
+                    const tickMs = root.viewStartMs + tick / 8 * (root.viewEndMs - root.viewStartMs)
+                    painter.beginPath()
+                    painter.moveTo(tickX, 0)
+                    painter.lineTo(tickX, height)
+                    painter.stroke()
+                    painter.fillText((tickMs / 1000).toFixed(2), tickX + 2, 11)
+                }
 
                 const startX = root.xAt(root.context.activeStartMs)
                 const endX = root.xAt(root.context.activeEndMs)
@@ -255,14 +294,19 @@ Rectangle {
                 target: root.context.media
                 function onPositionChanged() { waveform.requestPaint() }
                 function onDurationChanged() {
-                    if (root.viewEndMs <= 1 || root.viewEndMs > root.context.media.durationMs)
+                    if (root.context.media.durationMs <= 0) {
+                        root.fittedInitialLine = false
                         root.fitMedia()
+                    } else if (!root.fittedInitialLine || root.viewEndMs > root.context.media.durationMs) {
+                        root.fittedInitialLine = true
+                        root.fitActiveLine()
+                    }
                     waveform.requestPaint()
                 }
             }
             Connections {
                 target: root.context
-                function onActiveLineChanged() { waveform.requestPaint() }
+                function onActiveLineChanged() { root.ensureActiveLineVisible() }
             }
             Connections {
                 target: root.context.karaoke

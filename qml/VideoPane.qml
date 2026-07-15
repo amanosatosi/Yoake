@@ -79,24 +79,24 @@ Rectangle {
             Layout.margins: 4
 
             ToolButton {
-                text: "⏮"
+                text: "|<"
                 enabled: root.context.media.hasVideo
                 onClicked: root.context.media.stepFrames(-1)
                 ToolTip.visible: hovered
                 ToolTip.text: qsTr("Previous source frame")
             }
             ToolButton {
-                text: root.context.media.playing ? "⏸" : "▶"
+                text: root.context.media.playing ? qsTr("Pause") : qsTr("Play")
                 enabled: root.context.media.hasVideo || root.context.media.hasAudio
                 onClicked: root.context.media.togglePlayback()
             }
             ToolButton {
-                text: "■"
+                text: qsTr("Stop")
                 enabled: root.context.media.hasMedia
                 onClicked: root.context.media.stop()
             }
             ToolButton {
-                text: "⏭"
+                text: ">|"
                 enabled: root.context.media.hasVideo
                 onClicked: root.context.media.stepFrames(1)
                 ToolTip.visible: hovered

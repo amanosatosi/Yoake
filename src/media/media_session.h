@@ -3,6 +3,7 @@
 #include "media/frame_time_map.h"
 #include "media/waveform_model.h"
 
+#include <QtCore/QByteArray>
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QObject>
 #include <QtCore/QThread>
@@ -24,7 +25,7 @@ class MediaSession final : public QObject {
     Q_PROPERTY(QUrl source READ source NOTIFY sourceChanged)
     Q_PROPERTY(qint64 durationMs READ durationMs NOTIFY durationChanged)
     Q_PROPERTY(qint64 positionMs READ positionMs NOTIFY positionChanged)
-    Q_PROPERTY(qint64 displayedFrameStartMs READ positionMs NOTIFY positionChanged)
+    Q_PROPERTY(qint64 displayedFrameStartMs READ displayedFrameStartMs NOTIFY positionChanged)
     Q_PROPERTY(qint64 displayedFrameEndMs READ displayedFrameEndMs NOTIFY positionChanged)
     Q_PROPERTY(int currentFrame READ currentFrame NOTIFY positionChanged)
     Q_PROPERTY(int frameCount READ frameCount NOTIFY metadataChanged)
@@ -54,6 +55,7 @@ public:
     [[nodiscard]] QUrl source() const { return m_source; }
     [[nodiscard]] qint64 durationMs() const { return m_durationMs; }
     [[nodiscard]] qint64 positionMs() const { return m_positionMs; }
+    [[nodiscard]] qint64 displayedFrameStartMs() const { return m_displayedFrameStartMs; }
     [[nodiscard]] qint64 displayedFrameEndMs() const { return m_displayedFrameEndMs; }
     [[nodiscard]] int currentFrame() const { return m_currentFrame; }
     [[nodiscard]] int frameCount() const { return m_timeMap.frameCount(); }
@@ -120,7 +122,7 @@ private:
     void setFramePending(bool pending);
     void setPlaying(bool playing);
     void stopPlayback(bool keepPosition);
-    void startAudioSink();
+    [[nodiscard]] bool startAudioSink();
     [[nodiscard]] qint64 sampleForTime(qint64 timeMs, bool roundUp) const;
 
     QUrl m_source;
@@ -130,8 +132,10 @@ private:
     WaveformModel m_waveform;
     QThread m_videoThread;
     QThread m_audioThread;
+    QThread m_waveformThread;
     FfmsVideoWorker *m_videoWorker = nullptr;
     FfmsAudioWorker *m_audioWorker = nullptr;
+    FfmsAudioWorker *m_waveformWorker = nullptr;
     QTimer m_playbackTimer;
     QElapsedTimer m_silentPlaybackClock;
     std::unique_ptr<QAudioSink> m_audioSink;
@@ -142,6 +146,7 @@ private:
     qint64 m_durationMs = 0;
     qint64 m_videoDurationMs = 0;
     qint64 m_positionMs = 0;
+    qint64 m_displayedFrameStartMs = 0;
     qint64 m_displayedFrameEndMs = 0;
     qint64 m_audioTotalSamples = 0;
     qint64 m_audioFirstTimeMs = 0;
@@ -149,6 +154,7 @@ private:
     qint64 m_playbackEndMs = 0;
     qint64 m_nextPcmSample = 0;
     qint64 m_endPcmSample = 0;
+    qint64 m_pendingPcmOffset = 0;
     quint64 m_generation = 0;
     quint64 m_frameRequestId = 0;
     quint64 m_playbackId = 0;
@@ -164,6 +170,7 @@ private:
     double m_sourceFrameRate = 0.0;
     double m_indexingProgress = 0.0;
     QString m_errorString;
+    QByteArray m_pendingPcm;
     bool m_indexing = false;
     bool m_framePending = false;
     bool m_playing = false;
