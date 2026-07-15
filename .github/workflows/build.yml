@@ -142,7 +142,17 @@ jobs:
           -DFFMS2_ROOT=${{ github.workspace }}\.ci-cache\native\ffms2
 
       - name: Build Yoake
-        run: cmake --build build --parallel 2
+        shell: pwsh
+        run: |
+          $output = & cmake --build build --parallel 2 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | ForEach-Object { Write-Host $_ }
+          if ($exitCode -ne 0) {
+            $diagnostic = ($output | Select-Object -Last 120 | Out-String).Trim()
+            $diagnostic = $diagnostic.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Host "::error title=Yoake Windows build failed::$diagnostic"
+            exit $exitCode
+          }
 
       - name: Test exact timing and document core
         run: ctest --test-dir build --output-on-failure --timeout 30
