@@ -10,7 +10,7 @@
   },
   "ffms2": {
     "version": "5.0",
-    "commit": "7ed5e4d039ca9a6236bd2ebdfdd656c4304fbe04",
+    "commit": "25cef14386fcaaa58ee547065deee8f6e82c56a2",
     "linkage": "dynamic"
   },
   "mangetsu": {
