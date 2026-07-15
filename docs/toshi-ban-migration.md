@@ -17,9 +17,10 @@ wx-coupled.
 | Responsive media | provider/controller/render files | Strong per-document source leases, explicit generations, background analysis, GUI-only presentation. |
 
 The responsive-media row now has a concrete Yoake implementation: FFMS2 5.0
-owns indexed video/audio sources; `FrameTimeMap` owns VFR timecodes; two
-controlled per-document workers own video and audio access; Qt Quick paints only
-accepted frames; and Qt's media API is limited to final PCM output. The fork's
+owns indexed video/audio sources; `FrameTimeMap` owns VFR timecodes; persistent
+per-document video, playback, waveform, and spectrum lanes isolate expensive
+work; Qt Quick paints only accepted frames/visualization images; and Qt's media
+API is limited to final PCM output. The fork's
 FFMS2 cache-validation and monotonic-request lessons were retained without
 porting its wx/provider object graph.
 

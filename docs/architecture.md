@@ -15,7 +15,8 @@ Application
 │  │  ├─ selection + QUndoStack + state IDs
 │  │  ├─ MediaSession
 │  │  │  ├─ FfmsVideoWorker                one controlled video/index lane
-│  │  │  ├─ FfmsAudioWorker                one controlled audio/waveform lane
+│  │  │  ├─ FfmsAudioWorker                independent playback and waveform lanes
+│  │  │  ├─ FfmsSpectrumWorker             on-demand FFT tile/cache lane
 │  │  │  ├─ FrameTimeMap                   indexed VFR source-frame timeline
 │  │  │  ├─ WaveformModel                  aggregated numeric cache levels
 │  │  │  └─ QAudioSink                     PCM output only; never decoding
@@ -32,9 +33,10 @@ Closing a tab stops and joins only its owned worker lanes.
 
 `MediaSession` is the GUI-thread coordinator. It does not call FFMS2 synchronously.
 The video worker owns `FFMS_Index`, `FFMS_VideoSource`, conversion state, and
-frame requests. The audio worker owns a separate `FFMS_Index`/
-`FFMS_AudioSource` pair so waveform generation and short-range playback cannot
-starve interactive video seeking.
+frame requests. Persistent playback, waveform, and spectrum lanes each own a
+separate `FFMS_Index`/`FFMS_AudioSource` pair. Long waveform generation or FFT
+tile work therefore cannot starve short-range playback or interactive video
+seeking.
 
 Opening a source performs these operations off the GUI thread:
 
@@ -63,11 +65,13 @@ identity from `milliseconds * fps`, and there is no default FPS.
 
 ## Request generations and responsiveness
 
-Each source open/close/track change advances the media generation. Each frame
-request advances a request ID. The GUI publishes the latest accepted identity
-to the video worker through atomics before queueing work. Expensive decoding
-cannot be interrupted inside FFmpeg, but a late result is suppressed by the
-worker and rejected again by `MediaSession`.
+Each source open/close/track change advances the media generation. Explicit
+seeks advance a cancellation epoch; playback-clock requests advance a sequence
+inside that epoch. This permits one sequential decode already in flight to
+finish while coalescing its pending successor, without allowing a pre-seek
+frame to cross the cancellation boundary. Spectrum viewport requests use the
+same atomic stale-result pattern. Expensive decoding cannot be interrupted
+inside FFmpeg, but old-source/old-seek/old-viewport results are rejected.
 
 The relevant identity is:
 
@@ -96,11 +100,13 @@ Mangetsu is loaded only as `mangetsu.dll` beside Yoake (or from an explicit
 absolute `YOAKE_MANGETSU_LIBRARY`). Missing symbols are fatal to preview. Yoake
 does not fall back to libass, VSFilter, or another renderer.
 
-## Indexed audio and waveform
+## Indexed audio, waveform, and spectrum
 
-FFMS2 decodes the selected audio track into 48 kHz stereo signed 16-bit PCM.
-`QAudioSink` sends that PCM to the operating system; it does not open, decode,
-seek, or index media.
+FFMS2 decodes the selected audio track at its real indexed sample rate and
+normalizes only the channel/sample representation to stereo signed 16-bit PCM.
+FFMS2 does not support arbitrary output-rate conversion, so Yoake never forces
+a track to 48 kHz. `QAudioSink` sends that PCM to the operating system; it does
+not open, decode, seek, or index media.
 
 Sample/time conversion includes the FFMS2 audio timeline origin. Playback is a
 range operation even for ordinary continuous play. Repeating a karaoke split
@@ -112,6 +118,15 @@ peaks rather than samples or QML items. `WaveformModel` builds aggregate cache
 levels and `samplesForRange(start, end, pixels)` returns only useful visible
 data. A timing-line zoom therefore consumes higher-resolution cached peaks
 without rendering one item per audio sample.
+
+Spectrum mode uses Hann-windowed FFT analysis on its own worker. A zoom-selected
+hop/FFT level produces 128 perceptually curved frequency bands per cached tile;
+time is horizontal, frequency is vertical, and theme-mapped energy is color.
+The worker retains a bounded 96 MB LRU of numeric energy tiles and renders no
+more than 1024 viewport columns. Small scrolls reuse tiles, high timing zoom uses
+the detailed level, coarse overviews sample sparsely, and QML receives only a
+completed viewport image. Timing selections, playback cursors, subtitle ranges,
+and karaoke boundaries remain a shared overlay above either visualization.
 
 ## Native dependency and portable-build policy
 
@@ -151,8 +166,8 @@ Implemented and CI-validated:
 - independent Qt Quick document tabs, themes, models, undo, and loss-safe I/O;
 - FFMS2 track discovery, reusable validated indexes, exact indexed source-frame
   access, VFR time mapping, rapid-seek stale-result rejection, and frame stepping;
-- FFMS2 indexed audio, random range access, Qt PCM output, and scalable
-  asynchronous waveform data;
+- FFMS2 indexed audio, random range access, native-rate Qt PCM output, scalable
+  asynchronous waveform levels, and cached spectrogram tiles;
 - Original K-Timing range audition and commit flow;
 - Mangetsu-only asynchronous overlay rendering at accepted source-frame time;
   and

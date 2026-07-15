@@ -120,6 +120,7 @@ void WaveformModel::appendPeaks(quint64 generation,
         beginInsertRows({}, first, last);
         m_peaks += peaks;
         endInsertRows();
+        appendCompleteLevels();
         emit countChanged();
     }
     if (complete) {
@@ -132,6 +133,28 @@ void WaveformModel::appendPeaks(quint64 generation,
             m_busy = false;
             emit busyChanged();
         }
+    }
+}
+
+void WaveformModel::appendCompleteLevels()
+{
+    qsizetype level = 0;
+    qsizetype sourceSize = m_peaks.size();
+    while (sourceSize >= 2) {
+        if (level >= m_levels.size())
+            m_levels.push_back({});
+        const QVector<QPointF> &source = level == 0 ? m_peaks : m_levels[level - 1];
+        QVector<QPointF> &target = m_levels[level];
+        const qsizetype completePairs = source.size() / 2;
+        target.reserve(completePairs);
+        while (target.size() < completePairs) {
+            const qsizetype first = target.size() * 2;
+            target.push_back(QPointF(
+                std::min(source.at(first).x(), source.at(first + 1).x()),
+                std::max(source.at(first).y(), source.at(first + 1).y())));
+        }
+        sourceSize = target.size();
+        ++level;
     }
 }
 

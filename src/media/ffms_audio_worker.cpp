@@ -15,7 +15,6 @@
 namespace yoake::media {
 namespace {
 
-constexpr int outputSampleRate = 48000;
 constexpr int outputChannels = 2;
 constexpr int bytesPerOutputFrame = outputChannels * static_cast<int>(sizeof(qint16));
 constexpr int samplesPerWaveformPeak = 256;
@@ -116,20 +115,29 @@ void FfmsAudioWorker::open(
     const FFMS_AudioProperties *sourceProperties = FFMS_GetAudioProperties(m_audio);
     const int sourceSampleRate = sourceProperties ? sourceProperties->SampleRate : 0;
     const int sourceChannels = sourceProperties ? sourceProperties->Channels : 0;
+    if (sourceSampleRate <= 0 || sourceChannels <= 0) {
+        emit failed(generation, QStringLiteral("FFMS2 did not expose a valid source audio format"));
+        clearSource();
+        return;
+    }
     FFMS_ResampleOptions *options = FFMS_CreateResampleOptions(m_audio);
     if (!options) {
         emit failed(generation, QStringLiteral("FFMS2 could not create audio resampling options"));
         clearSource();
         return;
     }
+    // FFMS2 deliberately does not implement sample-rate conversion. Keep the
+    // indexed source rate and only normalize the sample format/channel layout;
+    // forcing 48 kHz here rejects ordinary 44.1 kHz tracks before any PCM can
+    // reach the waveform, spectrum, or platform sink.
     options->SampleFormat = FFMS_FMT_S16;
-    options->SampleRate = outputSampleRate;
+    options->SampleRate = sourceSampleRate;
     options->ChannelLayout = FFMS_CH_FRONT_LEFT | FFMS_CH_FRONT_RIGHT;
-    options->ForceResample = 1;
+    options->ForceResample = 0;
     const int formatResult = FFMS_SetOutputFormatA(m_audio, options, &error.info);
     FFMS_DestroyResampleOptions(options);
     if (formatResult != 0) {
-        emit failed(generation, error.message(QStringLiteral("FFMS2 could not produce 48 kHz stereo PCM")));
+        emit failed(generation, error.message(QStringLiteral("FFMS2 could not produce stereo signed 16-bit PCM")));
         clearSource();
         return;
     }
@@ -141,7 +149,10 @@ void FfmsAudioWorker::open(
         return;
     }
     m_sampleRate = properties->SampleRate;
-    m_channels = properties->Channels;
+    // FFMS_AudioProperties describes the indexed source rather than the
+    // post-conversion channel layout. The byte stream requested above is
+    // always stereo, so the Qt sink and all PCM consumers must use 2 here.
+    m_channels = outputChannels;
     m_totalSamples = properties->NumSamples;
     m_firstTimeMs = static_cast<qint64>(std::llround(properties->FirstTime * 1000.0));
     const qint64 durationMs = static_cast<qint64>(std::llround(properties->LastEndTime * 1000.0));

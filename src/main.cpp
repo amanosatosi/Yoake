@@ -9,6 +9,7 @@
 #include "timing/karaoke_session.h"
 #include "ui/ass_highlighter.h"
 #include "ui/subtitle_overlay_item.h"
+#include "ui/spectrum_item.h"
 #include "ui/video_frame_item.h"
 
 #include <ffms.h>
@@ -117,6 +118,7 @@ int main(int argc, char *argv[])
 
     qmlRegisterType<yoake::ui::AssHighlighter>("Yoake", 1, 0, "AssHighlighter");
     qmlRegisterType<yoake::ui::SubtitleOverlayItem>("Yoake", 1, 0, "SubtitleOverlay");
+    qmlRegisterType<yoake::ui::SpectrumItem>("Yoake", 1, 0, "SpectrumView");
     qmlRegisterType<yoake::ui::VideoFrameItem>("Yoake", 1, 0, "VideoFrame");
     qmlRegisterUncreatableType<yoake::app::DocumentContext>("Yoake", 1, 0,
         "DocumentContext", QStringLiteral("Document contexts are owned by DocumentManager"));

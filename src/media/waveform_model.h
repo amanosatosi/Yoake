@@ -49,6 +49,7 @@ signals:
     void errorStringChanged();
 
 private:
+    void appendCompleteLevels();
     void rebuildLevels();
 
     QVector<QPointF> m_peaks;

@@ -6,7 +6,7 @@
     "border": "#45475a", "separator": "#313244", "accent": "#f38ba8",
     "selection": "#45475a", "hover": "#313244", "pressed": "#45475a", "active": "#302535", "inactive": "#181825",
     "tab": "#181825", "tabActive": "#313244", "gridAlternate": "#1e1e2e", "gridComment": "#a6adc8",
-    "waveform": "#94e2d5", "waveformBackground": "#11111b", "timingRegion": "#a6e3a180", "timingSelected": "#fab38799", "timingBoundary": "#f9e2af",
+    "waveform": "#94e2d5", "waveformBackground": "#11111b", "spectrumLow": "#11111b", "spectrumMid": "#2185a6", "spectrumHigh": "#f9e2af", "timingRegion": "#a6e3a180", "timingSelected": "#fab38799", "timingBoundary": "#f9e2af",
     "videoOverlay": "#11111bd0", "error": "#f38ba8", "warning": "#fab387", "success": "#a6e3a1",
     "syntaxBrace": "#cba6f7", "syntaxTag": "#f38ba8", "syntaxParameter": "#89b4fa", "syntaxNumber": "#b4befe",
     "syntaxColor": "#f5c2e7", "syntaxAlpha": "#eba0ac", "syntaxTransform": "#fab387", "syntaxKaraoke": "#a6e3a1",

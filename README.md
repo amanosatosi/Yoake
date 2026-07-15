@@ -10,7 +10,8 @@ The current foundation provides:
 - ASS loading, loss-conscious serialization, editing, selection, and per-tab undo;
 - a virtualized Qt Quick subtitle grid and ASS/Mangetsu-aware syntax coloring;
 - named, semantic JSON themes;
-- per-document Qt Multimedia video/audio sessions and asynchronous waveforms;
+- per-document FFMS2 indexed video/audio sessions with asynchronous cached
+  waveform and spectrum views;
 - per-document Original K-Timing sessions with draggable boundaries and audition;
 - a per-document Mangetsu renderer session with stale-render rejection; and
 - Windows-first build and test validation in GitHub Actions.
@@ -20,8 +21,8 @@ See [the architecture notes](docs/architecture.md) and
 
 ## Build
 
-Yoake requires Qt 6.8 or newer with Qt Quick, Qt Quick Controls, Qt Multimedia,
-and Qt Concurrent. Normal validation is performed in GitHub Actions because the
+Yoake requires Qt 6.8 or newer with Qt Quick, Qt Quick Controls, Qt Multimedia
+for PCM output only, and Qt Concurrent. Normal validation is performed in GitHub Actions because the
 development machine is intentionally not used for full builds.
 
 ```powershell

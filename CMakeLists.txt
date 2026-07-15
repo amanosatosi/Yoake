@@ -54,9 +54,11 @@ set(YOAKE_SOURCES
     src/ass/ass_document.cpp
     src/ass/ass_text_boundaries.cpp
     src/media/ffms_audio_worker.cpp
+    src/media/ffms_spectrum_worker.cpp
     src/media/ffms_video_worker.cpp
     src/media/frame_time_map.cpp
     src/media/media_session.cpp
+    src/media/spectrum_analyzer.cpp
     src/media/waveform_model.cpp
     src/models/subtitle_model.cpp
     src/renderer/mangetsu_library.cpp
@@ -64,6 +66,7 @@ set(YOAKE_SOURCES
     src/timing/karaoke_session.cpp
     src/ui/ass_highlighter.cpp
     src/ui/subtitle_overlay_item.cpp
+    src/ui/spectrum_item.cpp
     src/ui/video_frame_item.cpp
 )
 
@@ -75,9 +78,11 @@ set(YOAKE_HEADERS
     src/ass/ass_event.h
     src/ass/ass_text_boundaries.h
     src/media/ffms_audio_worker.h
+    src/media/ffms_spectrum_worker.h
     src/media/ffms_video_worker.h
     src/media/frame_time_map.h
     src/media/media_session.h
+    src/media/spectrum_analyzer.h
     src/media/waveform_model.h
     src/models/subtitle_model.h
     src/renderer/mangetsu_abi.h
@@ -86,6 +91,7 @@ set(YOAKE_HEADERS
     src/timing/karaoke_session.h
     src/ui/ass_highlighter.h
     src/ui/subtitle_overlay_item.h
+    src/ui/spectrum_item.h
     src/ui/video_frame_item.h
 )
 
@@ -139,6 +145,7 @@ if(BUILD_TESTING)
         src/ass/ass_document.cpp
         src/ass/ass_text_boundaries.cpp
         src/media/frame_time_map.cpp
+        src/media/spectrum_analyzer.cpp
     )
     target_include_directories(yoake_core_tests PRIVATE src)
     target_link_libraries(yoake_core_tests PRIVATE Qt6::Core Qt6::Test)

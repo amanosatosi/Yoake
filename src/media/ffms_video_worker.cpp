@@ -96,10 +96,10 @@ FfmsVideoWorker::~FfmsVideoWorker()
     clearSource();
 }
 
-void FfmsVideoWorker::invalidate(quint64 generation, quint64 latestFrameRequest) noexcept
+void FfmsVideoWorker::invalidate(quint64 generation, quint64 cancellationId) noexcept
 {
     m_wantedGeneration.store(generation, std::memory_order_release);
-    m_latestFrameRequest.store(latestFrameRequest, std::memory_order_release);
+    m_latestCancellation.store(cancellationId, std::memory_order_release);
 }
 
 bool FfmsVideoWorker::stillWanted(quint64 generation) const noexcept
@@ -278,11 +278,13 @@ void FfmsVideoWorker::open(
         m_frameStartsMs, m_durationMs, width, height, sourcePixelFormat, sourceFrameRate);
 }
 
-void FfmsVideoWorker::requestFrame(quint64 generation, quint64 requestId, int frameNumber)
+void FfmsVideoWorker::requestFrame(
+    quint64 generation, quint64 requestId, quint64 cancellationId, int frameNumber)
 {
-    if (generation != m_generation || !m_video || !stillWanted(generation))
+    if (generation != m_generation || !m_video || !stillWanted(generation)
+        || m_latestCancellation.load(std::memory_order_acquire) != cancellationId)
         return;
-    m_pendingFrame = {generation, requestId, frameNumber, true};
+    m_pendingFrame = {generation, requestId, cancellationId, frameNumber, true};
     if (!m_frameScheduled) {
         m_frameScheduled = true;
         QTimer::singleShot(0, this, &FfmsVideoWorker::processPendingFrame);
@@ -296,7 +298,8 @@ void FfmsVideoWorker::processPendingFrame()
         return;
     const PendingFrame request = m_pendingFrame;
     m_pendingFrame.valid = false;
-    if (!stillWanted(request.generation))
+    if (!stillWanted(request.generation)
+        || m_latestCancellation.load(std::memory_order_acquire) != request.cancellationId)
         return;
 
     const int last = static_cast<int>(m_frameStartsMs.size()) - 1;
@@ -325,11 +328,12 @@ void FfmsVideoWorker::processPendingFrame()
         image = image.transformed(QTransform().rotate(m_rotation));
 
     if (stillWanted(request.generation)
-        && m_latestFrameRequest.load(std::memory_order_acquire) == request.requestId) {
+        && m_latestCancellation.load(std::memory_order_acquire) == request.cancellationId) {
         const qint64 start = m_frameStartsMs[frameNumber];
         const qint64 end = frameNumber + 1 < m_frameStartsMs.size()
             ? m_frameStartsMs[frameNumber + 1] : m_durationMs;
-        emit frameReady(request.generation, request.requestId, frameNumber, start, end, image);
+        emit frameReady(request.generation, request.requestId, request.cancellationId,
+            frameNumber, start, end, image);
     }
     if (m_pendingFrame.valid && !m_frameScheduled) {
         m_frameScheduled = true;

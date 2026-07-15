@@ -73,7 +73,7 @@ private:
     qint64 m_firstTimeMs = 0;
     qint64 m_waveformCursor = 0;
     qint64 m_waveformBucket = 0;
-    int m_sampleRate = 48000;
+    int m_sampleRate = 0;
     int m_channels = 2;
     bool m_waveformScheduled = false;
     bool m_generateWaveform = false;

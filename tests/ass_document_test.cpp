@@ -1,8 +1,13 @@
 #include "ass/ass_document.h"
 #include "ass/ass_text_boundaries.h"
 #include "media/frame_time_map.h"
+#include "media/spectrum_analyzer.h"
 
 #include <QtTest/QTest>
+
+#include <algorithm>
+#include <cmath>
+#include <numbers>
 
 class AssDocumentTest final : public QObject {
     Q_OBJECT
@@ -16,6 +21,8 @@ private slots:
     void keepsValidEventlessDocumentsEventless();
     void readsAegisubLinkedMediaMetadata();
     void mapsVariableFrameRateTimesWithoutFpsArithmetic();
+    void findsSpeechBandToneWithFft();
+    void selectsStableSpectrumZoomLevels();
 };
 
 void AssDocumentTest::parsesAndPreservesUnknownSections()
@@ -123,6 +130,36 @@ void AssDocumentTest::mapsVariableFrameRateTimesWithoutFpsArithmetic()
     QCOMPARE(map.frameStartMs(4), 201);
     QCOMPARE(map.frameEndMs(4), 241);
     QCOMPARE(map.frameEndMs(5), 301);
+}
+
+void AssDocumentTest::findsSpeechBandToneWithFft()
+{
+    constexpr int sampleRate = 48000;
+    constexpr int fftSize = 4096;
+    constexpr double toneHz = 1000.0;
+    QVector<float> samples(fftSize);
+    for (int sample = 0; sample < fftSize; ++sample) {
+        samples[sample] = static_cast<float>(std::sin(
+            2.0 * std::numbers::pi * toneHz * sample / sampleRate));
+    }
+    const QVector<float> spectrum = yoake::media::SpectrumAnalyzer::powerSpectrum(samples);
+    QVERIFY(!spectrum.isEmpty());
+    const qsizetype peakBin = std::distance(spectrum.cbegin(),
+        std::max_element(spectrum.cbegin(), spectrum.cend()));
+    const double peakHz = static_cast<double>(peakBin) * sampleRate / fftSize;
+    QVERIFY(std::abs(peakHz - toneHz) < 20.0);
+}
+
+void AssDocumentTest::selectsStableSpectrumZoomLevels()
+{
+    const int detailed = yoake::media::SpectrumAnalyzer::chooseLevel(2.0, 48000);
+    const int timing = yoake::media::SpectrumAnalyzer::chooseLevel(12.0, 48000);
+    const int overview = yoake::media::SpectrumAnalyzer::chooseLevel(1000.0, 48000);
+    QCOMPARE(detailed, 0);
+    QVERIFY(timing > detailed);
+    QVERIFY(overview > timing);
+    QVERIFY(yoake::media::SpectrumAnalyzer::hopForLevel(overview)
+        > yoake::media::SpectrumAnalyzer::hopForLevel(timing));
 }
 
 QTEST_GUILESS_MAIN(AssDocumentTest)

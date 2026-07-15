@@ -1,6 +1,7 @@
 #include "media/media_session.h"
 
 #include "media/ffms_audio_worker.h"
+#include "media/ffms_spectrum_worker.h"
 #include "media/ffms_video_worker.h"
 
 #include <QtCore/QFileInfo>
@@ -25,6 +26,7 @@ MediaSession::MediaSession(QObject *parent)
     m_videoThread.setObjectName(QStringLiteral("Yoake FFMS2 video source"));
     m_audioThread.setObjectName(QStringLiteral("Yoake FFMS2 audio playback source"));
     m_waveformThread.setObjectName(QStringLiteral("Yoake FFMS2 waveform source"));
+    m_spectrumThread.setObjectName(QStringLiteral("Yoake FFMS2 spectrum source"));
     m_playbackTimer.setInterval(10);
     connect(&m_playbackTimer, &QTimer::timeout, this, &MediaSession::playbackTick);
 }
@@ -33,7 +35,7 @@ MediaSession::~MediaSession()
 {
     stopPlayback(true);
     if (m_videoWorker) {
-        m_videoWorker->invalidate(++m_generation, ++m_frameRequestId);
+        m_videoWorker->invalidate(++m_generation, ++m_frameCancellationId);
         if (m_videoThread.isRunning())
             QMetaObject::invokeMethod(m_videoWorker, &FfmsVideoWorker::shutdown, Qt::BlockingQueuedConnection);
         m_videoThread.quit();
@@ -52,6 +54,14 @@ MediaSession::~MediaSession()
             QMetaObject::invokeMethod(m_waveformWorker, &FfmsAudioWorker::shutdown, Qt::BlockingQueuedConnection);
         m_waveformThread.quit();
         m_waveformThread.wait();
+    }
+    if (m_spectrumWorker) {
+        m_spectrumWorker->invalidate(m_generation, ++m_spectrumRequestId);
+        if (m_spectrumThread.isRunning())
+            QMetaObject::invokeMethod(m_spectrumWorker,
+                &FfmsSpectrumWorker::shutdown, Qt::BlockingQueuedConnection);
+        m_spectrumThread.quit();
+        m_spectrumThread.wait();
     }
 }
 
@@ -119,24 +129,37 @@ void MediaSession::ensureWorkers()
                         worker->open(generation, path, indexPath, track, true);
                     },
                     Qt::QueuedConnection);
+                QMetaObject::invokeMethod(m_spectrumWorker,
+                    [worker = m_spectrumWorker, generation, path = m_sourcePath,
+                        indexPath, track = m_selectedAudioTrack] {
+                        worker->open(generation, path, indexPath, track);
+                    },
+                    Qt::QueuedConnection);
             } else {
                 m_waveform.clear();
                 m_audioReady = false;
+                clearSpectrumState();
             }
         }, Qt::QueuedConnection);
     connect(m_videoWorker, &FfmsVideoWorker::frameReady, this,
-        [this](quint64 generation, quint64 requestId, int frameNumber,
+        [this](quint64 generation, quint64 requestId, quint64 cancellationId, int frameNumber,
             qint64 startMs, qint64 endMs, const QImage &image) {
-            if (generation != m_generation || requestId != m_frameRequestId)
+            if (generation != m_generation || cancellationId != m_frameCancellationId
+                || requestId <= m_lastPresentedFrameRequest)
                 return;
+            // Playback requests share one cancellation epoch. This lets an
+            // in-flight sequential decode complete while newer clock frames
+            // replace only the pending request, avoiding the former starvation
+            // loop where every decoded frame became stale before presentation.
+            m_lastPresentedFrameRequest = requestId;
             m_frameImage = image;
             m_currentFrame = frameNumber;
-            m_requestedFrame = frameNumber;
             m_displayedFrameStartMs = startMs;
             m_displayedFrameEndMs = endMs;
             if (!m_playing)
                 m_positionMs = startMs;
-            setFramePending(false);
+            if (requestId == m_frameRequestId)
+                setFramePending(false);
             emit frameImageChanged();
             emit positionChanged();
         }, Qt::QueuedConnection);
@@ -221,9 +244,33 @@ void MediaSession::ensureWorkers()
                 m_waveform.fail(generation, message);
         }, Qt::QueuedConnection);
 
+    m_spectrumWorker = new FfmsSpectrumWorker;
+    m_spectrumWorker->moveToThread(&m_spectrumThread);
+    connect(&m_spectrumThread, &QThread::finished, m_spectrumWorker, &QObject::deleteLater);
+    connect(m_spectrumWorker, &FfmsSpectrumWorker::spectrumReady, this,
+        [this](quint64 generation, quint64 requestId, const QImage &image, int cacheLevel) {
+            if (generation != m_generation || requestId != m_spectrumRequestId)
+                return;
+            m_spectrumImage = image;
+            m_spectrumCacheLevel = cacheLevel;
+            m_spectrumBusy = false;
+            m_spectrumErrorString.clear();
+            emit spectrumImageChanged();
+            emit spectrumStatusChanged();
+        }, Qt::QueuedConnection);
+    connect(m_spectrumWorker, &FfmsSpectrumWorker::failed, this,
+        [this](quint64 generation, quint64 requestId, const QString &message) {
+            if (generation != m_generation || requestId != m_spectrumRequestId)
+                return;
+            m_spectrumBusy = false;
+            m_spectrumErrorString = message;
+            emit spectrumStatusChanged();
+        }, Qt::QueuedConnection);
+
     m_videoThread.start();
     m_audioThread.start();
     m_waveformThread.start();
+    m_spectrumThread.start();
 }
 
 void MediaSession::open(const QUrl &source)
@@ -246,18 +293,22 @@ void MediaSession::beginOpen(const QString &path)
     stopPlayback(true);
     ++m_generation;
     ++m_frameRequestId;
+    ++m_frameCancellationId;
+    ++m_spectrumRequestId;
     emit generationChanged(m_generation);
     resetMediaState();
     m_sourcePath = path;
     m_indexing = true;
     m_indexingProgress = 0.0;
     m_waveform.beginDecode(m_generation);
+    clearSpectrumState();
     emit indexingChanged();
     emit indexingProgressChanged();
     setError({});
-    m_videoWorker->invalidate(m_generation, m_frameRequestId);
+    m_videoWorker->invalidate(m_generation, m_frameCancellationId);
     m_audioWorker->invalidate(m_generation);
     m_waveformWorker->invalidate(m_generation);
+    m_spectrumWorker->invalidate(m_generation, m_spectrumRequestId);
     QMetaObject::invokeMethod(m_videoWorker,
         [worker = m_videoWorker, generation = m_generation, path,
             videoTrack = m_selectedVideoTrack, audioTrack = m_selectedAudioTrack] {
@@ -271,9 +322,11 @@ void MediaSession::close()
     stopPlayback(true);
     ++m_generation;
     ++m_frameRequestId;
+    ++m_frameCancellationId;
+    ++m_spectrumRequestId;
     emit generationChanged(m_generation);
     if (m_videoWorker) {
-        m_videoWorker->invalidate(m_generation, m_frameRequestId);
+        m_videoWorker->invalidate(m_generation, m_frameCancellationId);
         QMetaObject::invokeMethod(m_videoWorker,
             [worker = m_videoWorker, generation = m_generation] { worker->close(generation); },
             Qt::QueuedConnection);
@@ -290,12 +343,19 @@ void MediaSession::close()
             [worker = m_waveformWorker, generation = m_generation] { worker->close(generation); },
             Qt::QueuedConnection);
     }
+    if (m_spectrumWorker) {
+        m_spectrumWorker->invalidate(m_generation, m_spectrumRequestId);
+        QMetaObject::invokeMethod(m_spectrumWorker,
+            [worker = m_spectrumWorker, generation = m_generation] { worker->close(generation); },
+            Qt::QueuedConnection);
+    }
     m_source = {};
     m_sourcePath.clear();
     m_selectedVideoTrack = -1;
     m_selectedAudioTrack = -1;
     resetMediaState();
     m_waveform.clear();
+    clearSpectrumState();
     setError({});
     emit sourceChanged();
 }
@@ -314,12 +374,15 @@ void MediaSession::resetMediaState()
     m_displayedFrameEndMs = 0;
     m_currentFrame = -1;
     m_requestedFrame = -1;
+    m_lastPresentedFrameRequest = 0;
     m_sourceWidth = 0;
     m_sourceHeight = 0;
     m_sourcePixelFormat = -1;
     m_sourceFrameRate = 0.0;
     m_audioTotalSamples = 0;
     m_audioFirstTimeMs = 0;
+    m_audioSampleRate = 0;
+    m_audioChannels = 2;
     m_audioReady = false;
     m_pendingPcm.clear();
     m_pendingPcmOffset = 0;
@@ -344,7 +407,7 @@ void MediaSession::requestFrame(int frameNumber)
     requestFrameInternal(frameNumber);
 }
 
-void MediaSession::requestFrameInternal(int frameNumber)
+void MediaSession::requestFrameInternal(int frameNumber, bool cancelInFlight)
 {
     if (!m_videoWorker || m_timeMap.isEmpty())
         return;
@@ -353,12 +416,16 @@ void MediaSession::requestFrameInternal(int frameNumber)
         return;
     m_requestedFrame = bounded;
     ++m_frameRequestId;
-    m_videoWorker->invalidate(m_generation, m_frameRequestId);
+    if (cancelInFlight) {
+        ++m_frameCancellationId;
+        m_lastPresentedFrameRequest = 0;
+        m_videoWorker->invalidate(m_generation, m_frameCancellationId);
+    }
     setFramePending(true);
     QMetaObject::invokeMethod(m_videoWorker,
         [worker = m_videoWorker, generation = m_generation,
-            requestId = m_frameRequestId, bounded] {
-            worker->requestFrame(generation, requestId, bounded);
+            requestId = m_frameRequestId, cancellationId = m_frameCancellationId, bounded] {
+            worker->requestFrame(generation, requestId, cancellationId, bounded);
         },
         Qt::QueuedConnection);
 }
@@ -400,6 +467,47 @@ void MediaSession::selectAudioTrack(int track)
         return;
     m_selectedAudioTrack = track;
     beginOpen(m_sourcePath);
+}
+
+void MediaSession::requestSpectrumViewport(qint64 startMs,
+    qint64 endMs,
+    int width,
+    int height,
+    const QColor &lowColor,
+    const QColor &midColor,
+    const QColor &highColor)
+{
+    if (!m_spectrumWorker || m_indexPath.isEmpty() || m_selectedAudioTrack < 0 || endMs <= startMs
+        || width <= 0 || height <= 0)
+        return;
+    ++m_spectrumRequestId;
+    m_spectrumWorker->invalidate(m_generation, m_spectrumRequestId);
+    m_spectrumBusy = true;
+    m_spectrumErrorString.clear();
+    emit spectrumStatusChanged();
+    QMetaObject::invokeMethod(m_spectrumWorker,
+        [worker = m_spectrumWorker, generation = m_generation,
+            requestId = m_spectrumRequestId, startMs, endMs, width, height,
+            lowColor, midColor, highColor] {
+            worker->renderViewport(generation, requestId, startMs, endMs,
+                width, height, lowColor, midColor, highColor);
+        },
+        Qt::QueuedConnection);
+}
+
+void MediaSession::clearSpectrumState()
+{
+    const bool hadImage = !m_spectrumImage.isNull();
+    const bool statusChanged = m_spectrumBusy || !m_spectrumErrorString.isEmpty()
+        || m_spectrumCacheLevel != 0;
+    m_spectrumImage = {};
+    m_spectrumBusy = false;
+    m_spectrumErrorString.clear();
+    m_spectrumCacheLevel = 0;
+    if (hadImage)
+        emit spectrumImageChanged();
+    if (statusChanged)
+        emit spectrumStatusChanged();
 }
 
 void MediaSession::play()
@@ -465,7 +573,8 @@ bool MediaSession::startAudioSink()
     format.setSampleFormat(QAudioFormat::Int16);
     const QAudioDevice device = QMediaDevices::defaultAudioOutput();
     if (device.isNull() || !device.isFormatSupported(format)) {
-        setError(QStringLiteral("The default audio device does not support FFMS2's 48 kHz stereo PCM output"));
+        setError(QStringLiteral("The default audio device does not support the source's %1 Hz stereo PCM output")
+            .arg(m_audioSampleRate));
         return false;
     }
     m_audioSink = std::make_unique<QAudioSink>(device, format);
@@ -545,7 +654,7 @@ void MediaSession::playbackTick()
     if (hasVideo()) {
         const int frame = m_timeMap.frameAtTime(mediaTime);
         if (frame >= 0 && frame != m_currentFrame && frame != m_requestedFrame)
-            requestFrameInternal(frame);
+            requestFrameInternal(frame, false);
     }
     pumpAudio();
     if (mediaTime >= m_playbackEndMs) {

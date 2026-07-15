@@ -10,6 +10,7 @@
 #include <QtCore/QTimer>
 #include <QtCore/QUrl>
 #include <QtCore/QVariantList>
+#include <QtGui/QColor>
 #include <QtGui/QImage>
 #include <QtMultimedia/QAudioSink>
 
@@ -18,6 +19,7 @@
 namespace yoake::media {
 
 class FfmsAudioWorker;
+class FfmsSpectrumWorker;
 class FfmsVideoWorker;
 
 class MediaSession final : public QObject {
@@ -38,6 +40,7 @@ class MediaSession final : public QObject {
     Q_PROPERTY(bool hasVideo READ hasVideo NOTIFY metadataChanged)
     Q_PROPERTY(bool hasAudio READ hasAudio NOTIFY metadataChanged)
     Q_PROPERTY(bool audioReady READ audioReady NOTIFY metadataChanged)
+    Q_PROPERTY(int audioSampleRate READ audioSampleRate NOTIFY metadataChanged)
     Q_PROPERTY(bool indexing READ indexing NOTIFY indexingChanged)
     Q_PROPERTY(double indexingProgress READ indexingProgress NOTIFY indexingProgressChanged)
     Q_PROPERTY(bool framePending READ framePending NOTIFY framePendingChanged)
@@ -48,6 +51,9 @@ class MediaSession final : public QObject {
     Q_PROPERTY(int selectedVideoTrack READ selectedVideoTrack WRITE selectVideoTrack NOTIFY tracksChanged)
     Q_PROPERTY(int selectedAudioTrack READ selectedAudioTrack WRITE selectAudioTrack NOTIFY tracksChanged)
     Q_PROPERTY(yoake::media::WaveformModel *waveform READ waveform CONSTANT)
+    Q_PROPERTY(bool spectrumBusy READ spectrumBusy NOTIFY spectrumStatusChanged)
+    Q_PROPERTY(QString spectrumErrorString READ spectrumErrorString NOTIFY spectrumStatusChanged)
+    Q_PROPERTY(int spectrumCacheLevel READ spectrumCacheLevel NOTIFY spectrumStatusChanged)
 
 public:
     explicit MediaSession(QObject *parent = nullptr);
@@ -69,6 +75,7 @@ public:
     [[nodiscard]] bool hasVideo() const { return !m_timeMap.isEmpty(); }
     [[nodiscard]] bool hasAudio() const { return m_selectedAudioTrack >= 0; }
     [[nodiscard]] bool audioReady() const { return m_audioReady; }
+    [[nodiscard]] int audioSampleRate() const { return m_audioSampleRate; }
     [[nodiscard]] bool indexing() const { return m_indexing; }
     [[nodiscard]] double indexingProgress() const { return m_indexingProgress; }
     [[nodiscard]] bool framePending() const { return m_framePending; }
@@ -79,7 +86,11 @@ public:
     [[nodiscard]] int selectedVideoTrack() const { return m_selectedVideoTrack; }
     [[nodiscard]] int selectedAudioTrack() const { return m_selectedAudioTrack; }
     [[nodiscard]] WaveformModel *waveform() { return &m_waveform; }
+    [[nodiscard]] bool spectrumBusy() const { return m_spectrumBusy; }
+    [[nodiscard]] QString spectrumErrorString() const { return m_spectrumErrorString; }
+    [[nodiscard]] int spectrumCacheLevel() const { return m_spectrumCacheLevel; }
     [[nodiscard]] const QImage &frameImage() const { return m_frameImage; }
+    [[nodiscard]] const QImage &spectrumImage() const { return m_spectrumImage; }
 
     Q_INVOKABLE void open(const QUrl &source);
     Q_INVOKABLE void close();
@@ -96,6 +107,13 @@ public:
     Q_INVOKABLE qint64 frameEndForFrame(int frame) const { return m_timeMap.frameEndMs(frame); }
     Q_INVOKABLE void selectVideoTrack(int track);
     Q_INVOKABLE void selectAudioTrack(int track);
+    void requestSpectrumViewport(qint64 startMs,
+        qint64 endMs,
+        int width,
+        int height,
+        const QColor &lowColor,
+        const QColor &midColor,
+        const QColor &highColor);
 
 signals:
     void sourceChanged();
@@ -107,6 +125,8 @@ signals:
     void indexingProgressChanged();
     void framePendingChanged();
     void frameImageChanged();
+    void spectrumImageChanged();
+    void spectrumStatusChanged();
     void playbackStateChanged();
     void errorChanged();
     void generationChanged(quint64 generation);
@@ -119,7 +139,8 @@ private:
     void ensureWorkers();
     void beginOpen(const QString &path);
     void resetMediaState();
-    void requestFrameInternal(int frameNumber);
+    void requestFrameInternal(int frameNumber, bool cancelInFlight = true);
+    void clearSpectrumState();
     void setError(const QString &error);
     void setFramePending(bool pending);
     void setPlaying(bool playing);
@@ -135,14 +156,17 @@ private:
     QThread m_videoThread;
     QThread m_audioThread;
     QThread m_waveformThread;
+    QThread m_spectrumThread;
     FfmsVideoWorker *m_videoWorker = nullptr;
     FfmsAudioWorker *m_audioWorker = nullptr;
     FfmsAudioWorker *m_waveformWorker = nullptr;
+    FfmsSpectrumWorker *m_spectrumWorker = nullptr;
     QTimer m_playbackTimer;
     QElapsedTimer m_silentPlaybackClock;
     std::unique_ptr<QAudioSink> m_audioSink;
     QIODevice *m_audioDevice = nullptr;
     QImage m_frameImage;
+    QImage m_spectrumImage;
     QVariantList m_videoTracks;
     QVariantList m_audioTracks;
     qint64 m_durationMs = 0;
@@ -159,6 +183,9 @@ private:
     qint64 m_pendingPcmOffset = 0;
     quint64 m_generation = 0;
     quint64 m_frameRequestId = 0;
+    quint64 m_frameCancellationId = 0;
+    quint64 m_lastPresentedFrameRequest = 0;
+    quint64 m_spectrumRequestId = 0;
     quint64 m_playbackId = 0;
     int m_currentFrame = -1;
     int m_requestedFrame = -1;
@@ -167,18 +194,21 @@ private:
     int m_sourceWidth = 0;
     int m_sourceHeight = 0;
     int m_sourcePixelFormat = -1;
-    int m_audioSampleRate = 48000;
+    int m_audioSampleRate = 0;
     int m_audioChannels = 2;
     double m_sourceFrameRate = 0.0;
     double m_indexingProgress = 0.0;
     QString m_errorString;
+    QString m_spectrumErrorString;
     QByteArray m_pendingPcm;
     bool m_indexing = false;
     bool m_framePending = false;
     bool m_playing = false;
     bool m_audioReady = false;
+    bool m_spectrumBusy = false;
     bool m_pcmPending = false;
     bool m_audioFinished = false;
+    int m_spectrumCacheLevel = 0;
 };
 
 } // namespace yoake::media

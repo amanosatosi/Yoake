@@ -20,11 +20,12 @@ public:
     ~FfmsVideoWorker() override;
 
     // These only touch atomics and are intentionally safe to call from the GUI thread.
-    void invalidate(quint64 generation, quint64 latestFrameRequest) noexcept;
+    void invalidate(quint64 generation, quint64 cancellationId) noexcept;
 
 public slots:
     void open(quint64 generation, const QString &path, int preferredVideoTrack, int preferredAudioTrack);
-    void requestFrame(quint64 generation, quint64 requestId, int frameNumber);
+    void requestFrame(
+        quint64 generation, quint64 requestId, quint64 cancellationId, int frameNumber);
     void close(quint64 generation);
     void shutdown();
 
@@ -44,6 +45,7 @@ signals:
         double sourceFrameRate);
     void frameReady(quint64 generation,
         quint64 requestId,
+        quint64 cancellationId,
         int frameNumber,
         qint64 startMs,
         qint64 endMs,
@@ -57,6 +59,7 @@ private:
     struct PendingFrame {
         quint64 generation = 0;
         quint64 requestId = 0;
+        quint64 cancellationId = 0;
         int frameNumber = 0;
         bool valid = false;
     };
@@ -76,7 +79,7 @@ private:
     PendingFrame m_pendingFrame;
     bool m_frameScheduled = false;
     std::atomic<quint64> m_wantedGeneration{0};
-    std::atomic<quint64> m_latestFrameRequest{0};
+    std::atomic<quint64> m_latestCancellation{0};
 };
 
 } // namespace yoake::media
