@@ -32,6 +32,35 @@ ApplicationWindow {
     property var pendingCloseDocument: null
     property bool saveClosesDocument: false
 
+    function textInputOwnsKeys() {
+        const pane = documentPaneRepeater.itemAt(Documents.currentIndex)
+        if (pane && pane.textEditorFocused)
+            return true
+        let item = window.activeFocusItem
+        while (item && item !== window) {
+            if (item instanceof TextInput || item instanceof TextEdit)
+                return true
+            item = item.parent
+        }
+        return false
+    }
+
+    function rowShortcut(sequence) {
+        return textInputOwnsKeys() ? "" : sequence
+    }
+
+    function openFind(replace) {
+        const pane = documentPaneRepeater.itemAt(Documents.currentIndex)
+        if (pane)
+            pane.openFind(replace)
+    }
+
+    function findNext(backwards) {
+        const pane = documentPaneRepeater.itemAt(Documents.currentIndex)
+        if (pane)
+            pane.findNext(backwards)
+    }
+
     onClosing: close => {
         if (!Documents.requestApplicationClose())
             close.accepted = false
@@ -65,42 +94,61 @@ ApplicationWindow {
                 enabled: Documents.currentDocument ? Documents.currentDocument.canRedo && !Documents.currentDocument.karaoke.active : false
                 onTriggered: Documents.currentDocument.redo()
             }
+            MenuSeparator { }
+            Action { text: qsTr("Cut Subtitle Rows"); enabled: Documents.currentDocument ? Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active : false; onTriggered: Documents.currentDocument.cutSelected() }
+            Action { text: qsTr("Copy Subtitle Rows"); enabled: Documents.currentDocument ? Documents.currentDocument.lines.selectedCount > 0 : false; onTriggered: Documents.currentDocument.copySelected() }
+            Action { text: qsTr("Paste Subtitle Rows"); enabled: Documents.currentDocument ? Documents.currentDocument.canPasteRows && !Documents.currentDocument.karaoke.active : false; onTriggered: Documents.currentDocument.pasteRows() }
+            Action { text: qsTr("Select All Lines"); enabled: Documents.currentDocument ? Documents.currentDocument.lines.count > 0 : false; onTriggered: Documents.currentDocument.lines.selectAll() }
+            MenuSeparator { }
+            Action { text: qsTr("Find…"); shortcut: "Ctrl+F"; enabled: Documents.currentDocument !== null; onTriggered: window.openFind(false) }
+            Action { text: qsTr("Replace…"); shortcut: "Ctrl+H"; enabled: Documents.currentDocument !== null; onTriggered: window.openFind(true) }
         }
         Menu {
             title: qsTr("&Subtitle")
-            Action { text: qsTr("Insert Line After"); shortcut: "Insert"; enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.insertAfterActive() }
-            Action { text: qsTr("Duplicate Selected Lines"); shortcut: "Ctrl+D"; enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.duplicateSelected() }
-            Action { text: qsTr("Delete Selected Lines"); shortcut: "Ctrl+Delete"; enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.deleteSelected() }
-            Action { text: qsTr("Toggle Comment"); shortcut: "Alt+C"; enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.toggleSelectedComments() }
+            Action { text: qsTr("Insert Before"); shortcut: window.rowShortcut("Shift+Insert"); enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.insertBeforeActive() }
+            Action { text: qsTr("Insert After"); shortcut: window.rowShortcut("Insert"); enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.insertAfterActive() }
+            Action { text: qsTr("Duplicate Selected Lines"); shortcut: window.rowShortcut("Ctrl+D"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.duplicateSelected() }
+            Action { text: qsTr("Delete Selected Lines"); shortcut: window.rowShortcut("Ctrl+Delete"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.deleteSelected() }
+            Action { text: qsTr("Join Selected with Line Breaks"); shortcut: window.rowShortcut("Ctrl+J"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 1 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.joinSelected() }
+            Action { text: qsTr("Split at Cursor"); shortcut: window.rowShortcut("Ctrl+Enter"); enabled: Documents.currentDocument && Documents.currentDocument.lines.activeRow >= 0 && !Documents.currentDocument.karaoke.active; onTriggered: { const pane = documentPaneRepeater.itemAt(Documents.currentIndex); if (pane) pane.splitAtCursor() } }
+            Action { text: qsTr("Toggle Comment"); shortcut: window.rowShortcut("Alt+C"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.toggleSelectedComments() }
+            Action { text: qsTr("Move Up"); shortcut: window.rowShortcut("Ctrl+Up"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.moveSelectedUp() }
+            Action { text: qsTr("Move Down"); shortcut: window.rowShortcut("Ctrl+Down"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.moveSelectedDown() }
         }
         Menu {
             title: qsTr("&Timing")
             Action {
-                text: qsTr("Set Start to Video")
-                shortcut: "Ctrl+1"
-                enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active
-                onTriggered: if (Documents.currentDocument) Documents.currentDocument.activeStartMs = Documents.currentDocument.media.positionMs
+                text: qsTr("Set Selected Start to Current Position")
+                shortcut: window.rowShortcut("Ctrl+1")
+                enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && Documents.currentDocument.media.hasMedia && !Documents.currentDocument.karaoke.active
+                onTriggered: Documents.currentDocument.setSelectedStartToPosition()
             }
             Action {
-                text: qsTr("Set End to Video")
-                shortcut: "Ctrl+2"
-                enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active
-                onTriggered: if (Documents.currentDocument) Documents.currentDocument.activeEndMs = Documents.currentDocument.media.positionMs
+                text: qsTr("Set Selected End to Current Position")
+                shortcut: window.rowShortcut("Ctrl+2")
+                enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && Documents.currentDocument.media.hasMedia && !Documents.currentDocument.karaoke.active
+                onTriggered: Documents.currentDocument.setSelectedEndToPosition()
             }
+            Action { text: qsTr("Split at Current Position"); shortcut: window.rowShortcut("Alt+Shift+S"); enabled: Documents.currentDocument && Documents.currentDocument.lines.activeRow >= 0 && Documents.currentDocument.media.hasMedia && !Documents.currentDocument.karaoke.active; onTriggered: { const pane = documentPaneRepeater.itemAt(Documents.currentIndex); if (pane) pane.splitAtCurrentPosition() } }
+            MenuSeparator { }
+            Action { text: qsTr("Shift Earlier 100 ms"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.shiftSelectedTiming(-100) }
+            Action { text: qsTr("Shift Later 100 ms"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.shiftSelectedTiming(100) }
+            Action { text: qsTr("Shift Earlier 500 ms"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.shiftSelectedTiming(-500) }
+            Action { text: qsTr("Shift Later 500 ms"); enabled: Documents.currentDocument && Documents.currentDocument.lines.selectedCount > 0 && !Documents.currentDocument.karaoke.active; onTriggered: Documents.currentDocument.shiftSelectedTiming(500) }
         }
         Menu {
             title: qsTr("&Video")
             Action { text: qsTr("Open Media…"); onTriggered: mediaOpenDialog.open() }
             Action { text: qsTr("Close Media"); enabled: Documents.currentDocument && Documents.currentDocument.media.hasMedia; onTriggered: Documents.currentDocument.media.close() }
             MenuSeparator { }
-            Action { text: qsTr("Previous Frame"); shortcut: "Left"; onTriggered: Documents.currentDocument.media.stepFrames(-1) }
-            Action { text: qsTr("Next Frame"); shortcut: "Right"; onTriggered: Documents.currentDocument.media.stepFrames(1) }
+            Action { text: qsTr("Previous Frame"); shortcut: window.rowShortcut("Left"); enabled: Documents.currentDocument ? Documents.currentDocument.media.hasVideo : false; onTriggered: Documents.currentDocument.media.stepFrames(-1) }
+            Action { text: qsTr("Next Frame"); shortcut: window.rowShortcut("Right"); enabled: Documents.currentDocument ? Documents.currentDocument.media.hasVideo : false; onTriggered: Documents.currentDocument.media.stepFrames(1) }
         }
         Menu {
             title: qsTr("&Audio")
             Action { text: qsTr("Open Media Audio…"); onTriggered: mediaOpenDialog.open() }
-            Action { text: qsTr("Play / Pause"); shortcut: "Space"; onTriggered: Documents.currentDocument.media.togglePlayback() }
-            Action { text: qsTr("Stop"); onTriggered: Documents.currentDocument.media.stop() }
+            Action { text: qsTr("Play / Pause"); shortcut: window.rowShortcut("Space"); enabled: Documents.currentDocument ? Documents.currentDocument.media.hasMedia : false; onTriggered: Documents.currentDocument.media.togglePlayback() }
+            Action { text: qsTr("Stop"); enabled: Documents.currentDocument ? Documents.currentDocument.media.hasMedia : false; onTriggered: Documents.currentDocument.media.stop() }
         }
         Menu {
             title: qsTr("&View")
@@ -122,6 +170,17 @@ ApplicationWindow {
             title: qsTr("&Help")
             Action { text: qsTr("About Yoake"); onTriggered: aboutDialog.open() }
         }
+    }
+
+    Shortcut {
+        sequence: "F3"
+        enabled: Documents.currentDocument !== null
+        onActivated: window.findNext(false)
+    }
+    Shortcut {
+        sequence: "Shift+F3"
+        enabled: Documents.currentDocument !== null
+        onActivated: window.findNext(true)
     }
 
     ColumnLayout {
@@ -177,7 +236,9 @@ ApplicationWindow {
                 }
                 ToolButton {
                     text: qsTr("Delete")
-                    enabled: Documents.currentDocument && !Documents.currentDocument.karaoke.active
+                    enabled: Documents.currentDocument
+                             ? Documents.currentDocument.lines.selectedCount > 0
+                               && !Documents.currentDocument.karaoke.active : false
                     onClicked: Documents.currentDocument.deleteSelected()
                 }
                 ToolSeparator { }
@@ -227,6 +288,7 @@ ApplicationWindow {
             background: Rectangle { color: Theme.palette.tab; border.color: Theme.palette.border }
 
             Repeater {
+                id: documentTabRepeater
                 model: Documents
                 TabButton {
                     id: tabButton
@@ -269,6 +331,7 @@ ApplicationWindow {
             Layout.fillHeight: true
             currentIndex: Documents.currentIndex
             Repeater {
+                id: documentPaneRepeater
                 model: Documents
                 DocumentPane {
                     required property var documentContext

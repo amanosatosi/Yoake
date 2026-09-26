@@ -5,8 +5,24 @@ import QtQuick.Layouts
 Item {
     id: root
     required property var context
+    readonly property bool textEditorFocused: activeEditor.textEntryFocus
     readonly property bool linkedMediaFailed: context.linkedMediaError.length > 0
                                                || context.media.errorString.length > 0
+
+    function openFind(replace) {
+        findReplace.replaceMode = replace
+        findReplace.visible = true
+        findReplace.focusQuery()
+    }
+
+    function findNext(backwards) {
+        if (!findReplace.visible)
+            findReplace.visible = true
+        findReplace.find(backwards)
+    }
+
+    function splitAtCursor() { activeEditor.splitAtCursor() }
+    function splitAtCurrentPosition() { activeEditor.splitAtCurrentPosition() }
 
     function linkedMediaStatus() {
         if (root.context.linkedMediaError.length > 0)
@@ -72,6 +88,14 @@ Item {
             }
         }
 
+        FindReplaceBar {
+            id: findReplace
+            Layout.fillWidth: true
+            visible: false
+            context: root.context
+            onCloseRequested: visible = false
+        }
+
         SplitView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -100,6 +124,7 @@ Item {
                     }
 
                     AssEditor {
+                        id: activeEditor
                         SplitView.fillHeight: true
                         SplitView.minimumHeight: 190
                         context: root.context
@@ -108,9 +133,11 @@ Item {
             }
 
             SubtitleGrid {
+                id: subtitleGrid
                 SplitView.fillHeight: true
                 SplitView.minimumHeight: 180
                 context: root.context
+                onRequestTextFocus: activeEditor.focusText()
             }
         }
     }

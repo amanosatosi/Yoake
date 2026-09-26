@@ -7,8 +7,11 @@ UI port.
 The current foundation provides:
 
 - one independently owned document context per tab;
-- ASS loading, loss-conscious serialization, editing, selection, and per-tab undo;
-- a virtualized Qt Quick subtitle grid and ASS/Mangetsu-aware syntax coloring;
+- ASS loading, loss-conscious serialization, stable-ID row selection, and per-tab undo;
+- a virtualized editing grid with row clipboard, insert/duplicate/delete/join/split/move,
+  bulk timing, comment, and per-document Find/Replace commands;
+- an active-line editor for text, timing, margins, style, actor, effect, layer, and comments,
+  with ASS/Mangetsu-aware syntax coloring;
 - named, semantic JSON themes;
 - per-document FFMS2 indexed video/audio sessions with asynchronous cached
   waveform and spectrum views;

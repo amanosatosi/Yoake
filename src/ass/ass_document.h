@@ -4,6 +4,7 @@
 
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
+#include <QtCore/QStringList>
 #include <QtCore/QVector>
 
 namespace yoake::ass {
@@ -31,12 +32,14 @@ public:
     [[nodiscard]] QByteArray serialize() const;
     [[nodiscard]] const QVector<Event> &events() const noexcept { return m_events; }
     [[nodiscard]] QVector<Event> &events() noexcept { return m_events; }
+    [[nodiscard]] const QStringList &styleNames() const noexcept { return m_styleNames; }
     [[nodiscard]] const ProjectProperties &projectProperties() const noexcept { return m_projectProperties; }
     [[nodiscard]] int eventIndex(const QUuid &id) const noexcept;
 
 private:
     QVector<Record> m_records;
     QVector<Event> m_events;
+    QStringList m_styleNames;
     ProjectProperties m_projectProperties;
     int m_eventOutputRecord = -1;
 };

@@ -157,16 +157,20 @@ and branching edits loss-safe. QML receives UUID-scoped model rows, never raw
 worker/provider pointers.
 
 The current `ass::Document` is a conservative compatibility adapter. It edits
-canonical UTF-8 ASS v4+ events while preserving unknown sections, styles,
-attachments, extradata, project metadata, and Mangetsu syntax. It rejects
-unsupported SSA/reordered formats instead of corrupting them. Extracting the
-full mature Aegisub ASS core remains a later migration behind the same boundary.
+canonical UTF-8 ASS v4+ events while preserving unknown sections, style records,
+attachments, extradata, project metadata, and Mangetsu syntax. It exposes style
+names without normalizing their source records and rejects unsupported
+SSA/reordered formats instead of corrupting them. Extracting the full mature
+Aegisub ASS core remains a later migration behind the same boundary.
 
 ## Current foundation status
 
 Implemented and CI-validated:
 
 - independent Qt Quick document tabs, themes, models, undo, and loss-safe I/O;
+- stable-ID selection, row clipboard, normal subtitle insert/duplicate/delete/join/
+  split/move/timing commands, editable event fields, and per-document
+  Find/Replace, all routed through document-scoped undo and renderer invalidation;
 - FFMS2 track discovery, reusable validated indexes, exact indexed source-frame
   access, VFR time mapping, rapid-seek stale-result rejection, and frame stepping;
 - FFMS2 indexed audio, random range access, worker-owned device-rate PCM
@@ -177,7 +181,7 @@ Implemented and CI-validated:
   and
 - a pinned, dependency-checked, license-bearing portable Windows ZIP pipeline.
 
-Still later work: the full Aegisub ASS/style/attachment core, broader editing
-commands, embedded-font/tag-image Mangetsu support, Toshiki K-Timing policy,
-autosave/recovery, preferences, and shortcut editing. OCR and Automation/Lua
-remain deliberately excluded.
+Still later work: the full Aegisub ASS/style/attachment core, embedded-font and
+tag-image Mangetsu support, Toshiki K-Timing policy, autosave/recovery,
+preferences, and shortcut editing. OCR and Automation/Lua remain deliberately
+excluded.

@@ -1,4 +1,6 @@
 #include "ass/ass_document.h"
+#include "ass/ass_event_clipboard.h"
+#include "ass/ass_event_edits.h"
 #include "ass/ass_text_boundaries.h"
 #include "media/frame_time_map.h"
 #include "media/spectrum_analyzer.h"
@@ -19,6 +21,10 @@ private slots:
     void selectsFontNameValues();
     void rejectsUnsafeEventFormats();
     void keepsValidEventlessDocumentsEventless();
+    void exposesStyleNamesWithoutRewritingStyleRecords();
+    void eventListEditsPreserveRawRecordsAndSupportZeroEvents();
+    void structuredRowClipboardRetainsFieldsAndRegeneratesIds();
+    void eventSplitPreservesTextAndProducesValidTimingHalves();
     void readsAegisubLinkedMediaMetadata();
     void mapsVariableFrameRateTimesWithoutFpsArithmetic();
     void findsSpeechBandToneWithFft();
@@ -95,6 +101,126 @@ void AssDocumentTest::keepsValidEventlessDocumentsEventless()
     QVERIFY2(error.isEmpty(), qPrintable(error));
     QVERIFY(document.events().isEmpty());
     QVERIFY(!document.serialize().contains("Dialogue:"));
+}
+
+void AssDocumentTest::exposesStyleNamesWithoutRewritingStyleRecords()
+{
+    const QByteArray input = QByteArrayLiteral(
+        "[V4+ Styles]\n"
+        "; style comments stay raw\n"
+        "Format: Fontname ,  Name , Fontsize, PrimaryColour\n"
+        "Style: Anime Font, My Anime Style , 42, &H00FFFFFF\n"
+        "Style: Arial, Unknown Existing Style, 50, &H000000FF\n"
+        "[Events]\n"
+        "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n");
+    QString error;
+    const auto document = yoake::ass::Document::parse(input, &error);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    QCOMPARE(document.styleNames(), QStringList({QStringLiteral("My Anime Style"),
+        QStringLiteral("Unknown Existing Style")}));
+    const QByteArray output = document.serialize();
+    QVERIFY(output.contains("Format: Fontname ,  Name , Fontsize, PrimaryColour"));
+    QVERIFY(output.contains("Style: Anime Font, My Anime Style , 42, &H00FFFFFF"));
+    QVERIFY(output.contains("; style comments stay raw"));
+}
+
+void AssDocumentTest::eventListEditsPreserveRawRecordsAndSupportZeroEvents()
+{
+    QString error;
+    auto document = yoake::ass::Document::parse(QByteArrayLiteral(
+        "[Before Events]\nKeep: before\n\n"
+        "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0000,0000,0000,,{\\pgrd(0,0,1,1,0)}first\n"
+        "; keep this comment between event slots\n"
+        "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0000,0000,0000,,second\n\n"
+        "[After Events]\nKeep: after\n"), &error);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    auto inserted = document.events().front();
+    inserted.id = QUuid::createUuid();
+    inserted.text = QStringLiteral("inserted");
+    document.events().insert(1, inserted);
+    std::swap(document.events()[0], document.events()[2]);
+    document.events().removeAt(1);
+    QByteArray output = document.serialize();
+    QVERIFY(output.contains("[Before Events]"));
+    QVERIFY(output.contains("[After Events]"));
+    QVERIFY(output.contains("Keep: before"));
+    QVERIFY(output.contains("Keep: after"));
+    QVERIFY(output.contains("{\\pgrd(0,0,1,1,0)}first"));
+    const qsizetype firstSerializedEvent = output.indexOf("Dialogue:");
+    const qsizetype rawComment = output.indexOf("; keep this comment between event slots");
+    const qsizetype secondSerializedEvent = output.indexOf("Dialogue:", firstSerializedEvent + 1);
+    QVERIFY(firstSerializedEvent < rawComment);
+    QVERIFY(rawComment < secondSerializedEvent);
+    document.events().clear();
+    output = document.serialize();
+    QVERIFY(!output.contains("Dialogue:"));
+    const auto roundTrip = yoake::ass::Document::parse(output, &error);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    QVERIFY(roundTrip.events().isEmpty());
+    QVERIFY(output.contains("Keep: after"));
+}
+
+void AssDocumentTest::structuredRowClipboardRetainsFieldsAndRegeneratesIds()
+{
+    yoake::ass::Event original;
+    original.comment = true;
+    original.layer = 4;
+    original.startMs = 1234;
+    original.endMs = 2345;
+    original.style = QStringLiteral("Unknown style");
+    original.actor = QStringLiteral("Actor");
+    original.marginLeft = 10;
+    original.marginRight = 20;
+    original.marginVertical = 30;
+    original.effect = QStringLiteral("fx");
+    original.text = QStringLiteral("{\\pgrd(0,0,1,1,0)}Mangetsu");
+    const QVector<yoake::ass::Event> originalEvents{original};
+    QVector<yoake::ass::Event> decoded;
+    const auto encoded = yoake::ass::EventClipboard::encode(originalEvents);
+    QVERIFY(yoake::ass::EventClipboard::decode(encoded, &decoded));
+    QCOMPARE(decoded.size(), 1);
+    const auto &copy = decoded.front();
+    QVERIFY(copy.id != original.id);
+    QCOMPARE(copy.comment, original.comment);
+    QCOMPARE(copy.layer, original.layer);
+    QCOMPARE(copy.startMs, original.startMs);
+    QCOMPARE(copy.endMs, original.endMs);
+    QCOMPARE(copy.style, original.style);
+    QCOMPARE(copy.actor, original.actor);
+    QCOMPARE(copy.marginLeft, original.marginLeft);
+    QCOMPARE(copy.marginRight, original.marginRight);
+    QCOMPARE(copy.marginVertical, original.marginVertical);
+    QCOMPARE(copy.effect, original.effect);
+    QCOMPARE(copy.text, original.text);
+    QVERIFY(yoake::ass::EventClipboard::plainText(decoded).contains(QStringLiteral("Mangetsu")));
+    QVERIFY(!yoake::ass::EventClipboard::decode(QByteArrayLiteral("not JSON"), &decoded));
+}
+
+void AssDocumentTest::eventSplitPreservesTextAndProducesValidTimingHalves()
+{
+    yoake::ass::Event original;
+    original.startMs = 1000;
+    original.endMs = 2000;
+    original.text = QStringLiteral("{\\pgrd(0,0,10,10,45)}A\U0001F600B");
+    original.actor = QStringLiteral("Actor");
+    const QString tagText = QStringLiteral("{\\pgrd(0,0,10,10,45)}");
+    const qsizetype cursor = original.text.indexOf(QStringLiteral("A\U0001F600")) + 3;
+    const auto split = yoake::ass::EventEdits::splitAtCursor(original, cursor, 1500);
+    QVERIFY(split.has_value());
+    QCOMPARE(split->first.text + split->second.text, original.text);
+    QVERIFY(split->first.text.contains(tagText));
+    QCOMPARE(split->first.text, QStringLiteral("{\\pgrd(0,0,10,10,45)}A\U0001F600"));
+    QCOMPARE(split->second.text, QStringLiteral("B"));
+    QCOMPARE(split->first.startMs, qint64(1000));
+    QCOMPARE(split->first.endMs, qint64(1500));
+    QCOMPARE(split->second.startMs, qint64(1500));
+    QCOMPARE(split->second.endMs, qint64(2000));
+    QCOMPARE(split->second.actor, original.actor);
+    QVERIFY(split->first.id == original.id);
+    QVERIFY(split->second.id != original.id);
+    QVERIFY(!yoake::ass::EventEdits::splitAtCursor(original, 0, 1000).has_value());
+    QVERIFY(!yoake::ass::EventEdits::splitAtCursor(original, 0, 2000).has_value());
 }
 
 void AssDocumentTest::readsAegisubLinkedMediaMetadata()

@@ -38,6 +38,7 @@ find_file(FFMS2_RUNTIME
     REQUIRED
 )
 add_library(FFMS2::FFMS2 SHARED IMPORTED)
+get_filename_component(FFMS2_RUNTIME_DIR "${FFMS2_RUNTIME}" DIRECTORY)
 set_target_properties(FFMS2::FFMS2 PROPERTIES
     IMPORTED_IMPLIB "${FFMS2_LIBRARY}"
     IMPORTED_LOCATION "${FFMS2_RUNTIME}"
@@ -75,6 +76,7 @@ find_file(FFMPEG_AVUTIL_RUNTIME
     NO_DEFAULT_PATH
     REQUIRED
 )
+get_filename_component(FFMPEG_RUNTIME_DIR "${FFMPEG_SWRESAMPLE_RUNTIME}" DIRECTORY)
 add_library(FFmpeg::swresample SHARED IMPORTED)
 set_target_properties(FFmpeg::swresample PROPERTIES
     IMPORTED_IMPLIB "${FFMPEG_SWRESAMPLE_LIBRARY}"
@@ -96,6 +98,8 @@ set(YOAKE_SOURCES
     src/app/document_manager.cpp
     src/app/theme_manager.cpp
     src/ass/ass_document.cpp
+    src/ass/ass_event_clipboard.cpp
+    src/ass/ass_event_edits.cpp
     src/ass/ass_text_boundaries.cpp
     src/media/ffms_audio_worker.cpp
     src/media/ffms_spectrum_worker.cpp
@@ -120,6 +124,8 @@ set(YOAKE_HEADERS
     src/app/theme_manager.h
     src/ass/ass_document.h
     src/ass/ass_event.h
+    src/ass/ass_event_clipboard.h
+    src/ass/ass_event_edits.h
     src/ass/ass_text_boundaries.h
     src/media/ffms_audio_worker.h
     src/media/ffms_spectrum_worker.h
@@ -149,6 +155,7 @@ qt_add_qml_module(yoake
         qml/AssEditor.qml
         qml/AudioPane.qml
         qml/DocumentPane.qml
+        qml/FindReplaceBar.qml
         qml/SubtitleGrid.qml
         qml/VideoPane.qml
 )
@@ -189,6 +196,8 @@ if(BUILD_TESTING)
     qt_add_executable(yoake_core_tests
         tests/ass_document_test.cpp
         src/ass/ass_document.cpp
+        src/ass/ass_event_clipboard.cpp
+        src/ass/ass_event_edits.cpp
         src/ass/ass_text_boundaries.cpp
         src/media/frame_time_map.cpp
         src/media/spectrum_analyzer.cpp
@@ -196,5 +205,57 @@ if(BUILD_TESTING)
     target_include_directories(yoake_core_tests PRIVATE src)
     target_link_libraries(yoake_core_tests PRIVATE Qt6::Core Qt6::Test)
     add_test(NAME yoake_core_tests COMMAND yoake_core_tests)
+
+    qt_add_executable(yoake_editing_tests
+        tests/document_editing_test.cpp
+        src/app/document_context.cpp
+        src/ass/ass_document.cpp
+        src/ass/ass_event_clipboard.cpp
+        src/ass/ass_event_edits.cpp
+        src/media/ffms_audio_worker.cpp
+        src/media/ffms_spectrum_worker.cpp
+        src/media/ffms_video_worker.cpp
+        src/media/frame_time_map.cpp
+        src/media/media_session.cpp
+        src/media/spectrum_analyzer.cpp
+        src/media/waveform_model.cpp
+        src/models/subtitle_model.cpp
+        src/renderer/mangetsu_library.cpp
+        src/renderer/mangetsu_session.cpp
+        src/timing/karaoke_session.cpp
+        src/app/document_context.h
+        src/ass/ass_document.h
+        src/ass/ass_event.h
+        src/ass/ass_event_clipboard.h
+        src/ass/ass_event_edits.h
+        src/media/ffms_audio_worker.h
+        src/media/ffms_spectrum_worker.h
+        src/media/ffms_video_worker.h
+        src/media/frame_time_map.h
+        src/media/media_session.h
+        src/media/spectrum_analyzer.h
+        src/media/waveform_model.h
+        src/models/subtitle_model.h
+        src/renderer/mangetsu_abi.h
+        src/renderer/mangetsu_library.h
+        src/renderer/mangetsu_session.h
+        src/timing/karaoke_session.h
+    )
+    target_include_directories(yoake_editing_tests PRIVATE src)
+    target_link_libraries(yoake_editing_tests PRIVATE
+        Qt6::Core Qt6::Gui Qt6::Qml Qt6::Quick Qt6::QuickControls2
+        Qt6::Concurrent Qt6::Multimedia Qt6::Test
+        FFMS2::FFMS2 FFmpeg::swresample FFmpeg::avutil
+    )
+    if(MSVC)
+        target_compile_options(yoake_editing_tests PRIVATE /W4 /permissive- /EHsc)
+        target_compile_definitions(yoake_editing_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+    else()
+        target_compile_options(yoake_editing_tests PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+    add_test(NAME yoake_editing_tests COMMAND yoake_editing_tests)
+    set_tests_properties(yoake_editing_tests PROPERTIES ENVIRONMENT_MODIFICATION
+        "PATH=path_list_prepend:${FFMS2_RUNTIME_DIR};PATH=path_list_prepend:${FFMPEG_RUNTIME_DIR}"
+    )
 
 endif()

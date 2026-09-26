@@ -1,6 +1,7 @@
 #include "ass/ass_document.h"
 
 #include <QtCore/QRegularExpression>
+#include <QtCore/QSet>
 #include <QtCore/QStringList>
 
 #include <algorithm>
@@ -119,9 +120,12 @@ Document Document::parse(const QByteArray &contents, QString *error)
 
     const QStringList lines = source.split(u'\n', Qt::KeepEmptyParts);
     bool inEvents = false;
+    bool inStyles = false;
     bool inProjectProperties = false;
     bool sawEvents = false;
     bool sawCanonicalEventFormat = false;
+    int styleNameColumn = -1;
+    QSet<QString> seenStyles;
     int lineNumber = 0;
     const QStringList canonicalColumns = {
         QStringLiteral("layer"), QStringLiteral("start"), QStringLiteral("end"),
@@ -134,9 +138,46 @@ Document Document::parse(const QByteArray &contents, QString *error)
         const QString trimmed = line.trimmed();
         if (trimmed.startsWith(u'[') && trimmed.endsWith(u']')) {
             inEvents = trimmed.compare(QStringLiteral("[Events]"), Qt::CaseInsensitive) == 0;
+            inStyles = trimmed.compare(QStringLiteral("[V4+ Styles]"), Qt::CaseInsensitive) == 0;
+            if (inStyles)
+                styleNameColumn = -1;
             inProjectProperties = trimmed.compare(
                 QStringLiteral("[Aegisub Project Garbage]"), Qt::CaseInsensitive) == 0;
             sawEvents = sawEvents || inEvents;
+        }
+
+        // Style records remain raw in m_records; this narrow read-only pass only
+        // exposes names for the editor and never normalizes or rewrites them.
+        if (inStyles && trimmed.startsWith(QStringLiteral("Format:"), Qt::CaseInsensitive)) {
+            const QStringView definition = QStringView(trimmed).mid(trimmed.indexOf(u':') + 1);
+            styleNameColumn = -1;
+            int columnIndex = 0;
+            for (const QStringView column : definition.split(u',')) {
+                if (column.trimmed().compare(QStringLiteral("Name"), Qt::CaseInsensitive) == 0)
+                    styleNameColumn = columnIndex;
+                ++columnIndex;
+            }
+        } else if (inStyles && styleNameColumn >= 0
+            && trimmed.startsWith(QStringLiteral("Style:"), Qt::CaseInsensitive)) {
+            const QStringView values = QStringView(trimmed).mid(trimmed.indexOf(u':') + 1);
+            qsizetype start = 0;
+            QString name;
+            for (int columnIndex = 0; columnIndex <= styleNameColumn; ++columnIndex) {
+                const qsizetype comma = values.indexOf(u',', start);
+                const qsizetype end = comma < 0 ? values.size() : comma;
+                if (columnIndex == styleNameColumn)
+                    name = values.mid(start, end - start).toString().trimmed();
+                if (columnIndex < styleNameColumn && comma < 0) {
+                    name.clear();
+                    break;
+                }
+                start = end + 1;
+            }
+            const QString key = name.toCaseFolded();
+            if (!name.isEmpty() && !seenStyles.contains(key)) {
+                seenStyles.insert(key);
+                document.m_styleNames.push_back(name);
+            }
         }
 
         if (inProjectProperties) {
@@ -219,20 +260,36 @@ Document Document::parse(const QByteArray &contents, QString *error)
 QByteArray Document::serialize() const
 {
     QStringList output;
-    bool eventsWritten = false;
+    int lastEventRecordIndex = -1;
+    for (int index = 0; index < m_records.size(); ++index) {
+        if (m_records[index].kind == Record::Kind::Event)
+            lastEventRecordIndex = index;
+    }
+    const bool hasEventSlots = lastEventRecordIndex >= 0;
+    int nextEvent = 0;
+    bool insertedIntoEmptyEventSection = false;
     for (int index = 0; index <= m_records.size(); ++index) {
-        if (!eventsWritten && index == m_eventOutputRecord) {
+        if (!hasEventSlots && !insertedIntoEmptyEventSection && index == m_eventOutputRecord) {
             for (const Event &event : m_events)
                 output.push_back(serializeEvent(event));
-            eventsWritten = true;
+            insertedIntoEmptyEventSection = true;
         }
         if (index == m_records.size())
             break;
         const Record &record = m_records[index];
         if (record.kind == Record::Kind::Raw)
             output.push_back(record.raw);
+        else if (nextEvent < m_events.size())
+            output.push_back(serializeEvent(m_events[nextEvent++]));
+
+        // Preserve raw records between the original event slots. Extra inserted
+        // rows follow the final slot; deleting rows leaves their raw neighbors intact.
+        if (hasEventSlots && index == lastEventRecordIndex) {
+            while (nextEvent < m_events.size())
+                output.push_back(serializeEvent(m_events[nextEvent++]));
+        }
     }
-    if (!eventsWritten) {
+    if (!insertedIntoEmptyEventSection && !hasEventSlots) {
         for (const Event &event : m_events)
             output.push_back(serializeEvent(event));
     }
