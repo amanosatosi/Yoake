@@ -160,13 +160,21 @@ jobs:
         run: |
           $output = & .\build\yoake_editing_tests.exe -v2 2>&1
           $editingExitCode = $LASTEXITCODE
+          Write-Host "Standalone editing test exit code: $editingExitCode"
           $output | ForEach-Object { Write-Host $_ }
 
           $ctestOutput = & ctest --test-dir build --output-on-failure --timeout 30 2>&1
           $ctestExitCode = $LASTEXITCODE
           $ctestOutput | ForEach-Object { Write-Host $_ }
 
-          if ($ctestExitCode -ne 0) { exit $ctestExitCode }
+          if ($ctestExitCode -ne 0) {
+            $lastTestLog = '.\build\Testing\Temporary\LastTest.log'
+            if (Test-Path -LiteralPath $lastTestLog) {
+              Write-Host '--- CTest LastTest.log ---'
+              Get-Content -LiteralPath $lastTestLog | ForEach-Object { Write-Host $_ }
+            }
+            exit $ctestExitCode
+          }
           if ($editingExitCode -ne 0) { exit $editingExitCode }
 
       - name: Stage portable application and licenses
