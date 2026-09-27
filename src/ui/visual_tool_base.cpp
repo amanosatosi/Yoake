@@ -60,6 +60,16 @@ QString VisualToolBase::tr(const char *sourceText)
     return QCoreApplication::translate("VisualToolManager", sourceText);
 }
 
+app::DocumentContext *VisualToolBase::document() const
+{
+    return m_document.data();
+}
+
+VideoViewport *VisualToolBase::viewport() const
+{
+    return m_viewport.data();
+}
+
 QVariantList VisualToolBase::renderOverlay() const
 {
     QVariantList features;

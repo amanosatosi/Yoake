@@ -39,8 +39,8 @@ protected:
     [[nodiscard]] static QString tr(const char *sourceText);
     virtual void buildOverlay(QVariantList &features) const = 0;
     void setCoordinateLabel(QString label) const { m_coordinateLabel = std::move(label); }
-    [[nodiscard]] app::DocumentContext *document() const { return m_document.data(); }
-    [[nodiscard]] VideoViewport *viewport() const { return m_viewport.data(); }
+    [[nodiscard]] app::DocumentContext *document() const;
+    [[nodiscard]] VideoViewport *viewport() const;
     [[nodiscard]] QString activeText() const;
     [[nodiscard]] ass::Event activeEvent() const;
     [[nodiscard]] QPointF toScript(QPointF screen) const;
