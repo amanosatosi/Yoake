@@ -156,7 +156,18 @@ jobs:
           }
 
       - name: Test exact timing and document core
-        run: ctest --test-dir build --output-on-failure --timeout 30
+        shell: pwsh
+        run: |
+          $output = & .\build\yoake_editing_tests.exe -v2 2>&1
+          $editingExitCode = $LASTEXITCODE
+          $output | ForEach-Object { Write-Host $_ }
+
+          $ctestOutput = & ctest --test-dir build --output-on-failure --timeout 30 2>&1
+          $ctestExitCode = $LASTEXITCODE
+          $ctestOutput | ForEach-Object { Write-Host $_ }
+
+          if ($ctestExitCode -ne 0) { exit $ctestExitCode }
+          if ($editingExitCode -ne 0) { exit $editingExitCode }
 
       - name: Stage portable application and licenses
         shell: pwsh
