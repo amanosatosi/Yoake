@@ -11,6 +11,8 @@
 #include "ui/subtitle_overlay_item.h"
 #include "ui/spectrum_item.h"
 #include "ui/video_frame_item.h"
+#include "ui/video_viewport.h"
+#include "ui/visual_tool_manager.h"
 
 #include <ffms.h>
 
@@ -120,6 +122,10 @@ int main(int argc, char *argv[])
     qmlRegisterType<yoake::ui::SubtitleOverlayItem>("Yoake", 1, 0, "SubtitleOverlay");
     qmlRegisterType<yoake::ui::SpectrumItem>("Yoake", 1, 0, "SpectrumView");
     qmlRegisterType<yoake::ui::VideoFrameItem>("Yoake", 1, 0, "VideoFrame");
+    qmlRegisterUncreatableType<yoake::ui::VideoViewport>("Yoake", 1, 0,
+        "VideoViewport", QStringLiteral("Video viewports are owned by DocumentContext"));
+    qmlRegisterUncreatableType<yoake::ui::VisualToolManager>("Yoake", 1, 0,
+        "VisualToolManager", QStringLiteral("Visual tool managers are owned by DocumentContext"));
     qmlRegisterUncreatableType<yoake::app::DocumentContext>("Yoake", 1, 0,
         "DocumentContext", QStringLiteral("Document contexts are owned by DocumentManager"));
     qmlRegisterUncreatableType<yoake::models::SubtitleModel>("Yoake", 1, 0,

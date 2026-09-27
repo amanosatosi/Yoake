@@ -101,6 +101,7 @@ set(YOAKE_SOURCES
     src/ass/ass_event_clipboard.cpp
     src/ass/ass_event_edits.cpp
     src/ass/ass_text_boundaries.cpp
+    src/ass/visual_tags.cpp
     src/media/ffms_audio_worker.cpp
     src/media/ffms_spectrum_worker.cpp
     src/media/ffms_video_worker.cpp
@@ -116,6 +117,9 @@ set(YOAKE_SOURCES
     src/ui/subtitle_overlay_item.cpp
     src/ui/spectrum_item.cpp
     src/ui/video_frame_item.cpp
+    src/ui/video_viewport.cpp
+    src/ui/visual_snap_service.cpp
+    src/ui/visual_tool_manager.cpp
 )
 
 set(YOAKE_HEADERS
@@ -143,6 +147,11 @@ set(YOAKE_HEADERS
     src/ui/subtitle_overlay_item.h
     src/ui/spectrum_item.h
     src/ui/video_frame_item.h
+    src/ui/video_viewport.h
+    src/ui/visual_tool_manager.h
+    src/ui/visual_snap_service.h
+    src/ui/visual_tool.h
+    src/ass/visual_tags.h
 )
 
 qt_add_executable(yoake WIN32 ${YOAKE_SOURCES} ${YOAKE_HEADERS})
@@ -195,11 +204,15 @@ if(BUILD_TESTING)
     find_package(Qt6 6.8 REQUIRED COMPONENTS Test)
     qt_add_executable(yoake_core_tests
         tests/ass_document_test.cpp
+        tests/visual_tools_test.cpp
         src/ass/ass_document.cpp
         src/ass/ass_event_clipboard.cpp
         src/ass/ass_event_edits.cpp
         src/ass/ass_text_boundaries.cpp
+        src/ass/visual_tags.cpp
         src/media/frame_time_map.cpp
+        src/ui/video_viewport.cpp
+        src/ui/visual_snap_service.cpp
         src/media/spectrum_analyzer.cpp
     )
     target_include_directories(yoake_core_tests PRIVATE src)
@@ -209,7 +222,11 @@ if(BUILD_TESTING)
     qt_add_executable(yoake_editing_tests
         tests/document_editing_test.cpp
         src/app/document_context.cpp
+        src/ui/video_viewport.cpp
+        src/ui/visual_snap_service.cpp
+        src/ui/visual_tool_manager.cpp
         src/ass/ass_document.cpp
+        src/ass/visual_tags.cpp
         src/ass/ass_event_clipboard.cpp
         src/ass/ass_event_edits.cpp
         src/media/ffms_audio_worker.cpp
@@ -224,8 +241,13 @@ if(BUILD_TESTING)
         src/renderer/mangetsu_session.cpp
         src/timing/karaoke_session.cpp
         src/app/document_context.h
+        src/ui/video_viewport.h
+        src/ui/visual_snap_service.h
+        src/ui/visual_tool_manager.h
+        src/ui/visual_tool.h
         src/ass/ass_document.h
         src/ass/ass_event.h
+        src/ass/visual_tags.h
         src/ass/ass_event_clipboard.h
         src/ass/ass_event_edits.h
         src/media/ffms_audio_worker.h

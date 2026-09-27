@@ -121,10 +121,12 @@ Document Document::parse(const QByteArray &contents, QString *error)
     const QStringList lines = source.split(u'\n', Qt::KeepEmptyParts);
     bool inEvents = false;
     bool inStyles = false;
+    bool inScriptInfo = false;
     bool inProjectProperties = false;
     bool sawEvents = false;
     bool sawCanonicalEventFormat = false;
     int styleNameColumn = -1;
+    QStringList styleColumns;
     QSet<QString> seenStyles;
     int lineNumber = 0;
     const QStringList canonicalColumns = {
@@ -139,6 +141,9 @@ Document Document::parse(const QByteArray &contents, QString *error)
         if (trimmed.startsWith(u'[') && trimmed.endsWith(u']')) {
             inEvents = trimmed.compare(QStringLiteral("[Events]"), Qt::CaseInsensitive) == 0;
             inStyles = trimmed.compare(QStringLiteral("[V4+ Styles]"), Qt::CaseInsensitive) == 0;
+            inScriptInfo = trimmed.compare(QStringLiteral("[Script Info]"), Qt::CaseInsensitive) == 0;
+            if (inStyles)
+                styleColumns.clear();
             if (inStyles)
                 styleNameColumn = -1;
             inProjectProperties = trimmed.compare(
@@ -150,9 +155,11 @@ Document Document::parse(const QByteArray &contents, QString *error)
         // exposes names for the editor and never normalizes or rewrites them.
         if (inStyles && trimmed.startsWith(QStringLiteral("Format:"), Qt::CaseInsensitive)) {
             const QStringView definition = QStringView(trimmed).mid(trimmed.indexOf(u':') + 1);
+            styleColumns.clear();
             styleNameColumn = -1;
             int columnIndex = 0;
             for (const QStringView column : definition.split(u',')) {
+                styleColumns.push_back(column.trimmed().toString().toLower());
                 if (column.trimmed().compare(QStringLiteral("Name"), Qt::CaseInsensitive) == 0)
                     styleNameColumn = columnIndex;
                 ++columnIndex;
@@ -160,23 +167,47 @@ Document Document::parse(const QByteArray &contents, QString *error)
         } else if (inStyles && styleNameColumn >= 0
             && trimmed.startsWith(QStringLiteral("Style:"), Qt::CaseInsensitive)) {
             const QStringView values = QStringView(trimmed).mid(trimmed.indexOf(u':') + 1);
-            qsizetype start = 0;
-            QString name;
-            for (int columnIndex = 0; columnIndex <= styleNameColumn; ++columnIndex) {
-                const qsizetype comma = values.indexOf(u',', start);
-                const qsizetype end = comma < 0 ? values.size() : comma;
-                if (columnIndex == styleNameColumn)
-                    name = values.mid(start, end - start).toString().trimmed();
-                if (columnIndex < styleNameColumn && comma < 0) {
-                    name.clear();
-                    break;
-                }
-                start = end + 1;
-            }
+            QStringList fields;
+            for (const QStringView field : values.split(u','))
+                fields.push_back(field.toString().trimmed());
+            const QString name = styleNameColumn < fields.size() ? fields[styleNameColumn] : QString{};
             const QString key = name.toCaseFolded();
             if (!name.isEmpty() && !seenStyles.contains(key)) {
                 seenStyles.insert(key);
                 document.m_styleNames.push_back(name);
+                Style style;
+                style.name = name;
+                const auto value = [&fields, &styleColumns](QStringView column, const QString &fallback = QString{}) -> QString {
+                    const int index = styleColumns.indexOf(column.toString().toLower());
+                    return index >= 0 && index < fields.size() ? fields[index] : fallback;
+                };
+                style.fontName = value(u"fontname", style.fontName);
+                bool numberOk = false;
+                const qreal fontSize = value(u"fontsize").toDouble(&numberOk);
+                if (numberOk && fontSize > 0.0) style.fontSize = fontSize;
+                const qreal scaleX = value(u"scalex").toDouble(&numberOk);
+                if (numberOk && scaleX > 0.0) style.scaleX = scaleX;
+                const qreal scaleY = value(u"scaley").toDouble(&numberOk);
+                if (numberOk && scaleY > 0.0) style.scaleY = scaleY;
+                const int alignment = value(u"alignment").toInt(&numberOk);
+                if (numberOk && alignment >= 1 && alignment <= 9) style.alignment = alignment;
+                style.marginLeft = std::max(0, value(u"marginl", QStringLiteral("10")).toInt());
+                style.marginRight = std::max(0, value(u"marginr", QStringLiteral("10")).toInt());
+                style.marginVertical = std::max(0, value(u"marginv", QStringLiteral("10")).toInt());
+                document.m_styles.insert(key, style);
+            }
+        }
+
+        if (inScriptInfo) {
+            const qsizetype colon = trimmed.indexOf(u':');
+            if (colon > 0) {
+                const QString key = trimmed.left(colon).trimmed().toLower();
+                bool ok = false;
+                const int value = trimmed.mid(colon + 1).trimmed().toInt(&ok);
+                if (ok && value > 0) {
+                    if (key == QStringLiteral("playresx")) document.m_projectProperties.playResX = value;
+                    else if (key == QStringLiteral("playresy")) document.m_projectProperties.playResY = value;
+                }
             }
         }
 
@@ -255,6 +286,16 @@ Document Document::parse(const QByteArray &contents, QString *error)
     if (error)
         error->clear();
     return document;
+}
+
+Document::Style Document::style(QStringView name) const
+{
+    const auto it = m_styles.constFind(name.toString().toCaseFolded());
+    if (it != m_styles.cend())
+        return it.value();
+    Style fallback;
+    fallback.name = name.toString();
+    return fallback;
 }
 
 QByteArray Document::serialize() const

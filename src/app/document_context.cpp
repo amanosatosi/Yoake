@@ -5,6 +5,8 @@
 #include "media/media_session.h"
 #include "models/subtitle_model.h"
 #include "renderer/mangetsu_session.h"
+#include "ui/video_viewport.h"
+#include "ui/visual_tool_manager.h"
 
 #include <QtConcurrent/QtConcurrentRun>
 #include <QtCore/QFileInfo>
@@ -197,6 +199,13 @@ DocumentContext::DocumentContext(ass::Document document, QUrl fileUrl, QObject *
       m_karaoke(new timing::KaraokeSession(this)),
       m_renderer(std::make_shared<renderer::MangetsuSession>())
 {
+    m_videoViewport = new ui::VideoViewport(this);
+    const auto &scriptInfo = m_document.projectProperties();
+    m_videoViewport->setScriptSize(QSizeF(scriptInfo.playResX, scriptInfo.playResY));
+    m_visualTools = new ui::VisualToolManager(this, m_videoViewport, this);
+    connect(m_media, &media::MediaSession::metadataChanged, this, [this] {
+        m_videoViewport->setVideoSize(QSizeF(m_media->sourceWidth(), m_media->sourceHeight()));
+    });
     connect(&m_undo, &QUndoStack::canUndoChanged, this, &DocumentContext::commandStateChanged);
     connect(&m_undo, &QUndoStack::canRedoChanged, this, &DocumentContext::commandStateChanged);
     connect(&m_undo, &QUndoStack::undoTextChanged, this, &DocumentContext::commandStateChanged);
@@ -279,6 +288,12 @@ const ass::Event *DocumentContext::activeEvent() const
     return m_lines->activeEvent();
 }
 
+ass::Event DocumentContext::activeEventSnapshot() const
+{
+    const ass::Event *event = activeEvent();
+    return event ? *event : ass::Event{};
+}
+
 QString DocumentContext::activeText() const { const auto *e = activeEvent(); return e ? e->text : QString{}; }
 qint64 DocumentContext::activeStartMs() const { const auto *e = activeEvent(); return e ? e->startMs : 0; }
 qint64 DocumentContext::activeEndMs() const { const auto *e = activeEvent(); return e ? e->endMs : 0; }
@@ -359,6 +374,10 @@ void DocumentContext::loadLinkedMedia()
 
 void DocumentContext::undo()
 {
+    if (!m_visualEditId.isNull()) {
+        cancelVisualTextEdit();
+        return;
+    }
     if (m_karaoke->active() || !m_undo.canUndo())
         return;
     ++m_mergeEpoch;
@@ -367,6 +386,10 @@ void DocumentContext::undo()
 
 void DocumentContext::redo()
 {
+    if (!m_visualEditId.isNull()) {
+        cancelVisualTextEdit();
+        return;
+    }
     if (m_karaoke->active() || !m_undo.canRedo())
         return;
     ++m_mergeEpoch;
@@ -375,6 +398,8 @@ void DocumentContext::redo()
 
 void DocumentContext::editEvent(const QUuid &id, int role, const QVariant &value)
 {
+    if (!m_visualEditId.isNull())
+        cancelVisualTextEdit();
     if (m_karaoke->active())
         return;
     const int row = m_document.eventIndex(id);
@@ -410,6 +435,65 @@ void DocumentContext::editEvent(const QUuid &id, int role, const QVariant &value
         selection, selection, descriptions.value(role, tr("Edit subtitle line"))));
 }
 
+bool DocumentContext::beginVisualTextEdit(const QString &eventId)
+{
+    if (m_karaoke->active() || m_saving || !m_visualEditId.isNull())
+        return false;
+    const QUuid id(eventId);
+    const int row = m_document.eventIndex(id);
+    const ass::Event *active = activeEvent();
+    if (row < 0 || !active || id != active->id)
+        return false;
+    m_visualEditId = id;
+    m_visualEditBefore = m_document.events().at(row).text;
+    m_visualEditCurrent = m_visualEditBefore;
+    ++m_mergeEpoch;
+    return true;
+}
+
+void DocumentContext::previewVisualTextEdit(const QString &text)
+{
+    if (m_visualEditId.isNull() || text == m_visualEditCurrent)
+        return;
+    if (m_document.eventIndex(m_visualEditId) < 0) {
+        cancelVisualTextEdit();
+        return;
+    }
+    m_visualEditCurrent = text;
+    m_lines->applyField(m_visualEditId, models::SubtitleModel::TextRole, text);
+    emit rendererRevisionChanged(++m_rendererRevision);
+}
+
+void DocumentContext::commitVisualTextEdit()
+{
+    if (m_visualEditId.isNull())
+        return;
+    const QUuid id = std::exchange(m_visualEditId, QUuid{});
+    const QString before = std::exchange(m_visualEditBefore, QString{});
+    const QString after = std::exchange(m_visualEditCurrent, QString{});
+    if (before != after && m_document.eventIndex(id) >= 0) {
+        const auto selection = m_lines->selectionSnapshot();
+        ++m_mergeEpoch;
+        m_undo.push(new EditEventCommand(this, id, models::SubtitleModel::TextRole,
+            before, after, selection, selection, tr("Visual subtitle edit")));
+        ++m_mergeEpoch;
+    }
+}
+
+void DocumentContext::cancelVisualTextEdit()
+{
+    if (m_visualEditId.isNull())
+        return;
+    const QUuid id = std::exchange(m_visualEditId, QUuid{});
+    const QString before = std::exchange(m_visualEditBefore, QString{});
+    const QString current = std::exchange(m_visualEditCurrent, QString{});
+    if (current != before && m_document.eventIndex(id) >= 0) {
+        m_lines->applyField(id, models::SubtitleModel::TextRole, before);
+        emit rendererRevisionChanged(++m_rendererRevision);
+    }
+    ++m_mergeEpoch;
+}
+
 void DocumentContext::commitKaraokeText(const QString &value)
 {
     const ass::Event *event = activeEvent();
@@ -426,6 +510,8 @@ void DocumentContext::replaceEvents(QVector<ass::Event> events,
     const QString &description, const QUuid &preferredActive,
     const QVector<QUuid> &preferredSelection)
 {
+    if (!m_visualEditId.isNull())
+        cancelVisualTextEdit();
     if (events == m_document.events())
         return;
     auto beforeSelection = m_lines->selectionSnapshot();
@@ -936,6 +1022,8 @@ void DocumentContext::save(const QUrl &target)
 {
     if (m_saving)
         return;
+    if (!m_visualEditId.isNull())
+        commitVisualTextEdit();
     const QUrl destination = target.isEmpty() ? m_fileUrl : target;
     if (!destination.isLocalFile()) {
         emit savePathRequired();

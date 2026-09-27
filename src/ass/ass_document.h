@@ -5,6 +5,7 @@
 #include <QtCore/QByteArray>
 #include <QtCore/QString>
 #include <QtCore/QStringList>
+#include <QtCore/QHash>
 #include <QtCore/QVector>
 
 namespace yoake::ass {
@@ -17,6 +18,20 @@ public:
         int videoPosition = 0;
         int activeRow = 0;
         int scrollPosition = 0;
+        int playResX = 1920;
+        int playResY = 1080;
+    };
+
+    struct Style {
+        QString name;
+        QString fontName = QStringLiteral("Arial");
+        qreal fontSize = 48.0;
+        qreal scaleX = 100.0;
+        qreal scaleY = 100.0;
+        int alignment = 2;
+        int marginLeft = 10;
+        int marginRight = 10;
+        int marginVertical = 10;
     };
 
     struct Record {
@@ -34,12 +49,14 @@ public:
     [[nodiscard]] QVector<Event> &events() noexcept { return m_events; }
     [[nodiscard]] const QStringList &styleNames() const noexcept { return m_styleNames; }
     [[nodiscard]] const ProjectProperties &projectProperties() const noexcept { return m_projectProperties; }
+    [[nodiscard]] Style style(QStringView name) const;
     [[nodiscard]] int eventIndex(const QUuid &id) const noexcept;
 
 private:
     QVector<Record> m_records;
     QVector<Event> m_events;
     QStringList m_styleNames;
+    QHash<QString, Style> m_styles;
     ProjectProperties m_projectProperties;
     int m_eventOutputRecord = -1;
 };

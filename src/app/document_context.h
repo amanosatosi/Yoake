@@ -7,6 +7,7 @@
 
 #include <QtCore/QObject>
 #include <QtCore/QStringList>
+#include <QtCore/QStringView>
 #include <QtCore/QUrl>
 #include <QtCore/QVariant>
 #include <QtGui/QUndoStack>
@@ -14,6 +15,7 @@
 #include <memory>
 
 namespace yoake::renderer { class MangetsuSession; }
+namespace yoake::ui { class VideoViewport; class VisualToolManager; }
 
 namespace yoake::app {
 
@@ -32,6 +34,8 @@ class DocumentContext final : public QObject {
     Q_PROPERTY(QString redoText READ redoText NOTIFY commandStateChanged)
     Q_PROPERTY(yoake::models::SubtitleModel *lines READ lines CONSTANT)
     Q_PROPERTY(yoake::media::MediaSession *media READ media CONSTANT)
+    Q_PROPERTY(yoake::ui::VideoViewport *videoViewport READ videoViewport CONSTANT)
+    Q_PROPERTY(yoake::ui::VisualToolManager *visualTools READ visualTools CONSTANT)
     Q_PROPERTY(yoake::timing::KaraokeSession *karaoke READ karaoke CONSTANT)
     Q_PROPERTY(QString activeText READ activeText WRITE setActiveText NOTIFY activeLineChanged)
     Q_PROPERTY(qint64 activeStartMs READ activeStartMs WRITE setActiveStartMs NOTIFY activeLineChanged)
@@ -70,9 +74,14 @@ public:
     [[nodiscard]] QString redoText() const { return m_undo.redoText(); }
     [[nodiscard]] models::SubtitleModel *lines() const { return m_lines; }
     [[nodiscard]] media::MediaSession *media() const { return m_media; }
+    [[nodiscard]] ui::VideoViewport *videoViewport() const { return m_videoViewport; }
+    [[nodiscard]] ui::VisualToolManager *visualTools() const { return m_visualTools; }
     [[nodiscard]] timing::KaraokeSession *karaoke() const { return m_karaoke; }
 
     [[nodiscard]] QString activeText() const;
+    [[nodiscard]] ass::Event activeEventSnapshot() const;
+    [[nodiscard]] ass::Document::ProjectProperties projectProperties() const { return m_document.projectProperties(); }
+    [[nodiscard]] ass::Document::Style styleForName(const QString &name) const { return m_document.style(QStringView(name)); }
     [[nodiscard]] qint64 activeStartMs() const;
     [[nodiscard]] qint64 activeEndMs() const;
     [[nodiscard]] QString activeStyle() const;
@@ -132,6 +141,10 @@ public:
     Q_INVOKABLE void save(const QUrl &target = {});
 
     void editEvent(const QUuid &id, int role, const QVariant &value);
+    Q_INVOKABLE bool beginVisualTextEdit(const QString &eventId);
+    Q_INVOKABLE void previewVisualTextEdit(const QString &text);
+    Q_INVOKABLE void commitVisualTextEdit();
+    Q_INVOKABLE void cancelVisualTextEdit();
     void commitKaraokeText(const QString &value);
     [[nodiscard]] QByteArray rendererSnapshot() const { return m_document.serialize(); }
     [[nodiscard]] std::shared_ptr<renderer::MangetsuSession> rendererSession() const { return m_renderer; }
@@ -171,6 +184,8 @@ private:
     QUrl m_fileUrl;
     models::SubtitleModel *m_lines = nullptr;
     media::MediaSession *m_media = nullptr;
+    ui::VideoViewport *m_videoViewport = nullptr;
+    ui::VisualToolManager *m_visualTools = nullptr;
     timing::KaraokeSession *m_karaoke = nullptr;
     std::shared_ptr<renderer::MangetsuSession> m_renderer;
     QUndoStack m_undo;
@@ -186,6 +201,9 @@ private:
     int m_findMatchStart = -1;
     int m_findMatchLength = 0;
     bool m_saving = false;
+    QUuid m_visualEditId;
+    QString m_visualEditBefore;
+    QString m_visualEditCurrent;
 };
 
 } // namespace yoake::app

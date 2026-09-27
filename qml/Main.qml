@@ -152,6 +152,14 @@ ApplicationWindow {
         }
         Menu {
             title: qsTr("&View")
+            Action {
+                objectName: "video.resetView"
+                text: qsTr("Reset Video View")
+                shortcut: "Ctrl+Shift+0"
+                enabled: Documents.currentDocument !== null
+                onTriggered: Documents.currentDocument.videoViewport.resetView()
+            }
+            MenuSeparator { }
             Menu {
                 title: qsTr("Theme")
                 Repeater {
