@@ -305,7 +305,7 @@ if(BUILD_TESTING)
     else()
         target_compile_options(yoake_editing_tests PRIVATE -Wall -Wextra -Wpedantic)
     endif()
-    add_test(NAME yoake_editing_tests COMMAND yoake_editing_tests)
+    add_test(NAME yoake_editing_tests COMMAND yoake_editing_tests -v2)
     set_tests_properties(yoake_editing_tests PROPERTIES ENVIRONMENT_MODIFICATION
         "PATH=path_list_prepend:${FFMS2_RUNTIME_DIR};PATH=path_list_prepend:${FFMPEG_RUNTIME_DIR}"
     )
