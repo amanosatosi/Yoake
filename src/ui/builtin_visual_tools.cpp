@@ -765,6 +765,8 @@ QString RectClipTool::roleForPointer(const QVariantList &features, const QString
     const auto clip = ass::VisualTags::clip(activeText());
     if (clip && !clip->rectangle)
         return {};
+    if (!featureId.isEmpty())
+        return feature(features, featureId).value(QStringLiteral("role")).toString();
     for (const QVariant &entry : features) {
         const QVariantMap item = entry.toMap();
         if (item.value(QStringLiteral("id")).toString() == QStringLiteral("clip-bounds")
@@ -772,9 +774,7 @@ QString RectClipTool::roleForPointer(const QVariantList &features, const QString
                       item.value(QStringLiteral("width")).toReal(), item.value(QStringLiteral("height")).toReal()).contains(point))
             return QStringLiteral("clip-body");
     }
-    if (featureId.isEmpty())
-        return QStringLiteral("clip-create");
-    return feature(features, featureId).value(QStringLiteral("role")).toString();
+    return QStringLiteral("clip-create");
 }
 
 QPointF RectClipTool::handleForPointer(const QVariantList &features, const QString &featureId,

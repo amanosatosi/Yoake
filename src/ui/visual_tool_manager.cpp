@@ -22,8 +22,13 @@ VisualToolManager::VisualToolManager(app::DocumentContext *document, VideoViewpo
     registerGeometryShiftTool(*this);
 
     if (m_document) {
+        m_activeLineId = m_document->lines()->activeId();
         connect(m_document, &app::DocumentContext::activeLineChanged, this, [this] {
-            if (const auto active = activeTool()) active->activeLineChanged();
+            const QString activeLineId = m_document ? m_document->lines()->activeId() : QString{};
+            if (activeLineId != m_activeLineId) {
+                m_activeLineId = activeLineId;
+                if (const auto active = activeTool()) active->activeLineChanged();
+            }
             emit contextOptionsChanged();
             rebuildOverlay();
         });

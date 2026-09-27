@@ -754,6 +754,7 @@ void DocumentEditingTest::visualScaleUsesScreenHandleAfterZoomAndPan()
 {
     auto context = makeContext();
     context->setActiveText(QStringLiteral("Scale"));
+    const QString setupUndoText = context->undoText();
     auto *viewport = context->videoViewport();
     viewport->setViewportSize(QSizeF(960, 540));
     viewport->setVideoSize(QSizeF(1920, 1080));
@@ -779,6 +780,7 @@ void DocumentEditingTest::visualScaleUsesScreenHandleAfterZoomAndPan()
     QVERIFY(yoake::ass::VisualTags::number(context->activeText(), u"fscx").value() > 100.0);
     context->undo();
     QCOMPARE(context->activeText(), QStringLiteral("Scale"));
+    QCOMPARE(context->undoText(), setupUndoText);
 
     context->visualTools()->setOption(QStringLiteral("x"));
     QPointF heightHandle;
@@ -788,11 +790,13 @@ void DocumentEditingTest::visualScaleUsesScreenHandleAfterZoomAndPan()
             heightHandle = QPointF(feature.value(QStringLiteral("x")).toReal(), feature.value(QStringLiteral("y")).toReal());
     }
     QVERIFY(viewport->displayedVideoRect().contains(heightHandle));
+    const QString textBeforeIgnoredAxisDrag = context->activeText();
+    const QString undoTextBeforeIgnoredAxisDrag = context->undoText();
     context->visualTools()->pointerDown(heightHandle.x(), heightHandle.y(), Qt::LeftButton, 0);
     context->visualTools()->pointerMove(heightHandle.x(), heightHandle.y() - 20, Qt::LeftButton, 0);
     context->visualTools()->pointerUp(heightHandle.x(), heightHandle.y() - 20, Qt::LeftButton, 0);
-    QVERIFY(!yoake::ass::VisualTags::number(context->activeText(), u"fscy"));
-    QVERIFY(!context->canUndo());
+    QCOMPARE(context->activeText(), textBeforeIgnoredAxisDrag);
+    QCOMPARE(context->undoText(), undoTextBeforeIgnoredAxisDrag);
 
     context->visualTools()->setOption(QStringLiteral("y"));
     for (const QVariant &entry : context->visualTools()->overlayFeatures()) {
@@ -1121,7 +1125,9 @@ void DocumentEditingTest::visualShiftMovesSelectedEventsAsOneUndoableTransaction
     viewport->setVideoSize(QSizeF(1920, 1080));
     viewport->setScriptSize(QSizeF(1920, 1080));
     context->visualTools()->setActiveToolId(QStringLiteral("shift"));
-    const QPointF start = viewport->scriptToScreen(QPointF(400, 300));
+    // The active second line has a move tag, so the overlay handle is its
+    // effective position at the current frame (the move's start point).
+    const QPointF start = viewport->scriptToScreen(QPointF(110, 120));
     const QPointF end = start + QPointF(15, -10); // 30,-20 script pixels at this fit scale.
     context->visualTools()->pointerDown(start.x(), start.y(), Qt::LeftButton, 0);
     for (int step = 1; step <= 20; ++step) {
@@ -1240,6 +1246,7 @@ void DocumentEditingTest::managerDragMovesProduceOneUndoAndEscapeRestoresExactTe
     auto context = makeContext();
     const QString original = QStringLiteral("{\\blur1\\pos(500,400)}Visual");
     context->setActiveText(original);
+    const QString setupUndoText = context->undoText();
     auto *viewport = context->videoViewport();
     viewport->setViewportSize(QSizeF(960, 540));
     viewport->setVideoSize(QSizeF(1920, 1080));
@@ -1255,13 +1262,13 @@ void DocumentEditingTest::managerDragMovesProduceOneUndoAndEscapeRestoresExactTe
     QCOMPARE(context->undoText(), QStringLiteral("Visual subtitle edit"));
     context->undo();
     QCOMPARE(context->activeText(), original);
-    QVERIFY(!context->canUndo());
+    QCOMPARE(context->undoText(), setupUndoText);
 
     context->visualTools()->pointerDown(start.x(), start.y(), Qt::LeftButton, 0);
     context->visualTools()->pointerMove(start.x() + 25, start.y() + 10, Qt::LeftButton, 0);
     context->visualTools()->keyDown(Qt::Key_Escape, 0);
     QCOMPARE(context->activeText(), original);
-    QVERIFY(!context->canUndo());
+    QCOMPARE(context->undoText(), setupUndoText);
 }
 
 void DocumentEditingTest::rectangularClipInvertIsOneLosslessEdit()

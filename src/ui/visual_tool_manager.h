@@ -60,6 +60,7 @@ private:
     mutable QHash<QString, std::shared_ptr<VisualTool>> m_instances;
     QVariantList m_tools;
     QVariantList m_features;
+    QString m_activeLineId;
     QString m_activeToolId{QStringLiteral("position")};
     QString m_coordinateLabel;
 };
