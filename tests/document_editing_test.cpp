@@ -883,7 +883,7 @@ void DocumentEditingTest::visualBezierControlsAndEndpointDragIndependently()
     viewport->panBy(QPointF(20, -10));
     context->visualTools()->setActiveToolId(QStringLiteral("vector-clip"));
 
-    const auto featurePoint = [context](const QString &id) {
+    const auto featurePoint = [&context](const QString &id) {
         for (const QVariant &entry : context->visualTools()->overlayFeatures()) {
             const QVariantMap feature = entry.toMap();
             if (feature.value(QStringLiteral("id")).toString() == id)
@@ -953,7 +953,7 @@ void DocumentEditingTest::vectorNodesSupportControlToggleGroupDragAndSafeDelete(
     viewport->setViewportSize(QSizeF(960, 540));
     viewport->setVideoSize(QSizeF(1920, 1080));
     context->visualTools()->setActiveToolId(QStringLiteral("vector-clip"));
-    const auto featurePoint = [context](const QString &id) {
+    const auto featurePoint = [&context](const QString &id) {
         for (const QVariant &entry : context->visualTools()->overlayFeatures()) {
             const QVariantMap feature = entry.toMap();
             if (feature.value(QStringLiteral("id")).toString() == id)

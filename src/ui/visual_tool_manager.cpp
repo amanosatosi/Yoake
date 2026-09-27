@@ -1417,7 +1417,10 @@ void VisualToolManager::appendVectorPoint(const QPointF &scriptPoint, bool bezie
                 emit contextOptionsChanged();
                 return;
             }
-            path->appendCubic(m_bezierPoints[0], m_bezierPoints[1], m_bezierPoints[2]);
+            if (!path->appendCubic(m_bezierPoints[0], m_bezierPoints[1], m_bezierPoints[2])) {
+                m_bezierPoints.clear();
+                return;
+            }
             m_bezierPoints.clear();
         }
     } else if (!path) {
@@ -1477,8 +1480,8 @@ void VisualToolManager::appendVectorPoint(const QPointF &scriptPoint, bool bezie
             inserted = path->insertOnSegment(nearestSegment, nearestT);
         if (insert && !inserted)
             return;
-        if (!inserted)
-            path->appendLine(pathPoint);
+        if (!inserted && !path->appendLine(pathPoint))
+            return;
     }
 
     const QString updated = isDrawing

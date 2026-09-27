@@ -80,13 +80,13 @@ QVector<Token> overrideTokens(const QString &text)
             token.end = nextSlash;
             token.rawValue = text.mid(nameEnd, nextSlash - nameEnd);
             if (open < nextSlash && text.at(open) == u'(') {
-                int depth = 1;
+                int argumentDepth = 1;
                 qsizetype close = open + 1;
-                for (; close < nextSlash && depth > 0; ++close) {
-                    if (text.at(close) == u'(') ++depth;
-                    else if (text.at(close) == u')') --depth;
+                for (; close < nextSlash && argumentDepth > 0; ++close) {
+                    if (text.at(close) == u'(') ++argumentDepth;
+                    else if (text.at(close) == u')') --argumentDepth;
                 }
-                if (depth == 0) {
+                if (argumentDepth == 0) {
                     token.hasArguments = true;
                     token.arguments = text.mid(open + 1, close - open - 2);
                 }
@@ -228,17 +228,17 @@ std::optional<Clip> clip(const QString &text)
     result.inverse = token->name == QStringLiteral("iclip");
     result.rawArguments = token->arguments;
     QString args = token->arguments.trimmed();
-    const auto parseRectangle = [](const QString &value) -> std::optional<QRectF> {
-        const QStringList fields = value.split(u',', Qt::KeepEmptyParts);
+    const auto parseRectangle = [](const QString &arguments) -> std::optional<QRectF> {
+        const QStringList fields = arguments.split(u',', Qt::KeepEmptyParts);
         if (fields.size() != 4)
             return {};
         QVector<qreal> values;
         for (const QString &field : fields) {
             bool ok = false;
-            const qreal value = QLocale::c().toDouble(field.trimmed(), &ok);
-            if (!ok || !std::isfinite(value))
+            const qreal coordinate = QLocale::c().toDouble(field.trimmed(), &ok);
+            if (!ok || !std::isfinite(coordinate))
                 return {};
-            values.push_back(value);
+            values.push_back(coordinate);
         }
         return QRectF(QPointF(values[0], values[1]), QPointF(values[2], values[3])).normalized();
     };
