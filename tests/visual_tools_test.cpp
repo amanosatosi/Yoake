@@ -1,5 +1,6 @@
 #include "ass/ass_document.h"
 #include "ass/visual_tags.h"
+#include "ass/vector_path.h"
 #include "ui/video_viewport.h"
 #include "ui/visual_snap_service.h"
 
@@ -21,6 +22,8 @@ private slots:
     void escapedBracesDoNotExposeLiteralTags();
     void moveEditPreservesExplicitTimes();
     void clipRoundTripsRectInverseAndVectorScale();
+    void rectangularClipWinsOverAmbiguousScalePrefix();
+    void structuredVectorPathEditsPreserveCommandStructure();
     void drawingPathEditingPreservesSurroundingText();
     void scriptAndStyleGeometryAreReadWithoutNormalizingSource();
 };
@@ -184,6 +187,85 @@ void VisualToolsTest::clipRoundTripsRectInverseAndVectorScale()
     QCOMPARE(parsedVector->path, QStringLiteral("m 100 100 l 500 100 500 300"));
     const QString vectorOut = yoake::ass::VisualTags::setClip(vector, *parsedVector);
     QVERIFY(vectorOut.contains(QStringLiteral("\\clip(2,m 100 100 l 500 100 500 300)")));
+}
+
+void VisualToolsTest::rectangularClipWinsOverAmbiguousScalePrefix()
+{
+    const QVector<QPair<QString, QRectF>> rectangles{
+        {QStringLiteral("{\\clip(1,2,300,400)}\\blur1Text"), QRectF(1, 2, 299, 398)},
+        {QStringLiteral("{\\clip(10,20,300,400)}\\blur1Text"), QRectF(10, 20, 290, 380)},
+        {QStringLiteral("{\\clip(100,200,500,600)}\\pgrd(0,0,10,10,45)Text"), QRectF(100, 200, 400, 400)},
+        {QStringLiteral("{\\iclip(100,200,500,600)}Text"), QRectF(100, 200, 400, 400)},
+    };
+    for (const auto &[source, expected] : rectangles) {
+        const auto parsed = yoake::ass::VisualTags::clip(source);
+        QVERIFY(parsed && parsed->rectangle);
+        QCOMPARE(parsed->bounds, expected);
+        QCOMPARE(yoake::ass::VisualTags::clip(yoake::ass::VisualTags::setClip(source, *parsed))->bounds, expected);
+        const QString rewritten = yoake::ass::VisualTags::setClip(source, *parsed);
+        QVERIFY(rewritten.contains(QStringLiteral("\\blur1")) || !source.contains(QStringLiteral("\\blur1")));
+        QVERIFY(rewritten.contains(QStringLiteral("\\pgrd(0,0,10,10,45)")) || !source.contains(QStringLiteral("\\pgrd")));
+    }
+
+    for (const QString &source : {
+             QStringLiteral("{\\clip(m 0 0 l 100 0 100 100)}Text"),
+             QStringLiteral("{\\clip(2,m 0 0 l 100 0 100 100)}Text")}) {
+        const auto parsed = yoake::ass::VisualTags::clip(source);
+        QVERIFY(parsed && !parsed->rectangle && parsed->pathEditable);
+        QCOMPARE(parsed->drawingScale, source.contains(QStringLiteral("(2,")) ? 2 : 1);
+        QCOMPARE(yoake::ass::VisualTags::clip(yoake::ass::VisualTags::setClip(source, *parsed))->path, parsed->path);
+    }
+    const auto inverse = yoake::ass::VisualTags::clip(QStringLiteral("{\\iclip(100,200,500,600)}Text"));
+    QVERIFY(inverse && inverse->inverse && inverse->rectangle);
+
+    const QString unsupported = QStringLiteral("{\\clip( 2, m 0 0 s 10 10 20 20 )\\blur2}Text");
+    auto readOnly = yoake::ass::VisualTags::clip(unsupported);
+    QVERIFY(readOnly && !readOnly->rectangle && !readOnly->pathEditable);
+    readOnly->inverse = true;
+    const QString toggled = yoake::ass::VisualTags::setClip(unsupported, *readOnly);
+    QVERIFY(toggled.contains(QStringLiteral("\\iclip( 2, m 0 0 s 10 10 20 20 )")));
+    QVERIFY(toggled.contains(QStringLiteral("\\blur2")));
+}
+
+void VisualToolsTest::structuredVectorPathEditsPreserveCommandStructure()
+{
+    auto parsed = yoake::ass::VectorPath::parse(QStringLiteral("m 0 0 l 100 0 b 110 0 120 100 100 100"), 2);
+    QVERIFY(parsed && parsed->editable());
+    QCOMPARE(parsed->drawingScale(), 2);
+    QCOMPARE(parsed->nodeCount(), 5);
+    QVERIFY(parsed->setNode(2, QPointF(115, 10)));
+    QVERIFY(parsed->translateNodes(QSet<int>{0, 4}, QPointF(5, -5)));
+    QCOMPARE(parsed->node(0), QPointF(5, -5));
+    QCOMPARE(parsed->node(2), QPointF(115, 10));
+    QVERIFY(parsed->insertOnSegment(1, 0.5));
+    QVERIFY(parsed->commands().at(1).kind == yoake::ass::VectorPath::Kind::Line);
+    QVERIFY(parsed->commands().at(2).kind == yoake::ass::VectorPath::Kind::Line);
+    QVERIFY(parsed->convertSegmentToCubic(1));
+    QVERIFY(parsed->convertSegmentToLine(1));
+
+    auto cubic = yoake::ass::VectorPath::parse(QStringLiteral("m 0 0 b 10 0 20 10 30 10"));
+    QVERIFY(cubic && cubic->editable());
+    QVERIFY(cubic->deleteNodes(QSet<int>{1})); // Deleting a control converts the segment to a line.
+    QCOMPARE(cubic->commands().size(), 2);
+    QVERIFY(cubic->commands().at(1).kind == yoake::ass::VectorPath::Kind::Line);
+    QCOMPARE(cubic->node(1), QPointF(30, 10));
+    const QString serialized = cubic->serialize();
+    QVERIFY(yoake::ass::VectorPath::parse(serialized)->editable());
+
+    const auto subpaths = yoake::ass::VectorPath::parse(
+        QStringLiteral("m 0 0 l 10 10 n 20 20 30 30 m 40 40 l 50 50"));
+    QVERIFY(subpaths && subpaths->editable());
+    QCOMPARE(subpaths->commands().size(), 6);
+    QVERIFY(subpaths->commands().at(0).kind == yoake::ass::VectorPath::Kind::Move);
+    QVERIFY(subpaths->commands().at(2).kind == yoake::ass::VectorPath::Kind::Move);
+    QVERIFY(subpaths->commands().at(4).kind == yoake::ass::VectorPath::Kind::Move);
+    QCOMPARE(subpaths->commands().at(2).moveCommand, QChar(u'n'));
+
+    const QString unsupported = QStringLiteral("m 0 0 s 10 10 20 20 p 30 30 c");
+    const auto readOnly = yoake::ass::VectorPath::parse(unsupported);
+    QVERIFY(readOnly && !readOnly->editable());
+    QCOMPARE(readOnly->serialize(), unsupported);
+    QVERIFY(!yoake::ass::VectorPath::parse(QStringLiteral("m 0 0 b 1 2 3")));
 }
 
 void VisualToolsTest::drawingPathEditingPreservesSurroundingText()

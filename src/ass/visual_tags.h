@@ -19,13 +19,19 @@ struct Move {
 struct Clip {
     bool inverse = false;
     bool rectangle = false;
+    // False for recognized or malformed vector syntax that the editor cannot
+    // safely rewrite. The raw path remains available for lossless preservation.
+    bool pathEditable = false;
     int drawingScale = 1;
     QRectF bounds;
     QString path;
+    QString rawArguments;
+    QString rawPath;
 };
 
 struct Drawing {
     int drawingScale = 1;
+    bool pathEditable = false;
     QString path;
     qsizetype pathStart = 0;
     qsizetype pathLength = 0;

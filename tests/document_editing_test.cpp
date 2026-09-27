@@ -1,8 +1,10 @@
 #include "app/document_context.h"
 #include "ass/ass_document.h"
 #include "ass/visual_tags.h"
+#include "ass/vector_path.h"
 #include "models/subtitle_model.h"
 #include "ui/video_viewport.h"
+#include "ui/visual_tool.h"
 #include "ui/visual_tool_manager.h"
 
 #include <QtCore/QTemporaryDir>
@@ -16,6 +18,7 @@
 #include <cmath>
 
 #include <memory>
+#include <tuple>
 
 using yoake::app::DocumentContext;
 using yoake::ass::Document;
@@ -82,6 +85,30 @@ void selectRange(SubtitleModel *model, int first, int last)
     model->selectRow(last, false, true);
 }
 
+struct ToolProbe {
+    int factoryCalls = 0;
+    int activations = 0;
+    int pointerDowns = 0;
+    int deactivations = 0;
+};
+
+class RecordingVisualTool final : public yoake::ui::VisualTool {
+public:
+    explicit RecordingVisualTool(std::shared_ptr<ToolProbe> probe) : m_probe(std::move(probe)) {}
+    QVariantMap descriptor() const override { return {{QStringLiteral("id"), QStringLiteral("probe")}}; }
+    QVariantList renderOverlay() const override
+    {
+        return {QVariantMap{{QStringLiteral("id"), QStringLiteral("probe-overlay")},
+            {QStringLiteral("kind"), QStringLiteral("label")}, {QStringLiteral("label"), QStringLiteral("probe")}}};
+    }
+    void activate() override { ++m_probe->activations; }
+    void deactivate() override { ++m_probe->deactivations; }
+    void pointerDown(const QPointF &, int) override { ++m_probe->pointerDowns; }
+
+private:
+    std::shared_ptr<ToolProbe> m_probe;
+};
+
 } // namespace
 
 class DocumentEditingTest final : public QObject {
@@ -112,9 +139,18 @@ private slots:
     void visualMoveEndpointUsesSharedTransformAndKeepsTimes();
     void visualRotationToolsEditTheirTags();
     void visualScaleUsesScreenHandleAfterZoomAndPan();
+    void visualScaleRectangleAcceptsReverseDrags();
+    void viewportNavigationDoesNotChangeDocumentBytes();
     void visualRectClipResizeUsesSharedTransform();
     void visualVectorClipNodeUsesSharedTransform();
+    void visualBezierControlsAndEndpointDragIndependently();
+    void vectorNodesSupportControlToggleGroupDragAndSafeDelete();
+    void visualVectorSegmentsConvertAndInsertOnCurves();
     void visualShiftMovesDefaultPositionAndSelectedOrigin();
+    void visualShiftMovesSelectedEventsAsOneUndoableTransaction();
+    void customVisualToolFactoryOwnsDispatchOverlayAndLifecycle();
+    void alignmentKeepsPositionedTextVisuallyStationary();
+    void unsupportedVectorSyntaxCannotBeOverwrittenByVisualTools();
     void visualClipCreationUsesSharedTransform();
     void visualDrawingNodeEditUsesLineAnchorAndUndo();
 };
@@ -743,9 +779,76 @@ void DocumentEditingTest::visualRectClipResizeUsesSharedTransform()
     context->visualTools()->pointerDown(handle.x(), handle.y(), Qt::LeftButton, 0);
     context->visualTools()->pointerMove(handle.x() + 30, handle.y() - 15, Qt::LeftButton, 0);
     context->visualTools()->pointerUp(handle.x() + 30, handle.y() - 15, Qt::LeftButton, 0);
-    QCOMPARE(yoake::ass::VisualTags::clip(context->activeText())->bounds, QRectF(100, 100, 524, 288));
+    const QRectF resized = yoake::ass::VisualTags::clip(context->activeText())->bounds;
+    QCOMPARE(resized.left(), 100.0);
+    QCOMPARE(resized.top(), 100.0);
+    QCOMPARE(resized.right(), 524.0);
+    QCOMPARE(resized.bottom(), 288.0);
     context->undo();
     QCOMPARE(context->activeText(), QStringLiteral("{\\clip(100,100,500,300)}Clip"));
+}
+
+void DocumentEditingTest::visualScaleRectangleAcceptsReverseDrags()
+{
+    const QVector<QPair<QPointF, QPointF>> directions{
+        {QPointF(200, 200), QPointF(600, 400)},
+        {QPointF(600, 400), QPointF(200, 200)},
+        {QPointF(600, 200), QPointF(200, 400)},
+        {QPointF(200, 400), QPointF(600, 200)},
+    };
+    QVector<QPointF> scales;
+    for (const auto &[start, end] : directions) {
+        auto context = makeContext();
+        context->setActiveText(QStringLiteral("Fit"));
+        auto *viewport = context->videoViewport();
+        viewport->setViewportSize(QSizeF(960, 540));
+        viewport->setVideoSize(QSizeF(1920, 1080));
+        context->visualTools()->setActiveToolId(QStringLiteral("scale"));
+        context->visualTools()->setOption(QStringLiteral("fit-rect"));
+        const QPointF a = viewport->scriptToScreen(start);
+        const QPointF b = viewport->scriptToScreen(end);
+        context->visualTools()->pointerDown(a.x(), a.y(), Qt::LeftButton, 0);
+        context->visualTools()->pointerUp(b.x(), b.y(), Qt::LeftButton, 0);
+        scales.push_back(QPointF(
+            yoake::ass::VisualTags::number(context->activeText(), u"fscx").value(),
+            yoake::ass::VisualTags::number(context->activeText(), u"fscy").value()));
+    }
+    for (const QPointF scale : scales) {
+        QVERIFY(std::abs(scale.x() - scales.front().x()) < 0.01);
+        QVERIFY(std::abs(scale.y() - scales.front().y()) < 0.01);
+    }
+
+    auto tiny = makeContext();
+    tiny->setActiveText(QStringLiteral("Fit"));
+    auto *viewport = tiny->videoViewport();
+    viewport->setViewportSize(QSizeF(960, 540));
+    viewport->setVideoSize(QSizeF(1920, 1080));
+    tiny->visualTools()->setActiveToolId(QStringLiteral("scale"));
+    tiny->visualTools()->setOption(QStringLiteral("fit-rect"));
+    const QPointF point = viewport->scriptToScreen(QPointF(200, 200));
+    tiny->visualTools()->pointerDown(point.x(), point.y(), Qt::LeftButton, 0);
+    tiny->visualTools()->pointerUp(point.x() + 0.1, point.y() + 0.1, Qt::LeftButton, 0);
+    QCOMPARE(tiny->activeText(), QStringLiteral("Fit"));
+    QCOMPARE(yoake::ass::VisualTags::number(tiny->activeText(), u"fscx").has_value(), false);
+}
+
+void DocumentEditingTest::viewportNavigationDoesNotChangeDocumentBytes()
+{
+    auto context = makeContext();
+    const QByteArray before = context->rendererSnapshot();
+    auto *viewport = context->videoViewport();
+    viewport->setViewportSize(QSizeF(960, 540));
+    viewport->setVideoSize(QSizeF(1920, 1080));
+    viewport->setScriptSize(QSizeF(1280, 720));
+    viewport->zoomAt(QPointF(210, 180), 2.5);
+    viewport->panBy(QPointF(175, -96));
+    viewport->beginAnchoredZoom(QPointF(360, 250));
+    viewport->updateAnchoredZoom(QPointF(390, 275), 1.4);
+    viewport->endAnchoredZoom();
+    viewport->setViewportSize(QSizeF(1080, 720));
+    viewport->resetView();
+    QCOMPARE(context->rendererSnapshot(), before);
+    QCOMPARE(context->canUndo(), false);
 }
 
 void DocumentEditingTest::visualVectorClipNodeUsesSharedTransform()
@@ -766,6 +869,120 @@ void DocumentEditingTest::visualVectorClipNodeUsesSharedTransform()
     QVERIFY(yoake::ass::VisualTags::clip(context->activeText())->path.contains(QStringLiteral("524 288")));
     context->undo();
     QCOMPARE(context->activeText(), QStringLiteral("{\\clip(m 100 100 l 500 100 500 300)}Vector"));
+}
+
+void DocumentEditingTest::visualBezierControlsAndEndpointDragIndependently()
+{
+    auto context = makeContext();
+    const QString original = QStringLiteral("{\\clip(m 800 400 b 900 400 1000 500 1100 500)}Curve");
+    context->setActiveText(original);
+    auto *viewport = context->videoViewport();
+    viewport->setViewportSize(QSizeF(960, 540));
+    viewport->setVideoSize(QSizeF(1920, 1080));
+    viewport->zoomAt(QPointF(480, 270), 2.5);
+    viewport->panBy(QPointF(20, -10));
+    context->visualTools()->setActiveToolId(QStringLiteral("vector-clip"));
+
+    const auto featurePoint = [context](const QString &id) {
+        for (const QVariant &entry : context->visualTools()->overlayFeatures()) {
+            const QVariantMap feature = entry.toMap();
+            if (feature.value(QStringLiteral("id")).toString() == id)
+                return QPointF(feature.value(QStringLiteral("x")).toReal(), feature.value(QStringLiteral("y")).toReal());
+        }
+        return QPointF(-10000, -10000);
+    };
+    for (const auto &[nodeIndex, featureId, screenDelta] : QVector<std::tuple<int, QString, QPointF>>{
+             {1, QStringLiteral("vector-1"), QPointF(20, -10)},
+             {3, QStringLiteral("vector-3"), QPointF(-15, 10)}}) {
+        const auto before = yoake::ass::VectorPath::parse(yoake::ass::VisualTags::clip(context->activeText())->path);
+        const QPointF oldSelected = before->node(nodeIndex);
+        const QPointF oldControlA = before->node(1);
+        const QPointF oldControlB = before->node(2);
+        const QPointF oldEndpoint = before->node(3);
+        const QPointF handle = featurePoint(featureId);
+        QVERIFY(handle.x() >= 0 && handle.y() >= 0);
+        context->visualTools()->pointerDown(handle.x(), handle.y(), Qt::LeftButton, 0);
+        context->visualTools()->pointerMove(handle.x() + screenDelta.x(), handle.y() + screenDelta.y(), Qt::LeftButton, 0);
+        context->visualTools()->pointerUp(handle.x() + screenDelta.x(), handle.y() + screenDelta.y(), Qt::LeftButton, 0);
+        const auto after = yoake::ass::VectorPath::parse(yoake::ass::VisualTags::clip(context->activeText())->path);
+        QVERIFY(after.has_value());
+        QVERIFY(after->node(nodeIndex) != oldSelected);
+        if (nodeIndex != 1) QCOMPARE(after->node(1), oldControlA);
+        if (nodeIndex != 2) QCOMPARE(after->node(2), oldControlB);
+        if (nodeIndex != 3) QCOMPARE(after->node(3), oldEndpoint);
+        context->undo();
+        QCOMPARE(context->activeText(), original);
+    }
+}
+
+void DocumentEditingTest::visualVectorSegmentsConvertAndInsertOnCurves()
+{
+    auto context = makeContext();
+    context->setActiveText(QStringLiteral("{\\clip(m 800 400 l 1000 400 b 1020 400 1080 520 1100 540)}V"));
+    auto *viewport = context->videoViewport();
+    viewport->setViewportSize(QSizeF(960, 540));
+    viewport->setVideoSize(QSizeF(1920, 1080));
+    context->visualTools()->setActiveToolId(QStringLiteral("vector-clip"));
+
+    context->visualTools()->pointerMove(450, 200, 0, 0); // Middle of the first line.
+    context->visualTools()->setOption(QStringLiteral("line-to-bezier"));
+    auto path = yoake::ass::VectorPath::parse(yoake::ass::VisualTags::clip(context->activeText())->path);
+    QVERIFY(path && path->commands().at(1).kind == yoake::ass::VectorPath::Kind::Cubic);
+    context->visualTools()->setOption(QStringLiteral("bezier-to-line"));
+    path = yoake::ass::VectorPath::parse(yoake::ass::VisualTags::clip(context->activeText())->path);
+    QVERIFY(path && path->commands().at(1).kind == yoake::ass::VectorPath::Kind::Line);
+
+    context->visualTools()->setOption(QStringLiteral("insert"));
+    const QPointF curveScript(1050, 462.5);
+    const QPointF curveScreen = viewport->scriptToScreen(curveScript);
+    context->visualTools()->pointerDown(curveScreen.x(), curveScreen.y(), Qt::LeftButton, 0);
+    context->visualTools()->pointerUp(curveScreen.x(), curveScreen.y(), Qt::LeftButton, 0);
+    path = yoake::ass::VectorPath::parse(yoake::ass::VisualTags::clip(context->activeText())->path);
+    QVERIFY(path.has_value());
+    QCOMPARE(path->commands().size(), 4);
+    QVERIFY(path->commands().at(2).kind == yoake::ass::VectorPath::Kind::Cubic);
+    QVERIFY(path->commands().at(3).kind == yoake::ass::VectorPath::Kind::Cubic);
+}
+
+void DocumentEditingTest::vectorNodesSupportControlToggleGroupDragAndSafeDelete()
+{
+    auto context = makeContext();
+    const QString original = QStringLiteral("{\\clip(m 800 400 l 1000 400 l 1200 500)}Path");
+    context->setActiveText(original);
+    auto *viewport = context->videoViewport();
+    viewport->setViewportSize(QSizeF(960, 540));
+    viewport->setVideoSize(QSizeF(1920, 1080));
+    context->visualTools()->setActiveToolId(QStringLiteral("vector-clip"));
+    const auto featurePoint = [context](const QString &id) {
+        for (const QVariant &entry : context->visualTools()->overlayFeatures()) {
+            const QVariantMap feature = entry.toMap();
+            if (feature.value(QStringLiteral("id")).toString() == id)
+                return QPointF(feature.value(QStringLiteral("x")).toReal(), feature.value(QStringLiteral("y")).toReal());
+        }
+        return QPointF(-10000, -10000);
+    };
+    const QPointF first = featurePoint(QStringLiteral("vector-1"));
+    const QPointF second = featurePoint(QStringLiteral("vector-2"));
+    QVERIFY(first.x() >= 0 && second.x() >= 0);
+    context->visualTools()->pointerDown(first.x(), first.y(), Qt::LeftButton, 0);
+    context->visualTools()->pointerUp(first.x(), first.y(), Qt::LeftButton, 0);
+    context->visualTools()->pointerDown(second.x(), second.y(), Qt::LeftButton, Qt::ControlModifier);
+    context->visualTools()->pointerUp(second.x(), second.y(), Qt::LeftButton, Qt::ControlModifier);
+    context->visualTools()->pointerDown(first.x(), first.y(), Qt::LeftButton, 0);
+    context->visualTools()->pointerMove(first.x() + 10, first.y() + 10, Qt::LeftButton, 0);
+    context->visualTools()->pointerUp(first.x() + 10, first.y() + 10, Qt::LeftButton, 0);
+    auto path = yoake::ass::VectorPath::parse(yoake::ass::VisualTags::clip(context->activeText())->path);
+    QVERIFY(path);
+    QCOMPARE(path->node(0), QPointF(800, 400));
+    QCOMPARE(path->node(1), QPointF(1020, 420));
+    QCOMPARE(path->node(2), QPointF(1220, 520));
+    context->visualTools()->keyDown(Qt::Key_Delete, 0);
+    path = yoake::ass::VectorPath::parse(yoake::ass::VisualTags::clip(context->activeText())->path);
+    QVERIFY(path);
+    QCOMPARE(path->commands().size(), 1);
+    context->undo();
+    context->undo();
+    QCOMPARE(context->activeText(), original);
 }
 
 void DocumentEditingTest::visualShiftMovesDefaultPositionAndSelectedOrigin()
@@ -790,6 +1007,167 @@ void DocumentEditingTest::visualShiftMovesDefaultPositionAndSelectedOrigin()
     QCOMPARE(yoake::ass::VisualTags::point(context->activeText(), u"org").value(), QPointF(984, 528));
     context->undo();
     QCOMPARE(context->activeText(), QStringLiteral("{\\org(960,540)}SIGN"));
+}
+
+void DocumentEditingTest::visualShiftMovesSelectedEventsAsOneUndoableTransaction()
+{
+    auto context = makeContext();
+    const QString first = QStringLiteral("{\\pos(200,200)\\move(10,20,30,40)\\org(5,6)\\clip(0,0,100,100)\\p1}m 0 0 l 10 10{\\p0}A");
+    const QString second = QStringLiteral("{\\pos(400,300)\\move(110,120,130,140,0,1000)\\org(15,16)\\iclip(2,m 0 0 l 50 0 50 50)}B");
+    context->lines()->setActiveRow(0);
+    context->setActiveText(first);
+    const QString firstId = idAt(context->lines(), 0);
+    const QString secondId = idAt(context->lines(), 1);
+    context->editEvent(QUuid(secondId), SubtitleModel::TextRole, second);
+    context->lines()->selectRow(0);
+    context->lines()->selectRow(1, false, true);
+    const QString beforeFirst = context->lines()->eventAt(0)->text;
+    const QString beforeSecond = context->lines()->eventAt(1)->text;
+
+    auto *viewport = context->videoViewport();
+    viewport->setViewportSize(QSizeF(960, 540));
+    viewport->setVideoSize(QSizeF(1920, 1080));
+    viewport->setScriptSize(QSizeF(1920, 1080));
+    context->visualTools()->setActiveToolId(QStringLiteral("shift"));
+    const QPointF start = viewport->scriptToScreen(QPointF(400, 300));
+    const QPointF end = start + QPointF(15, -10); // 30,-20 script pixels at this fit scale.
+    context->visualTools()->pointerDown(start.x(), start.y(), Qt::LeftButton, 0);
+    for (int step = 1; step <= 20; ++step) {
+        const QPointF point = start + (end - start) * (step / 20.0);
+        context->visualTools()->pointerMove(point.x(), point.y(), Qt::LeftButton, 0);
+    }
+    context->visualTools()->pointerUp(end.x(), end.y(), Qt::LeftButton, 0);
+
+    const QString afterFirst = context->lines()->eventAt(0)->text;
+    const QString afterSecond = context->lines()->eventAt(1)->text;
+    QCOMPARE(yoake::ass::VisualTags::point(afterFirst, u"pos").value(), QPointF(230, 180));
+    QCOMPARE(yoake::ass::VisualTags::move(afterFirst)->start, QPointF(40, 0));
+    QCOMPARE(yoake::ass::VisualTags::move(afterFirst)->end, QPointF(60, 20));
+    QCOMPARE(yoake::ass::VisualTags::point(afterSecond, u"pos").value(), QPointF(430, 280));
+    QCOMPARE(yoake::ass::VisualTags::move(afterSecond)->start, QPointF(140, 100));
+    QCOMPARE(yoake::ass::VisualTags::move(afterSecond)->end, QPointF(160, 120));
+    QCOMPARE(yoake::ass::VisualTags::move(afterSecond)->startMs.value(), 0.0);
+    const auto shiftedClip = yoake::ass::VisualTags::clip(afterSecond);
+    QVERIFY(shiftedClip && shiftedClip->pathEditable);
+    QCOMPARE(yoake::ass::VectorPath::parse(shiftedClip->path, shiftedClip->drawingScale)->node(0), QPointF(15, -10));
+    QCOMPARE(idAt(context->lines(), 0), firstId);
+    QCOMPARE(idAt(context->lines(), 1), secondId);
+    QCOMPARE(context->undoText(), QStringLiteral("Visual geometry shift"));
+
+    context->undo();
+    QCOMPARE(context->lines()->eventAt(0)->text, beforeFirst);
+    QCOMPARE(context->lines()->eventAt(1)->text, beforeSecond);
+    context->redo();
+    QCOMPARE(context->lines()->eventAt(0)->text, afterFirst);
+    QCOMPARE(context->lines()->eventAt(1)->text, afterSecond);
+
+    const QString cancelUndoText = context->undoText();
+    const QPointF cancelStart = viewport->scriptToScreen(QPointF(430, 280));
+    const QPointF cancelEnd = cancelStart + QPointF(20, 15);
+    context->visualTools()->pointerDown(cancelStart.x(), cancelStart.y(), Qt::LeftButton, 0);
+    context->visualTools()->pointerMove(cancelEnd.x(), cancelEnd.y(), Qt::LeftButton, 0);
+    context->visualTools()->cancelOperation();
+    QCOMPARE(context->lines()->eventAt(0)->text, afterFirst);
+    QCOMPARE(context->lines()->eventAt(1)->text, afterSecond);
+    QCOMPARE(context->undoText(), cancelUndoText);
+}
+
+void DocumentEditingTest::customVisualToolFactoryOwnsDispatchOverlayAndLifecycle()
+{
+    auto context = makeContext();
+    context->videoViewport()->setVideoSize(QSizeF(1920, 1080));
+    context->videoViewport()->setViewportSize(QSizeF(960, 540));
+    auto probe = std::make_shared<ToolProbe>();
+    const QVariantMap descriptor{
+        {QStringLiteral("id"), QStringLiteral("probe")},
+        {QStringLiteral("name"), QStringLiteral("Probe")},
+        {QStringLiteral("icon"), QStringLiteral("P")},
+        {QStringLiteral("tooltip"), QStringLiteral("Tool factory test")},
+        {QStringLiteral("commandId"), QStringLiteral("test.probe")},
+        {QStringLiteral("factory"), QStringLiteral("ProbeTool")},
+    };
+    QVERIFY(context->visualTools()->registerToolFactory(descriptor,
+        [probe](yoake::app::DocumentContext *, yoake::ui::VideoViewport *) {
+            ++probe->factoryCalls;
+            return std::make_shared<RecordingVisualTool>(probe);
+        }));
+    context->visualTools()->setActiveToolId(QStringLiteral("probe"));
+    QCOMPARE(probe->factoryCalls, 1);
+    QCOMPARE(probe->activations, 1);
+    context->visualTools()->pointerDown(100, 100, Qt::LeftButton, 0);
+    QCOMPARE(probe->pointerDowns, 1);
+    QCOMPARE(context->visualTools()->overlayFeatures().front().toMap().value(QStringLiteral("id")).toString(),
+        QStringLiteral("probe-overlay"));
+    context->visualTools()->setActiveToolId(QStringLiteral("position"));
+    QCOMPARE(probe->deactivations, 1);
+}
+
+void DocumentEditingTest::alignmentKeepsPositionedTextVisuallyStationary()
+{
+    auto unchanged = makeContext();
+    const QString unchangedText = unchanged->activeText();
+    unchanged->visualTools()->setActiveToolId(QStringLiteral("position"));
+    unchanged->visualTools()->setOption(QStringLiteral("align-2"));
+    QCOMPARE(unchanged->activeText(), unchangedText);
+    QVERIFY(!unchanged->canUndo());
+
+    const QVector<QPair<int, int>> transitions{{1, 9}, {2, 8}, {4, 6}};
+    for (const auto &[from, to] : transitions) {
+        auto context = makeContext();
+        const QString original = QStringLiteral("{\\blur1\\an%1\\pos(500,500)\\org(470,470)}Text").arg(from);
+        context->setActiveText(original);
+        context->visualTools()->setActiveToolId(QStringLiteral("position"));
+        const QPointF oldPosition = yoake::ass::VisualTags::point(context->activeText(), u"pos").value();
+        const QPointF oldOrigin = yoake::ass::VisualTags::point(context->activeText(), u"org").value();
+        context->visualTools()->setOption(QStringLiteral("align-%1").arg(to));
+        const QPointF newPosition = yoake::ass::VisualTags::point(context->activeText(), u"pos").value();
+        const QPointF newOrigin = yoake::ass::VisualTags::point(context->activeText(), u"org").value();
+        const QPointF delta = newPosition - oldPosition;
+        QCOMPARE(newOrigin - oldOrigin, delta);
+        QVERIFY(context->activeText().contains(QStringLiteral("\\blur1")));
+        QCOMPARE(yoake::ass::VisualTags::number(context->activeText(), u"an").value(), qreal(to));
+        if (from == 1) { QVERIFY(delta.x() > 0); QVERIFY(delta.y() < 0); }
+        if (from == 2) { QCOMPARE(delta.x(), 0.0); QVERIFY(delta.y() < 0); }
+        if (from == 4) { QVERIFY(delta.x() > 0); QCOMPARE(delta.y(), 0.0); }
+        context->undo();
+        QCOMPARE(context->activeText(), original);
+    }
+
+    auto context = makeContext();
+    const QString moving = QStringLiteral("{\\blur1\\an1\\move(100,500,100,600,200,1200)\\org(90,480)}Text");
+    context->setActiveText(moving);
+    context->visualTools()->setActiveToolId(QStringLiteral("position"));
+    context->visualTools()->setOption(QStringLiteral("align-9"));
+    const auto adjustedMove = yoake::ass::VisualTags::move(context->activeText());
+    QVERIFY(adjustedMove.has_value());
+    QCOMPARE(adjustedMove->startMs.value(), 200.0);
+    QCOMPARE(adjustedMove->endMs.value(), 1200.0);
+    QVERIFY(!yoake::ass::VisualTags::point(context->activeText(), u"pos"));
+    QVERIFY(context->activeText().contains(QStringLiteral("\\blur1")));
+}
+
+void DocumentEditingTest::unsupportedVectorSyntaxCannotBeOverwrittenByVisualTools()
+{
+    auto context = makeContext();
+    const QString original = QStringLiteral("{\\clip( 2, m 0 0 s 10 10 20 20 )\\blur2}Path");
+    context->setActiveText(original);
+    auto *viewport = context->videoViewport();
+    viewport->setViewportSize(QSizeF(960, 540));
+    viewport->setVideoSize(QSizeF(1920, 1080));
+    context->visualTools()->setActiveToolId(QStringLiteral("vector-clip"));
+    context->visualTools()->pointerDown(300, 200, Qt::LeftButton, 0);
+    context->visualTools()->pointerMove(340, 220, Qt::LeftButton, 0);
+    context->visualTools()->pointerUp(340, 220, Qt::LeftButton, 0);
+    QCOMPARE(context->activeText(), original);
+
+    context->visualTools()->setActiveToolId(QStringLiteral("clip"));
+    context->visualTools()->pointerDown(300, 200, Qt::LeftButton, 0);
+    context->visualTools()->pointerMove(360, 250, Qt::LeftButton, 0);
+    context->visualTools()->pointerUp(360, 250, Qt::LeftButton, 0);
+    QCOMPARE(context->activeText(), original);
+    context->visualTools()->setOption(QStringLiteral("invert"));
+    QVERIFY(context->activeText().contains(QStringLiteral("\\iclip( 2, m 0 0 s 10 10 20 20 )")));
+    QVERIFY(context->activeText().contains(QStringLiteral("\\blur2")));
 }
 
 void DocumentEditingTest::visualClipCreationUsesSharedTransform()

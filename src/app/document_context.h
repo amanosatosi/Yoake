@@ -6,16 +6,21 @@
 #include "timing/karaoke_session.h"
 
 #include <QtCore/QObject>
+#include <QtCore/QHash>
 #include <QtCore/QStringList>
 #include <QtCore/QStringView>
 #include <QtCore/QUrl>
 #include <QtCore/QVariant>
+#include <QtCore/QVariantMap>
 #include <QtGui/QUndoStack>
 
 #include <memory>
 
 namespace yoake::renderer { class MangetsuSession; }
 namespace yoake::ui { class VideoViewport; class VisualToolManager; }
+
+Q_MOC_INCLUDE("ui/video_viewport.h")
+Q_MOC_INCLUDE("ui/visual_tool_manager.h")
 
 namespace yoake::app {
 
@@ -145,6 +150,8 @@ public:
     Q_INVOKABLE void previewVisualTextEdit(const QString &text);
     Q_INVOKABLE void commitVisualTextEdit();
     Q_INVOKABLE void cancelVisualTextEdit();
+    bool beginVisualTextEditGroup(const QStringList &eventIds);
+    void previewVisualTextEditGroup(const QVariantMap &textsByEventId);
     void commitKaraokeText(const QString &value);
     [[nodiscard]] QByteArray rendererSnapshot() const { return m_document.serialize(); }
     [[nodiscard]] std::shared_ptr<renderer::MangetsuSession> rendererSession() const { return m_renderer; }
@@ -169,6 +176,8 @@ private:
     friend class ReplaceEventsCommand;
 
     const ass::Event *activeEvent() const;
+    [[nodiscard]] bool hasActiveVisualTextEdit() const
+    { return !m_visualEditId.isNull() || !m_visualEditGroupIds.isEmpty(); }
     void replaceEvents(QVector<ass::Event> events,
         const QString &description,
         const QUuid &preferredActive = {},
@@ -204,6 +213,11 @@ private:
     QUuid m_visualEditId;
     QString m_visualEditBefore;
     QString m_visualEditCurrent;
+    QVector<QUuid> m_visualEditGroupIds;
+    QHash<QUuid, QString> m_visualEditGroupBefore;
+    QHash<QUuid, QString> m_visualEditGroupCurrent;
+    QVector<ass::Event> m_visualEditGroupEventsBefore;
+    models::SubtitleModel::SelectionSnapshot m_visualEditGroupSelectionBefore;
 };
 
 } // namespace yoake::app

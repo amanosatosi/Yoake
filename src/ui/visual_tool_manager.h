@@ -9,6 +9,7 @@
 #include <QtCore/QPointF>
 #include <QtCore/QRectF>
 #include <QtCore/QPointer>
+#include <QtCore/QSet>
 #include <QtCore/QVariantList>
 #include <QtCore/QVariantMap>
 
@@ -17,9 +18,9 @@ namespace yoake::ui { class VideoViewport; }
 
 namespace yoake::ui {
 
-// Owns registered tool descriptors, active-tool state, hit testing, and the
-// pointer lifecycle. Tools emit screen-independent ASS edits through the
-// document's single drag transaction; viewport navigation stays in Viewport.
+// Owns tool descriptors, active selection, custom-tool factories, and the
+// shared overlay/hit-test surface. Standard-tool semantics currently remain in
+// this class; all ASS edits still cross DocumentContext's undo boundary.
 class VisualToolManager final : public QObject {
     Q_OBJECT
     Q_PROPERTY(QString activeToolId READ activeToolId WRITE setActiveToolId NOTIFY activeToolChanged)
@@ -57,7 +58,8 @@ signals:
 
 private:
     void rebuildOverlay();
-    void addPoint(QString id, QPointF scriptPoint, QString label = {}, QString role = {}, bool selected = false);
+    void addPoint(QString id, QPointF scriptPoint, QString label = {}, QString role = {}, bool selected = false,
+                  QString nodeType = {});
     void addLine(QString id, QPointF start, QPointF end, QString role = {});
     void addRect(QString id, QRectF rect, QString role = {});
     QString hitFeature(const QPointF &point) const;
@@ -66,10 +68,12 @@ private:
     void updateDrag(const QPointF &screenPoint, int modifiers);
     QString editedText(const QPointF &screenPoint, int modifiers) const;
     QPointF effectivePosition(const ass::Event &event) const;
+    QString shiftedTextForEvent(const ass::Event &event, QString text, const QPointF &delta) const;
     QPointF snapPoint(QPointF point, int modifiers, QVariantList *guides = nullptr) const;
     void finishFreehand();
-    void appendVectorPoint(const QPointF &scriptPoint, bool bezier);
+    void appendVectorPoint(const QPointF &scriptPoint, bool bezier, bool insert = false);
     bool deleteSelectedVectorPoint();
+    bool convertSelectedVectorSegment(bool toBezier);
     void commitScaleRectangle(const QPointF &scriptEnd, int modifiers);
     std::shared_ptr<VisualTool> customTool(const QString &toolId) const;
 
@@ -96,12 +100,15 @@ private:
     QPointF m_freehandLast;
     QVector<QPointF> m_freehand;
     QVector<QPointF> m_bezierPoints;
+    QVector<ass::Event> m_shiftEvents;
+    QStringList m_shiftEventIds;
     QPointF m_movePointA;
     QPointF m_rotationPointA;
     qint64 m_moveTimeA = 0;
     QString m_scaleAxis{QStringLiteral("both")};
     int m_dragModifiers = 0;
     int m_selectedVectorPoint = -1;
+    QSet<int> m_selectedVectorPoints;
     bool m_dragging = false;
     bool m_transactionStarted = false;
     bool m_freehandDrawing = false;

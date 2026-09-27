@@ -2,12 +2,12 @@
 
 #include "app/document_context.h"
 #include "ass/visual_tags.h"
+#include "ass/vector_path.h"
 #include "media/media_session.h"
 #include "models/subtitle_model.h"
 #include "ui/video_viewport.h"
 
 #include <QtCore/QLineF>
-#include <QtCore/QLocale>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QtMath>
 #include <QtGui/QFont>
@@ -24,67 +24,6 @@ namespace {
 constexpr int leftButton = Qt::LeftButton;
 constexpr int deleteKey = Qt::Key_Delete;
 constexpr int escapeKey = Qt::Key_Escape;
-
-struct VectorPair {
-    QPointF point;
-    qsizetype xStart = 0;
-    qsizetype xLength = 0;
-    qsizetype yStart = 0;
-    qsizetype yLength = 0;
-    QChar command;
-};
-
-QVector<VectorPair> vectorPairs(const QString &path)
-{
-    QVector<VectorPair> pairs;
-    QChar command;
-    QVector<QPair<qreal, QPair<qsizetype, qsizetype>>> pending;
-    qsizetype index = 0;
-    while (index < path.size()) {
-        if (path.at(index).isLetter()) {
-            command = path.at(index).toLower();
-            ++index;
-            pending.clear();
-            continue;
-        }
-        while (index < path.size() && (path.at(index).isSpace() || path.at(index) == u',')) ++index;
-        if (index >= path.size()) break;
-        const qsizetype start = index;
-        if (path.at(index) == u'+' || path.at(index) == u'-') ++index;
-        bool dot = false;
-        bool digit = false;
-        while (index < path.size()) {
-            const QChar c = path.at(index);
-            if (c.isDigit()) { digit = true; ++index; }
-            else if (c == u'.' && !dot) { dot = true; ++index; }
-            else break;
-        }
-        if (!digit) { ++index; continue; }
-        bool ok = false;
-        const qreal value = QLocale::c().toDouble(path.mid(start, index - start), &ok);
-        if (!ok) continue;
-        pending.push_back({value, {start, index - start}});
-        if (pending.size() == 2) {
-            const auto &x = pending.at(0);
-            const auto &y = pending.at(1);
-            pairs.push_back({QPointF(x.first, y.first), x.second.first, x.second.second,
-                             y.second.first, y.second.second, command});
-            pending.clear();
-        }
-    }
-    return pairs;
-}
-
-QString setVectorPair(const QString &path, int pairIndex, const QPointF &point)
-{
-    const QVector<VectorPair> pairs = vectorPairs(path);
-    if (pairIndex < 0 || pairIndex >= pairs.size()) return path;
-    const VectorPair &pair = pairs[pairIndex];
-    QString result = path;
-    result.replace(pair.yStart, pair.yLength, ass::VisualTags::formatNumber(point.y()));
-    result.replace(pair.xStart, pair.xLength, ass::VisualTags::formatNumber(point.x()));
-    return result;
-}
 
 QString plainTextForMetrics(QString text)
 {
@@ -122,6 +61,23 @@ int vectorNodeIndex(QStringView featureId)
     if (!featureId.startsWith(u"vector-")) return -1;
     bool ok = false;
     const int index = featureId.mid(7).toInt(&ok);
+    return ok ? index : -1;
+}
+
+int vectorSegmentIndex(QStringView featureId)
+{
+    if (featureId.startsWith(u"vector-segment-")) {
+        featureId = featureId.mid(15);
+    } else if (featureId.startsWith(u"vector-curve-")) {
+        featureId = featureId.mid(13);
+        const qsizetype separator = featureId.indexOf(u'-');
+        if (separator >= 0)
+            featureId = featureId.left(separator);
+    } else {
+        return -1;
+    }
+    bool ok = false;
+    const int index = featureId.toInt(&ok);
     return ok ? index : -1;
 }
 
@@ -245,7 +201,8 @@ QVariantList VisualToolManager::contextOptions() const
         for (const auto &[id, label] : QVector<QPair<QString, QString>>{
                  {QStringLiteral("nodes"), tr("Nodes")}, {QStringLiteral("add-line"), tr("Add line")},
                  {QStringLiteral("add-bezier"), tr("Add Bézier")}, {QStringLiteral("freehand"), tr("Freehand")},
-                 {QStringLiteral("smooth-freehand"), tr("Smooth")}})
+                 {QStringLiteral("smooth-freehand"), tr("Smooth")}, {QStringLiteral("insert"), tr("Insert point")},
+                 {QStringLiteral("line-to-bezier"), tr("Line to Bézier")}, {QStringLiteral("bezier-to-line"), tr("Bézier to line")}})
             add(id, id == m_contextOption ? label + QStringLiteral(" ✓") : label);
     } else if (m_activeToolId == QStringLiteral("move")) {
         add(QStringLiteral("capture-a"), m_hasMovePointA ? tr("Point A ✓") : tr("Set point A"));
@@ -303,6 +260,8 @@ void VisualToolManager::setActiveToolId(const QString &toolId)
         active->activate();
     m_contextOption.clear();
     m_selectedFeature.clear();
+    m_selectedVectorPoints.clear();
+    m_selectedVectorPoint = -1;
     m_bezierPoints.clear();
     m_freehandDrawing = false;
     emit activeToolChanged();
@@ -365,6 +324,7 @@ void VisualToolManager::setOption(const QString &optionId, const QVariant &value
         const QString original = m_document->activeText();
         const ass::Event event = m_document->activeEventSnapshot();
         const ass::Document::Style style = m_document->styleForName(event.style);
+        const auto explicitAlignment = ass::VisualTags::number(original, u"an");
         const int oldAlignment = ass::VisualTags::number(original, u"an").value_or(style.alignment);
         const qreal scaleX = ass::VisualTags::number(original, u"fscx").value_or(100.0);
         const qreal scaleY = ass::VisualTags::number(original, u"fscy").value_or(100.0);
@@ -389,16 +349,23 @@ void VisualToolManager::setOption(const QString &optionId, const QVariant &value
             shifted.start += delta;
             shifted.end += delta;
             updated = ass::VisualTags::setMove(updated, shifted);
-        } else {
+        } else if (ass::VisualTags::point(original, u"pos")) {
+            updated = ass::VisualTags::setPoint(updated, u"pos", newAnchor);
+        } else if (!qFuzzyIsNull(delta.x()) || !qFuzzyIsNull(delta.y())) {
             updated = ass::VisualTags::setPoint(updated, u"pos", newAnchor);
         }
         if (const auto origin = ass::VisualTags::point(updated, u"org"))
             updated = ass::VisualTags::setPoint(updated, u"org", *origin + delta);
-        updated = ass::VisualTags::setNumber(updated, u"an", alignment);
+        if (alignment != oldAlignment && (explicitAlignment || alignment != style.alignment))
+            updated = ass::VisualTags::setNumber(updated, u"an", alignment);
         if (updated != original && m_document->beginVisualTextEdit(m_document->lines()->activeId())) {
             m_document->previewVisualTextEdit(updated);
             m_document->commitVisualTextEdit();
         }
+    } else if (optionId == QStringLiteral("line-to-bezier")) {
+        convertSelectedVectorSegment(true);
+    } else if (optionId == QStringLiteral("bezier-to-line")) {
+        convertSelectedVectorSegment(false);
     } else if (optionId == QStringLiteral("invert") && m_document) {
         auto clip = ass::VisualTags::clip(m_document->activeText());
         if (clip) {
@@ -477,9 +444,41 @@ void VisualToolManager::pointerDown(qreal x, qreal y, int button, int modifiers)
     m_dragStartScript = m_viewport->screenToScript(m_pointer);
     m_selectedFeature = hitFeature(m_pointer);
     m_selectedVectorPoint = vectorNodeIndex(m_selectedFeature);
+    if (isVectorEditor(m_activeToolId)) {
+        if (m_selectedVectorPoint >= 0) {
+            if (modifiers & Qt::ControlModifier) {
+                if (m_selectedVectorPoints.contains(m_selectedVectorPoint))
+                    m_selectedVectorPoints.remove(m_selectedVectorPoint);
+                else
+                    m_selectedVectorPoints.insert(m_selectedVectorPoint);
+            } else if (modifiers & Qt::ShiftModifier) {
+                m_selectedVectorPoints.insert(m_selectedVectorPoint);
+            } else if (!m_selectedVectorPoints.contains(m_selectedVectorPoint)) {
+                m_selectedVectorPoints = {m_selectedVectorPoint};
+            }
+        } else if (m_selectedFeature.isEmpty()
+                   && !(modifiers & (Qt::ControlModifier | Qt::ShiftModifier))) {
+            m_selectedVectorPoints.clear();
+        }
+    }
     if (m_activeToolId == QStringLiteral("crosshair")) {
         rebuildOverlay();
         return;
+    }
+    if (m_activeToolId == QStringLiteral("clip")) {
+        const auto clip = ass::VisualTags::clip(m_document->activeText());
+        if (clip && !clip->rectangle)
+            return;
+    }
+    if (isDrawingEditor(m_activeToolId)) {
+        const auto drawing = ass::VisualTags::drawing(m_document->activeText());
+        if (drawing && !drawing->pathEditable)
+            return;
+    }
+    if (isVectorEditor(m_activeToolId) && !isDrawingEditor(m_activeToolId)) {
+        const auto clip = ass::VisualTags::clip(m_document->activeText());
+        if (clip && !clip->rectangle && !clip->pathEditable)
+            return;
     }
     m_dragging = true;
     m_dragModifiers = modifiers;
@@ -501,6 +500,10 @@ void VisualToolManager::pointerDown(qreal x, qreal y, int button, int modifiers)
     if (isVectorEditor(m_activeToolId) && (m_contextOption == QStringLiteral("add-line")
         || m_contextOption == QStringLiteral("add-bezier"))) {
         m_dragRole = m_contextOption;
+        return;
+    }
+    if (isVectorEditor(m_activeToolId) && m_contextOption == QStringLiteral("insert")) {
+        m_dragRole = QStringLiteral("insert");
         return;
     }
     beginDrag(role, m_pointer, modifiers);
@@ -552,6 +555,8 @@ void VisualToolManager::pointerUp(qreal x, qreal y, int button, int modifiers)
         appendVectorPoint(m_viewport->screenToScript(m_pointer), false);
     } else if (m_dragRole == QStringLiteral("add-bezier")) {
         appendVectorPoint(m_viewport->screenToScript(m_pointer), true);
+    } else if (m_dragRole == QStringLiteral("insert")) {
+        appendVectorPoint(m_viewport->screenToScript(m_pointer), false, true);
     } else if (m_transactionStarted) {
         commitOperation();
     }
@@ -604,16 +609,23 @@ void VisualToolManager::keyDown(int key, int modifiers)
     } else if (key == deleteKey && isVectorEditor(m_activeToolId)) {
         deleteSelectedVectorPoint();
     } else if (key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down) {
-        if (m_selectedFeature.isEmpty() || !m_document || !m_viewport) return;
+        const bool vectorEdit = isVectorEditor(m_activeToolId);
+        if ((!vectorEdit && m_selectedFeature.isEmpty()) || !m_document || !m_viewport) return;
         const qreal step = modifiers & Qt::ShiftModifier ? 10.0 : 1.0;
         QPointF delta;
         if (key == Qt::Key_Left) delta.setX(-step);
         if (key == Qt::Key_Right) delta.setX(step);
         if (key == Qt::Key_Up) delta.setY(-step);
         if (key == Qt::Key_Down) delta.setY(step);
-        const QVariantMap selected = feature(m_selectedFeature);
+        QVariantMap selected = feature(m_selectedFeature);
+        QString role = selected.value(QStringLiteral("role")).toString();
+        if (vectorEdit) {
+            if (m_selectedVectorPoints.isEmpty()) return;
+            m_selectedVectorPoint = *m_selectedVectorPoints.cbegin();
+            selected = feature(QStringLiteral("vector-%1").arg(m_selectedVectorPoint));
+            role = QStringLiteral("vector-node");
+        }
         const QPointF start(selected.value(QStringLiteral("x")).toReal(), selected.value(QStringLiteral("y")).toReal());
-        const QString role = selected.value(QStringLiteral("role")).toString();
         beginDrag(role, start, modifiers);
         updateDrag(start + m_viewport->scriptDeltaToScreenDelta(delta), modifiers);
         if (m_transactionStarted) commitOperation();
@@ -770,14 +782,19 @@ void VisualToolManager::rebuildOverlay()
             addPoint(QStringLiteral("clip-w"), QPointF(r.left(), r.center().y()), {}, QStringLiteral("clip-w"));
             addPoint(QStringLiteral("clip-e"), QPointF(r.right(), r.center().y()), {}, QStringLiteral("clip-e"));
             addPoint(QStringLiteral("clip-body"), r.center(), clip->inverse ? tr("Inverse clip") : tr("Clip"), QStringLiteral("clip-body"));
-        } else {
+        } else if (!clip) {
             addPoint(QStringLiteral("clip-create"), m_viewport->screenToScript(m_pointer), tr("Drag to create clip"), QStringLiteral("clip-create"));
+        } else {
+            addPoint(QStringLiteral("clip-read-only"), anchor, tr("Use Vector Clip to edit this path"));
         }
     } else if (isVectorEditor(m_activeToolId)) {
         const bool isDrawing = isDrawingEditor(m_activeToolId);
         const auto clip = isDrawing ? std::optional<ass::VisualTags::Clip>{} : ass::VisualTags::clip(text);
         const auto drawing = isDrawing ? ass::VisualTags::drawing(text) : std::optional<ass::VisualTags::Drawing>{};
-        const bool hasPath = isDrawing ? drawing.has_value() : clip && !clip->rectangle;
+        const bool hasPath = isDrawing ? drawing && drawing->pathEditable
+                                      : clip && !clip->rectangle && clip->pathEditable;
+        const bool hasReadOnlyPath = isDrawing ? drawing && !drawing->pathEditable
+                                                : clip && !clip->rectangle && !clip->pathEditable;
         if (hasPath) {
             const QString path = isDrawing ? drawing->path : clip->path;
             const int pathScale = isDrawing ? drawing->drawingScale : clip->drawingScale;
@@ -785,46 +802,59 @@ void VisualToolManager::rebuildOverlay()
             const auto toScript = [isDrawing, &anchor, factor](const QPointF &point) {
                 return (isDrawing ? anchor : QPointF{}) + point * factor;
             };
-            const QVector<VectorPair> pairs = vectorPairs(path);
-            for (int index = 0; index < pairs.size(); ++index)
-                addPoint(QStringLiteral("vector-%1").arg(index), toScript(pairs[index].point),
-                    QString::number(index + 1), QStringLiteral("vector-node"), index == m_selectedVectorPoint);
+            const auto parsed = ass::VectorPath::parse(path, pathScale);
+            if (parsed && parsed->editable()) {
             QPointF current;
             bool hasCurrent = false;
-            for (int index = 0; index < pairs.size();) {
-                const QChar command = pairs[index].command;
-                if (command == u'm' || command == u'n') {
-                    current = pairs[index].point;
+            int nodeIndex = 0;
+            for (int commandIndex = 0; commandIndex < parsed->commands().size(); ++commandIndex) {
+                const auto &command = parsed->commands().at(commandIndex);
+                if (command.kind == ass::VectorPath::Kind::Move) {
+                    current = command.points.front();
                     hasCurrent = true;
-                    ++index;
-                } else if (command == u'l' && hasCurrent) {
-                    addLine(QStringLiteral("vector-segment-%1").arg(index), toScript(current), toScript(pairs[index].point), QStringLiteral("vector-path"));
-                    current = pairs[index].point;
-                    ++index;
-                } else if (command == u'b' && hasCurrent && index + 2 < pairs.size()) {
-                    const QPointF control1 = pairs[index].point;
-                    const QPointF control2 = pairs[index + 1].point;
-                    const QPointF endpoint = pairs[index + 2].point;
-                    addLine(QStringLiteral("vector-control-a-%1").arg(index), toScript(current), toScript(control1));
-                    addLine(QStringLiteral("vector-control-b-%1").arg(index), toScript(control2), toScript(endpoint));
+                    addPoint(QStringLiteral("vector-%1").arg(nodeIndex), toScript(current),
+                        QString::number(nodeIndex + 1), QStringLiteral("vector-node"),
+                        m_selectedVectorPoints.contains(nodeIndex), QStringLiteral("endpoint"));
+                    ++nodeIndex;
+                } else if (command.kind == ass::VectorPath::Kind::Line && hasCurrent) {
+                    const QPointF endpoint = command.points.front();
+                    addLine(QStringLiteral("vector-segment-%1").arg(commandIndex), toScript(current),
+                        toScript(endpoint), QStringLiteral("vector-path"));
+                    addPoint(QStringLiteral("vector-%1").arg(nodeIndex), toScript(endpoint),
+                        QString::number(nodeIndex + 1), QStringLiteral("vector-node"),
+                        m_selectedVectorPoints.contains(nodeIndex), QStringLiteral("endpoint"));
+                    current = endpoint;
+                    ++nodeIndex;
+                } else if (command.kind == ass::VectorPath::Kind::Cubic && hasCurrent) {
+                    const QPointF control1 = command.points[0];
+                    const QPointF control2 = command.points[1];
+                    const QPointF endpoint = command.points[2];
+                    addLine(QStringLiteral("vector-control-a-%1").arg(commandIndex), toScript(current), toScript(control1));
+                    addLine(QStringLiteral("vector-control-b-%1").arg(commandIndex), toScript(control2), toScript(endpoint));
+                    addPoint(QStringLiteral("vector-%1").arg(nodeIndex), toScript(control1), {},
+                        QStringLiteral("vector-node"), m_selectedVectorPoints.contains(nodeIndex), QStringLiteral("control"));
+                    addPoint(QStringLiteral("vector-%1").arg(nodeIndex + 1), toScript(control2), {},
+                        QStringLiteral("vector-node"), m_selectedVectorPoints.contains(nodeIndex + 1), QStringLiteral("control"));
+                    addPoint(QStringLiteral("vector-%1").arg(nodeIndex + 2), toScript(endpoint),
+                        QString::number(nodeIndex + 3), QStringLiteral("vector-node"),
+                        m_selectedVectorPoints.contains(nodeIndex + 2), QStringLiteral("endpoint"));
                     QPointF previous = current;
                     for (int step = 1; step <= 16; ++step) {
                         const qreal t = step / 16.0;
                         const qreal u = 1.0 - t;
                         const QPointF point = current * (u * u * u) + control1 * (3 * u * u * t)
                             + control2 * (3 * u * t * t) + endpoint * (t * t * t);
-                        addLine(QStringLiteral("vector-curve-%1-%2").arg(index).arg(step), toScript(previous), toScript(point), QStringLiteral("vector-path"));
+                        addLine(QStringLiteral("vector-curve-%1-%2").arg(commandIndex).arg(step),
+                            toScript(previous), toScript(point), QStringLiteral("vector-path"));
                         previous = point;
                     }
                     current = endpoint;
-                    index += 3;
-                } else {
-                    if (hasCurrent)
-                        addLine(QStringLiteral("vector-control-%1").arg(index), toScript(current), toScript(pairs[index].point));
-                    current = pairs[index].point;
-                    ++index;
+                    nodeIndex += 3;
                 }
             }
+            }
+        } else if (hasReadOnlyPath) {
+            addPoint(QStringLiteral("vector-read-only"), anchor, tr("Unsupported drawing syntax is preserved read-only"));
         }
         if (m_freehandDrawing && m_freehand.size() > 1) {
             for (int i = 1; i < m_freehand.size(); ++i)
@@ -857,14 +887,17 @@ void VisualToolManager::rebuildOverlay()
     emit overlayChanged();
 }
 
-void VisualToolManager::addPoint(QString id, QPointF scriptPoint, QString label, QString role, bool selected)
+void VisualToolManager::addPoint(QString id, QPointF scriptPoint, QString label, QString role, bool selected,
+                                 QString nodeType)
 {
     if (!m_viewport) return;
     const QPointF screen = m_viewport->scriptToScreen(scriptPoint);
     m_features.push_back(QVariantMap{{QStringLiteral("id"), std::move(id)}, {QStringLiteral("kind"), QStringLiteral("point")},
         {QStringLiteral("x"), screen.x()}, {QStringLiteral("y"), screen.y()}, {QStringLiteral("scriptX"), scriptPoint.x()},
         {QStringLiteral("scriptY"), scriptPoint.y()}, {QStringLiteral("label"), std::move(label)},
-        {QStringLiteral("role"), std::move(role)}, {QStringLiteral("selected"), selected}, {QStringLiteral("radius"), 6.0}});
+        {QStringLiteral("role"), std::move(role)}, {QStringLiteral("selected"), selected},
+        {QStringLiteral("radius"), nodeType == QStringLiteral("control") ? 4.5 : 6.0},
+        {QStringLiteral("nodeType"), std::move(nodeType)}});
 }
 
 void VisualToolManager::addLine(QString id, QPointF start, QPointF end, QString role)
@@ -952,6 +985,22 @@ void VisualToolManager::beginDrag(const QString &role, const QPointF &screenPoin
     m_dragStartScreen = screenPoint;
     m_dragStartScript = m_viewport->screenToScript(screenPoint);
     m_dragModifiers = modifiers;
+    m_shiftEvents.clear();
+    m_shiftEventIds.clear();
+    if (role == QStringLiteral("shift")) {
+        const auto selection = m_document->lines()->selectionSnapshot();
+        for (int row = 0; row < m_document->lines()->rowCount(); ++row) {
+            const ass::Event *selected = m_document->lines()->eventAt(row);
+            if (selected && selection.selectedIds.contains(selected->id)) {
+                m_shiftEvents.push_back(*selected);
+                m_shiftEventIds.push_back(selected->id.toString(QUuid::WithoutBraces));
+            }
+        }
+        if (m_shiftEvents.isEmpty()) {
+            m_shiftEvents.push_back(event);
+            m_shiftEventIds.push_back(event.id.toString(QUuid::WithoutBraces));
+        }
+    }
     const QVariantMap handle = feature(m_selectedFeature);
     m_dragStartHandle = QPointF(handle.value(QStringLiteral("scriptX"), m_dragStartScript.x()).toReal(),
                                 handle.value(QStringLiteral("scriptY"), m_dragStartScript.y()).toReal());
@@ -962,11 +1011,15 @@ void VisualToolManager::beginDrag(const QString &role, const QPointF &screenPoin
     else if (role.startsWith(QStringLiteral("vector-node")) && m_selectedVectorPoint >= 0) {
         if (isDrawingEditor(m_activeToolId)) {
             const auto drawing = ass::VisualTags::drawing(event.text);
-            if (drawing) m_dragStartHandle = effectivePosition(event)
-                + vectorPairs(drawing->path).value(m_selectedVectorPoint).point * drawingScaleFactor(drawing->drawingScale);
+            const auto path = drawing ? ass::VectorPath::parse(drawing->path, drawing->drawingScale) : std::nullopt;
+            if (path && path->editable() && m_selectedVectorPoint < path->nodeCount())
+                m_dragStartHandle = effectivePosition(event)
+                    + path->node(m_selectedVectorPoint) * drawingScaleFactor(drawing->drawingScale);
         } else {
             const auto clip = ass::VisualTags::clip(event.text);
-            if (clip) m_dragStartHandle = vectorPairs(clip->path).value(m_selectedVectorPoint).point * drawingScaleFactor(clip->drawingScale);
+            const auto path = clip ? ass::VectorPath::parse(clip->path, clip->drawingScale) : std::nullopt;
+            if (path && path->editable() && m_selectedVectorPoint < path->nodeCount())
+                m_dragStartHandle = path->node(m_selectedVectorPoint) * drawingScaleFactor(clip->drawingScale);
         }
     }
     if (role == QStringLiteral("translate") && m_selectedFeature == QStringLiteral("move-start"))
@@ -980,11 +1033,24 @@ void VisualToolManager::updateDrag(const QPointF &screenPoint, int modifiers)
 {
     if (!m_document || distance(screenPoint, m_dragStartScreen) < 0.75) return;
     if (!m_transactionStarted) {
-        if (!m_document->beginVisualTextEdit(m_document->lines()->activeId())) return;
+        const bool group = m_dragRole == QStringLiteral("shift") && m_shiftEventIds.size() > 1;
+        if (!(group ? m_document->beginVisualTextEditGroup(m_shiftEventIds)
+                    : m_document->beginVisualTextEdit(m_document->lines()->activeId())))
+            return;
         m_transactionStarted = true;
     }
     m_guides.clear();
     snapPoint(m_viewport->screenToScript(screenPoint), modifiers, &m_guides);
+    if (m_dragRole == QStringLiteral("shift") && m_shiftEventIds.size() > 1) {
+        const QPointF script = m_viewport->screenToScript(screenPoint);
+        const QPointF delta = script - m_dragStartScript;
+        const QPointF shift = snapPoint(m_dragStartHandle + delta, modifiers) - m_dragStartHandle;
+        QVariantMap updated;
+        for (const ass::Event &event : std::as_const(m_shiftEvents))
+            updated.insert(event.id.toString(QUuid::WithoutBraces), shiftedTextForEvent(event, event.text, shift));
+        m_document->previewVisualTextEditGroup(updated);
+        return;
+    }
     const QString changed = editedText(screenPoint, modifiers);
     if (changed != m_dragText) {
         m_dragText = changed;
@@ -1080,7 +1146,9 @@ QString VisualToolManager::editedText(const QPointF &screenPoint, int modifiers)
     }
     if (m_dragRole.startsWith(QStringLiteral("clip-")) || m_dragRole == QStringLiteral("clip-create")) {
         auto clip = ass::VisualTags::clip(text);
-        if (!clip || !clip->rectangle) {
+        if (clip && !clip->rectangle)
+            return text;
+        if (!clip) {
             clip = ass::VisualTags::Clip{};
             clip->rectangle = true;
             clip->bounds = QRectF(m_dragStartScript, script).normalized();
@@ -1103,16 +1171,25 @@ QString VisualToolManager::editedText(const QPointF &screenPoint, int modifiers)
     if (m_dragRole == QStringLiteral("vector-node")) {
         if (isDrawingEditor(m_activeToolId)) {
             const auto drawing = ass::VisualTags::drawing(text);
-            if (!drawing) return text;
+            if (!drawing || !drawing->pathEditable) return text;
             const QPointF anchor = effectivePosition(m_document->activeEventSnapshot());
             const QPointF local = (m_dragStartHandle + delta - anchor) / drawingScaleFactor(drawing->drawingScale);
-            return ass::VisualTags::setDrawingPath(text,
-                setVectorPair(drawing->path, m_selectedVectorPoint, local), drawing->drawingScale);
+            auto path = ass::VectorPath::parse(drawing->path, drawing->drawingScale);
+            if (!path) return text;
+            QSet<int> nodes = m_selectedVectorPoints;
+            if (nodes.isEmpty()) nodes.insert(m_selectedVectorPoint);
+            if (!path->translateNodes(nodes, local - path->node(m_selectedVectorPoint))) return text;
+            return ass::VisualTags::setDrawingPath(text, path->serialize(), drawing->drawingScale);
         }
         auto clip = ass::VisualTags::clip(text);
-        if (!clip || clip->rectangle) return text;
-        clip->path = setVectorPair(clip->path, m_selectedVectorPoint,
-            (m_dragStartHandle + delta) / drawingScaleFactor(clip->drawingScale));
+        if (!clip || clip->rectangle || !clip->pathEditable) return text;
+        auto path = ass::VectorPath::parse(clip->path, clip->drawingScale);
+        if (!path) return text;
+        QSet<int> nodes = m_selectedVectorPoints;
+        if (nodes.isEmpty()) nodes.insert(m_selectedVectorPoint);
+        const QPointF local = (m_dragStartHandle + delta) / drawingScaleFactor(clip->drawingScale);
+        if (!path->translateNodes(nodes, local - path->node(m_selectedVectorPoint))) return text;
+        clip->path = path->serialize();
         return ass::VisualTags::setClip(text, *clip);
     }
     if (m_dragRole == QStringLiteral("vector-path")) {
@@ -1120,58 +1197,68 @@ QString VisualToolManager::editedText(const QPointF &screenPoint, int modifiers)
             const auto drawing = ass::VisualTags::drawing(text);
             if (!drawing) return text;
             const qreal factor = drawingScaleFactor(drawing->drawingScale);
-            QString path = drawing->path;
-            const auto pairs = vectorPairs(path);
-            for (int i = pairs.size() - 1; i >= 0; --i)
-                path = setVectorPair(path, i, pairs[i].point + delta / factor);
-            return ass::VisualTags::setDrawingPath(text, path, drawing->drawingScale);
+            auto path = ass::VectorPath::parse(drawing->path, drawing->drawingScale);
+            if (!path || !path->translate(delta / factor)) return text;
+            return ass::VisualTags::setDrawingPath(text, path->serialize(), drawing->drawingScale);
         }
         auto clip = ass::VisualTags::clip(text);
-        if (!clip || clip->rectangle) return text;
+        if (!clip || clip->rectangle || !clip->pathEditable) return text;
         const qreal factor = drawingScaleFactor(clip->drawingScale);
-        const auto pairs = vectorPairs(clip->path);
-        for (int i = pairs.size() - 1; i >= 0; --i)
-            clip->path = setVectorPair(clip->path, i, pairs[i].point + delta / factor);
+        auto path = ass::VectorPath::parse(clip->path, clip->drawingScale);
+        if (!path || !path->translate(delta / factor)) return text;
+        clip->path = path->serialize();
         return ass::VisualTags::setClip(text, *clip);
     }
     if (m_dragRole == QStringLiteral("shift")) {
         const QPointF shift = snapPoint(m_dragStartHandle + delta, modifiers) - m_dragStartHandle;
-        const auto move = ass::VisualTags::move(text);
-        if (move) {
-            auto edited = *move;
-            if (m_shiftComponents.value(QStringLiteral("shift-move-start"), true)) edited.start += shift;
-            if (m_shiftComponents.value(QStringLiteral("shift-move-end"), true)) edited.end += shift;
-            text = ass::VisualTags::setMove(text, edited);
-        }
-        const auto positionTag = ass::VisualTags::point(text, u"pos");
-        if ((!move || positionTag) && m_shiftComponents.value(QStringLiteral("shift-pos"), true)) {
-            const QPointF position = positionTag.value_or(effectivePosition(m_document->activeEventSnapshot()));
-            text = ass::VisualTags::setPoint(text, u"pos", position + shift);
-        }
-        if (const auto org = ass::VisualTags::point(text, u"org"); org
-            && m_shiftComponents.value(QStringLiteral("shift-org"), true))
-            text = ass::VisualTags::setPoint(text, u"org", *org + shift);
-        if (auto clip = ass::VisualTags::clip(text); clip
-            && m_shiftComponents.value(QStringLiteral("shift-clip"), true)) {
-            if (clip->rectangle) clip->bounds.translate(shift);
-            else {
-                auto pairs = vectorPairs(clip->path);
-                const qreal factor = drawingScaleFactor(clip->drawingScale);
-                for (int i = pairs.size() - 1; i >= 0; --i)
-                    clip->path = setVectorPair(clip->path, i, pairs[i].point + shift / factor);
-            }
+        const QString activeId = m_document->lines()->activeId();
+        const auto originalEvent = std::find_if(m_shiftEvents.cbegin(), m_shiftEvents.cend(),
+            [&activeId](const ass::Event &event) {
+                return event.id.toString(QUuid::WithoutBraces) == activeId;
+            });
+        return shiftedTextForEvent(originalEvent == m_shiftEvents.cend()
+                ? m_document->activeEventSnapshot() : *originalEvent,
+            std::move(text), shift);
+    }
+    return text;
+}
+
+QString VisualToolManager::shiftedTextForEvent(const ass::Event &event, QString text,
+                                                const QPointF &shift) const
+{
+    const auto move = ass::VisualTags::move(text);
+    if (move) {
+        auto edited = *move;
+        if (m_shiftComponents.value(QStringLiteral("shift-move-start"), true)) edited.start += shift;
+        if (m_shiftComponents.value(QStringLiteral("shift-move-end"), true)) edited.end += shift;
+        text = ass::VisualTags::setMove(text, edited);
+    }
+    const auto positionTag = ass::VisualTags::point(text, u"pos");
+    if ((!move || positionTag) && m_shiftComponents.value(QStringLiteral("shift-pos"), true)) {
+        const QPointF position = positionTag.value_or(effectivePosition(event));
+        text = ass::VisualTags::setPoint(text, u"pos", position + shift);
+    }
+    if (const auto org = ass::VisualTags::point(text, u"org"); org
+        && m_shiftComponents.value(QStringLiteral("shift-org"), true))
+        text = ass::VisualTags::setPoint(text, u"org", *org + shift);
+    if (auto clip = ass::VisualTags::clip(text); clip
+        && m_shiftComponents.value(QStringLiteral("shift-clip"), true)) {
+        if (clip->rectangle) {
+            clip->bounds.translate(shift);
             text = ass::VisualTags::setClip(text, *clip);
+        } else if (clip->pathEditable) {
+            if (auto path = ass::VectorPath::parse(clip->path, clip->drawingScale); path && path->translate(
+                    shift / drawingScaleFactor(clip->drawingScale))) {
+                clip->path = path->serialize();
+                text = ass::VisualTags::setClip(text, *clip);
+            }
         }
-        if (const auto drawing = ass::VisualTags::drawing(text); drawing
-            && m_shiftComponents.value(QStringLiteral("shift-drawing"), true)) {
-            QString path = drawing->path;
-            const auto pairs = vectorPairs(path);
-            const qreal factor = drawingScaleFactor(drawing->drawingScale);
-            for (int i = pairs.size() - 1; i >= 0; --i)
-                path = setVectorPair(path, i, pairs[i].point + shift / factor);
-            text = ass::VisualTags::setDrawingPath(text, path, drawing->drawingScale);
-        }
-        return text;
+    }
+    if (const auto drawing = ass::VisualTags::drawing(text); drawing && drawing->pathEditable
+        && m_shiftComponents.value(QStringLiteral("shift-drawing"), true)) {
+        if (auto path = ass::VectorPath::parse(drawing->path, drawing->drawingScale); path && path->translate(
+                shift / drawingScaleFactor(drawing->drawingScale)))
+            text = ass::VisualTags::setDrawingPath(text, path->serialize(), drawing->drawingScale);
     }
     return text;
 }
@@ -1213,10 +1300,14 @@ void VisualToolManager::finishFreehand()
 {
     m_freehandDrawing = false;
     if (!m_document || !m_viewport || m_freehand.size() < 2) return;
-    if (!m_document->beginVisualTextEdit(m_document->lines()->activeId())) return;
     if (isDrawingEditor(m_activeToolId)) {
         const ass::Event event = m_document->activeEventSnapshot();
         const auto existing = ass::VisualTags::drawing(m_document->activeText());
+        if (existing && !existing->pathEditable) {
+            m_freehand.clear();
+            return;
+        }
+        if (!m_document->beginVisualTextEdit(m_document->lines()->activeId())) return;
         const int scale = existing ? existing->drawingScale : 1;
         const qreal factor = drawingScaleFactor(scale);
         const QPointF anchor = effectivePosition(event);
@@ -1236,8 +1327,12 @@ void VisualToolManager::finishFreehand()
         return;
     }
     auto clip = ass::VisualTags::clip(m_document->activeText()).value_or(ass::VisualTags::Clip{});
+    if (!clip.path.isEmpty() && !clip.pathEditable) {
+        m_freehand.clear();
+        return;
+    }
+    if (!m_document->beginVisualTextEdit(m_document->lines()->activeId())) return;
     clip.rectangle = false;
-    clip.drawingScale = 1;
     const bool smooth = m_contextOption == QStringLiteral("smooth-freehand");
     QVector<QPointF> points = m_freehand;
     if (smooth) points = simplifyPath(points, 2.5);
@@ -1256,6 +1351,15 @@ void VisualToolManager::finishFreehand()
 void VisualToolManager::commitScaleRectangle(const QPointF &scriptEnd, int modifiers)
 {
     if (!m_document) return;
+    const QRectF target = QRectF(m_dragStartScript, scriptEnd).normalized();
+    const bool aspectLock = (modifiers & Qt::ShiftModifier) != 0;
+    const bool needsWidth = m_scaleAxis != QStringLiteral("y") || aspectLock;
+    const bool needsHeight = m_scaleAxis != QStringLiteral("x") || aspectLock;
+    if ((needsWidth && target.width() < 1.0) || (needsHeight && target.height() < 1.0)) {
+        m_scaleRectMode = false;
+        emit contextOptionsChanged();
+        return;
+    }
     const ass::Event event = m_document->activeEventSnapshot();
     const QString original = event.text;
     const auto style = m_document->styleForName(event.style);
@@ -1264,11 +1368,8 @@ void VisualToolManager::commitScaleRectangle(const QPointF &scriptEnd, int modif
     const QSizeF currentBounds = estimateSubtitleBounds(original, style, oldX, oldY);
     const qreal currentWidth = currentBounds.width();
     const qreal currentHeight = currentBounds.height();
-    const QRectF target(m_dragStartScript, scriptEnd);
-    if (target.width() < 1.0 || target.height() < 1.0) return;
     const qreal factorX = target.width() / currentWidth;
     const qreal factorY = target.height() / currentHeight;
-    const bool aspectLock = (modifiers & Qt::ShiftModifier) != 0;
     const qreal uniform = std::min(factorX, factorY);
     QString updated = original;
     if (m_scaleAxis != QStringLiteral("y"))
@@ -1283,147 +1384,175 @@ void VisualToolManager::commitScaleRectangle(const QPointF &scriptEnd, int modif
     emit contextOptionsChanged();
 }
 
-void VisualToolManager::appendVectorPoint(const QPointF &scriptPoint, bool bezier)
+void VisualToolManager::appendVectorPoint(const QPointF &scriptPoint, bool bezier, bool insert)
 {
-    if (!m_document) return;
-    if (isDrawingEditor(m_activeToolId)) {
-        const ass::Event event = m_document->activeEventSnapshot();
-        const QString original = m_document->activeText();
-        const auto existing = ass::VisualTags::drawing(original);
-        const int scale = existing ? existing->drawingScale : 1;
-        const qreal factor = drawingScaleFactor(scale);
-        const QPointF pathPoint = (scriptPoint - effectivePosition(event)) / factor;
-        QString path = existing ? existing->path.trimmed() : QString{};
-        if (bezier && path.isEmpty()) {
-            path = QStringLiteral("m %1 %2").arg(ass::VisualTags::formatNumber(pathPoint.x()), ass::VisualTags::formatNumber(pathPoint.y()));
-        } else if (bezier) {
-            m_bezierPoints.push_back(pathPoint);
-            if (m_bezierPoints.size() < 3) return;
-            const QPointF a = m_bezierPoints[0], b = m_bezierPoints[1], c = m_bezierPoints[2];
-            path += QStringLiteral(" b %1 %2 %3 %4 %5 %6")
-                .arg(ass::VisualTags::formatNumber(a.x()), ass::VisualTags::formatNumber(a.y()),
-                     ass::VisualTags::formatNumber(b.x()), ass::VisualTags::formatNumber(b.y()),
-                     ass::VisualTags::formatNumber(c.x()), ass::VisualTags::formatNumber(c.y()));
-            m_bezierPoints.clear();
-        } else if (path.isEmpty()) {
-            path = QStringLiteral("m %1 %2").arg(ass::VisualTags::formatNumber(pathPoint.x()), ass::VisualTags::formatNumber(pathPoint.y()));
-        } else {
-            const QVector<VectorPair> pairs = vectorPairs(path);
-            int insertionPair = -1;
-            qreal nearestDistance = 12.0;
-            for (int i = 1; i < pairs.size(); ++i) {
-                if (pairs[i].command != u'l') continue;
-                const QPointF a = m_viewport->scriptToScreen(effectivePosition(event) + pairs[i - 1].point * factor);
-                const QPointF b = m_viewport->scriptToScreen(effectivePosition(event) + pairs[i].point * factor);
-                const qreal d = distanceToSegment(m_pointer, a, b, nullptr);
-                if (d < nearestDistance) { nearestDistance = d; insertionPair = i; }
-            }
-            if (insertionPair >= 0) {
-                path.insert(pairs[insertionPair].xStart, QStringLiteral("%1 %2 ").arg(
-                    ass::VisualTags::formatNumber(pathPoint.x()), ass::VisualTags::formatNumber(pathPoint.y())));
-            } else {
-                path += QStringLiteral(" l %1 %2").arg(ass::VisualTags::formatNumber(pathPoint.x()), ass::VisualTags::formatNumber(pathPoint.y()));
-            }
-        }
-        const QString updated = ass::VisualTags::setDrawingPath(original, path, scale);
-        if (updated != original && m_document->beginVisualTextEdit(m_document->lines()->activeId())) {
-            m_document->previewVisualTextEdit(updated);
-            m_document->commitVisualTextEdit();
-        }
+    if (!m_document || !m_viewport)
         return;
-    }
-    auto clip = ass::VisualTags::clip(m_document->activeText()).value_or(ass::VisualTags::Clip{});
-    clip.rectangle = false;
-    const qreal factor = drawingScaleFactor(clip.drawingScale);
-    const QPointF pathPoint = scriptPoint / factor;
-    QString path = clip.path.trimmed();
+    const bool isDrawing = isDrawingEditor(m_activeToolId);
+    const ass::Event event = m_document->activeEventSnapshot();
+    const QString original = m_document->activeText();
+    const auto drawing = isDrawing ? ass::VisualTags::drawing(original) : std::optional<ass::VisualTags::Drawing>{};
+    auto clip = isDrawing ? std::optional<ass::VisualTags::Clip>{} : ass::VisualTags::clip(original);
+    if (drawing && !drawing->pathEditable)
+        return;
+    if (clip && !clip->rectangle && !clip->pathEditable)
+        return;
+    const int scale = isDrawing ? (drawing ? drawing->drawingScale : 1) : (clip ? clip->drawingScale : 1);
+    const qreal factor = drawingScaleFactor(scale);
+    const QPointF anchor = isDrawing ? effectivePosition(event) : QPointF{};
+    const QPointF pathPoint = (scriptPoint - anchor) / factor;
+    const QString pathText = isDrawing ? (drawing ? drawing->path : QString{})
+                                       : (clip ? clip->path : QString{});
+    std::optional<ass::VectorPath> path = pathText.isEmpty()
+        ? std::optional<ass::VectorPath>{} : ass::VectorPath::parse(pathText, scale);
+    if (!pathText.isEmpty() && (!path || !path->editable()))
+        return;
+
     if (bezier) {
-        if (path.isEmpty() && m_bezierPoints.isEmpty()) {
-            path = QStringLiteral("m %1 %2").arg(ass::VisualTags::formatNumber(pathPoint.x()), ass::VisualTags::formatNumber(pathPoint.y()));
-            clip.path = path;
-            if (m_document->beginVisualTextEdit(m_document->lines()->activeId())) {
-                m_document->previewVisualTextEdit(ass::VisualTags::setClip(m_document->activeText(), clip));
-                m_document->commitVisualTextEdit();
+        if (!path) {
+            path = ass::VectorPath::startAt(pathPoint, scale);
+        } else {
+            m_bezierPoints.push_back(pathPoint);
+            if (m_bezierPoints.size() < 3) {
+                emit contextOptionsChanged();
+                return;
             }
-            return;
+            path->appendCubic(m_bezierPoints[0], m_bezierPoints[1], m_bezierPoints[2]);
+            m_bezierPoints.clear();
         }
-        m_bezierPoints.push_back(pathPoint);
-        if (m_bezierPoints.size() < 3) {
-            emit contextOptionsChanged();
-            return;
-        }
-        if (path.isEmpty()) {
-            const QPointF start = m_bezierPoints.front();
-            path = QStringLiteral("m %1 %2").arg(ass::VisualTags::formatNumber(start.x()), ass::VisualTags::formatNumber(start.y()));
-        }
-        const QPointF a = m_bezierPoints[0], b = m_bezierPoints[1], c = m_bezierPoints[2];
-        path += QStringLiteral(" b %1 %2 %3 %4 %5 %6")
-            .arg(ass::VisualTags::formatNumber(a.x()), ass::VisualTags::formatNumber(a.y()),
-                 ass::VisualTags::formatNumber(b.x()), ass::VisualTags::formatNumber(b.y()),
-                 ass::VisualTags::formatNumber(c.x()), ass::VisualTags::formatNumber(c.y()));
-        m_bezierPoints.clear();
+    } else if (!path) {
+        path = ass::VectorPath::startAt(pathPoint, scale);
     } else {
-        if (path.isEmpty()) path = QStringLiteral("m %1 %2").arg(ass::VisualTags::formatNumber(pathPoint.x()), ass::VisualTags::formatNumber(pathPoint.y()));
-        else {
-            const QVector<VectorPair> pairs = vectorPairs(path);
-            int insertionPair = -1;
-            qreal nearestDistance = 12.0;
-            for (int i = 1; i < pairs.size(); ++i) {
-                if (pairs[i].command != u'l') continue;
-                const QPointF a = m_viewport->scriptToScreen(pairs[i - 1].point * factor);
-                const QPointF b = m_viewport->scriptToScreen(pairs[i].point * factor);
-                const qreal d = distanceToSegment(m_pointer, a, b, nullptr);
-                if (d < nearestDistance) { nearestDistance = d; insertionPair = i; }
+        bool inserted = false;
+        qreal nearestDistance = 12.0;
+        int nearestSegment = -1;
+        qreal nearestT = 0.5;
+        QPointF current;
+        for (int commandIndex = 0; commandIndex < path->commands().size(); ++commandIndex) {
+            const auto &command = path->commands().at(commandIndex);
+            if (command.kind == ass::VectorPath::Kind::Move) {
+                current = command.points.front();
+                continue;
             }
-            if (insertionPair >= 0) {
-                const VectorPair &at = pairs[insertionPair];
-                path.insert(at.xStart, QStringLiteral("%1 %2 ").arg(
-                    ass::VisualTags::formatNumber(pathPoint.x()), ass::VisualTags::formatNumber(pathPoint.y())));
+            const auto screenPointFor = [this, isDrawing, anchor, factor](QPointF point) {
+                return m_viewport->scriptToScreen((isDrawing ? anchor : QPointF{}) + point * factor);
+            };
+            if (command.kind == ass::VectorPath::Kind::Line) {
+                QPointF projection;
+                const qreal dist = distanceToSegment(m_pointer, screenPointFor(current),
+                    screenPointFor(command.points.front()), &projection);
+                if (dist < nearestDistance) {
+                    const QPointF a = screenPointFor(current), b = screenPointFor(command.points.front());
+                    const QPointF d = b - a;
+                    nearestDistance = dist;
+                    nearestSegment = commandIndex;
+                    nearestT = QPointF::dotProduct(projection - a, d) / std::max<qreal>(0.0001, QPointF::dotProduct(d, d));
+                }
+                current = command.points.front();
             } else {
-                path += QStringLiteral(" l %1 %2").arg(ass::VisualTags::formatNumber(pathPoint.x()), ass::VisualTags::formatNumber(pathPoint.y()));
+                const QPointF p0 = current, p1 = command.points[0], p2 = command.points[1], p3 = command.points[2];
+                QPointF previous = screenPointFor(p0);
+                for (int step = 1; step <= 64; ++step) {
+                    const qreal t = step / 64.0;
+                    const qreal u = 1.0 - t;
+                    const QPointF curve = p0 * (u * u * u) + p1 * (3 * u * u * t)
+                        + p2 * (3 * u * t * t) + p3 * (t * t * t);
+                    const QPointF screen = screenPointFor(curve);
+                    QPointF projection;
+                    const qreal dist = distanceToSegment(m_pointer, previous, screen, &projection);
+                    if (dist < nearestDistance) {
+                        const QPointF d = screen - previous;
+                        const qreal local = QPointF::dotProduct(projection - previous, d)
+                            / std::max<qreal>(0.0001, QPointF::dotProduct(d, d));
+                        nearestDistance = dist;
+                        nearestSegment = commandIndex;
+                        nearestT = ((step - 1) + local) / 64.0;
+                    }
+                    previous = screen;
+                }
+                current = p3;
             }
         }
+        if (nearestSegment >= 0)
+            inserted = path->insertOnSegment(nearestSegment, nearestT);
+        if (insert && !inserted)
+            return;
+        if (!inserted)
+            path->appendLine(pathPoint);
     }
-    clip.path = path;
-    if (m_document->beginVisualTextEdit(m_document->lines()->activeId())) {
-        m_document->previewVisualTextEdit(ass::VisualTags::setClip(m_document->activeText(), clip));
+
+    const QString updated = isDrawing
+        ? ass::VisualTags::setDrawingPath(original, path->serialize(), scale)
+        : ass::VisualTags::setClip(original, [&] {
+              ass::VisualTags::Clip value = clip.value_or(ass::VisualTags::Clip{});
+              value.rectangle = false;
+              value.drawingScale = scale;
+              value.path = path->serialize();
+              value.pathEditable = true;
+              return value;
+          }());
+    if (updated != original && m_document->beginVisualTextEdit(m_document->lines()->activeId())) {
+        m_document->previewVisualTextEdit(updated);
         m_document->commitVisualTextEdit();
     }
 }
 
 bool VisualToolManager::deleteSelectedVectorPoint()
 {
-    if (!m_document || m_selectedVectorPoint <= 0) return false;
+    if (!m_document) return false;
+    QSet<int> selected = m_selectedVectorPoints;
+    if (selected.isEmpty()) return false;
     if (isDrawingEditor(m_activeToolId)) {
         const auto drawing = ass::VisualTags::drawing(m_document->activeText());
-        if (!drawing) return false;
-        const QVector<VectorPair> pairs = vectorPairs(drawing->path);
-        if (m_selectedVectorPoint >= pairs.size() || pairs[m_selectedVectorPoint].command != u'l' || pairs.size() <= 2)
-            return false;
-        const VectorPair pair = pairs[m_selectedVectorPoint];
-        QString path = drawing->path;
-        qsizetype start = pair.xStart;
-        if (start > 0 && path.at(start - 1).isSpace()) --start;
-        path.remove(start, pair.yStart + pair.yLength - start);
+        if (!drawing || !drawing->pathEditable) return false;
+        auto path = ass::VectorPath::parse(drawing->path, drawing->drawingScale);
+        if (!path || !path->deleteNodes(selected)) return false;
         if (!m_document->beginVisualTextEdit(m_document->lines()->activeId())) return false;
-        m_document->previewVisualTextEdit(ass::VisualTags::setDrawingPath(m_document->activeText(), path, drawing->drawingScale));
+        m_document->previewVisualTextEdit(ass::VisualTags::setDrawingPath(m_document->activeText(), path->serialize(), drawing->drawingScale));
         m_document->commitVisualTextEdit();
+        m_selectedVectorPoints.clear();
         return true;
     }
     auto clip = ass::VisualTags::clip(m_document->activeText());
-    if (!clip || clip->rectangle) return false;
-    QVector<VectorPair> pairs = vectorPairs(clip->path);
-    if (m_selectedVectorPoint >= pairs.size() || pairs[m_selectedVectorPoint].command != u'l' || pairs.size() <= 2)
-        return false;
-    const VectorPair pair = pairs[m_selectedVectorPoint];
-    QString path = clip->path;
-    qsizetype start = pair.xStart;
-    if (start > 0 && path.at(start - 1).isSpace()) --start;
-    path.remove(start, pair.yStart + pair.yLength - start);
-    clip->path = path;
+    if (!clip || clip->rectangle || !clip->pathEditable) return false;
+    auto path = ass::VectorPath::parse(clip->path, clip->drawingScale);
+    if (!path || !path->deleteNodes(selected)) return false;
+    clip->path = path->serialize();
     if (!m_document->beginVisualTextEdit(m_document->lines()->activeId())) return false;
     m_document->previewVisualTextEdit(ass::VisualTags::setClip(m_document->activeText(), *clip));
     m_document->commitVisualTextEdit();
+    m_selectedVectorPoints.clear();
+    return true;
+}
+
+bool VisualToolManager::convertSelectedVectorSegment(bool toBezier)
+{
+    if (!m_document || !isVectorEditor(m_activeToolId))
+        return false;
+    const int segment = vectorSegmentIndex(m_selectedFeature);
+    if (segment < 1)
+        return false;
+    const QString original = m_document->activeText();
+    QString updated;
+    if (isDrawingEditor(m_activeToolId)) {
+        const auto drawing = ass::VisualTags::drawing(original);
+        if (!drawing || !drawing->pathEditable) return false;
+        auto path = ass::VectorPath::parse(drawing->path, drawing->drawingScale);
+        if (!path || !(toBezier ? path->convertSegmentToCubic(segment) : path->convertSegmentToLine(segment))) return false;
+        updated = ass::VisualTags::setDrawingPath(original, path->serialize(), drawing->drawingScale);
+    } else {
+        auto clip = ass::VisualTags::clip(original);
+        if (!clip || clip->rectangle || !clip->pathEditable) return false;
+        auto path = ass::VectorPath::parse(clip->path, clip->drawingScale);
+        if (!path || !(toBezier ? path->convertSegmentToCubic(segment) : path->convertSegmentToLine(segment))) return false;
+        clip->path = path->serialize();
+        updated = ass::VisualTags::setClip(original, *clip);
+    }
+    if (updated == original || !m_document->beginVisualTextEdit(m_document->lines()->activeId()))
+        return false;
+    m_document->previewVisualTextEdit(updated);
+    m_document->commitVisualTextEdit();
+    rebuildOverlay();
     return true;
 }
 

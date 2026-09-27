@@ -31,8 +31,11 @@ logical-pixel handle sizes while their subtitle positions stay in script space.
 A visual drag captures the active event text, previews each pointer update
 through the subtitle model and Mangetsu revision signal, then commits one
 `QUndoCommand` on pointer release. Escape restores the captured text without a
-history entry. A tool switch commits an active drag. Navigation is handled by
-the viewport before visual tools receive normal edit gestures.
+history entry. Geometry Shift captures selected events by stable ID, previews
+the same script-space delta on each selected line, and commits or cancels the
+whole group together. Other tools edit only the active line. A tool switch
+commits an active drag. Navigation is handled by the viewport before visual
+tools receive normal edit gestures.
 
 `ass::VisualTags` scans override blocks and tag boundaries, including balanced
 parenthesized arguments. It replaces only the selected tag span and retains
@@ -49,18 +52,24 @@ existing `\pN`/`\p0` switches. New drawings are wrapped in a local `\p1`/`\p0`
 pair at the line end. Drawing-mode coordinates are positioned relative to the
 line's effective script-space anchor.
 
-Vector clips retain their original drawing scale and command text. Node/control
-point coordinates are edited in script space after applying the ASS drawing
-scale, and the serializer changes only the requested numeric pair. New paths
-can be added as line or cubic commands. Freehand samples in screen space;
-the smoothed mode uses screen-space Douglas–Peucker simplification so tolerance
-does not change with content zoom. Current node deletion handles line endpoints;
-Bezier controls can be dragged but are not yet deleted as whole curve groups.
-Line insertion is available on line segments. B-splines, point-type conversion,
-and multi-node selection are not implemented.
+Vector clips retain their drawing scale and inverse state. Vector clips and
+active `\\p` drawings use the shared `ass::VectorPath` model for move, line, and
+cubic commands, endpoints, and Bézier controls. Editing serializes that model
+while `VisualTags` preserves surrounding override tags and subtitle text. Ctrl
+toggles nodes, Shift adds nodes, and selected nodes drag together. Deleting a
+line endpoint removes its segment; deleting a Bézier control converts the
+segment to a line, while deleting its endpoint removes the curve. Insertion
+splits line or cubic segments in place, and selected segments can convert
+between line and cubic Bézier. Control handles have a distinct overlay style.
+Freehand samples in screen space; the smoothed mode uses screen-space
+Douglas–Peucker simplification so tolerance does not change with content zoom.
+Spline commands and malformed or unknown paths remain read-only and retain
+their source syntax.
 
-The manager and feature descriptors are the extension points for additional
-Mangetsu geometry tools. `\pgrd` appears in preservation tests and is recognized
+Registered custom tools implement the `VisualTool` event and overlay hooks.
+The built-in tools still use `VisualToolManager` handlers; migrating their
+semantics behind individual `VisualTool` implementations remains unfinished.
+`\pgrd` appears in preservation tests and is recognized
 by the syntax highlighter; the migration inventory still lists its gradient
 editor as future work, and this checkout has no active parameter specification.
 Current `\distort`, `\perspective`, `\ct`, warp, and gradient semantics are not
@@ -80,12 +89,7 @@ The present application has one attached video pane per document. The
 transform is per document and can be shared with another viewport, but the UI
 does not yet expose detached-video windows or per-window pan/zoom state.
 
-Visual edit transactions currently target the active line. The selection model
-supports multiple selected rows, but group movement/alignment is not connected
-to the visual tools yet. Effective placement reads direct positioning and
-alignment tags; it does not evaluate style resets or transformed tag state.
-Wheel behavior has sensible defaults but is not yet preference-configurable.
-The C++ custom-tool factory is an extension point, not a loaded plugin system.
-Standard-tool behavior is still centralized in the manager's built-in handlers;
-moving each built-in behind its own `VisualTool` implementation remains a
-refactor before the tool set grows further.
+Effective placement reads direct positioning and alignment tags; it does not
+evaluate style resets or transformed tag state. Wheel behavior is not yet
+preference-configurable. The C++ custom-tool factory is an extension point,
+not a loaded plugin system.

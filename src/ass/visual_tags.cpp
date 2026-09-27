@@ -1,4 +1,5 @@
 #include "ass/visual_tags.h"
+#include "ass/vector_path.h"
 
 #include <QtCore/QLocale>
 #include <QtCore/QStringList>
@@ -225,18 +226,12 @@ std::optional<Clip> clip(const QString &text)
         return {};
     Clip result;
     result.inverse = token->name == QStringLiteral("iclip");
+    result.rawArguments = token->arguments;
     QString args = token->arguments.trimmed();
-    const qsizetype firstComma = args.indexOf(u',');
-    if (firstComma >= 0) {
-        bool scaleOk = false;
-        const int scale = args.left(firstComma).trimmed().toInt(&scaleOk);
-        if (scaleOk && scale >= 1 && scale <= 100) {
-            result.drawingScale = scale;
-            args = args.mid(firstComma + 1).trimmed();
-        }
-    }
-    const QStringList fields = args.split(u',', Qt::KeepEmptyParts);
-    if (fields.size() == 4) {
+    const auto parseRectangle = [](const QString &value) -> std::optional<QRectF> {
+        const QStringList fields = value.split(u',', Qt::KeepEmptyParts);
+        if (fields.size() != 4)
+            return {};
         QVector<qreal> values;
         for (const QString &field : fields) {
             bool ok = false;
@@ -245,16 +240,41 @@ std::optional<Clip> clip(const QString &text)
                 return {};
             values.push_back(value);
         }
+        return QRectF(QPointF(values[0], values[1]), QPointF(values[2], values[3])).normalized();
+    };
+    // Rectangles have four numeric comma-separated fields. Check this before
+    // considering the ambiguous integer-prefix vector form.
+    if (const auto rect = parseRectangle(args)) {
         result.rectangle = true;
-        result.bounds = QRectF(QPointF(values[0], values[1]), QPointF(values[2], values[3])).normalized();
+        result.bounds = *rect;
         return result;
     }
-    if (args.startsWith(u'm', Qt::CaseInsensitive) || args.startsWith(u'n', Qt::CaseInsensitive)) {
-        result.rectangle = false;
-        result.path = args;
-        return result;
+
+    QString path = args;
+    const qsizetype firstComma = args.indexOf(u',');
+    if (firstComma >= 0) {
+        bool scaleOk = false;
+        const int scale = args.left(firstComma).trimmed().toInt(&scaleOk);
+        if (scaleOk && scale >= 1 && scale <= 100) {
+            const QString candidate = args.mid(firstComma + 1).trimmed();
+            if (const auto parsed = VectorPath::parse(candidate, scale)) {
+                result.drawingScale = scale;
+                path = candidate;
+                result.pathEditable = parsed->editable();
+                result.path = path;
+                result.rawPath = path;
+                return result;
+            }
+        }
     }
-    return {};
+
+    if (const auto parsed = VectorPath::parse(path))
+        result.pathEditable = parsed->editable();
+    // Keep malformed and unsupported vector payloads inspectable and intact.
+    // Tools treat pathEditable=false as read-only and never replace this tag.
+    result.path = path;
+    result.rawPath = path;
+    return result;
 }
 
 std::optional<Drawing> drawing(const QString &text)
@@ -270,8 +290,11 @@ std::optional<Drawing> drawing(const QString &text)
             qsizetype end = segmentEnd;
             while (start < end && text.at(start).isSpace()) ++start;
             while (end > start && text.at(end - 1).isSpace()) --end;
-            if (end > start)
-                return Drawing{scale, text.mid(start, end - start), start, end - start};
+            if (end > start) {
+                const QString path = text.mid(start, end - start);
+                const auto parsed = VectorPath::parse(path, scale);
+                return Drawing{scale, parsed && parsed->editable(), path, start, end - start};
+            }
         }
         if (blockStart < 0)
             break;
@@ -325,9 +348,14 @@ QString setClip(const QString &text, const Clip &clip)
 {
     const QString name = clip.inverse ? QStringLiteral("iclip") : QStringLiteral("clip");
     const QRectF normalizedBounds = clip.bounds.normalized();
-    const QString args = clip.rectangle
-        ? pointArguments(normalizedBounds.topLeft()) + u',' + pointArguments(normalizedBounds.bottomRight())
-        : pathArgument(clip);
+    QString args;
+    if (clip.rectangle) {
+        args = pointArguments(normalizedBounds.topLeft()) + u',' + pointArguments(normalizedBounds.bottomRight());
+    } else if (!clip.rawArguments.isNull() && clip.path == clip.rawPath) {
+        args = clip.rawArguments;
+    } else {
+        args = pathArgument(clip);
+    }
     return replaceToken(text, {QStringLiteral("clip"), QStringLiteral("iclip")},
         u'\\' + name + u'(' + args + u')');
 }

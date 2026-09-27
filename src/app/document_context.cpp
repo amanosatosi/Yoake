@@ -374,7 +374,7 @@ void DocumentContext::loadLinkedMedia()
 
 void DocumentContext::undo()
 {
-    if (!m_visualEditId.isNull()) {
+    if (hasActiveVisualTextEdit()) {
         cancelVisualTextEdit();
         return;
     }
@@ -386,7 +386,7 @@ void DocumentContext::undo()
 
 void DocumentContext::redo()
 {
-    if (!m_visualEditId.isNull()) {
+    if (hasActiveVisualTextEdit()) {
         cancelVisualTextEdit();
         return;
     }
@@ -398,7 +398,7 @@ void DocumentContext::redo()
 
 void DocumentContext::editEvent(const QUuid &id, int role, const QVariant &value)
 {
-    if (!m_visualEditId.isNull())
+    if (hasActiveVisualTextEdit())
         cancelVisualTextEdit();
     if (m_karaoke->active())
         return;
@@ -437,7 +437,7 @@ void DocumentContext::editEvent(const QUuid &id, int role, const QVariant &value
 
 bool DocumentContext::beginVisualTextEdit(const QString &eventId)
 {
-    if (m_karaoke->active() || m_saving || !m_visualEditId.isNull())
+    if (m_karaoke->active() || m_saving || hasActiveVisualTextEdit())
         return false;
     const QUuid id(eventId);
     const int row = m_document.eventIndex(id);
@@ -464,8 +464,80 @@ void DocumentContext::previewVisualTextEdit(const QString &text)
     emit rendererRevisionChanged(++m_rendererRevision);
 }
 
+bool DocumentContext::beginVisualTextEditGroup(const QStringList &eventIds)
+{
+    if (m_karaoke->active() || m_saving || hasActiveVisualTextEdit() || eventIds.isEmpty())
+        return false;
+    const auto selection = m_lines->selectionSnapshot();
+    QVector<QUuid> ids;
+    QSet<QUuid> seen;
+    ids.reserve(eventIds.size());
+    for (const QString &textId : eventIds) {
+        const QUuid id(textId);
+        if (id.isNull() || seen.contains(id) || m_document.eventIndex(id) < 0
+            || !selection.selectedIds.contains(id))
+            return false;
+        seen.insert(id);
+        ids.push_back(id);
+    }
+    if (ids.isEmpty())
+        return false;
+    m_visualEditGroupIds = std::move(ids);
+    m_visualEditGroupEventsBefore = m_document.events();
+    m_visualEditGroupSelectionBefore = selection;
+    m_visualEditGroupBefore.clear();
+    m_visualEditGroupCurrent.clear();
+    for (const QUuid &id : std::as_const(m_visualEditGroupIds)) {
+        const int row = m_document.eventIndex(id);
+        const QString text = m_document.events().at(row).text;
+        m_visualEditGroupBefore.insert(id, text);
+        m_visualEditGroupCurrent.insert(id, text);
+    }
+    ++m_mergeEpoch;
+    return true;
+}
+
+void DocumentContext::previewVisualTextEditGroup(const QVariantMap &textsByEventId)
+{
+    if (m_visualEditGroupIds.isEmpty())
+        return;
+    bool changed = false;
+    for (const QUuid &id : std::as_const(m_visualEditGroupIds)) {
+        const QString key = id.toString(QUuid::WithoutBraces);
+        if (!textsByEventId.contains(key) || m_document.eventIndex(id) < 0) {
+            cancelVisualTextEdit();
+            return;
+        }
+        const QString text = textsByEventId.value(key).toString();
+        if (m_visualEditGroupCurrent.value(id) == text)
+            continue;
+        m_visualEditGroupCurrent.insert(id, text);
+        m_lines->applyField(id, models::SubtitleModel::TextRole, text);
+        changed = true;
+    }
+    if (changed)
+        emit rendererRevisionChanged(++m_rendererRevision);
+}
+
 void DocumentContext::commitVisualTextEdit()
 {
+    if (!m_visualEditGroupIds.isEmpty()) {
+        const QVector<ass::Event> before = std::exchange(m_visualEditGroupEventsBefore, QVector<ass::Event>{});
+        const auto beforeSelection = std::exchange(m_visualEditGroupSelectionBefore,
+            models::SubtitleModel::SelectionSnapshot{});
+        m_visualEditGroupIds.clear();
+        m_visualEditGroupBefore.clear();
+        m_visualEditGroupCurrent.clear();
+        const QVector<ass::Event> after = m_document.events();
+        if (before != after) {
+            ++m_mergeEpoch;
+            const auto selection = m_lines->selectionSnapshot();
+            m_undo.push(new ReplaceEventsCommand(this, before, beforeSelection,
+                after, selection, tr("Visual geometry shift")));
+            ++m_mergeEpoch;
+        }
+        return;
+    }
     if (m_visualEditId.isNull())
         return;
     const QUuid id = std::exchange(m_visualEditId, QUuid{});
@@ -482,6 +554,24 @@ void DocumentContext::commitVisualTextEdit()
 
 void DocumentContext::cancelVisualTextEdit()
 {
+    if (!m_visualEditGroupIds.isEmpty()) {
+        const QVector<QUuid> ids = std::exchange(m_visualEditGroupIds, QVector<QUuid>{});
+        const auto before = std::exchange(m_visualEditGroupBefore, QHash<QUuid, QString>{});
+        const auto current = std::exchange(m_visualEditGroupCurrent, QHash<QUuid, QString>{});
+        m_visualEditGroupEventsBefore.clear();
+        m_visualEditGroupSelectionBefore = {};
+        bool changed = false;
+        for (const QUuid &id : ids) {
+            if (current.value(id) != before.value(id) && m_document.eventIndex(id) >= 0) {
+                m_lines->applyField(id, models::SubtitleModel::TextRole, before.value(id));
+                changed = true;
+            }
+        }
+        if (changed)
+            emit rendererRevisionChanged(++m_rendererRevision);
+        ++m_mergeEpoch;
+        return;
+    }
     if (m_visualEditId.isNull())
         return;
     const QUuid id = std::exchange(m_visualEditId, QUuid{});
@@ -510,7 +600,7 @@ void DocumentContext::replaceEvents(QVector<ass::Event> events,
     const QString &description, const QUuid &preferredActive,
     const QVector<QUuid> &preferredSelection)
 {
-    if (!m_visualEditId.isNull())
+    if (hasActiveVisualTextEdit())
         cancelVisualTextEdit();
     if (events == m_document.events())
         return;
@@ -1022,7 +1112,7 @@ void DocumentContext::save(const QUrl &target)
 {
     if (m_saving)
         return;
-    if (!m_visualEditId.isNull())
+    if (hasActiveVisualTextEdit())
         commitVisualTextEdit();
     const QUrl destination = target.isEmpty() ? m_fileUrl : target;
     if (!destination.isLocalFile()) {

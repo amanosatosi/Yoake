@@ -70,14 +70,16 @@ Rectangle {
 
                         Rectangle {
                             visible: kind === "point"
-                            width: 13
-                            height: 13
+                            width: modelData.nodeType === "control" ? 9 : 13
+                            height: width
                             x: -width / 2
                             y: -height / 2
-                            radius: 3
-                            color: modelData.selected ? Theme.palette.accent : Theme.palette.surfaceRaised
+                            radius: modelData.nodeType === "control" ? width / 2 : 3
+                            color: modelData.selected ? Theme.palette.accent
+                                                      : modelData.nodeType === "control" ? Theme.palette.videoOverlay
+                                                                                         : Theme.palette.surfaceRaised
                             border.width: 2
-                            border.color: Theme.palette.text
+                            border.color: modelData.nodeType === "control" ? Theme.palette.accent : Theme.palette.text
                         }
                         Rectangle {
                             visible: kind === "rect"

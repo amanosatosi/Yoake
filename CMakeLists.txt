@@ -102,6 +102,7 @@ set(YOAKE_SOURCES
     src/ass/ass_event_edits.cpp
     src/ass/ass_text_boundaries.cpp
     src/ass/visual_tags.cpp
+    src/ass/vector_path.cpp
     src/media/ffms_audio_worker.cpp
     src/media/ffms_spectrum_worker.cpp
     src/media/ffms_video_worker.cpp
@@ -152,6 +153,7 @@ set(YOAKE_HEADERS
     src/ui/visual_snap_service.h
     src/ui/visual_tool.h
     src/ass/visual_tags.h
+    src/ass/vector_path.h
 )
 
 qt_add_executable(yoake WIN32 ${YOAKE_SOURCES} ${YOAKE_HEADERS})
@@ -210,6 +212,7 @@ if(BUILD_TESTING)
         src/ass/ass_event_edits.cpp
         src/ass/ass_text_boundaries.cpp
         src/ass/visual_tags.cpp
+        src/ass/vector_path.cpp
         src/media/frame_time_map.cpp
         src/ui/video_viewport.cpp
         src/ui/visual_snap_service.cpp
@@ -227,6 +230,7 @@ if(BUILD_TESTING)
         src/ui/visual_tool_manager.cpp
         src/ass/ass_document.cpp
         src/ass/visual_tags.cpp
+        src/ass/vector_path.cpp
         src/ass/ass_event_clipboard.cpp
         src/ass/ass_event_edits.cpp
         src/media/ffms_audio_worker.cpp
