@@ -158,6 +158,13 @@ jobs:
       - name: Test exact timing and document core
         shell: pwsh
         run: |
+          $runtimeDllDirectories = Get-Content -LiteralPath .\build\CMakeCache.txt |
+            Where-Object { $_ -match '^(FFMS2_RUNTIME|FFMPEG_SWRESAMPLE_RUNTIME):FILEPATH=' } |
+            ForEach-Object { Split-Path -Parent ($_ -split '=', 2)[1] } |
+            Select-Object -Unique
+          $env:PATH = (($runtimeDllDirectories + $env:PATH) -join ';')
+          Write-Host "Runtime DLL directories: $($runtimeDllDirectories -join ';')"
+
           $output = & .\build\yoake_editing_tests.exe -v2 2>&1
           $editingExitCode = $LASTEXITCODE
           Write-Host "Standalone editing test exit code: $editingExitCode"
