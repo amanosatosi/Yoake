@@ -165,7 +165,7 @@ jobs:
           $env:PATH = (($runtimeDllDirectories + $env:PATH) -join ';')
           Write-Host "Runtime DLL directories: $($runtimeDllDirectories -join ';')"
 
-          $output = & .\build\yoake_editing_tests.exe -v2 2>&1
+          $output = & .\build\yoake_editing_tests.exe -v2 -o -,txt 2>&1
           $editingExitCode = $LASTEXITCODE
           Write-Host "Standalone editing test exit code: $editingExitCode"
           $output | ForEach-Object { Write-Host $_ }
