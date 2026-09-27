@@ -120,6 +120,10 @@ set(YOAKE_SOURCES
     src/ui/video_frame_item.cpp
     src/ui/video_viewport.cpp
     src/ui/visual_snap_service.cpp
+    src/ui/visual_tool_base.cpp
+    src/ui/builtin_visual_tools.cpp
+    src/ui/vector_path_visual_tools.cpp
+    src/ui/geometry_shift_visual_tool.cpp
     src/ui/visual_tool_manager.cpp
 )
 
@@ -150,6 +154,10 @@ set(YOAKE_HEADERS
     src/ui/video_frame_item.h
     src/ui/video_viewport.h
     src/ui/visual_tool_manager.h
+    src/ui/visual_tool_base.h
+    src/ui/builtin_visual_tools.h
+    src/ui/vector_path_visual_tools.h
+    src/ui/geometry_shift_visual_tool.h
     src/ui/visual_snap_service.h
     src/ui/visual_tool.h
     src/ass/visual_tags.h
@@ -237,6 +245,10 @@ if(BUILD_TESTING)
         src/app/document_context.cpp
         src/ui/video_viewport.cpp
         src/ui/visual_snap_service.cpp
+        src/ui/visual_tool_base.cpp
+        src/ui/builtin_visual_tools.cpp
+        src/ui/vector_path_visual_tools.cpp
+        src/ui/geometry_shift_visual_tool.cpp
         src/ui/visual_tool_manager.cpp
         src/ass/ass_document.cpp
         src/ass/visual_tags.cpp
@@ -258,6 +270,10 @@ if(BUILD_TESTING)
         src/ui/video_viewport.h
         src/ui/visual_snap_service.h
         src/ui/visual_tool_manager.h
+        src/ui/visual_tool_base.h
+        src/ui/builtin_visual_tools.h
+        src/ui/vector_path_visual_tools.h
+        src/ui/geometry_shift_visual_tool.h
         src/ui/visual_tool.h
         src/ass/ass_document.h
         src/ass/ass_event.h

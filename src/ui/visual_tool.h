@@ -23,6 +23,8 @@ public:
     [[nodiscard]] virtual QVariantMap descriptor() const = 0;
     [[nodiscard]] virtual QVariantList contextOptions() const { return {}; }
     [[nodiscard]] virtual QVariantList renderOverlay() const = 0;
+    [[nodiscard]] virtual QString coordinateLabel() const { return {}; }
+    virtual void activeLineChanged() {}
     virtual void activate() {}
     virtual void deactivate() {}
     virtual void pointerDown(const QPointF &, int) {}
