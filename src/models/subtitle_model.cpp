@@ -20,7 +20,11 @@ int visibleAssCharacters(const QString &text)
         }
         if (text.at(i) == u'\\' && i + 1 < text.size()) {
             const QChar code = text.at(i + 1);
-            if (code == u'N' || code == u'n' || code == u'h') {
+            if (code == u'N' || code == u'n') {
+                i += 2;
+                continue;
+            }
+            if (code == u'h') {
                 ++count;
                 i += 2;
                 continue;
@@ -190,16 +194,16 @@ void SubtitleModel::moveActive(int delta, bool extend)
         selectRow(target, false, extend);
 }
 
-void SubtitleModel::selectFirst()
+void SubtitleModel::selectFirst(bool extend)
 {
     if (!m_document->events().isEmpty())
-        selectRow(0);
+        selectRow(0, false, extend);
 }
 
-void SubtitleModel::selectLast()
+void SubtitleModel::selectLast(bool extend)
 {
     if (!m_document->events().isEmpty())
-        selectRow(static_cast<int>(m_document->events().size()) - 1);
+        selectRow(static_cast<int>(m_document->events().size()) - 1, false, extend);
 }
 
 void SubtitleModel::selectPrevious() { moveActive(-1); }

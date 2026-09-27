@@ -83,6 +83,8 @@ class DocumentEditingTest final : public QObject {
 private slots:
     void selectionSupportsRangesTogglesAndNavigation();
     void cpsIgnoresOverridesAndHandlesZeroDuration();
+    void cpsCountsAssEscapesAccordingToVisibleText();
+    void homeAndEndCanExtendSelection();
     void documentLocalStyleActorAndEffectSuggestionsRemainConservative();
     void insertBeforeAndAfterAreUndoableAndUseFreshIds();
     void duplicatePreservesFieldsAndCreatesNewIdentity();
@@ -96,6 +98,7 @@ private slots:
     void replaceCurrentAndNextUseLiteralMatches();
     void editsKeepUnknownAssRecordsAndMangetsuText();
     void textEditsMergePerLineAndSelectionChangesBreakTheMerge();
+    void undoRedoAreHardTextMergeBoundaries();
     void savedStateIsRestoredByUndoAndRedo();
 };
 
@@ -135,6 +138,48 @@ void DocumentEditingTest::cpsIgnoresOverridesAndHandlesZeroDuration()
     QCOMPARE(zeroContext.lines()->data(zeroContext.lines()->index(0), SubtitleModel::CpsRole).toDouble(), 0.0);
 }
 
+void DocumentEditingTest::cpsCountsAssEscapesAccordingToVisibleText()
+{
+    QByteArray script = QByteArrayLiteral(
+        "[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0000,0000,0000,,ab\\Ncd\n"
+        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0000,0000,0000,,ab\\ncd\n"
+        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0000,0000,0000,,ab\\hcd\n"
+        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0000,0000,0000,,{\\i1}abcd\n"
+        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0000,0000,0000,,A");
+    script += QString::fromUcs4(U"\U0001F600").toUtf8();
+    script += QByteArrayLiteral("B\n");
+    QString error;
+    Document document = Document::parse(script, &error);
+    QVERIFY2(error.isEmpty(), qPrintable(error));
+    DocumentContext context(std::move(document));
+    QCOMPARE(context.lines()->data(context.lines()->index(0), SubtitleModel::CpsRole).toDouble(), 4.0);
+    QCOMPARE(context.lines()->data(context.lines()->index(1), SubtitleModel::CpsRole).toDouble(), 4.0);
+    QCOMPARE(context.lines()->data(context.lines()->index(2), SubtitleModel::CpsRole).toDouble(), 5.0);
+    QCOMPARE(context.lines()->data(context.lines()->index(3), SubtitleModel::CpsRole).toDouble(), 4.0);
+    QCOMPARE(context.lines()->data(context.lines()->index(4), SubtitleModel::CpsRole).toDouble(), 3.0);
+}
+
+void DocumentEditingTest::homeAndEndCanExtendSelection()
+{
+    auto toFirst = makeContext();
+    toFirst->lines()->setActiveRow(2);
+    toFirst->lines()->selectFirst(true);
+    QCOMPARE(toFirst->lines()->selectedRows(), QVector<int>({0, 1, 2}));
+    QCOMPARE(toFirst->lines()->activeRow(), 0);
+
+    auto toLast = makeContext();
+    toLast->lines()->setActiveRow(2);
+    toLast->lines()->selectLast(true);
+    QCOMPARE(toLast->lines()->selectedRows(), QVector<int>({2, 3}));
+    QCOMPARE(toLast->lines()->activeRow(), 3);
+
+    toLast->lines()->selectFirst();
+    QCOMPARE(toLast->lines()->selectedRows(), QVector<int>({0}));
+    toLast->lines()->selectLast();
+    QCOMPARE(toLast->lines()->selectedRows(), QVector<int>({3}));
+}
+
 void DocumentEditingTest::documentLocalStyleActorAndEffectSuggestionsRemainConservative()
 {
     auto context = makeContext();
@@ -148,6 +193,16 @@ void DocumentEditingTest::documentLocalStyleActorAndEffectSuggestionsRemainConse
     context->setActiveActor(QStringLiteral("Carol"));
     QVERIFY(context->actorSuggestions().contains(QStringLiteral("Carol")));
     context->undo();
+    QVERIFY(!context->actorSuggestions().contains(QStringLiteral("Carol")));
+    context->redo();
+    QVERIFY(context->actorSuggestions().contains(QStringLiteral("Carol")));
+    context->undo();
+    context->setActiveEffect(QStringLiteral("new effect"));
+    QVERIFY(context->effectSuggestions().contains(QStringLiteral("new effect")));
+    context->undo();
+    QVERIFY(!context->effectSuggestions().contains(QStringLiteral("new effect")));
+    context->redo();
+    QVERIFY(context->effectSuggestions().contains(QStringLiteral("new effect")));
     QVERIFY(!context->actorSuggestions().contains(QStringLiteral("Carol")));
 }
 
@@ -241,7 +296,12 @@ void DocumentEditingTest::deleteSingleManyAndAllRestoreSelection()
     context->deleteSelected();
     QCOMPARE(context->lines()->rowCount(), 0);
     QCOMPARE(context->lines()->activeRow(), -1);
-    QVERIFY(context->rendererSnapshot().contains("[Aegisub Extradata]"));
+    const QByteArray emptyDocumentBytes = context->rendererSnapshot();
+    QVERIFY(emptyDocumentBytes.contains("[Aegisub Extradata]"));
+    QString emptyDocumentError;
+    const Document emptyDocument = Document::parse(emptyDocumentBytes, &emptyDocumentError);
+    QVERIFY2(emptyDocumentError.isEmpty(), qPrintable(emptyDocumentError));
+    QVERIFY(emptyDocument.events().isEmpty());
     context->undo();
     QCOMPARE(context->lines()->rowCount(), 4);
     QCOMPARE(context->lines()->selectedRows(), QVector<int>({0, 1, 2, 3}));
@@ -456,6 +516,42 @@ void DocumentEditingTest::textEditsMergePerLineAndSelectionChangesBreakTheMerge(
     QCOMPARE(context->activeText(), QStringLiteral("first edit"));
     context->undo();
     QCOMPARE(context->activeText(), original);
+}
+
+void DocumentEditingTest::undoRedoAreHardTextMergeBoundaries()
+{
+    auto context = makeContext();
+    const QString original = context->activeText();
+    context->setActiveText(QStringLiteral("a"));
+    context->setActiveText(QStringLiteral("ab"));
+    context->setActiveText(QStringLiteral("abc"));
+
+    context->shiftSelectedTiming(100);
+    QCOMPARE(eventsOf(context)[0].startMs, qint64(1100));
+    context->undo();
+    QCOMPARE(eventsOf(context)[0].startMs, qint64(1000));
+    QCOMPARE(context->activeText(), QStringLiteral("abc"));
+
+    context->setActiveText(QStringLiteral("abcd"));
+    context->setActiveText(QStringLiteral("abcde"));
+    context->undo();
+    QCOMPARE(context->activeText(), QStringLiteral("abc"));
+    context->undo();
+    QCOMPARE(context->activeText(), original);
+
+    auto redoContext = makeContext();
+    const QString redoOriginal = redoContext->activeText();
+    redoContext->setActiveText(QStringLiteral("a"));
+    redoContext->setActiveText(QStringLiteral("ab"));
+    redoContext->undo();
+    QCOMPARE(redoContext->activeText(), redoOriginal);
+    redoContext->redo();
+    QCOMPARE(redoContext->activeText(), QStringLiteral("ab"));
+    redoContext->setActiveText(QStringLiteral("abc"));
+    redoContext->undo();
+    QCOMPARE(redoContext->activeText(), QStringLiteral("ab"));
+    redoContext->undo();
+    QCOMPARE(redoContext->activeText(), redoOriginal);
 }
 
 void DocumentEditingTest::savedStateIsRestoredByUndoAndRedo()

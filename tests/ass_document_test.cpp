@@ -25,6 +25,7 @@ private slots:
     void eventListEditsPreserveRawRecordsAndSupportZeroEvents();
     void structuredRowClipboardRetainsFieldsAndRegeneratesIds();
     void eventSplitPreservesTextAndProducesValidTimingHalves();
+    void eventSplitRejectsUnsafeAssBoundaries();
     void readsAegisubLinkedMediaMetadata();
     void mapsVariableFrameRateTimesWithoutFpsArithmetic();
     void findsSpeechBandToneWithFft();
@@ -221,6 +222,45 @@ void AssDocumentTest::eventSplitPreservesTextAndProducesValidTimingHalves()
     QVERIFY(split->second.id != original.id);
     QVERIFY(!yoake::ass::EventEdits::splitAtCursor(original, 0, 1000).has_value());
     QVERIFY(!yoake::ass::EventEdits::splitAtCursor(original, 0, 2000).has_value());
+}
+
+void AssDocumentTest::eventSplitRejectsUnsafeAssBoundaries()
+{
+    using yoake::ass::Event;
+    using yoake::ass::EventEdits::splitAtCursor;
+
+    Event event;
+    event.text = QStringLiteral("{\\bord3}Hello");
+    const qsizetype blockEnd = event.text.indexOf(u'}') + 1;
+    const auto beforeBlock = splitAtCursor(event, 0);
+    const auto afterBlock = splitAtCursor(event, blockEnd);
+    QVERIFY(beforeBlock.has_value());
+    QVERIFY(afterBlock.has_value());
+    QCOMPARE(beforeBlock->first.text + beforeBlock->second.text, event.text);
+    QCOMPARE(afterBlock->first.text + afterBlock->second.text, event.text);
+    const qsizetype insideBlock = event.text.indexOf(QStringLiteral("bord")) + 2;
+    QVERIFY(!splitAtCursor(event, insideBlock).has_value());
+    QVERIFY(!splitAtCursor(event, insideBlock, 1500).has_value());
+
+    for (const QString &escape : {QStringLiteral("\\N"), QStringLiteral("\\n"), QStringLiteral("\\h")}) {
+        event.text = QStringLiteral("Hello") + escape + QStringLiteral("world");
+        QVERIFY(!splitAtCursor(event, QStringLiteral("Hello").size() + 1).has_value());
+        const auto beforeEscape = splitAtCursor(event, QStringLiteral("Hello").size());
+        const auto afterEscape = splitAtCursor(event, QStringLiteral("Hello").size() + 2);
+        QVERIFY(beforeEscape.has_value());
+        QVERIFY(afterEscape.has_value());
+        QCOMPARE(beforeEscape->first.text + beforeEscape->second.text, event.text);
+        QCOMPARE(afterEscape->first.text + afterEscape->second.text, event.text);
+    }
+
+    event.text = QStringLiteral("A\U0001F600B");
+    QVERIFY(!splitAtCursor(event, 2).has_value()); // Between the UTF-16 surrogate halves.
+    const auto beforeEmoji = splitAtCursor(event, 1);
+    const auto afterEmoji = splitAtCursor(event, 3);
+    QVERIFY(beforeEmoji.has_value());
+    QVERIFY(afterEmoji.has_value());
+    QCOMPARE(beforeEmoji->first.text + beforeEmoji->second.text, event.text);
+    QCOMPARE(afterEmoji->first.text + afterEmoji->second.text, event.text);
 }
 
 void AssDocumentTest::readsAegisubLinkedMediaMetadata()

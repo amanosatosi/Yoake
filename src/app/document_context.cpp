@@ -357,8 +357,21 @@ void DocumentContext::loadLinkedMedia()
     m_media->open(QUrl::fromLocalFile(path));
 }
 
-void DocumentContext::undo() { if (!m_karaoke->active()) m_undo.undo(); }
-void DocumentContext::redo() { if (!m_karaoke->active()) m_undo.redo(); }
+void DocumentContext::undo()
+{
+    if (m_karaoke->active() || !m_undo.canUndo())
+        return;
+    ++m_mergeEpoch;
+    m_undo.undo();
+}
+
+void DocumentContext::redo()
+{
+    if (m_karaoke->active() || !m_undo.canRedo())
+        return;
+    ++m_mergeEpoch;
+    m_undo.redo();
+}
 
 void DocumentContext::editEvent(const QUuid &id, int role, const QVariant &value)
 {

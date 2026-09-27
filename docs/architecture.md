@@ -165,7 +165,7 @@ Aegisub ASS core remains a later migration behind the same boundary.
 
 ## Current foundation status
 
-Implemented and CI-validated:
+Implemented; current CI result not verified:
 
 - independent Qt Quick document tabs, themes, models, undo, and loss-safe I/O;
 - stable-ID selection, row clipboard, normal subtitle insert/duplicate/delete/join/

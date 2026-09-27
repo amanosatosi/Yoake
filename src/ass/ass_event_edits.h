@@ -13,6 +13,7 @@ struct Split {
     Event second;
 };
 
+[[nodiscard]] bool isSafeSplitBoundary(const QString &text, qsizetype utf16Position);
 [[nodiscard]] std::optional<Split> splitAtCursor(const Event &event,
     qsizetype utf16Position,
     std::optional<qint64> splitTimeMs = {});

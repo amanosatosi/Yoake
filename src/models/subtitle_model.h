@@ -62,8 +62,8 @@ public:
     Q_INVOKABLE void selectAll();
     Q_INVOKABLE void clearToActive();
     Q_INVOKABLE void moveActive(int delta, bool extend = false);
-    Q_INVOKABLE void selectFirst();
-    Q_INVOKABLE void selectLast();
+    Q_INVOKABLE void selectFirst(bool extend = false);
+    Q_INVOKABLE void selectLast(bool extend = false);
     Q_INVOKABLE void selectPrevious();
     Q_INVOKABLE void selectNext();
     Q_INVOKABLE void setActiveRow(int row);

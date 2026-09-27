@@ -11,6 +11,19 @@ Rectangle {
 
     property int actorColumnWidth: width >= 850 ? 112 : 0
 
+    function revealActiveRow() {
+        const activeRow = root.context ? root.context.lines.activeRow : -1
+        if (activeRow >= 0)
+            list.positionViewAtIndex(activeRow, ListView.Contain)
+    }
+
+    function scheduleRevealActiveRow() {
+        Qt.callLater(function() { root.revealActiveRow() })
+    }
+
+    Component.onCompleted: scheduleRevealActiveRow()
+    onContextChanged: scheduleRevealActiveRow()
+
     function timeText(ms) {
         const total = Math.max(0, Math.floor(ms / 10))
         const cs = total % 100
@@ -33,8 +46,8 @@ Rectangle {
         case Qt.Key_Down:
             if (control) return false
             doc.lines.moveActive(1, shift); return true
-        case Qt.Key_Home: doc.lines.selectFirst(); return true
-        case Qt.Key_End: doc.lines.selectLast(); return true
+        case Qt.Key_Home: doc.lines.selectFirst(shift); return true
+        case Qt.Key_End: doc.lines.selectLast(shift); return true
         case Qt.Key_Delete:
             if (control) return false
             doc.deleteSelected(); return true
@@ -166,10 +179,7 @@ Rectangle {
             }
             Connections {
                 target: root.context ? root.context.lines : null
-                function onActiveRowChanged() {
-                    if (root.context.lines.activeRow >= 0)
-                        list.positionViewAtIndex(root.context.lines.activeRow, ListView.Contain)
-                }
+                function onActiveRowChanged() { root.scheduleRevealActiveRow() }
             }
         }
     }
