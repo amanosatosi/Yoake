@@ -165,10 +165,15 @@ jobs:
           $env:PATH = (($runtimeDllDirectories + $env:PATH) -join ';')
           Write-Host "Runtime DLL directories: $($runtimeDllDirectories -join ';')"
 
-          $output = & .\build\yoake_editing_tests.exe -v2 -o -,txt 2>&1
+          $editingLogPath = Join-Path $PWD 'build\editing-test-verbose.txt'
+          $output = & .\build\yoake_editing_tests.exe -v2 -o "$editingLogPath,txt" 2>&1
           $editingExitCode = $LASTEXITCODE
           Write-Host "Standalone editing test exit code: $editingExitCode"
           $output | ForEach-Object { Write-Host $_ }
+          if (Test-Path -LiteralPath $editingLogPath) {
+            Write-Host '--- Direct QtTest output ---'
+            Get-Content -LiteralPath $editingLogPath | ForEach-Object { Write-Host $_ }
+          }
 
           $ctestOutput = & ctest --test-dir build --output-on-failure --timeout 30 2>&1
           $ctestExitCode = $LASTEXITCODE
