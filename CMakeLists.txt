@@ -204,9 +204,7 @@ endif()
 include(CTest)
 if(BUILD_TESTING)
     find_package(Qt6 6.8 REQUIRED COMPONENTS Test)
-    qt_add_executable(yoake_core_tests
-        tests/ass_document_test.cpp
-        tests/visual_tools_test.cpp
+    set(YOAKE_CORE_TEST_SUPPORT_SOURCES
         src/ass/ass_document.cpp
         src/ass/ass_event_clipboard.cpp
         src/ass/ass_event_edits.cpp
@@ -218,9 +216,21 @@ if(BUILD_TESTING)
         src/ui/visual_snap_service.cpp
         src/media/spectrum_analyzer.cpp
     )
+    qt_add_executable(yoake_core_tests
+        tests/ass_document_test.cpp
+        ${YOAKE_CORE_TEST_SUPPORT_SOURCES}
+    )
     target_include_directories(yoake_core_tests PRIVATE src)
     target_link_libraries(yoake_core_tests PRIVATE Qt6::Core Qt6::Test)
     add_test(NAME yoake_core_tests COMMAND yoake_core_tests)
+
+    qt_add_executable(yoake_visual_tools_tests
+        tests/visual_tools_test.cpp
+        ${YOAKE_CORE_TEST_SUPPORT_SOURCES}
+    )
+    target_include_directories(yoake_visual_tools_tests PRIVATE src)
+    target_link_libraries(yoake_visual_tools_tests PRIVATE Qt6::Core Qt6::Test)
+    add_test(NAME yoake_visual_tools_tests COMMAND yoake_visual_tools_tests)
 
     qt_add_executable(yoake_editing_tests
         tests/document_editing_test.cpp
