@@ -7,6 +7,7 @@
 #include "ui/video_viewport.h"
 
 #include <QtCore/QLineF>
+#include <QtCore/QCoreApplication>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QtMath>
 #include <QtGui/QFont>
@@ -52,6 +53,11 @@ QString numericText(QPointF point)
 VisualToolBase::VisualToolBase(app::DocumentContext *document, VideoViewport *viewport)
     : m_document(document), m_viewport(viewport), m_snapService(viewport)
 {
+}
+
+QString VisualToolBase::tr(const char *sourceText)
+{
+    return QCoreApplication::translate("VisualToolManager", sourceText);
 }
 
 QVariantList VisualToolBase::renderOverlay() const

@@ -33,6 +33,10 @@ public:
     void cancelOperation() override;
 
 protected:
+    // VisualTool implementations are deliberately renderer-neutral and do
+    // not inherit QObject. Keep their labels translatable with the existing
+    // visual-tool translation context without adding QObject to the tool API.
+    [[nodiscard]] static QString tr(const char *sourceText);
     virtual void buildOverlay(QVariantList &features) const = 0;
     void setCoordinateLabel(QString label) const { m_coordinateLabel = std::move(label); }
     [[nodiscard]] app::DocumentContext *document() const { return m_document.data(); }

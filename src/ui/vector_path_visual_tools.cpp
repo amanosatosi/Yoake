@@ -399,7 +399,7 @@ QString VectorPathEditor::hitFeatureAt(QPointF point, const QVariantList &featur
     return {};
 }
 
-QString VectorPathEditor::textForNodeDrag(QPointF screenPoint, int)
+QString VectorPathEditor::textForNodeDrag(QPointF screenPoint, int) const
 {
     PathSnapshot snapshot = loadPathSnapshot(m_dragOriginalText);
     auto path = ass::VectorPath::parse(snapshot.pathText, snapshot.scale);
