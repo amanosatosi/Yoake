@@ -28,7 +28,7 @@ public sealed class AppCommand
     {
         Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         _execute = execute ?? throw new ArgumentNullException(nameof(execute));
-        _canExecute = canExecute ?? static _ => true;
+        _canExecute = canExecute ?? (static _ => true);
         _isChecked = isChecked;
     }
 
