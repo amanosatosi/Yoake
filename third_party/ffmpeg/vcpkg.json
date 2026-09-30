@@ -1,0 +1,20 @@
+{
+  "name": "yoake-ffmpeg-runtime",
+  "version-string": "7.1.1",
+  "builtin-baseline": "f3419f137f1a1e79b33b880ae6845f873d87820b",
+  "dependencies": [
+    {
+      "name": "ffmpeg",
+      "default-features": false,
+      "features": ["avcodec", "avformat", "swresample", "swscale"]
+    },
+    "zlib"
+  ],
+  "overrides": [
+    {
+      "name": "ffmpeg",
+      "version": "7.1.1",
+      "port-version": 6
+    }
+  ]
+}

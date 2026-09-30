@@ -1,0 +1,22 @@
+{
+  "source": "old Yoake codex/yoake-foundation; preserved pins for ABI/cache continuity",
+  "vcpkg": {
+    "commit": "f3419f137f1a1e79b33b880ae6845f873d87820b"
+  },
+  "ffmpeg": {
+    "version": "7.1.1",
+    "tagCommit": "a1328e68877e12ab5a6e5d92a84aefa566783ea5",
+    "vcpkgPortVersion": 6,
+    "linkage": "dynamic"
+  },
+  "ffms2": {
+    "version": "5.0",
+    "commit": "25cef14386fcaaa58ee547065deee8f6e82c56a2",
+    "linkage": "dynamic"
+  },
+  "mangetsu": {
+    "commit": "9c8aa3ebc7499f033b6939aa4d315b97e6b872f8",
+    "linkage": "dynamic",
+    "status": "pinned for future M3 integration; not built by M0 CI"
+  }
+}

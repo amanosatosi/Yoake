@@ -1,0 +1,36 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Yoake.App.App"
+             RequestedThemeVariant="Default">
+  <Application.Styles>
+    <FluentTheme />
+  </Application.Styles>
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AppBackgroundBrush">#F3F4F6</SolidColorBrush>
+          <SolidColorBrush x:Key="PanelBrush">#FFFFFF</SolidColorBrush>
+          <SolidColorBrush x:Key="TabStripBrush">#EAECF0</SolidColorBrush>
+          <SolidColorBrush x:Key="TabBrush">#FFFFFF</SolidColorBrush>
+          <SolidColorBrush x:Key="CommandBarBrush">#F8F9FB</SolidColorBrush>
+          <SolidColorBrush x:Key="DividerBrush">#C8CDD6</SolidColorBrush>
+          <SolidColorBrush x:Key="SplitterBrush">#C4C9D1</SolidColorBrush>
+          <SolidColorBrush x:Key="IconForegroundBrush">#252A32</SolidColorBrush>
+          <SolidColorBrush x:Key="IconAccentBrush">#4467D7</SolidColorBrush>
+        </ResourceDictionary>
+        <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AppBackgroundBrush">#17191D</SolidColorBrush>
+          <SolidColorBrush x:Key="PanelBrush">#202329</SolidColorBrush>
+          <SolidColorBrush x:Key="TabStripBrush">#14161A</SolidColorBrush>
+          <SolidColorBrush x:Key="TabBrush">#252830</SolidColorBrush>
+          <SolidColorBrush x:Key="CommandBarBrush">#1B1E23</SolidColorBrush>
+          <SolidColorBrush x:Key="DividerBrush">#3A3F48</SolidColorBrush>
+          <SolidColorBrush x:Key="SplitterBrush">#4A505A</SolidColorBrush>
+          <SolidColorBrush x:Key="IconForegroundBrush">#E9ECF1</SolidColorBrush>
+          <SolidColorBrush x:Key="IconAccentBrush">#8AA4FF</SolidColorBrush>
+        </ResourceDictionary>
+      </ResourceDictionary.ThemeDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

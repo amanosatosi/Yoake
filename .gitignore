@@ -1,0 +1,14 @@
+**/bin/
+**/obj/
+.vs/
+.idea/
+*.user
+*.suo
+artifacts/
+.ci-cache/
+native-build/
+*.log
+.DS_Store
+
+__pycache__/
+*.pyc

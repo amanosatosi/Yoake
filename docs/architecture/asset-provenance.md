@@ -1,0 +1,13 @@
+# Asset provenance
+
+## Yoake-owned assets in this milestone
+
+All SVG files committed under `assets/icons/app` and `assets/icons/functional` in this foundation were newly authored for this repository. They are not 1:1 copies of Aegisub or Kainote artwork.
+
+Functional icons intentionally use a single theme-neutral SVG geometry per action. Avalonia supplies color dynamically through theme resources (`IconForegroundBrush`, `IconAccentBrush`, disabled-state visuals, and future semantic brushes). Do not create parallel light/dark raster icon packs.
+
+## Aegisub visual reference
+
+Aegisub Toshi-ban is used as a visual/function-language reference for familiar subtitle-editor actions. Its top-level Aegisub license is the 3-clause BSD-style license and states that files without their own license header are covered unless a directory/file has another license. This milestone deliberately imports **no Aegisub icon file** and does not raster-trace its light/dark bitmap sets.
+
+If a future icon is actually derived from or adapted from an Aegisub asset, record the source repository, exact path + commit, applicable license, modifications, and required attribution here. Normalize the result into Yoake's theme-aware SVG system rather than carrying separate light/dark copies. Functional-icon reference or reuse does not permit using Aegisub's application logo as Yoake identity. Kainote artwork must not be copied without explicit compatible licensing confirmation.

@@ -1,0 +1,116 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Yoake.UI.ViewModels"
+        xmlns:icons="using:Yoake.UI.Icons"
+        x:Class="Yoake.UI.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Yoake"
+        Width="1400" Height="900"
+        MinWidth="900" MinHeight="620"
+        Background="{DynamicResource AppBackgroundBrush}">
+  <Grid RowDefinitions="40,44,*,5,230">
+    <Border Grid.Row="0" Name="TitleTabStrip" WindowDecorationProperties.ElementRole="TitleBar" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
+      <DockPanel LastChildFill="True">
+        <Button DockPanel.Dock="Right" Width="42" Margin="4" Command="{Binding NewDocumentCommand}" ToolTip.Tip="New subtitle">
+          <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
+        </Button>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <ItemsControl ItemsSource="{Binding Tabs}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="vm:DocumentTabViewModel">
+                <Border Margin="3,4,0,3" Padding="2" CornerRadius="6" Background="{DynamicResource TabBrush}">
+                  <StackPanel Orientation="Horizontal" Spacing="2">
+                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="●" FontSize="8" IsVisible="{Binding IsActive}" />
+                    <Button MinWidth="110" Padding="8,4" Command="{Binding ActivateCommand}" Content="{Binding DisplayTitle}" />
+                    <TextBlock VerticalAlignment="Center" Text="•" IsVisible="{Binding IsDirty}" />
+                    <Button Width="28" Padding="4" Command="{Binding CloseCommand}" ToolTip.Tip="Close">
+                      <PathIcon Width="12" Height="12" Data="{x:Static icons:IconGeometries.Close}" Foreground="{DynamicResource IconForegroundBrush}" />
+                    </Button>
+                  </StackPanel>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
+    <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
+      <StackPanel Orientation="Horizontal" Margin="8,5" Spacing="6">
+        <Button Command="{Binding NewDocumentCommand}" ToolTip.Tip="New">
+          <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
+        </Button>
+        <Button Command="{Binding UndoCommand}" ToolTip.Tip="Undo">
+          <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Undo}" Foreground="{DynamicResource IconForegroundBrush}" />
+        </Button>
+        <Button Command="{Binding RedoCommand}" ToolTip.Tip="Redo">
+          <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Redo}" Foreground="{DynamicResource IconForegroundBrush}" />
+        </Button>
+        <Border Width="1" Margin="4,2" Background="{DynamicResource DividerBrush}" />
+        <Button Command="{Binding ThemeCycleCommand}" ToolTip.Tip="Cycle System/Dark/Light theme">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Theme}" Foreground="{DynamicResource IconForegroundBrush}" />
+            <TextBlock VerticalAlignment="Center" Text="Theme" />
+          </StackPanel>
+        </Button>
+      </StackPanel>
+    </Border>
+
+    <Grid Grid.Row="2" ColumnDefinitions="*,5,*" Name="UpperWorkspace">
+      <Grid Grid.Column="0" RowDefinitions="3*,5,*" Name="VisualColumn">
+        <Border Grid.Row="0" Margin="8,8,4,4" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+            <TextBlock FontSize="18" FontWeight="SemiBold" Text="VIDEO" HorizontalAlignment="Center" />
+            <TextBlock Opacity="0.62" Text="M2 media viewport placeholder" />
+          </StackPanel>
+        </Border>
+        <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
+        <Border Grid.Row="2" Margin="8,4,4,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+          <DockPanel Margin="10">
+            <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Text="VISUAL TOOLS + TOOL OPTIONS" Margin="0,0,0,8" />
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Command="{Binding PositionToolCommand}" ToolTip.Tip="Position tool">
+                <PathIcon Width="18" Height="18" Data="{x:Static icons:IconGeometries.Position}" Foreground="{DynamicResource IconForegroundBrush}" />
+              </Button>
+              <Button Command="{Binding ClipToolCommand}" ToolTip.Tip="Clip tool">
+                <PathIcon Width="18" Height="18" Data="{x:Static icons:IconGeometries.Clip}" Foreground="{DynamicResource IconForegroundBrush}" />
+              </Button>
+              <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Text="Active:" />
+              <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding ActiveVisualTool}" />
+            </StackPanel>
+          </DockPanel>
+        </Border>
+      </Grid>
+
+      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
+
+      <Grid Grid.Column="2" RowDefinitions="2*,5,3*" Name="TemporalTextColumn">
+        <Border Grid.Row="0" Margin="4,8,8,4" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+            <TextBlock FontSize="18" FontWeight="SemiBold" Text="AUDIO" HorizontalAlignment="Center" />
+            <TextBlock Opacity="0.62" Text="M2 waveform / spectrogram placeholder" />
+          </StackPanel>
+        </Border>
+        <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
+        <Border Grid.Row="2" Margin="4,4,8,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+            <TextBlock FontSize="18" FontWeight="SemiBold" Text="EDIT PANEL" HorizontalAlignment="Center" />
+            <TextBlock Opacity="0.62" Text="M1B subtitle text / timing / style / actor placeholder" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Grid>
+
+    <GridSplitter Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
+
+    <Border Grid.Row="4" Margin="8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Name="SubtitleGridRegion">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
+        <TextBlock FontSize="18" FontWeight="SemiBold" Text="SUBTITLE GRID" HorizontalAlignment="Center" />
+        <TextBlock Opacity="0.62" Text="M1B virtualized grid placeholder — no fake rows are created" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

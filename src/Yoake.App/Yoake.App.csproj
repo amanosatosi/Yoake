@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>Yoake</AssemblyName>
+    <RootNamespace>Yoake.App</RootNamespace>
+    <PublishAot>true</PublishAot>
+    <SelfContained>true</SelfContained>
+    <IsAotCompatible>true</IsAotCompatible>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <RuntimeIdentifiers>win-x64;linux-x64</RuntimeIdentifiers>
+    <StripSymbols>true</StripSymbols>
+    <YoakeGeneratedIcon>$(MSBuildProjectDirectory)\..\..\artifacts\generated\yoake.ico</YoakeGeneratedIcon>
+    <ApplicationIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(YoakeGeneratedIcon)</ApplicationIcon>
+    <AvaloniaIncludeApplicationIconAsWindowIcon Condition="$([MSBuild]::IsOSPlatform('Windows'))">true</AvaloniaIncludeApplicationIconAsWindowIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Desktop" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Yoake.Core\Yoake.Core.csproj" />
+    <ProjectReference Include="..\Yoake.Native\Yoake.Native.csproj" />
+    <ProjectReference Include="..\Yoake.UI\Yoake.UI.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="..\..\assets\icons\app\yoake-logo.svg" Link="Assets\yoake-logo.svg" />
+  </ItemGroup>
+  <Target Name="GenerateYoakeWindowsApplicationIcon" BeforeTargets="PrepareForBuild" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\..\..\tools\generate-app-icon.ps1&quot; -SourceSvg &quot;$(MSBuildProjectDirectory)\..\..\assets\icons\app\yoake-logo.svg&quot; -OutputIco &quot;$(YoakeGeneratedIcon)&quot;" />
+  </Target>
+</Project>
