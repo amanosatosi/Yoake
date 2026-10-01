@@ -72,9 +72,19 @@ for marker in ('native\\win-x64', 'dumpbin.exe', 'runtime-manifest.json', 'Avalo
 if "Copy-Item (Join-Path $NativeRoot 'ffmpeg')" in package or "Copy-Item (Join-Path $NativeRoot 'ffms2')" in package:
     fail('portable packager must not copy native development/install trees wholesale')
 
+# The application owns the process-wide safe DLL search configuration.
+# Keep that invariant separate from the CI verifier implementation so the
+# verifier can use a stricter one-shot LoadLibraryExW probe without policy
+# falsely requiring it to duplicate application startup behavior.
+windows_runtime=(ROOT/'src/Yoake.Native/WindowsNativeRuntime.cs').read_text(encoding='utf-8')
+for marker in ('SetDefaultDllDirectories', 'AddDllDirectory', 'LoadLibrarySearchDefaultDirs', 'native", "win-x64'):
+    if marker not in windows_runtime: fail(f'packaged Windows runtime search marker missing: {marker}')
+
 verify_runtime=(ROOT/'ci/verify_windows_runtime.ps1').read_text(encoding='utf-8')
-for marker in ('SetDefaultDllDirectories', 'AddDllDirectory', "NativeLibrary]::Load('ffms2.dll')"):
+for marker in ('LoadLibraryExW', 'LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR', 'LOAD_LIBRARY_SEARCH_SYSTEM32', 'runtime-manifest.json'):
     if marker not in verify_runtime: fail(f'safe runtime verification marker missing: {marker}')
+if "NativeLibrary]::Load('ffms2.dll')" in verify_runtime:
+    fail('runtime verifier must not fall back to NativeLibrary.Load by bare DLL name')
 
 result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--check'])
 if result.returncode: fail('generated icon catalog is stale')
