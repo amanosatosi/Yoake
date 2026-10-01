@@ -108,7 +108,11 @@ if ($Stage -in @('Mangetsu', 'All')) {
   ) -join ' '
   $link = "/LIBPATH:$prefix\lib"
 
-  meson setup $mangetsuBuild `
+  if (-not (Test-Path -LiteralPath (Join-Path $mangetsuSource 'meson.build'))) {
+    throw "Mangetsu source checkout is missing meson.build: $mangetsuSource"
+  }
+
+  meson setup $mangetsuBuild $mangetsuSource `
     --prefix="$mangetsuDist" `
     -Ddefault_library=shared `
     -Db_vscrt=mt `
