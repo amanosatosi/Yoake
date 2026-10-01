@@ -126,8 +126,10 @@ while ($queue.Count -gt 0) {
 
   foreach ($dependency in (Get-ImportedDllNames $binary)) {
     $dependencyKey = $dependency.ToLowerInvariant()
-    if ($available.ContainsKey($dependencyKey) -and -not $selected.ContainsKey($dependencyKey)) {
-      $queue.Enqueue($available[$dependencyKey])
+    if ($available.ContainsKey($dependencyKey)) {
+      if (-not $selected.ContainsKey($dependencyKey)) {
+        $queue.Enqueue($available[$dependencyKey])
+      }
       continue
     }
     if ($dependencyKey -match '^(vcruntime140|msvcp140|concrt140|vcomp140).*\.dll$') {
