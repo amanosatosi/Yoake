@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Yoake.UI.ViewModels;
 
@@ -89,6 +90,24 @@ public partial class MainWindow : Window
         var path = LocalPath(files[0]);
         if (path is not null)
             await viewModel.OpenMediaAsync(path);
+    }
+
+    private async void PlayPauseClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+            await viewModel.TogglePlaybackAsync();
+    }
+
+    private void StopPlaybackClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+            viewModel.StopPlayback();
+    }
+
+    private async void VideoSeekReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (DataContext is MainWindowViewModel viewModel)
+            await viewModel.SeekPlaybackAsync(viewModel.CurrentTimeSeconds);
     }
 
     private void CloseTabClick(object? sender, RoutedEventArgs e)
