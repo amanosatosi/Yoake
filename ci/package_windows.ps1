@@ -27,11 +27,10 @@ foreach ($directory in @($searchDirectories)) {
 # strategy. Treat the Visual C++ redistributable as part of the dependency
 # closure when dumpbin reports one of its DLLs; do not copy the whole redist.
 #
-# Do not assume a particular Microsoft.VC*.CRT directory name or that the
-# selected toolset's redistributable has one fixed layout. VS2026 hosted
-# runners can move these directories while keeping VCToolsRedistDir valid.
-# Locate the actual x64 CRT by VCRUNTIME140.dll, preferring VCToolsRedistDir
-# and then falling back to the Visual Studio VC redist tree.
+# Prefer the normal desktop x64 CRT. Visual Studio also ships onecore and
+# Spectre variants containing DLLs with the same names; mixing those into the
+# lookup makes the dependency closure ambiguous and is incorrect for Yoake's
+# ordinary desktop FFMS2/vcpkg build.
 $vcRedistRoots = [System.Collections.Generic.List[string]]::new()
 if ($env:VCToolsRedistDir) {
   $vcRedistRoots.Add([IO.Path]::GetFullPath($env:VCToolsRedistDir))
@@ -47,26 +46,45 @@ $vcRuntimeDirectories = @()
 foreach ($redistRoot in ($vcRedistRoots | Select-Object -Unique)) {
   if (-not (Test-Path -LiteralPath $redistRoot)) { continue }
 
-  $runtimeMatches = @(
-    Get-ChildItem -LiteralPath $redistRoot -Recurse -File -Filter 'VCRUNTIME140.dll' -ErrorAction SilentlyContinue |
-      Where-Object { $_.FullName -match '[\\/]x64[\\/]' } |
-      Sort-Object FullName
-  )
-  if ($runtimeMatches.Count -eq 0) { continue }
+  # First try the canonical desktop layout directly beneath this toolset.
+  $desktopX64Root = Join-Path $redistRoot 'x64'
+  if (Test-Path -LiteralPath $desktopX64Root) {
+    $desktopRuntimeDirectories = @(
+      Get-ChildItem -LiteralPath $desktopX64Root -Directory -Filter 'Microsoft.VC*.CRT' -ErrorAction SilentlyContinue |
+        Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'VCRUNTIME140.dll') } |
+        Sort-Object FullName
+    )
+    if ($desktopRuntimeDirectories.Count -gt 0) {
+      $vcRuntimeDirectories = @($desktopRuntimeDirectories[0].FullName)
+    }
+  }
 
-  $vcRuntimeDirectories = @(
-    $runtimeMatches |
-      ForEach-Object { $_.Directory.FullName } |
-      Select-Object -Unique
-  )
-  Write-Host "Resolved Visual C++ runtime directory from '$redistRoot': $($vcRuntimeDirectories -join ', ')"
-  break
+  # Fallback for a broader VC\Redist\MSVC root: find a desktop x64 CRT, but
+  # explicitly reject onecore and Spectre variants which duplicate DLL names.
+  if ($vcRuntimeDirectories.Count -eq 0) {
+    $runtimeMatches = @(
+      Get-ChildItem -LiteralPath $redistRoot -Recurse -File -Filter 'VCRUNTIME140.dll' -ErrorAction SilentlyContinue |
+        Where-Object {
+          $_.FullName -match '[\\/]x64[\\/]Microsoft\.VC[^\\/]*\.CRT[\\/]VCRUNTIME140\.dll$' -and
+          $_.FullName -notmatch '[\\/](onecore|spectre)[\\/]'
+        } |
+        Sort-Object FullName -Descending
+    )
+    if ($runtimeMatches.Count -gt 0) {
+      $vcRuntimeDirectories = @($runtimeMatches[0].Directory.FullName)
+    }
+  }
+
+  if ($vcRuntimeDirectories.Count -gt 0) {
+    Write-Host "Resolved desktop Visual C++ runtime directory from '$redistRoot': $($vcRuntimeDirectories[0])"
+    break
+  }
 }
 
 if ($vcRuntimeDirectories.Count -gt 0) {
   $searchDirectories += $vcRuntimeDirectories
 } else {
-  Write-Warning "Could not locate VCRUNTIME140.dll in Visual Studio redistributable roots. Native dependency resolution will fail if FFMS2 imports the dynamic MSVC CRT."
+  Write-Warning "Could not locate the desktop x64 VCRUNTIME140.dll in Visual Studio redistributable roots. Native dependency resolution will fail if FFMS2 imports the dynamic MSVC CRT."
 }
 
 $dumpbin = Get-Command dumpbin.exe -ErrorAction SilentlyContinue
