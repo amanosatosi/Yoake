@@ -17,7 +17,8 @@ $runtimeRoot = Join-Path $portable 'native\win-x64'
 New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
 $searchDirectories = @(
   (Join-Path $NativeRoot 'ffms2\bin'),
-  (Join-Path $NativeRoot 'ffmpeg\x64-windows\bin')
+  (Join-Path $NativeRoot 'ffmpeg\x64-windows\bin'),
+  (Join-Path $NativeRoot 'mangetsu\bin')
 )
 foreach ($directory in @($searchDirectories)) {
   if (-not (Test-Path -LiteralPath $directory)) { throw "Missing native runtime source directory: $directory" }
@@ -111,10 +112,15 @@ function Get-ImportedDllNames([string]$BinaryPath) {
   }
 }
 
-$entryDll = Join-Path $NativeRoot 'ffms2\bin\ffms2.dll'
-if (-not (Test-Path -LiteralPath $entryDll)) { throw "Missing FFMS2 runtime entry DLL: $entryDll" }
+$entryDlls = @(
+  (Join-Path $NativeRoot 'ffms2\bin\ffms2.dll'),
+  (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll')
+)
+foreach ($entryDll in $entryDlls) {
+  if (-not (Test-Path -LiteralPath $entryDll)) { throw "Missing native runtime entry DLL: $entryDll" }
+}
 $queue = [System.Collections.Generic.Queue[string]]::new()
-$queue.Enqueue($entryDll)
+foreach ($entryDll in $entryDlls) { $queue.Enqueue($entryDll) }
 $selected = @{}
 
 while ($queue.Count -gt 0) {
@@ -144,7 +150,7 @@ foreach ($key in ($selected.Keys | Sort-Object)) {
 
 $manifest = [ordered]@{
   architecture = 'win-x64'
-  entrypoints = @('ffms2.dll')
+  entrypoints = @('ffms2.dll', 'mangetsu.dll')
   files = @(
     Get-ChildItem -LiteralPath $runtimeRoot -Filter '*.dll' -File | Sort-Object Name | ForEach-Object {
       [ordered]@{
