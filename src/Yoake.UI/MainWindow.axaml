@@ -69,7 +69,7 @@
     <Grid Grid.Row="2" ColumnDefinitions="2*,4,3*" Name="UpperWorkspace">
       <Grid Grid.Column="0" RowDefinitions="*,4,58" Name="VisualColumn">
         <Border Grid.Row="0" Margin="6,6,3,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <Grid RowDefinitions="26,*,34">
+          <Grid RowDefinitions="26,*,40">
             <TextBlock Grid.Row="0" Margin="8,5" FontSize="12" FontWeight="SemiBold" Text="VIDEO" />
             <Border Grid.Row="1" Margin="6,0" Background="#FF000000" ClipToBounds="True">
               <Grid>
@@ -79,9 +79,16 @@
                 </Border>
               </Grid>
             </Border>
-            <Grid Grid.Row="2" Margin="7,3" ColumnDefinitions="*,Auto" ColumnSpacing="8">
-              <Slider Grid.Column="0" Minimum="0" Maximum="{Binding MediaDurationSeconds}" Value="{Binding CurrentTimeSeconds, Mode=TwoWay}" />
-              <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="11" Text="{Binding CurrentTimeSeconds, StringFormat={}{0:0.000}s}" MinWidth="62" />
+            <Grid Grid.Row="2" Margin="7,3" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="5">
+              <Button Grid.Column="0" Click="PlayPauseClick" Content="{Binding PlayPauseText}" IsEnabled="{Binding CanPlayMedia}" MinWidth="50" Padding="7,2" />
+              <Button Grid.Column="1" Click="StopPlaybackClick" Content="Stop" IsEnabled="{Binding IsPlaying}" MinWidth="46" Padding="7,2" />
+              <Slider Grid.Column="2"
+                      Minimum="0"
+                      Maximum="{Binding MediaDurationSeconds}"
+                      Value="{Binding CurrentTimeSeconds, Mode=TwoWay}"
+                      PointerReleased="VideoSeekReleased" />
+              <TextBlock Grid.Column="3" VerticalAlignment="Center" FontSize="11" Text="{Binding CurrentTimeSeconds, StringFormat={}{0:0.000}s}" MinWidth="62" />
+              <TextBlock Grid.Column="4" VerticalAlignment="Center" FontSize="11" Opacity="0.65" Text="{Binding MediaDurationSeconds, StringFormat={}/ {0:0.000}s}" MinWidth="72" />
             </Grid>
           </Grid>
         </Border>
@@ -107,7 +114,10 @@
       <Grid Grid.Column="2" RowDefinitions="150,4,*" Name="TemporalTextColumn">
         <Border Grid.Row="0" Margin="3,6,6,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
           <Grid RowDefinitions="24,*,22">
-            <TextBlock Grid.Row="0" Margin="8,4" FontSize="12" FontWeight="SemiBold" Text="AUDIO" />
+            <DockPanel Grid.Row="0" Margin="8,4">
+              <TextBlock FontSize="12" FontWeight="SemiBold" Text="AUDIO" />
+              <TextBlock Margin="8,0,0,0" FontSize="10" Opacity="0.6" Text="plays from the same FFMS2 media clock" />
+            </DockPanel>
             <controls:AudioWaveformControl Grid.Row="1" Margin="6,0" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
             <TextBlock Grid.Row="2" Margin="7,2" FontSize="10" Opacity="0.72" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" />
           </Grid>
