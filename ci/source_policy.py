@@ -86,6 +86,20 @@ for marker in ('LoadLibraryExW', 'LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR', 'LOAD_LIBRA
 if "NativeLibrary]::Load('ffms2.dll')" in verify_runtime:
     fail('runtime verifier must not fall back to NativeLibrary.Load by bare DLL name')
 
+# A playable editor baseline requires all three pieces together: FFMS2 media,
+# a real audio clock/output path, and Mangetsu compositing into decoded frames.
+playback=(ROOT/'src/Yoake.UI/ViewModels/MainWindowViewModel.Playback.cs').read_text(encoding='utf-8')
+renderer=(ROOT/'src/Yoake.Native/MangetsuSubtitleRenderer.cs').read_text(encoding='utf-8')
+audio_output=(ROOT/'src/Yoake.Native/WindowsWaveOutStream.cs').read_text(encoding='utf-8')
+for marker in ('StartPlaybackAsync', 'RefreshVideoFrameAsync', 'CompositeSubtitles'):
+    if marker not in playback: fail(f'playable editor playback marker missing: {marker}')
+for marker in ('ass_render_frame_rgba', 'ass_composite_images_bgra', 'mangetsu.dll'):
+    if marker not in renderer: fail(f'Mangetsu preview marker missing: {marker}')
+for marker in ('waveOutOpen', 'waveOutWrite', 'waveOutGetPosition'):
+    if marker not in audio_output: fail(f'audio output marker missing: {marker}')
+for marker in ("mangetsu\\\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll')"):
+    if marker not in package: fail(f'Mangetsu portable staging marker missing: {marker}')
+
 result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--check'])
 if result.returncode: fail('generated icon catalog is stale')
 print('source-policy: OK')
