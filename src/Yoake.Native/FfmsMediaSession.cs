@@ -15,7 +15,7 @@ public sealed record MediaInfo(
 
 public sealed record DecodedVideoFrame(int Width, int Height, int Stride, byte[] Pixels);
 
-public sealed unsafe class FfmsMediaSession : IDisposable
+public sealed unsafe partial class FfmsMediaSession : IDisposable
 {
     private const int VideoTrackType = 0;
     private const int AudioTrackType = 1;
@@ -191,12 +191,12 @@ public sealed unsafe class FfmsMediaSession : IDisposable
 
     public DecodedVideoFrame GetFrameAtTime(double seconds)
     {
-        ThrowIfDisposed();
-        if (_videoSource == 0)
-            throw new InvalidOperationException("The opened media has no video track.");
-
         lock (_videoGate)
         {
+            ThrowIfDisposed();
+            if (_videoSource == 0)
+                throw new InvalidOperationException("The opened media has no video track.");
+
             byte* errorBuffer = stackalloc byte[ErrorBufferSize];
             var error = CreateErrorInfo(errorBuffer);
             var time = Info.DurationSeconds > 0 ? Math.Clamp(seconds, 0, Info.DurationSeconds) : Math.Max(0, seconds);
@@ -226,16 +226,16 @@ public sealed unsafe class FfmsMediaSession : IDisposable
 
     public float[] BuildWaveform(int buckets = 1200, int samplesPerBucket = 1024)
     {
-        ThrowIfDisposed();
-        if (_audioSource == 0 || Info.AudioSamples <= 0 || Info.Channels <= 0)
-            return [];
-        if (buckets <= 0)
-            throw new ArgumentOutOfRangeException(nameof(buckets));
-        if (samplesPerBucket <= 0)
-            throw new ArgumentOutOfRangeException(nameof(samplesPerBucket));
-
         lock (_audioGate)
         {
+            ThrowIfDisposed();
+            if (_audioSource == 0 || Info.AudioSamples <= 0 || Info.Channels <= 0)
+                return [];
+            if (buckets <= 0)
+                throw new ArgumentOutOfRangeException(nameof(buckets));
+            if (samplesPerBucket <= 0)
+                throw new ArgumentOutOfRangeException(nameof(samplesPerBucket));
+
             var result = new float[buckets];
             var channels = Info.Channels;
             var buffer = new float[checked(samplesPerBucket * channels)];

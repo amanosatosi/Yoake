@@ -160,7 +160,7 @@ public sealed class AssDocument
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         var text = Serialize();
         var payload = _encoding.GetBytes(text);
-        var preamble = _writeBom ? _encoding.GetPreamble() : [];
+        byte[] preamble = _writeBom ? _encoding.GetPreamble() : [];
         if (preamble.Length == 0)
         {
             File.WriteAllBytes(path, payload);
@@ -212,12 +212,7 @@ public sealed class AssDocument
                 continue;
 
             var payload = raw[(colon + 1)..].TrimStart();
-            var fields = payload.Split(',', format.Length);
-            if (fields.Length < format.Length)
-                Array.Resize(ref fields, format.Length);
-            for (var i = 0; i < fields.Length; i++)
-                fields[i] ??= string.Empty;
-
+            var fields = SplitEventFields(payload, format.Length);
             var assEvent = new AssEvent(lineIndex, kind, (string[])format.Clone(), fields);
             assEvent.PropertyChanged += OnEventChanged;
             Events.Add(assEvent);
@@ -226,6 +221,27 @@ public sealed class AssDocument
 
     private void OnEventChanged(object? sender, PropertyChangedEventArgs e)
         => Changed?.Invoke(this, EventArgs.Empty);
+
+    private static string[] SplitEventFields(string payload, int fieldCount)
+    {
+        var fields = new string[fieldCount];
+        var start = 0;
+        for (var field = 0; field < fieldCount - 1; field++)
+        {
+            var comma = payload.IndexOf(',', start);
+            if (comma < 0)
+            {
+                fields[field] = payload[start..];
+                for (var remaining = field + 1; remaining < fieldCount; remaining++)
+                    fields[remaining] = string.Empty;
+                return fields;
+            }
+            fields[field] = payload[start..comma];
+            start = comma + 1;
+        }
+        fields[^1] = start <= payload.Length ? payload[start..] : string.Empty;
+        return fields;
+    }
 
     private static List<string> SplitLines(string text)
         => text.Replace("\r\n", "\n", StringComparison.Ordinal)
