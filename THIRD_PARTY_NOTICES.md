@@ -10,9 +10,9 @@ Avalonia 12.1.3 is MIT licensed, copyright AvaloniaUI OÜ. The license text used
 
 xUnit packages are test-only and are not shipped in the Yoake application. xUnit.net is licensed under Apache-2.0 (with upstream-noted exceptions where applicable), copyright .NET Foundation and contributors.
 
-## FFmpeg / zlib / FFMS2
+## FFmpeg / zlib / FFMS2 / Mangetsu
 
-These are not vendored as binaries in this source repository. Windows CI builds the exact pins in `third_party/versions.json`; `ci/build_dependencies.ps1` collects their upstream license/copyright files, and `ci/package_windows.ps1` includes those texts in the portable package. FFmpeg feature/configuration changes must be reviewed for license impact before merging.
+These are not vendored as binaries in this source repository. Windows CI builds the exact pins in `third_party/versions.json`; `ci/build_dependencies.ps1` collects their upstream license/copyright files, and `ci/package_windows.ps1` includes those texts in the portable package. Mangetsu is the project's libassmod renderer used for live ASS preview. FFmpeg feature/configuration changes must be reviewed for license impact before merging.
 
 ## Microsoft Visual C++ runtime
 
