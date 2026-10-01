@@ -67,6 +67,25 @@ public sealed class WorkspaceManager
         return document;
     }
 
+    public DocumentSession Open(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var fullPath = System.IO.Path.GetFullPath(path);
+        var existing = _documents.FirstOrDefault(document =>
+            document.Path is not null && string.Equals(document.Path, fullPath, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            Activate(existing.Id);
+            return existing;
+        }
+
+        var document = new DocumentSession(Guid.NewGuid(), System.IO.Path.GetFileName(fullPath), fullPath);
+        _documents.Add(document);
+        ActiveDocumentId = document.Id;
+        Changed?.Invoke(this, EventArgs.Empty);
+        return document;
+    }
+
     public bool Activate(Guid id)
     {
         if (_documents.All(document => document.Id != id))

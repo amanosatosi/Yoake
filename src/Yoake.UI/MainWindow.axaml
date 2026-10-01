@@ -2,13 +2,15 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Yoake.UI.ViewModels"
         xmlns:icons="using:Yoake.UI.Icons"
+        xmlns:controls="using:Yoake.UI.Controls"
+        xmlns:sub="using:Yoake.Core.Subtitles"
         x:Class="Yoake.UI.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Yoake"
         Width="1400" Height="900"
         MinWidth="900" MinHeight="620"
         Background="{DynamicResource AppBackgroundBrush}">
-  <Grid RowDefinitions="40,44,*,5,230">
+  <Grid RowDefinitions="40,44,*,5,250">
     <Border Grid.Row="0" Name="TitleTabStrip" WindowDecorationProperties.ElementRole="TitleBar" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
       <DockPanel LastChildFill="True">
         <Button DockPanel.Dock="Right" Width="42" Margin="4" Command="{Binding NewDocumentCommand}" ToolTip.Tip="New subtitle">
@@ -39,33 +41,45 @@
     </Border>
 
     <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
-      <StackPanel Orientation="Horizontal" Margin="8,5" Spacing="6">
-        <Button Command="{Binding NewDocumentCommand}" ToolTip.Tip="New">
-          <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
-        </Button>
-        <Button Command="{Binding UndoCommand}" ToolTip.Tip="Undo">
-          <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Undo}" Foreground="{DynamicResource IconForegroundBrush}" />
-        </Button>
-        <Button Command="{Binding RedoCommand}" ToolTip.Tip="Redo">
-          <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Redo}" Foreground="{DynamicResource IconForegroundBrush}" />
-        </Button>
-        <Border Width="1" Margin="4,2" Background="{DynamicResource DividerBrush}" />
-        <Button Command="{Binding ThemeCycleCommand}" ToolTip.Tip="Cycle System/Dark/Light theme">
-          <StackPanel Orientation="Horizontal" Spacing="6">
-            <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Theme}" Foreground="{DynamicResource IconForegroundBrush}" />
-            <TextBlock VerticalAlignment="Center" Text="Theme" />
-          </StackPanel>
-        </Button>
-      </StackPanel>
+      <DockPanel Margin="8,5">
+        <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Opacity="0.72" Text="{Binding SubtitleStatus}" Margin="12,0,4,0" />
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Button Command="{Binding NewDocumentCommand}" ToolTip.Tip="New">
+            <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
+          </Button>
+          <Button Click="OpenSubtitleClick" Content="Open ASS" />
+          <Button Click="SaveSubtitleClick" Content="Save" />
+          <Button Click="OpenMediaClick" Content="Open Video" />
+          <Border Width="1" Margin="4,2" Background="{DynamicResource DividerBrush}" />
+          <Button Command="{Binding UndoCommand}" ToolTip.Tip="Undo">
+            <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Undo}" Foreground="{DynamicResource IconForegroundBrush}" />
+          </Button>
+          <Button Command="{Binding RedoCommand}" ToolTip.Tip="Redo">
+            <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Redo}" Foreground="{DynamicResource IconForegroundBrush}" />
+          </Button>
+          <Button Command="{Binding ThemeCycleCommand}" ToolTip.Tip="Cycle System/Dark/Light theme">
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Theme}" Foreground="{DynamicResource IconForegroundBrush}" />
+              <TextBlock VerticalAlignment="Center" Text="Theme" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </DockPanel>
     </Border>
 
     <Grid Grid.Row="2" ColumnDefinitions="*,5,*" Name="UpperWorkspace">
       <Grid Grid.Column="0" RowDefinitions="3*,5,*" Name="VisualColumn">
         <Border Grid.Row="0" Margin="8,8,4,4" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
-            <TextBlock FontSize="18" FontWeight="SemiBold" Text="VIDEO" HorizontalAlignment="Center" />
-            <TextBlock Opacity="0.62" Text="M2 media viewport placeholder" />
-          </StackPanel>
+          <Grid RowDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Row="0" Margin="10,8" FontSize="14" FontWeight="SemiBold" Text="VIDEO" />
+            <Border Grid.Row="1" Margin="8,0" Background="#FF000000" ClipToBounds="True">
+              <Image Source="{Binding VideoFrame}" Stretch="Uniform" />
+            </Border>
+            <Grid Grid.Row="2" Margin="10,7" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+              <Slider Grid.Column="0" Minimum="0" Maximum="{Binding MediaDurationSeconds}" Value="{Binding CurrentTimeSeconds, Mode=TwoWay}" />
+              <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding CurrentTimeSeconds, StringFormat={}{0:0.000}s}" MinWidth="72" />
+            </Grid>
+          </Grid>
         </Border>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
         <Border Grid.Row="2" Margin="8,4,4,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
@@ -89,17 +103,30 @@
 
       <Grid Grid.Column="2" RowDefinitions="2*,5,3*" Name="TemporalTextColumn">
         <Border Grid.Row="0" Margin="4,8,8,4" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
-            <TextBlock FontSize="18" FontWeight="SemiBold" Text="AUDIO" HorizontalAlignment="Center" />
-            <TextBlock Opacity="0.62" Text="M2 waveform / spectrogram placeholder" />
-          </StackPanel>
+          <Grid RowDefinitions="Auto,*,Auto">
+            <TextBlock Grid.Row="0" Margin="10,8" FontSize="14" FontWeight="SemiBold" Text="AUDIO" />
+            <controls:AudioWaveformControl Grid.Row="1" Margin="8,0" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
+            <TextBlock Grid.Row="2" Margin="10,6" Opacity="0.72" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" />
+          </Grid>
         </Border>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
         <Border Grid.Row="2" Margin="4,4,8,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
-            <TextBlock FontSize="18" FontWeight="SemiBold" Text="EDIT PANEL" HorizontalAlignment="Center" />
-            <TextBlock Opacity="0.62" Text="M1B subtitle text / timing / style / actor placeholder" />
-          </StackPanel>
+          <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,*" IsEnabled="{Binding HasSelectedEvent}">
+            <TextBlock Grid.Row="0" FontSize="14" FontWeight="SemiBold" Text="EDIT PANEL" Margin="0,0,0,8" />
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="8" Margin="0,0,0,6">
+              <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Start" />
+              <TextBox Grid.Column="1" Text="{Binding SelectedEvent.Start, Mode=TwoWay}" />
+              <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="End" />
+              <TextBox Grid.Column="3" Text="{Binding SelectedEvent.End, Mode=TwoWay}" />
+            </Grid>
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="8" Margin="0,0,0,6">
+              <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Style" />
+              <TextBox Grid.Column="1" Text="{Binding SelectedEvent.Style, Mode=TwoWay}" />
+              <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="Actor" />
+              <TextBox Grid.Column="3" Text="{Binding SelectedEvent.Actor, Mode=TwoWay}" />
+            </Grid>
+            <TextBox Grid.Row="3" Text="{Binding SelectedEvent.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" Watermark="Select a subtitle row to edit its text" />
+          </Grid>
         </Border>
       </Grid>
     </Grid>
@@ -107,10 +134,33 @@
     <GridSplitter Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
 
     <Border Grid.Row="4" Margin="8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Name="SubtitleGridRegion">
-      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="6">
-        <TextBlock FontSize="18" FontWeight="SemiBold" Text="SUBTITLE GRID" HorizontalAlignment="Center" />
-        <TextBlock Opacity="0.62" Text="M1B virtualized grid placeholder — no fake rows are created" />
-      </StackPanel>
+      <Grid RowDefinitions="Auto,Auto,*">
+        <TextBlock Grid.Row="0" Margin="10,7,10,4" FontSize="14" FontWeight="SemiBold" Text="SUBTITLE GRID" />
+        <Border Grid.Row="1" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="8,4">
+          <Grid ColumnDefinitions="60,95,95,130,130,*" ColumnSpacing="8">
+            <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="Layer" />
+            <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="Start" />
+            <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="End" />
+            <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="Style" />
+            <TextBlock Grid.Column="4" FontWeight="SemiBold" Text="Actor" />
+            <TextBlock Grid.Column="5" FontWeight="SemiBold" Text="Text" />
+          </Grid>
+        </Border>
+        <ListBox Grid.Row="2" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent, Mode=TwoWay}" BorderThickness="0">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="sub:AssEvent">
+              <Grid ColumnDefinitions="60,95,95,130,130,*" ColumnSpacing="8" Margin="4,2">
+                <TextBlock Grid.Column="0" Text="{Binding Layer}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" Text="{Binding Start}" />
+                <TextBlock Grid.Column="2" Text="{Binding End}" />
+                <TextBlock Grid.Column="3" Text="{Binding Style}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="4" Text="{Binding Actor}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="5" Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
     </Border>
   </Grid>
 </Window>
