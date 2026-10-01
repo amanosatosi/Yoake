@@ -7,93 +7,96 @@
         x:Class="Yoake.UI.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Yoake"
-        Width="1400" Height="900"
-        MinWidth="900" MinHeight="620"
+        Width="1440" Height="900"
+        MinWidth="1040" MinHeight="680"
         Background="{DynamicResource AppBackgroundBrush}">
-  <Grid RowDefinitions="40,44,*,5,250">
-    <Border Grid.Row="0" Name="TitleTabStrip" WindowDecorationProperties.ElementRole="TitleBar" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
-      <DockPanel LastChildFill="True">
-        <Button DockPanel.Dock="Right" Width="42" Margin="4" Command="{Binding NewDocumentCommand}" ToolTip.Tip="New subtitle">
-          <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
-        </Button>
-        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+  <Grid RowDefinitions="36,38,*,4,330">
+    <Border Grid.Row="0" Name="TitleTabStrip" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
+      <Grid ColumnDefinitions="Auto,*,Auto">
+        <ScrollViewer Grid.Column="0" MaxWidth="980" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
           <ItemsControl ItemsSource="{Binding Tabs}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:DocumentTabViewModel">
-                <Border Margin="3,4,0,3" Padding="2" CornerRadius="6" Background="{DynamicResource TabBrush}">
-                  <StackPanel Orientation="Horizontal" Spacing="2">
-                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" Text="●" FontSize="8" IsVisible="{Binding IsActive}" />
-                    <Button MinWidth="110" Padding="8,4" Command="{Binding ActivateCommand}" Content="{Binding DisplayTitle}" />
-                    <TextBlock VerticalAlignment="Center" Text="•" IsVisible="{Binding IsDirty}" />
-                    <Button Width="28" Padding="4" Command="{Binding CloseCommand}" ToolTip.Tip="Close">
-                      <PathIcon Width="12" Height="12" Data="{x:Static icons:IconGeometries.Close}" Foreground="{DynamicResource IconForegroundBrush}" />
+                <Border Margin="2,3,0,2" CornerRadius="4" Background="{DynamicResource TabBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+                  <Grid ColumnDefinitions="Auto,*,Auto" Width="230" Height="30">
+                    <TextBlock Grid.Column="0" Margin="7,0,4,0" VerticalAlignment="Center" Text="●" FontSize="7" IsVisible="{Binding IsActive}" />
+                    <Button Grid.Column="1" Padding="4,2" HorizontalContentAlignment="Left" Command="{Binding ActivateCommand}">
+                      <TextBlock Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
                     </Button>
-                  </StackPanel>
+                    <Button Grid.Column="2" Width="28" Padding="6" Click="CloseTabClick" ToolTip.Tip="Close tab">
+                      <PathIcon Width="11" Height="11" Data="{x:Static icons:IconGeometries.Close}" Foreground="{DynamicResource IconForegroundBrush}" />
+                    </Button>
+                  </Grid>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
-      </DockPanel>
+        <Border Grid.Column="1" WindowDecorationProperties.ElementRole="TitleBar" Background="Transparent" />
+        <Button Grid.Column="2" Width="34" Height="30" Margin="3" Command="{Binding NewDocumentCommand}" ToolTip.Tip="New subtitle">
+          <PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
+        </Button>
+      </Grid>
     </Border>
 
     <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
-      <DockPanel Margin="8,5">
-        <TextBlock DockPanel.Dock="Right" VerticalAlignment="Center" Opacity="0.72" Text="{Binding SubtitleStatus}" Margin="12,0,4,0" />
-        <StackPanel Orientation="Horizontal" Spacing="6">
-          <Button Command="{Binding NewDocumentCommand}" ToolTip.Tip="New">
-            <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
+      <DockPanel Margin="6,3">
+        <TextBlock DockPanel.Dock="Right" MaxWidth="520" VerticalAlignment="Center" Opacity="0.72" Text="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" Margin="12,0,4,0" />
+        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Button Command="{Binding NewDocumentCommand}" ToolTip.Tip="New" Padding="7,3">
+            <PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
           </Button>
-          <Button Click="OpenSubtitleClick" Content="Open ASS" />
-          <Button Click="SaveSubtitleClick" Content="Save" />
-          <Button Click="OpenMediaClick" Content="Open Video" />
+          <Button Click="OpenSubtitleClick" Content="Open ASS" Padding="8,3" />
+          <Button Click="SaveSubtitleClick" Content="Save" Padding="8,3" />
+          <Button Click="OpenMediaClick" Content="Open Video" Padding="8,3" />
           <Border Width="1" Margin="4,2" Background="{DynamicResource DividerBrush}" />
-          <Button Command="{Binding UndoCommand}" ToolTip.Tip="Undo">
-            <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Undo}" Foreground="{DynamicResource IconForegroundBrush}" />
+          <Button Command="{Binding UndoCommand}" ToolTip.Tip="Undo" Padding="7,3">
+            <PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Undo}" Foreground="{DynamicResource IconForegroundBrush}" />
           </Button>
-          <Button Command="{Binding RedoCommand}" ToolTip.Tip="Redo">
-            <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Redo}" Foreground="{DynamicResource IconForegroundBrush}" />
+          <Button Command="{Binding RedoCommand}" ToolTip.Tip="Redo" Padding="7,3">
+            <PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Redo}" Foreground="{DynamicResource IconForegroundBrush}" />
           </Button>
-          <Button Command="{Binding ThemeCycleCommand}" ToolTip.Tip="Cycle System/Dark/Light theme">
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.Theme}" Foreground="{DynamicResource IconForegroundBrush}" />
-              <TextBlock VerticalAlignment="Center" Text="Theme" />
-            </StackPanel>
+          <Button Command="{Binding ThemeCycleCommand}" ToolTip.Tip="Cycle theme" Padding="7,3">
+            <PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Theme}" Foreground="{DynamicResource IconForegroundBrush}" />
           </Button>
         </StackPanel>
       </DockPanel>
     </Border>
 
-    <Grid Grid.Row="2" ColumnDefinitions="*,5,*" Name="UpperWorkspace">
-      <Grid Grid.Column="0" RowDefinitions="3*,5,*" Name="VisualColumn">
-        <Border Grid.Row="0" Margin="8,8,4,4" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <Grid RowDefinitions="Auto,*,Auto">
-            <TextBlock Grid.Row="0" Margin="10,8" FontSize="14" FontWeight="SemiBold" Text="VIDEO" />
-            <Border Grid.Row="1" Margin="8,0" Background="#FF000000" ClipToBounds="True">
-              <Image Source="{Binding VideoFrame}" Stretch="Uniform" />
+    <Grid Grid.Row="2" ColumnDefinitions="2*,4,3*" Name="UpperWorkspace">
+      <Grid Grid.Column="0" RowDefinitions="*,4,58" Name="VisualColumn">
+        <Border Grid.Row="0" Margin="6,6,3,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+          <Grid RowDefinitions="26,*,34">
+            <TextBlock Grid.Row="0" Margin="8,5" FontSize="12" FontWeight="SemiBold" Text="VIDEO" />
+            <Border Grid.Row="1" Margin="6,0" Background="#FF000000" ClipToBounds="True">
+              <Grid>
+                <Image Source="{Binding VideoFrame}" Stretch="Uniform" />
+                <Border HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="8" Padding="8,4" CornerRadius="3" Background="#AA111318">
+                  <TextBlock Foreground="White" FontSize="11" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" MaxWidth="560" />
+                </Border>
+              </Grid>
             </Border>
-            <Grid Grid.Row="2" Margin="10,7" ColumnDefinitions="*,Auto" ColumnSpacing="10">
+            <Grid Grid.Row="2" Margin="7,3" ColumnDefinitions="*,Auto" ColumnSpacing="8">
               <Slider Grid.Column="0" Minimum="0" Maximum="{Binding MediaDurationSeconds}" Value="{Binding CurrentTimeSeconds, Mode=TwoWay}" />
-              <TextBlock Grid.Column="1" VerticalAlignment="Center" Text="{Binding CurrentTimeSeconds, StringFormat={}{0:0.000}s}" MinWidth="72" />
+              <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="11" Text="{Binding CurrentTimeSeconds, StringFormat={}{0:0.000}s}" MinWidth="62" />
             </Grid>
           </Grid>
         </Border>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
-        <Border Grid.Row="2" Margin="8,4,4,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <DockPanel Margin="10">
-            <TextBlock DockPanel.Dock="Top" FontWeight="SemiBold" Text="VISUAL TOOLS + TOOL OPTIONS" Margin="0,0,0,8" />
-            <StackPanel Orientation="Horizontal" Spacing="6">
-              <Button Command="{Binding PositionToolCommand}" ToolTip.Tip="Position tool">
-                <PathIcon Width="18" Height="18" Data="{x:Static icons:IconGeometries.Position}" Foreground="{DynamicResource IconForegroundBrush}" />
+        <Border Grid.Row="2" Margin="6,3,3,6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+          <DockPanel Margin="6">
+            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold" Text="VISUAL TOOLS" Margin="0,0,8,0" />
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <Button Command="{Binding PositionToolCommand}" ToolTip.Tip="Position tool" Padding="6,3">
+                <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Position}" Foreground="{DynamicResource IconForegroundBrush}" />
               </Button>
-              <Button Command="{Binding ClipToolCommand}" ToolTip.Tip="Clip tool">
-                <PathIcon Width="18" Height="18" Data="{x:Static icons:IconGeometries.Clip}" Foreground="{DynamicResource IconForegroundBrush}" />
+              <Button Command="{Binding ClipToolCommand}" ToolTip.Tip="Clip tool" Padding="6,3">
+                <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Clip}" Foreground="{DynamicResource IconForegroundBrush}" />
               </Button>
-              <TextBlock VerticalAlignment="Center" Margin="8,0,0,0" Text="Active:" />
-              <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding ActiveVisualTool}" />
+              <TextBlock VerticalAlignment="Center" Margin="5,0,0,0" FontSize="11" Text="{Binding ActiveVisualTool}" />
             </StackPanel>
           </DockPanel>
         </Border>
@@ -101,31 +104,31 @@
 
       <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
 
-      <Grid Grid.Column="2" RowDefinitions="2*,5,3*" Name="TemporalTextColumn">
-        <Border Grid.Row="0" Margin="4,8,8,4" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <Grid RowDefinitions="Auto,*,Auto">
-            <TextBlock Grid.Row="0" Margin="10,8" FontSize="14" FontWeight="SemiBold" Text="AUDIO" />
-            <controls:AudioWaveformControl Grid.Row="1" Margin="8,0" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
-            <TextBlock Grid.Row="2" Margin="10,6" Opacity="0.72" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" />
+      <Grid Grid.Column="2" RowDefinitions="150,4,*" Name="TemporalTextColumn">
+        <Border Grid.Row="0" Margin="3,6,6,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+          <Grid RowDefinitions="24,*,22">
+            <TextBlock Grid.Row="0" Margin="8,4" FontSize="12" FontWeight="SemiBold" Text="AUDIO" />
+            <controls:AudioWaveformControl Grid.Row="1" Margin="6,0" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
+            <TextBlock Grid.Row="2" Margin="7,2" FontSize="10" Opacity="0.72" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" />
           </Grid>
         </Border>
         <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
-        <Border Grid.Row="2" Margin="4,4,8,8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <Grid Margin="10" RowDefinitions="Auto,Auto,Auto,*" IsEnabled="{Binding HasSelectedEvent}">
-            <TextBlock Grid.Row="0" FontSize="14" FontWeight="SemiBold" Text="EDIT PANEL" Margin="0,0,0,8" />
-            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="8" Margin="0,0,0,6">
-              <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Start" />
-              <TextBox Grid.Column="1" Text="{Binding SelectedEvent.Start, Mode=TwoWay}" />
-              <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="End" />
-              <TextBox Grid.Column="3" Text="{Binding SelectedEvent.End, Mode=TwoWay}" />
+        <Border Grid.Row="2" Margin="3,3,6,6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+          <Grid Margin="7" RowDefinitions="26,32,32,*" IsEnabled="{Binding HasSelectedEvent}">
+            <TextBlock Grid.Row="0" FontSize="12" FontWeight="SemiBold" Text="EDIT PANEL" VerticalAlignment="Center" />
+            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="6" Margin="0,0,0,3">
+              <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" Text="Start" />
+              <TextBox Grid.Column="1" FontSize="11" Padding="5,2" Text="{Binding SelectedEvent.Start, Mode=TwoWay}" />
+              <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11" Text="End" />
+              <TextBox Grid.Column="3" FontSize="11" Padding="5,2" Text="{Binding SelectedEvent.End, Mode=TwoWay}" />
             </Grid>
-            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="8" Margin="0,0,0,6">
-              <TextBlock Grid.Column="0" VerticalAlignment="Center" Text="Style" />
-              <TextBox Grid.Column="1" Text="{Binding SelectedEvent.Style, Mode=TwoWay}" />
-              <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="Actor" />
-              <TextBox Grid.Column="3" Text="{Binding SelectedEvent.Actor, Mode=TwoWay}" />
+            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="6" Margin="0,0,0,3">
+              <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" Text="Style" />
+              <TextBox Grid.Column="1" FontSize="11" Padding="5,2" Text="{Binding SelectedEvent.Style, Mode=TwoWay}" />
+              <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11" Text="Actor" />
+              <TextBox Grid.Column="3" FontSize="11" Padding="5,2" Text="{Binding SelectedEvent.Actor, Mode=TwoWay}" />
             </Grid>
-            <TextBox Grid.Row="3" Text="{Binding SelectedEvent.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" Watermark="Select a subtitle row to edit its text" />
+            <TextBox Grid.Row="3" FontSize="13" Padding="7" Text="{Binding SelectedEvent.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" Watermark="Select a subtitle row to edit its text" />
           </Grid>
         </Border>
       </Grid>
@@ -133,29 +136,29 @@
 
     <GridSplitter Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
 
-    <Border Grid.Row="4" Margin="8" CornerRadius="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Name="SubtitleGridRegion">
-      <Grid RowDefinitions="Auto,Auto,*">
-        <TextBlock Grid.Row="0" Margin="10,7,10,4" FontSize="14" FontWeight="SemiBold" Text="SUBTITLE GRID" />
-        <Border Grid.Row="1" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="8,4">
-          <Grid ColumnDefinitions="60,95,95,130,130,*" ColumnSpacing="8">
-            <TextBlock Grid.Column="0" FontWeight="SemiBold" Text="Layer" />
-            <TextBlock Grid.Column="1" FontWeight="SemiBold" Text="Start" />
-            <TextBlock Grid.Column="2" FontWeight="SemiBold" Text="End" />
-            <TextBlock Grid.Column="3" FontWeight="SemiBold" Text="Style" />
-            <TextBlock Grid.Column="4" FontWeight="SemiBold" Text="Actor" />
-            <TextBlock Grid.Column="5" FontWeight="SemiBold" Text="Text" />
+    <Border Grid.Row="4" Margin="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Name="SubtitleGridRegion">
+      <Grid RowDefinitions="25,24,*">
+        <TextBlock Grid.Row="0" Margin="7,4" FontSize="12" FontWeight="SemiBold" Text="SUBTITLE GRID" />
+        <Border Grid.Row="1" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="6,3">
+          <Grid ColumnDefinitions="42,82,82,110,110,*" ColumnSpacing="6">
+            <TextBlock Grid.Column="0" FontSize="11" FontWeight="SemiBold" Text="Layer" />
+            <TextBlock Grid.Column="1" FontSize="11" FontWeight="SemiBold" Text="Start" />
+            <TextBlock Grid.Column="2" FontSize="11" FontWeight="SemiBold" Text="End" />
+            <TextBlock Grid.Column="3" FontSize="11" FontWeight="SemiBold" Text="Style" />
+            <TextBlock Grid.Column="4" FontSize="11" FontWeight="SemiBold" Text="Actor" />
+            <TextBlock Grid.Column="5" FontSize="11" FontWeight="SemiBold" Text="Text" />
           </Grid>
         </Border>
         <ListBox Grid.Row="2" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent, Mode=TwoWay}" BorderThickness="0">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="sub:AssEvent">
-              <Grid ColumnDefinitions="60,95,95,130,130,*" ColumnSpacing="8" Margin="4,2">
-                <TextBlock Grid.Column="0" Text="{Binding Layer}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Column="1" Text="{Binding Start}" />
-                <TextBlock Grid.Column="2" Text="{Binding End}" />
-                <TextBlock Grid.Column="3" Text="{Binding Style}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Column="4" Text="{Binding Actor}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Column="5" Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
+              <Grid ColumnDefinitions="42,82,82,110,110,*" ColumnSpacing="6" Margin="3,1">
+                <TextBlock Grid.Column="0" FontSize="11" Text="{Binding Layer}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="1" FontSize="11" Text="{Binding Start}" />
+                <TextBlock Grid.Column="2" FontSize="11" Text="{Binding End}" />
+                <TextBlock Grid.Column="3" FontSize="11" Text="{Binding Style}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="4" FontSize="11" Text="{Binding Actor}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="5" FontSize="11" Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
               </Grid>
             </DataTemplate>
           </ListBox.ItemTemplate>
