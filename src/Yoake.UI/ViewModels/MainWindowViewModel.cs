@@ -17,7 +17,7 @@ using Yoake.UI.Services;
 
 namespace Yoake.UI.ViewModels;
 
-public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
+public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 {
     private static readonly IReadOnlyList<AssEvent> EmptyEvents = Array.Empty<AssEvent>();
 
@@ -94,7 +94,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             _selectedEvent = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(HasSelectedEvent));
-            if (value?.StartMilliseconds is { } start)
+            if (!_selectionFromPlayback && value?.StartMilliseconds is { } start)
                 CurrentTimeSeconds = start / 1000d;
         }
     }
@@ -155,7 +155,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 return;
             _currentTimeSeconds = clamped;
             OnPropertyChanged();
-            if (_media?.HasVideo == true)
+            if (!_clockUpdateFromPlayback && _media?.HasVideo == true)
                 _ = RefreshVideoFrameAsync(clamped);
         }
     }
@@ -230,6 +230,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     public async Task<bool> OpenMediaAsync(string path)
     {
         ThrowIfDisposed();
+        StopPlayback();
         var generation = Interlocked.Increment(ref _mediaGeneration);
         MediaStatus = $"FFMS2 indexing {System.IO.Path.GetFileName(path)}…";
 
@@ -263,6 +264,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             _media = session;
             session = null;
             oldMedia?.Dispose();
+            DisposeSubtitleRenderer();
+            OnPropertyChanged(nameof(CanPlayMedia));
 
             MediaDurationSeconds = _media.Info.DurationSeconds;
             _currentTimeSeconds = 0;
@@ -278,6 +281,8 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
                 ? $"{info.Channels}ch {info.SampleRate / 1000d:0.#} kHz"
                 : "no audio";
             MediaStatus = $"{System.IO.Path.GetFileName(info.Path)} — {videoPart} — {audioPart}";
+            if (_media.HasVideo)
+                await RefreshVideoFrameAsync(0);
             return true;
         }
         catch (Exception exception)
@@ -294,12 +299,14 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         if (_disposed)
             return;
         _disposed = true;
+        StopPlayback();
         Interlocked.Increment(ref _mediaGeneration);
         Interlocked.Increment(ref _seekGeneration);
         _workspace.Changed -= OnWorkspaceChanged;
         foreach (var tab in Tabs)
             tab.Dispose();
         Tabs.Clear();
+        DisposeSubtitleRenderer();
         _media?.Dispose();
         _media = null;
         VideoFrame = null;
@@ -368,7 +375,12 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
     private void AttachSubtitleDocument(DocumentSession session, AssDocument document)
     {
         _subtitleDocuments[session.Id] = document;
-        document.Changed += (_, _) => session.IsDirty = true;
+        document.Changed += (_, _) =>
+        {
+            session.IsDirty = true;
+            if (_workspace.ActiveDocumentId == session.Id)
+                InvalidateSubtitlePreview(true);
+        };
     }
 
     private void OnWorkspaceChanged(object? sender, EventArgs e)
@@ -386,6 +398,7 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         OnPropertyChanged(nameof(Events));
         OnPropertyChanged(nameof(ActiveSubtitlePath));
         OnPropertyChanged(nameof(SuggestedSubtitleFileName));
+        InvalidateSubtitlePreview(false);
         SelectedEvent = _activeSubtitleDocument?.Events.FirstOrDefault();
     }
 
@@ -394,7 +407,11 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
         var session = _media;
         if (session?.HasVideo != true || _disposed)
             return;
+
         var seekGeneration = Interlocked.Increment(ref _seekGeneration);
+        var subtitleText = _activeSubtitleDocument?.Serialize();
+        var subtitleRevision = Volatile.Read(ref _subtitleRevision);
+
         try
         {
             await _videoRequestGate.WaitAsync();
@@ -402,10 +419,20 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
             {
                 if (_disposed || seekGeneration != Volatile.Read(ref _seekGeneration) || !ReferenceEquals(session, _media))
                     return;
-                var frame = await Task.Run(() => session.GetFrameAtTime(seconds));
+
+                var result = await Task.Run(() =>
+                {
+                    var frame = session.GetFrameAtTime(seconds);
+                    var subtitleError = CompositeSubtitles(frame, seconds, subtitleText, subtitleRevision);
+                    return (Frame: frame, SubtitleError: subtitleError);
+                });
+
                 if (_disposed || seekGeneration != Volatile.Read(ref _seekGeneration) || !ReferenceEquals(session, _media))
                     return;
-                VideoFrame = CreateBitmap(frame);
+
+                VideoFrame = CreateBitmap(result.Frame);
+                if (!string.IsNullOrWhiteSpace(result.SubtitleError))
+                    MediaStatus = $"Subtitle preview failed: {result.SubtitleError}";
             }
             finally
             {
@@ -487,12 +514,15 @@ public sealed class MainWindowViewModel : INotifyPropertyChanged, IDisposable
 
     public void RegisterWorkspaceCommands()
     {
-        if (_registry.TryGet(CommandIds.WorkspaceActivateTab, out _)) return;
+        if (_registry.TryGet(CommandIds.WorkspaceActivateTab, out _))
+            return;
+
         _registry.Register(new AppCommand(
             new(CommandIds.WorkspaceActivateTab, "Activate tab", "Activate an open document", "Workspace"),
             (invocation, _) =>
             {
-                if (invocation.Parameter is Guid id) _workspace.Activate(id);
+                if (invocation.Parameter is Guid id)
+                    _workspace.Activate(id);
                 return ValueTask.CompletedTask;
             }));
         SynchronizeTabs();
