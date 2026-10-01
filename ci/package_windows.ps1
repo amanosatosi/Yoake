@@ -26,13 +26,47 @@ foreach ($directory in @($searchDirectories)) {
 # FFMS2/vcpkg use the dynamic MSVC CRT under the preserved old-Yoake build
 # strategy. Treat the Visual C++ redistributable as part of the dependency
 # closure when dumpbin reports one of its DLLs; do not copy the whole redist.
+#
+# Do not assume a particular Microsoft.VC*.CRT directory name or that the
+# selected toolset's redistributable has one fixed layout. VS2026 hosted
+# runners can move these directories while keeping VCToolsRedistDir valid.
+# Locate the actual x64 CRT by VCRUNTIME140.dll, preferring VCToolsRedistDir
+# and then falling back to the Visual Studio VC redist tree.
+$vcRedistRoots = [System.Collections.Generic.List[string]]::new()
 if ($env:VCToolsRedistDir) {
-  $vcX64Root = Join-Path $env:VCToolsRedistDir 'x64'
-  if (Test-Path -LiteralPath $vcX64Root) {
-    Get-ChildItem -LiteralPath $vcX64Root -Directory -Filter 'Microsoft.VC*.CRT' | ForEach-Object {
-      $searchDirectories += $_.FullName
-    }
-  }
+  $vcRedistRoots.Add([IO.Path]::GetFullPath($env:VCToolsRedistDir))
+}
+if ($env:VCINSTALLDIR) {
+  $vcRedistRoots.Add([IO.Path]::GetFullPath((Join-Path $env:VCINSTALLDIR 'Redist\MSVC')))
+}
+if ($env:VSINSTALLDIR) {
+  $vcRedistRoots.Add([IO.Path]::GetFullPath((Join-Path $env:VSINSTALLDIR 'VC\Redist\MSVC')))
+}
+
+$vcRuntimeDirectories = @()
+foreach ($redistRoot in ($vcRedistRoots | Select-Object -Unique)) {
+  if (-not (Test-Path -LiteralPath $redistRoot)) { continue }
+
+  $runtimeMatches = @(
+    Get-ChildItem -LiteralPath $redistRoot -Recurse -File -Filter 'VCRUNTIME140.dll' -ErrorAction SilentlyContinue |
+      Where-Object { $_.FullName -match '[\\/]x64[\\/]' } |
+      Sort-Object FullName
+  )
+  if ($runtimeMatches.Count -eq 0) { continue }
+
+  $vcRuntimeDirectories = @(
+    $runtimeMatches |
+      ForEach-Object { $_.Directory.FullName } |
+      Select-Object -Unique
+  )
+  Write-Host "Resolved Visual C++ runtime directory from '$redistRoot': $($vcRuntimeDirectories -join ', ')"
+  break
+}
+
+if ($vcRuntimeDirectories.Count -gt 0) {
+  $searchDirectories += $vcRuntimeDirectories
+} else {
+  Write-Warning "Could not locate VCRUNTIME140.dll in Visual Studio redistributable roots. Native dependency resolution will fail if FFMS2 imports the dynamic MSVC CRT."
 }
 
 $dumpbin = Get-Command dumpbin.exe -ErrorAction SilentlyContinue
@@ -79,7 +113,7 @@ while ($queue.Count -gt 0) {
       continue
     }
     if ($dependencyKey -match '^(vcruntime140|msvcp140|concrt140|vcomp140).*\.dll$') {
-      throw "Required Visual C++ runtime DLL '$dependency' was not found under VCToolsRedistDir."
+      throw "Required Visual C++ runtime DLL '$dependency' was not found in the resolved Visual Studio redistributable directories."
     }
   }
 }
