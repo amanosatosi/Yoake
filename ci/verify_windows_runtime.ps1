@@ -22,17 +22,19 @@ foreach ($file in $manifest.files) {
   if ($hash -ne $file.sha256) { throw "Native runtime hash mismatch: $($file.name)" }
 }
 
-$ffms2 = Join-Path $runtimeRoot 'ffms2.dll'
-if (-not (Test-Path -LiteralPath $ffms2)) { throw 'ffms2.dll is missing from native/win-x64.' }
+foreach ($entrypoint in $manifest.entrypoints) {
+  $entryPath = Join-Path $runtimeRoot $entrypoint
+  if (-not (Test-Path -LiteralPath $entryPath)) {
+    throw "Native runtime entrypoint is missing from native/win-x64: $entrypoint"
+  }
+}
 
 Write-Host 'Staged native runtime DLLs:'
 $manifest.files | Sort-Object name | ForEach-Object { Write-Host "  $($_.name)" }
 
-# Verify the package with the Windows loader directly. Use the fully qualified
-# ffms2.dll path and restrict dependency lookup to the directory containing
-# ffms2.dll plus System32. This tests the portable closure itself and avoids
-# process-wide search-path mutation or NativeLibrary.Load default-flag
-# behavior changing across .NET/PowerShell versions.
+# Verify each packaged native entrypoint with the Windows loader directly.
+# The full path plus DLL_LOAD_DIR/System32 checks the portable closure without
+# depending on the machine-wide DLL search path.
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -50,19 +52,23 @@ public static class YoakeRuntimeLoader
 $LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR = 0x00000100
 $LOAD_LIBRARY_SEARCH_SYSTEM32 = 0x00000800
 $loadFlags = $LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR -bor $LOAD_LIBRARY_SEARCH_SYSTEM32
-$handle = [YoakeRuntimeLoader]::LoadLibraryEx($ffms2, [IntPtr]::Zero, $loadFlags)
-if ($handle -eq [IntPtr]::Zero) {
-  $errorCode = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-  $errorMessage = [ComponentModel.Win32Exception]::new($errorCode).Message
-  throw "LoadLibraryExW failed for '$ffms2' with Win32 error $errorCode ($errorMessage). The staged native closure is incomplete or contains an unloadable DLL."
-}
 
-try {
-  Write-Host 'FFMS2 and its staged dependency closure loaded successfully with LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_SYSTEM32.'
-}
-finally {
-  if (-not [YoakeRuntimeLoader]::FreeLibrary($handle)) {
+foreach ($entrypoint in $manifest.entrypoints) {
+  $entryPath = Join-Path $runtimeRoot $entrypoint
+  $handle = [YoakeRuntimeLoader]::LoadLibraryEx($entryPath, [IntPtr]::Zero, $loadFlags)
+  if ($handle -eq [IntPtr]::Zero) {
     $errorCode = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
-    Write-Warning "FreeLibrary failed for FFMS2 with Win32 error $errorCode."
+    $errorMessage = [ComponentModel.Win32Exception]::new($errorCode).Message
+    throw "LoadLibraryExW failed for '$entryPath' with Win32 error $errorCode ($errorMessage). The staged native closure is incomplete or contains an unloadable DLL."
+  }
+
+  try {
+    Write-Host "$entrypoint loaded successfully from the staged portable runtime."
+  }
+  finally {
+    if (-not [YoakeRuntimeLoader]::FreeLibrary($handle)) {
+      $errorCode = [Runtime.InteropServices.Marshal]::GetLastWin32Error()
+      Write-Warning "FreeLibrary failed for $entrypoint with Win32 error $errorCode."
+    }
   }
 }
