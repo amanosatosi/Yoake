@@ -16,8 +16,12 @@ for pattern in ('*.csproj', '*.axaml'):
         except Exception as exc: fail(f"invalid XML {path.relative_to(ROOT)}: {exc}")
 
 versions=json.loads((ROOT/'third_party/versions.json').read_text())
-for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit'], versions['mangetsu']['commit']):
+for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit']):
     if not re.fullmatch(r'[0-9a-f]{40}', pin): fail(f"native dependency ref is not immutable: {pin}")
+if versions.get('mangetsu', {}).get('branch') != 'mangetsu':
+    fail("Mangetsu must follow the live 'mangetsu' branch")
+if 'commit' in versions.get('mangetsu', {}):
+    fail('Mangetsu must not be pinned to a commit in versions.json')
 
 for svg in (ROOT/'assets/icons/functional').glob('*.svg'):
     text=svg.read_text(encoding='utf-8').lower()
