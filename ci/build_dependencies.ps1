@@ -29,6 +29,16 @@ function Checkout-Pinned([string]$url, [string]$commit, [string]$path, [bool]$ve
   if ($actual -ne $commit) { throw "Pinned checkout mismatch for ${url}: expected $commit, got $actual" }
 }
 
+function Checkout-LatestBranch([string]$url, [string]$branch, [string]$path) {
+  if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path -Recurse -Force }
+  git clone --depth 1 --single-branch --branch $branch $url $path
+  Assert-LastExitCode "clone latest branch $branch from $url"
+  $actual = (git -C $path rev-parse HEAD).Trim()
+  Assert-LastExitCode "git rev-parse $url"
+  Write-Host "Resolved $url branch '$branch' to $actual"
+  return $actual
+}
+
 New-Item -ItemType Directory -Force -Path $workRoot, $OutputRoot, $binaryCache | Out-Null
 $vcpkgRoot = Join-Path $workRoot 'vcpkg'
 $ffmpegInstall = Join-Path $OutputRoot 'ffmpeg'
@@ -77,18 +87,20 @@ $mangetsuSource = Join-Path $workRoot 'mangetsu-source'
 $mangetsuBuild = Join-Path $workRoot 'mangetsu-build'
 $mangetsuDist = Join-Path $workRoot 'mangetsu-dist'
 if ($Stage -in @('Mangetsu', 'All')) {
-  Write-Host "Building pinned Mangetsu $($versions.mangetsu.commit)"
+  Write-Host "Building latest Mangetsu branch '$($versions.mangetsu.branch)' (no cache)"
   Checkout-Pinned 'https://github.com/microsoft/vcpkg.git' $versions.vcpkg.commit $vcpkgRoot $true
   & (Join-Path $vcpkgRoot 'bootstrap-vcpkg.bat') -disableMetrics; Assert-LastExitCode 'vcpkg bootstrap for Mangetsu'
   $env:VCPKG_DISABLE_METRICS = '1'
   Remove-Item Env:VCPKG_ROOT -ErrorAction SilentlyContinue
-  $env:VCPKG_BINARY_SOURCES = "clear;files,$binaryCache,readwrite"
+  # Mangetsu intentionally builds fresh every run. Do not read or write
+  # persistent vcpkg binary archives for its static dependency stack.
+  $env:VCPKG_BINARY_SOURCES = "clear"
 
   $triplet = 'x64-windows-static'
   & (Join-Path $vcpkgRoot 'vcpkg.exe') install freetype fribidi harfbuzz pkgconf --triplet $triplet
   Assert-LastExitCode 'Mangetsu static dependency install'
 
-  Checkout-Pinned 'https://github.com/amanosatosi/libassmod.git' $versions.mangetsu.commit $mangetsuSource
+  $resolvedMangetsuCommit = Checkout-LatestBranch 'https://github.com/amanosatosi/libassmod.git' $versions.mangetsu.branch $mangetsuSource
   if (Test-Path -LiteralPath $mangetsuBuild) { Remove-Item -LiteralPath $mangetsuBuild -Recurse -Force }
   if (Test-Path -LiteralPath $mangetsuDist) { Remove-Item -LiteralPath $mangetsuDist -Recurse -Force }
 
@@ -140,12 +152,13 @@ if ($Stage -in @('Mangetsu', 'All')) {
   New-Item -ItemType Directory -Force -Path $bin, $licenses | Out-Null
   Copy-Item -LiteralPath $dll.FullName -Destination (Join-Path $bin 'mangetsu.dll') -Force
   Copy-Item -LiteralPath (Join-Path $mangetsuSource 'COPYING') -Destination (Join-Path $licenses 'Mangetsu-LICENSE.txt') -Force
+  $resolvedMangetsuCommit | Set-Content -LiteralPath (Join-Path $mangetsuInstall 'resolved-commit.txt') -Encoding ASCII
   New-Item -ItemType File -Force -Path (Join-Path $mangetsuInstall '.complete') | Out-Null
 }
 
 if ($Stage -in @('Finalize', 'All')) {
   foreach ($component in @('ffmpeg','ffms2','mangetsu')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $OutputRoot "$component\.complete"))) { throw "Pinned $component stage is incomplete" }
+    if (-not (Test-Path -LiteralPath (Join-Path $OutputRoot "$component\.complete"))) { throw "Native dependency stage is incomplete: $component" }
   }
   $licenseRoot = Join-Path $OutputRoot 'licenses'
   if (Test-Path $licenseRoot) { Remove-Item $licenseRoot -Recurse -Force }
@@ -155,5 +168,5 @@ if ($Stage -in @('Finalize', 'All')) {
   }
   Copy-Item (Join-Path $repoRoot 'third_party\versions.json') (Join-Path $OutputRoot 'versions.json')
   New-Item -ItemType File -Force -Path (Join-Path $OutputRoot '.complete') | Out-Null
-  Write-Host "Pinned native dependency stack finalized at $OutputRoot"
+  Write-Host "Native dependency stack finalized at $OutputRoot"
 }
