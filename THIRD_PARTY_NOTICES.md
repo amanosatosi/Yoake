@@ -12,7 +12,7 @@ xUnit packages are test-only and are not shipped in the Yoake application. xUnit
 
 ## FFmpeg / zlib / FFMS2 / Mangetsu
 
-These are not vendored as binaries in this source repository. Windows CI builds the exact pins in `third_party/versions.json`; `ci/build_dependencies.ps1` collects their upstream license/copyright files, and `ci/package_windows.ps1` includes those texts in the portable package. Mangetsu is the project's libassmod renderer used for live ASS preview. FFmpeg feature/configuration changes must be reviewed for license impact before merging.
+These are not vendored as binaries in this source repository. Windows CI builds pinned FFmpeg/FFMS2 versions from `third_party/versions.json`, while Mangetsu intentionally follows the latest `mangetsu` branch head and is rebuilt without a GitHub Actions or vcpkg binary cache on every run. `ci/build_dependencies.ps1` collects upstream license/copyright files, and `ci/package_windows.ps1` includes those texts in the portable package. Mangetsu is the project's libassmod renderer used for live ASS preview. FFmpeg feature/configuration changes must be reviewed for license impact before merging.
 
 ## Microsoft Visual C++ runtime
 
