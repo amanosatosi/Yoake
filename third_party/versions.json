@@ -1,5 +1,5 @@
 {
-  "source": "Yoake playable-editor baseline; immutable native pins for ABI/cache continuity",
+  "source": "Yoake playable-editor baseline; FFmpeg/FFMS2/vcpkg are pinned, Mangetsu follows the live mangetsu branch",
   "vcpkg": {
     "commit": "f3419f137f1a1e79b33b880ae6845f873d87820b"
   },
@@ -15,8 +15,8 @@
     "linkage": "dynamic"
   },
   "mangetsu": {
-    "commit": "7ae6cc47ea13ec174168a07fdfbfa392991891d6",
+    "branch": "mangetsu",
     "linkage": "shared with static third-party dependencies",
-    "status": "built and packaged for live ASS preview"
+    "status": "built fresh from the latest mangetsu branch head for live ASS preview"
   }
 }
