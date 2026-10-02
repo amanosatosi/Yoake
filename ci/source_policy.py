@@ -23,6 +23,17 @@ if versions.get('mangetsu', {}).get('branch') != 'mangetsu':
 if 'commit' in versions.get('mangetsu', {}):
     fail('Mangetsu must not be pinned to a commit in versions.json')
 
+workflow=(ROOT/'.github/workflows/build.yml').read_text(encoding='utf-8')
+for forbidden in ('Restore Mangetsu cache', 'Save Mangetsu cache', 'mangetsu_vcpkg', 'mangetsu-cache'):
+    if forbidden in workflow:
+        fail(f'Mangetsu must not use GitHub Actions caches: {forbidden}')
+if 'Build latest Mangetsu branch' not in workflow:
+    fail('CI must build the live Mangetsu branch on every run')
+native_build=(ROOT/'ci/build_dependencies.ps1').read_text(encoding='utf-8')
+for required in ('Checkout-LatestBranch', "versions.mangetsu.branch", 'VCPKG_BINARY_SOURCES = "clear"'):
+    if required not in native_build:
+        fail(f'live uncached Mangetsu build marker missing: {required}')
+
 for svg in (ROOT/'assets/icons/functional').glob('*.svg'):
     text=svg.read_text(encoding='utf-8').lower()
     if '<image' in text or 'base64' in text or 'data:image' in text: fail(f"raster payload in {svg}")
