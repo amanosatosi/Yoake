@@ -47,7 +47,7 @@ public sealed partial class MainWindowViewModel
     public void UpdateClipGesture(int pointIndex,AssPoint point,AssPoint anchor)
     {
         if (_gesture is null || _gestureEditor is null || _gestureLine is null) return;
-        var text=pointIndex>=0 ? AssVisualTags.MoveClipPoint(_gestureText,pointIndex,point) : AssVisualTags.SetRectangle(_gestureText,InverseClip,anchor,point);
+        var text=pointIndex==-2 ? AssVisualTags.TranslateClip(_gestureText,new(point.X-anchor.X,point.Y-anchor.Y)) : pointIndex>=0 ? AssVisualTags.MoveClipPoint(_gestureText,pointIndex,point) : AssVisualTags.SetRectangle(_gestureText,InverseClip,anchor,point);
         _gestureEditor.SetField(_gestureLine,"Text",text,"Edit subtitle clip");
     }
     public void EndGesture() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); ReloadDraft(); } }

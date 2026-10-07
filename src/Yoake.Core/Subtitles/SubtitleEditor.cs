@@ -22,7 +22,20 @@ public sealed class SubtitleEditor(AssDocument document)
         probe.Set(field, value); // Validate before executing, including missing columns.
         var next = (string[])probe.Fields.Clone();
         if (old.SequenceEqual(next)) return;
-        Undo.Execute(new DelegateUndoOperation(name, () => record.RestoreFields(old), () => record.RestoreFields(next)));
+        Undo.Execute(new FieldEditOperation(name,record,old,next));
+    }
+    private sealed class FieldEditOperation(string name,AssRecord record,string[] before,string[] after) : IMergeableUndoOperation
+    {
+        private string[] _after=after;
+        public string Name=>name;
+        public void Undo()=>record.RestoreFields(before);
+        public void Redo()=>record.RestoreFields(_after);
+        public bool TryMerge(IUndoOperation next)
+        {
+            if(next is not FieldEditOperation edit||!ReferenceEquals(record,edit.Target))return false;
+            _after=edit._after;return true;
+        }
+        private AssRecord Target=>record;
     }
     public void EditEvent(AssEvent line, IReadOnlyDictionary<string, string> values)
     {

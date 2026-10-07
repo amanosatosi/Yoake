@@ -73,7 +73,8 @@ public sealed class AudioWaveformControl : Control
         foreach(var line in model.Events)
         {
             if(line==model.SelectedEvent)continue;
-            foreach(var boundary in new[]{line.StartMilliseconds,line.EndMilliseconds})if(boundary is {} ms){var x=X(ms/1000d);if(x>=0&&x<=Bounds.Width)context.DrawLine(neighbor,new(x,0),new(x,Bounds.Height));}
+            void Boundary(long? boundary){if(boundary is {} ms){var x=X(ms/1000d);if(x>=0&&x<=Bounds.Width)context.DrawLine(neighbor,new(x,0),new(x,Bounds.Height));}}
+            Boundary(line.StartMilliseconds);Boundary(line.EndMilliseconds);
         }
         if(model.SelectedEvent is {} selected)
         {

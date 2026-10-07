@@ -142,6 +142,17 @@ jobs:
       - name: Smoke packaged NativeAOT executable
         shell: pwsh
         run: .\ci\smoke_windows.ps1 -Executable artifacts\Yoake-Windows-x64-portable\Yoake.exe
+      - name: Verify packaged editor domain and native media/rendering providers
+        shell: pwsh
+        run: |
+          python ci/create_editor_media_fixtures.py artifacts/editor-fixtures
+          $exe = (Resolve-Path artifacts/Yoake-Windows-x64-portable/Yoake.exe).Path
+          $fixtures = (Resolve-Path artifacts/editor-fixtures).Path
+          $report = Join-Path $fixtures 'verification.txt'
+          $process = Start-Process -FilePath $exe -ArgumentList @('--verify-editor', $fixtures, $report) -WindowStyle Hidden -PassThru
+          if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Packaged editor verification timed out.' }
+          if (Test-Path $report) { Get-Content $report }
+          if ($process.ExitCode -ne 0) { throw "Packaged editor verification failed: $($process.ExitCode)" }
       - uses: actions/upload-artifact@v7
         with:
           name: Yoake-Windows-x64-NativeAOT-portable

@@ -109,7 +109,7 @@
     <Border Grid.Row="0" Margin="6,6,3,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
       <Grid Name="VideoRegion" RowDefinitions="24,*,34,28">
         <TextBlock Text="VIDEO" FontWeight="SemiBold" Margin="7,3" />
-        <Border Grid.Row="1" Margin="5,0" Background="Black" ClipToBounds="True"><Grid><Image Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border>
+        <Border Grid.Row="1" Margin="5,0" Background="Black" ClipToBounds="True"><Grid><Image Name="VideoImage" Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border>
         <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="4" Margin="5,2">
           <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Grid.Column="1" Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />
           <Slider Grid.Column="2" Minimum="0" Maximum="{Binding MediaDurationSeconds}" Value="{Binding CurrentTimeSeconds, Mode=TwoWay}" PointerReleased="VideoSeekReleased" />
@@ -125,8 +125,8 @@
     <Border Grid.Row="2" Margin="6,3,3,6" Background="{DynamicResource PanelBrush}"><StackPanel Orientation="Horizontal" Spacing="4" Margin="6,2">
       <TextBlock Text="VISUAL TOOLS" FontSize="11" VerticalAlignment="Center" />
       <Button Command="{Binding PositionToolCommand}" Padding="5,1" ToolTip.Tip="Position: drag on video"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Position}" /></Button>
-      <Button Command="{Binding ClipToolCommand}" Padding="5,1" ToolTip.Tip="Clip: drag to create rectangle or drag existing handles"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Clip}" /></Button>
-      <TextBlock Text="{Binding ActiveVisualTool}" FontSize="11" VerticalAlignment="Center" /><CheckBox Content="Inverse clip" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="11" />
+      <Button Command="{Binding ClipToolCommand}" Padding="5,1" ToolTip.Tip="Clip: drag to create rectangle; drag handles to edit; Shift+drag moves clip"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Clip}" /></Button>
+      <TextBlock Text="{Binding ActiveVisualTool}" FontSize="11" VerticalAlignment="Center" /><CheckBox Content="New clip inverse" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="11" />
     </StackPanel></Border>
   </Grid>
   <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />

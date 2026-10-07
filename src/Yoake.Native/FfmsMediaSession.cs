@@ -46,7 +46,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     }
 
     public string SourcePath { get; }
-    public MediaInfo Info { get; }
+    public MediaInfo Info { get; private set; }
     public bool HasVideo => _videoSource != 0;
     public bool HasAudio => _audioSource != 0;
 
@@ -196,6 +196,12 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
                     session._frameTimes[i] = (double)frameInfo->PTS * timeBase->Num / timeBase->Den / 1000d;
                 }
             }
+            if(session._frameTimes.Length>0)
+            {
+                var last=session._frameTimes[^1];
+                var frameDuration=session._frameTimes.Length>1?last-session._frameTimes[^2]:fps>0?1/fps:0;
+                session.Info=info with{DurationSeconds=Math.Max(audioDuration,last+Math.Max(0,frameDuration))};
+            }
             return session;
         }
         catch
@@ -212,7 +218,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         }
     }
 
-    public DecodedVideoFrame GetFrameAtTime(double seconds)
+    public DecodedVideoFrame GetFrameAtTime(double seconds, byte[]? destinationPixels = null)
     {
         lock (_videoGate)
         {
@@ -236,7 +242,8 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
                 throw new InvalidOperationException("FFMS2 returned an incomplete BGRA frame.");
 
             var destinationStride = checked(width * 4);
-            var pixels = GC.AllocateUninitializedArray<byte>(checked(destinationStride * height));
+            var length=checked(destinationStride*height);
+            var pixels=destinationPixels is not null&&destinationPixels.Length==length?destinationPixels:GC.AllocateUninitializedArray<byte>(length);
             for (var y = 0; y < height; y++)
             {
                 var sourceRow = source + y * sourceStride;

@@ -4,6 +4,8 @@ using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Avalonia.Controls.Presenters;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using Yoake.Core.Commands;
@@ -26,15 +28,17 @@ public partial class MainWindow : Window, IEditorDialogs
         if(OperatingSystem.IsWindows()){WindowDecorations=Avalonia.Controls.WindowDecorations.Full;ExtendClientAreaToDecorationsHint=true;ExtendClientAreaTitleBarHeightHint=36;TitleTabStrip.Padding=new Thickness(0,0,140,0);}
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
+        SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&e.Property==TextBox.CaretIndexProperty)_model.TextCursor=SubtitleText.CaretIndex;};
         Closing+=HandleClosing;
         Closed+=(_,_)=>_model?.Dispose();
     }
     private void AttachModel()
     {
-        if(_model is not null){_model.PropertyChanged-=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        if(_model is not null){_model.FrameReady-=FrameReady;_model.PropertyChanged-=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
-        if(_model is not null){_model.Dialogs=this;_model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
+        if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;_model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
     }
+    private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
         if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
@@ -58,6 +62,11 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is null||e.Handled)return;
         var control=e.Source as Control;var context=HotkeyContext.Default;
+        for(var input=control;input is not null;input=input.Parent as Control)
+        {
+            if(input is TextBox textBox && textBox.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
+            if(e.Key==Key.Enter&&(input is AutoCompleteBox {IsDropDownOpen:true}||input is ComboBox {IsDropDownOpen:true}))return;
+        }
         for(var current=control;current is not null;current=current.Parent as Control)
         {
             if(current==SubtitleRows){context=HotkeyContext.SubtitleGrid;break;}
@@ -75,9 +84,11 @@ public partial class MainWindow : Window, IEditorDialogs
         // Enter in metadata commits, without advancing while a dropdown is open.
         var binding=_model.Hotkeys.Resolve(new(e.Key.ToString(),modifiers),[HotkeyContext.Default,context]);
         if(binding is null)return;
+        var commandId=binding.CommandId;
+        if(commandId==CommandIds.EditCommitNext && context==HotkeyContext.SubtitleEdit && !SubtitleText.IsKeyboardFocusWithin)commandId=CommandIds.EditCommit;
         _model.TextCursor=SubtitleText.CaretIndex;
         e.Handled=true;
-        await _model.Registry.InvokeAsync(binding.CommandId,new(FocusContext:context.ToString()));
+        await _model.Registry.InvokeAsync(commandId,new(FocusContext:context.ToString()));
     }
     private async void HandleClosing(object? sender,WindowClosingEventArgs e)
     {

@@ -39,7 +39,7 @@ public static class AssVisualTags
     private static bool TryNumber(string text, out double n) => double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out n) && double.IsFinite(n);
     public static AssPoint? Position(string text)
     {
-        var tag = Scan(text).LastOrDefault(t => t.Name == "pos");
+        var tag = Scan(text).FirstOrDefault(t => t.Name == "pos");
         if (tag.Length == 0) return null; var fields = tag.Arguments.Split(',');
         return fields.Length == 2 && TryNumber(fields[0], out var x) && TryNumber(fields[1], out var y) ? new(x, y) : null;
     }
@@ -52,7 +52,9 @@ public static class AssVisualTags
     {
         var tags = Scan(text);
         if (tags.Any(t => t.Name == "move")) throw new InvalidOperationException("This line uses movement. Remove or edit its \\move tag before positioning it.");
-        return Splice(text, tags.LastOrDefault(t => t.Name == "pos"), "\\pos(" + Number(point.X) + "," + Number(point.Y) + ")");
+        var position=tags.FirstOrDefault(t=>t.Name=="pos");
+        if(position.Length>0&&(Position(text) is null||position.Arguments.Split(',').Any(p=>p.TrimStart().StartsWith('+'))))throw new InvalidOperationException("This position uses a Mangetsu expression or relative coordinates; edit that tag in the text panel.");
+        return Splice(text, tags.FirstOrDefault(t => t.Name == "pos"), "\\pos(" + Number(point.X) + "," + Number(point.Y) + ")");
     }
     public static AssClip? Clip(string text)
     {
@@ -84,7 +86,17 @@ public static class AssVisualTags
     public static string SetRectangle(string text, bool inverse, AssPoint a, AssPoint b)
     {
         var tag = Scan(text).LastOrDefault(t => t.Name is "clip" or "iclip");
+        if(tag.Length>0&&Clip(text) is null)throw new InvalidOperationException("Unsupported clip syntax; edit the tag in the text panel.");
         return Splice(text, tag, (inverse ? "\\iclip(" : "\\clip(") + string.Join(',', Number(Math.Min(a.X, b.X)), Number(Math.Min(a.Y, b.Y)), Number(Math.Max(a.X, b.X)), Number(Math.Max(a.Y, b.Y))) + ")");
+    }
+    public static string TranslateClip(string text, AssPoint delta)
+    {
+        var clip=Clip(text)??throw new InvalidOperationException("Unsupported clip syntax; edit the tag in the text panel.");
+        if(clip.Rectangular)return SetRectangle(text,clip.Inverse,new(clip.Points[0].X+delta.X,clip.Points[0].Y+delta.Y),new(clip.Points[1].X+delta.X,clip.Points[1].Y+delta.Y));
+        var numbers=DrawingNumbers(clip.Drawing);var factor=Math.Pow(2,clip.Scale-1);var output=new System.Text.StringBuilder();var cursor=0;
+        for(var i=0;i<numbers.Count;i++){var number=numbers[i];output.Append(clip.Drawing[cursor..number.Start]);output.Append(Number(number.Value+(i%2==0?delta.X:delta.Y)*factor));cursor=number.Start+number.Length;}
+        output.Append(clip.Drawing[cursor..]);var tag=Scan(text).Last(t=>t.Name is "clip" or "iclip");var comma=tag.Arguments.IndexOf(',');var prefix=comma>=0?tag.Arguments[..(comma+1)]:"";
+        return Splice(text,tag,"\\"+tag.Name+"("+prefix+output+")");
     }
     public static string MoveClipPoint(string text, int pointIndex, AssPoint point)
     {

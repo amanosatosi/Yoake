@@ -7,6 +7,12 @@ public interface IUndoOperation
     void Redo();
 }
 
+public interface IMergeableUndoOperation : IUndoOperation
+{
+    // Called only inside a transaction, after the next operation has executed.
+    bool TryMerge(IUndoOperation next);
+}
+
 public interface IUndoTransaction : IDisposable
 {
     bool IsCompleted { get; }
@@ -127,6 +133,7 @@ public sealed class UndoManager
         public void Add(IUndoOperation operation)
         {
             if (_completed) throw new InvalidOperationException("Undo transaction is already complete.");
+            if(_operations.LastOrDefault() is IMergeableUndoOperation previous && previous.TryMerge(operation))return;
             _operations.Add(operation);
         }
 

@@ -7,15 +7,21 @@ public abstract class AssRecord : INotifyPropertyChanged
     internal string Prefix;
     internal string[] Format;
     internal string[] Fields;
-    internal AssRecord(string prefix, string[] format, string[] fields) => (Prefix, Format, Fields) = (prefix, format, fields);
+    private readonly Dictionary<string,int> _indices=new(StringComparer.OrdinalIgnoreCase);
+    internal AssRecord(string prefix, string[] format, string[] fields)
+    {
+        (Prefix,Format,Fields)=(prefix,format,fields);
+        for(var i=0;i<format.Length;i++)_indices.TryAdd(format[i],i);
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
     public IReadOnlyList<string> FieldNames => Array.AsReadOnly(Format);
-    internal int Index(string name) => Array.FindIndex(Format, f => f.Equals(name, StringComparison.OrdinalIgnoreCase));
+    internal int Index(string name) => _indices.GetValueOrDefault(name,-1);
     public string Get(string name) { var i = Index(name); return i >= 0 && i < Fields.Length ? Fields[i] : ""; }
     public void Set(string name, string value)
     {
         var i = Index(name);
         if (i < 0) throw new InvalidOperationException($"ASS Format has no {name} field.");
+        if (Get(name) == value) return;
         if (name.Equals("Text", StringComparison.OrdinalIgnoreCase)) value = value.Replace("\r\n", "\\N").Replace("\r", "\\N").Replace("\n", "\\N");
         else if (value.IndexOfAny([',', '\r', '\n']) >= 0) throw new ArgumentException($"{name} cannot contain commas or newlines.");
         if (Get(name) == value) return;

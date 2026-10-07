@@ -235,11 +235,20 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private CancellationTokenSource? _previewDelay;
     private void InvalidateSubtitlePreview(bool refreshCurrentFrame)
     {
         Interlocked.Increment(ref _subtitleRevision);
-        if (refreshCurrentFrame && !IsPlaying && _media?.HasVideo == true)
-            _ = RefreshVideoFrameAsync(CurrentTimeSeconds);
+        _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;
+        if(refreshCurrentFrame&&!IsPlaying&&_media?.HasVideo==true)
+        {
+            var cancellation=new CancellationTokenSource();_previewDelay=cancellation;
+            _=RefreshPreviewAfterDelayAsync(cancellation.Token);
+        }
+    }
+    private async Task RefreshPreviewAfterDelayAsync(CancellationToken token)
+    {
+        try{await Task.Delay(30,token);await RefreshVideoFrameAsync(CurrentTimeSeconds);}catch(OperationCanceledException){}
     }
 
     private void DisposeSubtitleRenderer()

@@ -51,6 +51,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private string _mediaStatus = "Open video/audio";
     private double _mediaDurationSeconds, _currentTimeSeconds;
     private long _seekGeneration;
+    private byte[]? _decodedPixels;
+    public event EventHandler? FrameReady;
     private bool _disposed;
     private EventEditDraft? _draft;
     public IEditorDialogs? Dialogs { get; set; }
@@ -243,9 +245,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             try
             {
                 if (_disposed || generation!=Volatile.Read(ref _seekGeneration) || !ReferenceEquals(session,_media)) return;
-                var result=await Task.Run(()=> { var frame=session.GetFrameAtTime(seconds); return (Frame:frame,Error:CompositeSubtitles(frame,seconds,subtitleText,revision)); });
+                var result=await Task.Run(()=> { var frame=session.GetFrameAtTime(seconds,_decodedPixels);_decodedPixels=frame.Pixels; return (Frame:frame,Error:CompositeSubtitles(frame,seconds,subtitleText,revision)); });
                 if (_disposed || generation!=Volatile.Read(ref _seekGeneration) || !ReferenceEquals(session,_media)) return;
-                VideoFrame=CreateBitmap(result.Frame); if (result.Error is not null) MediaStatus=result.Error;
+                var frame=result.Frame;
+                if(VideoFrame is not {} bitmap||bitmap.PixelSize.Width!=frame.Width||bitmap.PixelSize.Height!=frame.Height)VideoFrame=CreateBitmap(frame);
+                else { using var buffer=bitmap.Lock();for(var y=0;y<frame.Height;y++)Marshal.Copy(frame.Pixels,y*frame.Stride,buffer.Address+y*buffer.RowBytes,frame.Width*4); }
+                FrameReady?.Invoke(this,EventArgs.Empty);
+                if (result.Error is not null) MediaStatus=result.Error;
             }
             finally { _videoRequestGate.Release(); }
         }

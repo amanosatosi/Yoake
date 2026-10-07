@@ -9,6 +9,10 @@ internal static class Program
     public static void Main(string[] args)
     {
         WindowsNativeRuntime.ConfigurePackagedRuntime(AppContext.BaseDirectory);
+        if(args.Length==3&&args[0]=="--verify-editor")
+        {
+            Environment.Exit(EditorVerification.Run(args[1],args[2]));return;
+        }
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
