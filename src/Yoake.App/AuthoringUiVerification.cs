@@ -278,18 +278,28 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(_first.Get("Fontsize")=="72"&&_first.Get("PrimaryColour")=="&H80402010",$"Style selection switch must commit the numeric/color draft exactly (size {_first.Get("Fontsize")}, color {_first.Get("PrimaryColour")}).");
         Require(_first.Name.EndsWith(" 日本",StringComparison.Ordinal)&&model.SelectedEvent!.Style==_first.Name,"The same draft must commit its Unicode rename and update event references before switching.");
         _second=model.ActiveEditor.Document.Styles.Last();
-        var scriptList=Named<ListBox>(styles,"ScriptStyles");scriptList.SelectedItem=_first.Name;
+        var scriptList=Named<ListBox>(styles,"ScriptStyles");
+        Require(scriptList.SelectedItems?.Count==1&&scriptList.SelectedItem as string==_second.Name,"New style must replace the previous selection with only the created style.");
+        SelectOne(scriptList,_first.Name);
         Invoke(styles.Registry,"styles/to-library");
+        Require(Named<ListBox>(styles,"LibraryStyles").SelectedItems?.Count==1,"Copying one script style must select only its new library preset.");
     }
     private void FinishStyleSwitching()
     {
         var picker=Named<FontPicker>(styles,"StyleFont");
         picker.GetVisualDescendants().OfType<AutoCompleteBox>().Single().SetCurrentValue(AutoCompleteBox.TextProperty,"Missing 日本 字体");
-        Named<ListBox>(styles,"ScriptStyles").SelectedItem=_second!.Name;
+        SelectOne(Named<ListBox>(styles,"ScriptStyles"),_second!.Name);
         var stored=new StyleLibraryStore(model.StyleLibraryPath);
         Require(stored.Editor(stored.Collections[0]).Document.Styles.Any(s=>s.Get("Fontname")=="Missing 日本 字体"),"Library-to-script switching must save the exact missing-font draft.");
         Invoke(styles.Registry,"script/style/delete");
         Require(!model.ActiveEditor!.Document.Styles.Contains(_second)&&model.SelectedEvent!.Style==_first!.Name,"Unused style deletion must succeed without changing event references.");
+    }
+
+    private static void SelectOne(ListBox list,string name)
+    {
+        // Model an ordinary click replacing a multiple selection, without Ctrl.
+        list.SelectedItems!.Clear();list.SelectedItem=name;
+        Require(list.SelectedItems.Count==1&&list.SelectedItem as string==name,"Style row selection must replace the previous row exactly.");
     }
 
     private void Capture(Control control,string name,double scale)

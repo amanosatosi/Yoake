@@ -69,7 +69,7 @@ public sealed class StylesWindow : Window
         var editBar=new StackPanel{Orientation=Orientation.Horizontal,Spacing=3,HorizontalAlignment=HorizontalAlignment.Right};Grid.SetColumn(editBar,1);footer.Children.Add(editBar);At(pane,Preview,3);
         var sampleRow=new Grid{ColumnDefinitions=new("150,*"),ColumnSpacing=5};sampleRow.Children.Add(_previewMode);Grid.SetColumn(_sample,1);sampleRow.Children.Add(_sample);At(pane,sampleRow,2);
         _commands.CommandFailed+=(_,e)=>{_applyOk=false;_status.Text=e.Exception.Message;};
-        Register("styles/apply","Apply",editBar,()=>{Apply();RefreshLists();});
+        Register("styles/apply","Apply",editBar,()=>{var previousName=_selected?.Name;Apply();RefreshLists(previousName);});
         Register("styles/undo","Undo",editBar,()=>{if(!Commit())return;_target?.Undo.Undo();SaveLibrary();Reload();});
         Register("styles/redo","Redo",editBar,()=>{if(!Commit())return;_target?.Undo.Redo();SaveLibrary();Reload();});
         Register("styles/close","Close",editBar,()=>{if(Commit())Close();});
@@ -142,15 +142,20 @@ public sealed class StylesWindow : Window
         var editor=library?_collection is null?null:_library.Editor(_collection):_script;
         return editor?.Document.Styles.Where(s=>names.Contains(s.Name)).ToArray()??[];
     }
-    private static void SelectNames(ListBox list,IEnumerable<AssStyle> styles)
+    private void SelectNames(ListBox list,IEnumerable<AssStyle> styles)
     {
-        list.SelectedItems?.Clear();foreach(var style in styles)list.SelectedItems?.Add(style.Name);
+        // Replace the whole selection before activating its editor. Intermediate
+        // selection notifications must not commit/rebuild fields between rows.
+        _refreshing=true;
+        try{list.SelectedItems?.Clear();foreach(var style in styles)list.SelectedItems?.Add(style.Name);}
+        finally{_refreshing=false;}
+        Select(ReferenceEquals(list,_libraryList));
     }
     private void AddOperations(Panel bar,bool library)
     {
         var prefix=library?"library/preset/":"script/style/";
         SubtitleEditor? Target()=>library?_collection is null?null:_library.Editor(_collection):_script;
-        Register(prefix+"new","New",bar,()=>{if(!Commit()||Target() is not {} editor)return;var added=editor.AddStyle();if(library)_library.Save();RefreshLists();(library?_libraryList:_scriptList).SelectedItem=added.Name;});
+        Register(prefix+"new","New",bar,()=>{if(!Commit()||Target() is not {} editor)return;var added=editor.AddStyle();if(library)_library.Save();RefreshLists();SelectNames(library?_libraryList:_scriptList,[added]);});
         Register(prefix+"duplicate","Duplicate",bar,()=>{if(!Commit()||Target() is not {} editor)return;var added=editor.CopyStyles(SelectedStyles(library));if(library)_library.Save();RefreshLists();SelectNames(library?_libraryList:_scriptList,added);});
         foreach(var order in Enum.GetValues<StyleOrder>())
         {
@@ -187,19 +192,23 @@ public sealed class StylesWindow : Window
     {
         _refreshing=true;_collections.ItemsSource=_library.Collections.Select(c=>c.Name).ToArray();_collections.SelectedItem=_collection?.Name;_collectionName.Text=_collection?.Name??"";_refreshing=false;RefreshLists();
     }
-    private void RefreshLists()
+    private void RefreshLists(string? previousName=null)
     {
         _refreshing=true;
         var selectedScript=_scriptList.SelectedItems?.OfType<string>().ToArray()??[];var selectedLibrary=_libraryList.SelectedItems?.OfType<string>().ToArray()??[];
         var scriptNames=_script.Document.Styles.Select(s=>s.Name).ToArray();_scriptList.ItemsSource=scriptNames;
-        RestoreSelection(_scriptList,scriptNames,selectedScript,_scriptSelected?.Name);
-        var libraryNames=_collection is null?Array.Empty<string>():_library.Editor(_collection).Document.Styles.Select(s=>s.Name).ToArray();_libraryList.ItemsSource=libraryNames;RestoreSelection(_libraryList,libraryNames,selectedLibrary,_librarySelected?.Name);
+        RestoreSelection(_scriptList,scriptNames,selectedScript,ReferenceEquals(_target,_script)?previousName:null,_selected?.Name);
+        var libraryNames=_collection is null?Array.Empty<string>():_library.Editor(_collection).Document.Styles.Select(s=>s.Name).ToArray();_libraryList.ItemsSource=libraryNames;RestoreSelection(_libraryList,libraryNames,selectedLibrary,!ReferenceEquals(_target,_script)?previousName:null,_selected?.Name);
         _refreshing=false;
     }
-    private static void RestoreSelection(ListBox list,string[] names,string[] selected,string? active)
+    private static void RestoreSelection(ListBox list,string[] names,string[] selected,string? previousName,string? currentName)
     {
-        foreach(var name in selected.Where(names.Contains))list.SelectedItems?.Add(name);
-        if(active is not null&&names.Contains(active)&&list.SelectedItems?.Contains(active)!=true)list.SelectedItems?.Add(active);
+        list.SelectedItems?.Clear();
+        foreach(var oldName in selected)
+        {
+            var name=oldName==previousName?currentName:oldName;
+            if(name is not null&&names.Contains(name))list.SelectedItems?.Add(name);
+        }
     }
     private void Select(bool library)
     {
