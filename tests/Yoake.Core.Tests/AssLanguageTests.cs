@@ -84,9 +84,9 @@ public sealed class AssLanguageTests
     }
     [Fact] public void ColorSelectionKeepsOtherChannelsAndRestoresOriginalAlpha()
     {
-        const string text="A{\alpha&H80&\future(opaque)}BC";
+        const string text="A{\\alpha&H80&\\future(opaque)}BC";
         var edit=AssFormatting.Apply(text,0,text.Length,new Dictionary<string,string>{{"1c","&H0000FF&"},{"1a","&H40&"}},Default);
-        Assert.Contains("\alpha&H80&\1a&H40&\future(opaque)",edit.Text);
+        Assert.Contains("\\alpha&H80&\\1a&H40&\\future(opaque)",edit.Text);
         var inside=AssFormatting.State(edit.Text,edit.Text.IndexOf("BC",StringComparison.Ordinal),Default);
         Assert.Equal("&H40&",inside["1a"]);Assert.Equal("&H80&",inside["2a"]);
         Assert.Equal("&H80&",AssFormatting.State(edit.Text,edit.Text.Length,Default)["1a"]);
@@ -94,12 +94,12 @@ public sealed class AssLanguageTests
     [Fact] public void RelativeFontSizeRestoresAnAbsoluteValueAndEmptyOverrideResetsStyle()
     {
         var style=Default;style.Set("Fontsize","40");
-        const string text="{\fs+10}ABC";
+        const string text="{\\fs+10}ABC";
         Assert.Equal("50",AssFormatting.State(text,text.Length,style)["fs"]);
         var edit=AssFormatting.Apply(text,text.Length-3,text.Length,new Dictionary<string,string>{{"fs","70"}},style);
-        Assert.EndsWith("{\fs50}",edit.Text);
-        Assert.Equal("40",AssFormatting.State("{\fs+10\fs}A",100,style)["fs"]);
-        Assert.Equal("0",AssFormatting.State("{\b1\b}A",100,style)["b"]);
+        Assert.EndsWith("{\\fs50}",edit.Text);
+        Assert.Equal("40",AssFormatting.State("{\\fs+10\\fs}A",100,style)["fs"]);
+        Assert.Equal("0",AssFormatting.State("{\\b1\\b}A",100,style)["b"]);
     }
 
 }
