@@ -26,6 +26,14 @@ public sealed class AuthoringPolishTests
         Assert.Null(AssFormattingState.Read(@"{\b700}Hello",12,12,style).Bold);
     }
 
+    [Fact] public void RendererColorExpressionsArePreservedWithoutInventingBlackSwatches()
+    {
+        var style=AssDocument.CreateEmpty().Styles[0];const string source=@"{\1c$shiro\future(opaque)}Text";
+        var state=AssFormattingState.Read(source,source.Length,source.Length,style);
+        Assert.Null(state.Primary);Assert.NotNull(state.Outline);
+        Assert.Equal("$shiro",AssFormatting.State(source,source.Length,style)["1c"]);
+    }
+
     [Theory]
     [InlineData(@"{\1grd(0,&HFF0000&,&H0000FF&)}テスト",@"\1grd")]
     [InlineData(@"{\5gra(0,&H80&,&HFF&)}Text",@"\5gra")]
