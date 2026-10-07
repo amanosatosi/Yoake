@@ -1,3 +1,5 @@
+using Yoake.Core.Subtitles;
+
 namespace Yoake.UI.Services;
 
 public enum UnsavedChoice { Cancel, Discard, Save }

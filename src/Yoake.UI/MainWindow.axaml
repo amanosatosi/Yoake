@@ -152,7 +152,7 @@
           <CheckBox Content="Comment" IsChecked="{Binding SelectedEvent.IsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
           <ComboBox Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding Draft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
           <Button Grid.Column="2" Content="…" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" />
-          <AutoCompleteBox Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding Draft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" Watermark="Actor" ToolTip.Tip="Actor / Name" />
+          <AutoCompleteBox Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding Draft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
           <TextBox Grid.Column="4" Text="{Binding Draft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
           <NumericUpDown Grid.Column="5" Value="{Binding Draft.LayerNumber, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
         </Grid>
