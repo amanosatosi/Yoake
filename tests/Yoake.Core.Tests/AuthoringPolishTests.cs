@@ -32,7 +32,7 @@ public sealed class AuthoringPolishTests
     [InlineData(@"{\1pgrd(0,1,2)}Text",@"\1pgrd")]
     public void NumberedMangetsuGradientsHaveTheirOwnExactRanges(string source,string tag)
     {
-        var token=Assert.Single(AssSyntax.Tokenize(source).Where(t=>t.Kind==AssSyntaxKind.MangetsuTag));
+        var token=Assert.Single(AssSyntax.Tokenize(source),t=>t.Kind==AssSyntaxKind.MangetsuTag);
         Assert.Equal(tag,source.Substring(token.Start,token.Length));
         Assert.Equal(source.Length,AssSyntax.Tokenize(source).Sum(t=>t.Length));
     }
