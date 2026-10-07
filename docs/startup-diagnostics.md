@@ -17,7 +17,7 @@ Assigning the DataContext synchronously invoked AttachModel, which dereferenced 
 
 Normalization runs at persistence and view-model boundaries. Eight finite widths are restored: usable values survive, missing entries receive defaults, excess entries are dropped, nonpositive/nonfinite values recover and positive extremes are bounded. Null recent lists become empty; null/empty, duplicate and excess paths are removed. Layout/theme values recover independently. Named floating-point strings are accepted for recovery; bare NaN remains invalid JSON. Unknown future properties survive save through source-generated extension data.
 
-Read/parse failures report why defaults were used and leave the original file unchanged. Startup never rewrites/migrates the user's file in place. The old source-generated serializer and NativeAOT support remain in use.
+Syntactically valid JSON with damaged member types is recovered member by member, preserving other values and future fields. Read/parse failures report why defaults were used and leave the original file unchanged. Startup never rewrites/migrates the user's file in place. The old source-generated serializer and NativeAOT support remain in use.
 
 ## Independent diagnostics
 

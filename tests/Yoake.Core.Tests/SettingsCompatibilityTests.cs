@@ -96,5 +96,18 @@ public sealed class SettingsCompatibilityTests : IDisposable
         Assert.Empty(_warnings);
         Assert.False(File.Exists(SettingsPath));
     }
+    [Theory]
+    [InlineData("{\"theme\":2,\"gridHeight\":null,\"recentFiles\":[\"keep.ass\"],\"futureFlag\":true}")]
+    [InlineData("{\"theme\":2,\"gridColumnWidths\":[80,\"bad\",90],\"recentFiles\":[\"keep.ass\"],\"futureFlag\":true}")]
+    [InlineData("{\"theme\":2,\"gridColumnWidths\":\"bad\",\"recentFiles\":[\"keep.ass\"],\"futureFlag\":true}")]
+    public void BadMemberTypeDoesNotDiscardOtherValidOrFutureSettings(string json)
+    {
+        var settings = Read(json);
+        Assert.Equal(ThemePreference.Dark, settings.Theme);
+        Assert.Equal(new[] { "keep.ass" }, settings.RecentFiles);
+        Assert.True(settings.FutureSettings!["futureFlag"].GetBoolean());
+        Assert.All(settings.GridColumnWidths, width => Assert.True(double.IsFinite(width) && width >= 24 && width <= 600));
+        Assert.NotEmpty(_warnings);
+    }
     public void Dispose() => Directory.Delete(_root, true);
 }
