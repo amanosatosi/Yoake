@@ -19,6 +19,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
     private int _ticks, _layouts;
     private bool _opened, _loaded, _inserted, _editorVerified;
     private StylesWindow? _styles;
+    private AuthoringUiVerification? _authoring;
 
     public void Start()
     {
@@ -66,6 +67,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
                 text.SelectionEnd = source.Length;
                 Invoke(CommandIds.FormatBold);
                 Require(model.SelectedEvent!.Text.EndsWith("{\\b1}Hello{\\b0}", StringComparison.Ordinal), "Real selection formatting must preserve text and restore bold state.");
+                Require(text.Text![Math.Min(text.SelectionStart,text.SelectionEnd)..Math.Max(text.SelectionStart,text.SelectionEnd)]=="Hello", "Native text selection must stay on formatted visible text.");
                 Require(presenter.TextLayout.TextLines.Count > 0, "Tagged Unicode must shape through the ASS text presenter.");
                 var formatted = text.Text;
                 presenter.PreeditText = "にほんご";
@@ -85,17 +87,19 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
                 return; // Exercise the shipping inline style editor and background Mangetsu preview.
             }
             Require(_styles.Preview.LastError is null, "Mangetsu style preview failed: " + _styles.Preview.LastError);
-            if (!_styles.Preview.HasFrame) return;
+            if (!_styles.Preview.HasCurrentFrame) return;
             Require(_styles.GetVisualDescendants().OfType<FontPicker>().Any(), "Style font picker must be realized.");
             Require(_styles.GetVisualDescendants().OfType<AssColorField>().Any(), "Style color controls must be realized.");
             Require(_styles.GetVisualDescendants().OfType<AssAlignmentPicker>().Any(), "Style alignment control must be realized.");
+            _authoring??=new(window,model,_styles,options.VerificationReport!);
+            if(!_authoring.Tick())return;
             _styles.Close();
             Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
-            Invoke(CommandIds.EditUndo); // Restore a clean untitled document before normal shutdown.
+            while(model.ActiveEditor!.Undo.CanUndo)Invoke(CommandIds.EditUndo); // Undo the real editing probe before normal shutdown.
             Require(!model.ActiveEditor!.IsDirty, "Startup probe must leave no unsaved document.");
             _timer.Stop();
             StartupDiagnostics.Checkpoint($"UI verified: opened, loaded, {_layouts} layouts, 10 dispatcher ticks, real row/selection/custom-control/command bindings, ASS editor, inline style controls and Mangetsu style preview");
-            options.FinishVerification($"PASS: real MainWindow opened/visible/loaded; native platform; {_layouts} layouts; dispatcher responsive; real model, grid row/selection, custom controls and command bindings; ASS text presenter and inline Styles Manager with real Mangetsu preview; no Avalonia startup errors.\n");
+            options.FinishVerification($"PASS: real MainWindow opened/visible/loaded; native platform; {_layouts} layouts; dispatcher responsive; real model, grid row/selection, custom controls and command bindings; ASS syntax reaches shaped runs in dark/light themes; normal/narrow field bounds; preserved formatting selection; inline style draft/library switching and latest Mangetsu preview; 100/125/150/200% render captures; no Avalonia startup errors.\n");
             StartupDiagnostics.Complete();
             desktop.Shutdown(0);
         }
