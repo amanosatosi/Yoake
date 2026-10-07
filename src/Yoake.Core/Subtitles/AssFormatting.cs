@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 
 namespace Yoake.Core.Subtitles;
 
@@ -12,14 +11,27 @@ public static class AssFormatting
 
     public static Dictionary<string,string> State(string text, int position, AssStyle style, Func<string,AssStyle?>? resolve = null)
     {
-        var state = Defaults(style);
+        var defaults = Defaults(style);
+        var state = new Dictionary<string,string>(defaults,StringComparer.Ordinal);
         foreach (var tag in AssSyntax.Tags(text))
         {
             if (tag.End > position) break;
             var value = text[tag.ValueStart..tag.End].Trim(); var name = tag.Name == "c" ? "1c" : tag.Name;
-            if (name == "r") { state = Defaults(resolve?.Invoke(value) ?? style); continue; }
-            if (name == "alpha") { foreach (var a in new[]{"1a","2a","3a","4a"}) state[a] = value; }
-            else if (state.ContainsKey(name) && value.Length > 0) state[name] = value;
+            if (name == "r") { defaults = Defaults(resolve?.Invoke(value) ?? style); state = new(defaults,StringComparer.Ordinal); continue; }
+            if (name == "fs")
+            {
+                // Mangetsu's nonnegative numeric domain treats signed / ~signed
+                // operands as deltas. Restore resolved size, not a second delta.
+                var operand=value.StartsWith('~')?value[1..]:value;
+                if(double.TryParse(operand,NumberStyles.Float,CultureInfo.InvariantCulture,out var size)&&double.IsFinite(size))
+                {
+                    if((value.StartsWith('+')||value.StartsWith('-')||value.StartsWith('~'))&&double.TryParse(state.GetValueOrDefault("fs"),NumberStyles.Float,CultureInfo.InvariantCulture,out var current))size+=current;
+                    state[name]=size>0&&double.IsFinite(size)?size.ToString("R",CultureInfo.InvariantCulture):defaults.GetValueOrDefault(name,"");
+                }
+                else state[name]=defaults.GetValueOrDefault(name,"");
+            }
+            else if (name == "alpha") { foreach (var a in new[]{"1a","2a","3a","4a"}) state[a] = value.Length>0?value:defaults.GetValueOrDefault(a,""); }
+            else if (state.ContainsKey(name)) state[name] = value.Length>0?value:defaults.GetValueOrDefault(name,"");
         }
         return state;
     }
@@ -57,7 +69,13 @@ public static class AssFormatting
         {
             var name = tag.Name == "c" ? "1c" : tag.Name;
             if (values.TryGetValue(name,out var value)) selected = selected[..tag.ValueStart] + value + selected[tag.End..];
-            else if (tag.Name == "r") selected = selected[..tag.End] + string.Concat(values.Select(p=>"\\"+p.Key+p.Value)) + selected[tag.End..];
+            else if (tag.Name is "r" or "alpha")
+            {
+                // A global alpha must keep affecting the other three channels.
+                // Reassert only the requested channel after it, leaving it intact.
+                var reapplied=tag.Name=="r"?values:values.Where(p=>p.Key is "1a" or "2a" or "3a" or "4a");
+                selected = selected[..tag.End] + string.Concat(reapplied.Select(p=>"\\"+p.Key+p.Value)) + selected[tag.End..];
+            }
         }
         var result = text[..left] + prefix + selected + suffix + text[right..];
         return new(result,left+prefix.Length,left+prefix.Length+selected.Length);
