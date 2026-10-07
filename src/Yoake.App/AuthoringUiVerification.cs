@@ -145,7 +145,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         using var bitmap=new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width*scale),(int)Math.Ceiling(size.Height*scale)),new Vector(96*scale,96*scale));
         bitmap.Render(control);
         var folder=Path.Combine(Path.GetDirectoryName(report)!,"authoring-visuals");Directory.CreateDirectory(folder);
-        bitmap.Save(Path.Combine(folder,name+".png"));
+        bitmap.Save(Path.Combine(folder,name+".png"),PngBitmapEncoderOptions.Default);
     }
     private static T Named<T>(Control root,string name) where T:Control=>root.GetVisualDescendants().OfType<T>().Single(c=>c.Name==name);
     private static void Invoke(CommandRegistry registry,string id)

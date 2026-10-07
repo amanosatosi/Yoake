@@ -40,6 +40,16 @@ public static class IconGeometries
     {
         internal static readonly Geometry Value = Geometry.Parse("M3 3H18L21 6V21H3ZM5 5V19H19V7L17 5H16V10H7V5ZM9 5V8H14V5ZM7 13H17V18H7Z");
     }
+    public static Geometry StepDown => StepDownHolder.Value;
+    private static class StepDownHolder
+    {
+        internal static readonly Geometry Value = Geometry.Parse("M6 10L12 16L18 10L16 8L12 12L8 8Z");
+    }
+    public static Geometry StepUp => StepUpHolder.Value;
+    private static class StepUpHolder
+    {
+        internal static readonly Geometry Value = Geometry.Parse("M6 14L12 8L18 14L16 16L12 12L8 16Z");
+    }
     public static Geometry Theme => ThemeHolder.Value;
     private static class ThemeHolder
     {
