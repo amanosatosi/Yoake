@@ -65,11 +65,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 return false; // Newly selected library controls need a real layout pass.
             case 5:
                 Named<FontPicker>(styles,"StyleFont").GetVisualDescendants().OfType<AutoCompleteBox>().Single().SetCurrentValue(AutoCompleteBox.TextProperty,"Missing 日本 字体");
-                Require(Named<ListBox>(styles,"ScriptStyles").Focus(),"The script list must accept keyboard focus.");
+                FocusSelectedStyle("ScriptStyles");
                 return false;
             case 6:
                 Require(Named<FontPicker>(styles,"StyleFont").FontName==_first!.Get("Fontname"),"Returning to the already selected script row must activate its inline draft.");
-                Require(Named<ListBox>(styles,"LibraryStyles").Focus(),"The library list must accept keyboard focus.");
+                FocusSelectedStyle("LibraryStyles");
                 return false;
             case 7:
                 Require(Named<FontPicker>(styles,"StyleFont").FontName=="Missing 日本 字体","Returning to the already selected library row must retain its committed draft.");
@@ -100,6 +100,14 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(window.GetVisualDescendants().OfType<AssColorButton>().Count(b=>b.Bounds.Width>=30&&b.Bounds.Height>=24&&b.Command is not null)==4,"All four command-backed color swatches must be realized.");
         var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
         Require(audio.TranslatePoint(default,window)!.Value.Y<editor.TranslatePoint(default,window)!.Value.Y,"Audio must remain above the edit panel.");
+    }
+
+    private void FocusSelectedStyle(string name)
+    {
+        // Avalonia keyboard focus belongs to ListBoxItem, not the ListBox
+        // container. Exercise the same retained row a user tabs/clicks into.
+        var row=Named<ListBox>(styles,name).GetVisualDescendants().OfType<ListBoxItem>().Single(i=>i.IsSelected);
+        Require(row.Focus(),$"{name}: the selected style row must accept keyboard focus.");
     }
 
     private static void CheckNumber(NumericUpDown input)
