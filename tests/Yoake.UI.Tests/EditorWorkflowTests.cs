@@ -116,6 +116,20 @@ public sealed class EditorWorkflowTests : IDisposable
         await Command(CommandIds.EditUndo);Assert.Equal("Hello world",_model.SelectedEvent.Text);
         await Command(CommandIds.EditRedo);Assert.Equal("Hello {\\b1}world{\\b0}",_model.SelectedEvent.Text);
     }
+    [Fact] public async Task FormattingSwatchesAndFlagsFollowDraftStyleAndCaretWithoutMutatingText()
+    {
+        await Command(CommandIds.GridInsertAfter);
+        _model.Draft!.Text=@"Hello {\b1\1c&H402010&\1a&H80&}world";
+        var original=_model.Draft.Text;_model.TextSelectionStart=10;_model.TextSelectionEnd=10;
+        Assert.True(_model.Formatting.Bold);Assert.Equal(new AssColor(16,32,64,128),_model.Formatting.Primary);
+        Assert.Equal(original,_model.Draft.Text);
+        _model.TextSelectionStart=0;_model.TextSelectionEnd=original.Length;Assert.Null(_model.Formatting.Bold);
+        var style=_model.ActiveEditor!.AddStyle();_model.ActiveEditor.SetField(style,"Italic","-1","Style italic");
+        _model.Draft.Style=style.Name;Assert.True(_model.Formatting.Italic);
+        await Command(CommandIds.FormatUnderline);
+        Assert.Contains("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
+        await Command(CommandIds.EditUndo);Assert.Equal(original,_model.Draft!.Text);
+    }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
     private sealed class TestDialogs : IEditorDialogs
     {

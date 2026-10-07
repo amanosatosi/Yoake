@@ -16,4 +16,39 @@
       </Setter>
     </ControlTheme>
   </Styles.Resources>
+  <!-- Native NumericUpDown keeps validation, exact text, keyboard and wheel
+       handling. Fluent's two horizontal 34-DIP buttons otherwise eat a compact
+       subtitle field. Keep the template parts; arrange 18-DIP steppers vertically. -->
+  <Style Selector="NumericUpDown">
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="MinWidth" Value="86" />
+    <Setter Property="Padding" Value="4,1" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="NumericUpDown:enabled /template/ ButtonSpinner /template/ StackPanel#PART_SpinnerPanel, NumericUpDown:disabled /template/ ButtonSpinner /template/ StackPanel#PART_SpinnerPanel">
+    <Setter Property="Orientation" Value="Vertical" />
+    <Setter Property="Width" Value="18" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="NumericUpDown:enabled /template/ ButtonSpinner /template/ RepeatButton, NumericUpDown:disabled /template/ ButtonSpinner /template/ RepeatButton">
+    <Setter Property="MinWidth" Value="18" />
+    <Setter Property="Width" Value="18" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Height" Value="12" />
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector="NumericUpDown:enabled /template/ ButtonSpinner /template/ PathIcon, NumericUpDown:disabled /template/ ButtonSpinner /template/ PathIcon">
+    <Setter Property="Width" Value="9" />
+    <Setter Property="Height" Value="5" />
+  </Style>
+  <Style Selector="ToggleButton.authoring">
+    <Setter Property="MinHeight" Value="26" />
+    <Setter Property="MinWidth" Value="26" />
+    <Setter Property="Padding" Value="5,0" />
+  </Style>
+  <Style Selector="ToggleButton.authoring:checked">
+    <Setter Property="Background" Value="{DynamicResource IconAccentBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource AppBackgroundBrush}" />
+  </Style>
 </Styles>

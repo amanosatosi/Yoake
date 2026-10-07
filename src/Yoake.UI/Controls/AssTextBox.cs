@@ -32,7 +32,7 @@ public sealed class AssTextPresenter : TextPresenter
         var start=Math.Min(SelectionStart,SelectionEnd);var end=Math.Max(SelectionStart,SelectionEnd);
         foreach(var token in _syntax.Update(Text??""))
         {
-            var brush=Brush(token.Kind);
+            var brush=SyntaxBrush(token.Kind);
             var left=token.Start;var right=left+token.Length;
             if(ShowSelectionHighlight&&SelectionForegroundBrush is not null&&start<right&&end>left)
             {
@@ -51,7 +51,7 @@ public sealed class AssTextPresenter : TextPresenter
             if(right>left)styles.Add(new(left,right-left,new GenericTextRunProperties(typeface,FontSize,foregroundBrush:brush,fontFeatures:FontFeatures)));
         }
     }
-    private IBrush? Brush(AssSyntaxKind kind)
+    public IBrush? SyntaxBrush(AssSyntaxKind kind)
     {
         var key="AssSyntax"+kind;
         return this.TryFindResource(key,out var value)&&value is IBrush brush?brush:Foreground;

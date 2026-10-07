@@ -5,11 +5,20 @@ namespace Yoake.UI.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
-    public int TextSelectionStart {get;set;}
-    public int TextSelectionEnd {get;set;}
+    private int _textSelectionStart, _textSelectionEnd;
+    public int TextSelectionStart {get=>_textSelectionStart;set{if(_textSelectionStart==value)return;_textSelectionStart=value;RefreshFormatting();}}
+    public int TextSelectionEnd {get=>_textSelectionEnd;set{if(_textSelectionEnd==value)return;_textSelectionEnd=value;RefreshFormatting();}}
+    public AssFormattingState Formatting {get;private set;} = AssFormattingState.Empty;
+    private void RefreshFormatting()
+    {
+        Formatting=Draft is null||ActiveEditor is null?AssFormattingState.Empty:AssFormattingState.Read(Draft.Text,TextSelectionStart,TextSelectionEnd,FormattingStyle,ResolveFormatStyle);
+        OnPropertyChanged(nameof(Formatting));
+    }
+    private Dictionary<string,string> CaretFormatState()=>AssFormatting.State(Draft!.Text,
+        AssFormatting.Boundary(Draft.Text,Math.Min(TextSelectionStart,TextSelectionEnd),TextSelectionStart==TextSelectionEnd),FormattingStyle,ResolveFormatStyle);
     public event EventHandler? TextFormattingApplied;
     public string StyleLibraryPath=>Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!,"style-library.json");
-    private AssStyle FormattingStyle=>ActiveEditor!.Document.Styles.FirstOrDefault(s=>s.Name==SelectedEvent?.Style)??ActiveEditor.Document.Styles.FirstOrDefault()??AssDocument.CreateEmpty().Styles[0];
+    private AssStyle FormattingStyle=>ActiveEditor!.Document.Styles.FirstOrDefault(s=>s.Name==(Draft?.Style??SelectedEvent?.Style))??ActiveEditor.Document.Styles.FirstOrDefault()??AssDocument.CreateEmpty().Styles[0];
     private void FormatText(string name,Func<string,int,int,AssStyle,AssTextEdit> operation)
     {
         if(Draft is null||SelectedEvent is null||ActiveEditor is null)return;
@@ -27,14 +36,14 @@ public sealed partial class MainWindowViewModel
     private async ValueTask FormatFontAsync()
     {
         if(Dialogs is null||Draft is null||ActiveEditor is null)return;
-        var state=AssFormatting.State(Draft.Text,Math.Min(TextSelectionStart,TextSelectionEnd),FormattingStyle,ResolveFormatStyle);
+        var state=CaretFormatState();
         var choice=await Dialogs.ChooseFontAsync(state.GetValueOrDefault("fn",""),state.GetValueOrDefault("fs","60"));
         if(choice is not null)FormatText("Change subtitle font",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{"fn",choice.Family},{"fs",choice.Size}},style,ResolveFormatStyle));
     }
     private async ValueTask FormatColorAsync(int channel)
     {
         if(Dialogs is null||Draft is null||ActiveEditor is null)return;
-        var state=AssFormatting.State(Draft.Text,Math.Min(TextSelectionStart,TextSelectionEnd),FormattingStyle,ResolveFormatStyle);
+        var state=CaretFormatState();
         AssColor.TryParse(state.GetValueOrDefault(channel+"c"),out var rgb);AssColor.TryParse(state.GetValueOrDefault(channel+"a"),out var alpha);
         var color=await Dialogs.ChooseColorAsync(rgb with{Transparency=alpha.Red});
         if(color is {} chosen)FormatText("Change subtitle color",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{channel+"c",chosen.RgbOverride},{channel+"a",chosen.AlphaOverride}},style,ResolveFormatStyle));

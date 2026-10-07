@@ -17,7 +17,7 @@ public sealed class StylePreviewControl : UserControl, IDisposable
     private readonly BackgroundJobService _jobs=new();
     private readonly SemaphoreSlim _gate=new(1,1);
     private readonly Image _image=new(){Stretch=Stretch.Uniform};
-    private readonly TextBlock _status=new(){FontSize=10,TextWrapping=TextWrapping.Wrap};
+    private readonly TextBlock _status=new(){FontSize=10,TextWrapping=TextWrapping.Wrap,IsVisible=false};
     private readonly byte[] _pixels=new byte[WidthPixels*HeightPixels*4];
     private BackgroundJobHandle? _job;
     private MangetsuSubtitleRenderer? _renderer;
@@ -25,10 +25,13 @@ public sealed class StylePreviewControl : UserControl, IDisposable
     private long _revision;
     private bool _disposed;
     public bool HasFrame {get;private set;}
+    public long RequestedRevision=>Interlocked.Read(ref _revision);
+    public long DisplayedRevision {get;private set;}
+    public bool HasCurrentFrame=>HasFrame&&DisplayedRevision==RequestedRevision;
     public string? LastError {get;private set;}
     public StylePreviewControl()
     {
-        var grid=new Grid{RowDefinitions=new("*,Auto"),MinHeight=120};grid.Children.Add(_image);Grid.SetRow(_status,1);grid.Children.Add(_status);Content=grid;
+        var grid=new Grid{RowDefinitions=new("*,Auto"),MinHeight=150};grid.Children.Add(new CheckerboardControl());grid.Children.Add(_image);Grid.SetRow(_status,1);grid.Children.Add(_status);Content=grid;
     }
     public void Update(string assSource)
     {
@@ -54,7 +57,7 @@ public sealed class StylePreviewControl : UserControl, IDisposable
                         if(_disposed||revision!=_revision)return;
                         _bitmap??=new WriteableBitmap(new PixelSize(WidthPixels,HeightPixels),new Vector(96,96),PixelFormat.Bgra8888,AlphaFormat.Unpremul);
                         using(var framebuffer=_bitmap.Lock())for(var y=0;y<HeightPixels;y++)Marshal.Copy(_pixels,y*WidthPixels*4,framebuffer.Address+y*framebuffer.RowBytes,WidthPixels*4);
-                        _image.Source=_bitmap;_image.InvalidateVisual();HasFrame=true;_status.Text="Mangetsu preview";
+                        _image.Source=_bitmap;_image.InvalidateVisual();HasFrame=true;DisplayedRevision=revision;_status.IsVisible=false;
                     });
                 }
                 finally{_gate.Release();}
@@ -62,7 +65,7 @@ public sealed class StylePreviewControl : UserControl, IDisposable
             catch(OperationCanceledException){}
             catch(Exception exception)
             {
-                await Dispatcher.UIThread.InvokeAsync(()=>{if(!_disposed&&revision==_revision){LastError=exception.Message;_status.Text="Preview: "+exception.Message;}});
+                await Dispatcher.UIThread.InvokeAsync(()=>{if(!_disposed&&revision==_revision){LastError=exception.Message;_status.Text="Preview: "+exception.Message;_status.IsVisible=true;}});
             }
         });
     }

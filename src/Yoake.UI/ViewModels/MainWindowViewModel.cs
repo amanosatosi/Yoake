@@ -75,12 +75,14 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (_draft is not null) _draft.PropertyChanged -= DraftChanged;
             SetField(ref _draft,value);
             if (_draft is not null) _draft.PropertyChanged += DraftChanged;
+            RefreshFormatting();
         }
     }
     private void DraftChanged(object? sender,PropertyChangedEventArgs e)
     {
         if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false);
         _registry.NotifyStateChanged();
+        if(e.PropertyName is nameof(EventEditDraft.Text) or nameof(EventEditDraft.Style))RefreshFormatting();
     }
     public IReadOnlyList<AssEvent> Events => _activeSubtitleDocument?.Events ?? (IReadOnlyList<AssEvent>)Array.Empty<AssEvent>();
     public IReadOnlyList<string> StyleNames => _activeSubtitleDocument?.Styles.Select(s=>s.Name).ToArray() ?? [];
