@@ -165,12 +165,14 @@ public sealed class SubtitleEditor(AssDocument document)
         if (oldName != style.Name) foreach (var line in Document.Events.Where(l => l.Style == oldName)) SetField(line, "Style", style.Name, "Rename style references");
         transaction.Commit();
     }
-    public void DeleteStyle(AssStyle style, string replacement)
+    public void DeleteStyle(AssStyle style, string? replacement = null)
     {
         Require(style);
-        if (!Document.Styles.Any(s => s != style && s.Name == replacement)) throw new ArgumentException("Choose a different replacement style before deleting.");
+        var references = Document.Events.Where(l => l.Style == style.Name).ToArray();
+        if (references.Length > 0 && !Document.Styles.Any(s => s != style && s.Name == replacement))
+            throw new ArgumentException("This style is used by subtitles. Choose a different replacement style before deleting.");
         using var transaction = Undo.BeginTransaction("Delete style");
-        foreach (var line in Document.Events.Where(l => l.Style == style.Name)) SetField(line, "Style", replacement, "Replace style references");
+        foreach (var line in references) SetField(line, "Style", replacement!, "Replace style references");
         Structure("Delete style", () => Document.Remove(style)); transaction.Commit();
     }
     public void MoveStyle(AssStyle style, int direction) { Require(style); var i = Document.Styles.IndexOf(style) + Math.Sign(direction); if (i >= 0 && i < Document.Styles.Count) Structure("Reorder styles", () => Document.Swap(style, Document.Styles[i])); }
