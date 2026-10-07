@@ -37,17 +37,17 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 text.CaretIndex=text.SelectionStart=text.SelectionEnd=Sample.Length;
                 return false;
             case 1:
-                CheckMainFields();CheckSyntax(text);
                 foreach(var scale in new[]{1d,1.25,1.5,2})Capture(window,$"editor-dark-{scale*100:0}",scale);
                 Capture(styles,"styles-dark-normal",1);
+                CheckMainFields();CheckSyntax(text);
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Light;
                 return false;
             case 2:
-                CheckSyntax(text);Capture(window,"editor-light-normal",1);Capture(styles,"styles-light-normal",1);
+                Capture(window,"editor-light-normal",1);Capture(styles,"styles-light-normal",1);CheckSyntax(text);
                 window.Width=1040;window.Height=760;styles.Width=940;styles.Height=650;
                 return false;
             case 3:
-                CheckMainFields();CheckStyleFields();Capture(window,"editor-light-narrow",1);Capture(styles,"styles-light-narrow",1);
+                Capture(window,"editor-light-narrow",1);Capture(styles,"styles-light-narrow",1);CheckMainFields();CheckStyleFields();
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Dark;
                 return false;
             case 4:
