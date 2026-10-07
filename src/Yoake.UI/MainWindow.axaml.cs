@@ -18,7 +18,7 @@ namespace Yoake.UI;
 
 public partial class MainWindow : Window, IEditorDialogs
 {
-    private bool _closingAllowed, _closingPending, _selectionSync;
+    private bool _closingAllowed, _closingPending, _selectionSync, _resumeVideoSeek;
     private MainWindowViewModel? _model;
     private static readonly FilePickerFileType SubtitleFiles=new("ASS/SSA subtitles"){Patterns=["*.ass","*.ssa"]};
     private static readonly FilePickerFileType MediaFiles=new("Video/audio"){Patterns=["*.mkv","*.mp4","*.webm","*.avi","*.mov","*.m2ts","*.ts","*.mp3","*.flac","*.wav","*.m4a","*.ogg","*.opus"]};
@@ -29,6 +29,8 @@ public partial class MainWindow : Window, IEditorDialogs
         SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
+        VideoSeekBar.AddHandler(PointerPressedEvent,VideoSeekPressed,RoutingStrategies.Tunnel,true);
+        VideoSeekBar.AddHandler(PointerReleasedEvent,VideoSeekReleased,RoutingStrategies.Tunnel,true);
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&e.Property==TextBox.CaretIndexProperty)_model.TextCursor=SubtitleText.CaretIndex;};
         Closing+=HandleClosing;
         Closed+=(_,_)=>_model?.Dispose();
@@ -134,10 +136,17 @@ public partial class MainWindow : Window, IEditorDialogs
         catch(Exception exception){_model.Registry.ReportFailure("window/close",exception);}
         finally{_closingPending=false;}
     }
+    private void VideoSeekPressed(object? sender,PointerPressedEventArgs e)
+    {
+        if(_model is null||!e.GetCurrentPoint(VideoSeekBar).Properties.IsLeftButtonPressed)return;
+        _resumeVideoSeek=_model.IsPlaying;
+        _model.StopPlayback();
+    }
     private async void VideoSeekReleased(object? sender,PointerReleasedEventArgs e)
     {
         if(_model is null)return;
-        try{await _model.SeekPlaybackAsync(_model.CurrentTimeSeconds);}catch(Exception exception){_model.Registry.ReportFailure(CommandIds.VideoSeek,exception);}
+        var resume=_resumeVideoSeek;_resumeVideoSeek=false;
+        try{await _model.SeekPlaybackAsync(_model.CurrentTimeSeconds);if(resume)_= _model.StartPlaybackAsync();}catch(Exception exception){_model.Registry.ReportFailure(CommandIds.VideoSeek,exception);}
     }
     private void AudioModeChanged(object? sender,SelectionChangedEventArgs e){if(AudioDisplay is not null&&sender is ComboBox box)AudioDisplay.Spectrogram=box.SelectedIndex==1;}
     private async void RecentFileClick(object? sender,RoutedEventArgs e){if(_model is not null&&sender is Control{DataContext:string path})await _model.Registry.InvokeAsync(CommandIds.SubtitleOpen,new(),path);}

@@ -112,7 +112,7 @@
         <Border Grid.Row="1" Margin="5,0" Background="Black" ClipToBounds="True"><Grid><Image Name="VideoImage" Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border>
         <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="4" Margin="5,2">
           <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Grid.Column="1" Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />
-          <Slider Grid.Column="2" Minimum="0" Maximum="{Binding MediaDurationSeconds}" Value="{Binding CurrentTimeSeconds, Mode=TwoWay}" PointerReleased="VideoSeekReleased" />
+          <Slider Name="VideoSeekBar" Grid.Column="2" Minimum="0" Maximum="{Binding MediaDurationSeconds}" Value="{Binding CurrentTimeSeconds, Mode=TwoWay}" />
           <TextBlock Grid.Column="3" Text="{Binding TimeDisplay}" VerticalAlignment="Center" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DurationDisplay}" VerticalAlignment="Center" Opacity="0.65" FontSize="11" />
         </Grid>
         <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="4" Margin="5,0">
