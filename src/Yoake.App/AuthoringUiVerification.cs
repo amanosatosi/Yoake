@@ -20,6 +20,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
 {
     private int _stage;
     private long _previewRevision;
+    private double _normalEditorWidth;
     private AssStyle? _first, _second;
     private const string Sample = @"{\fad(200,200)\bord3\1c&HFFFFFF&\3c&H000000&}<仮|かり>の糸\N{\k20}こ{\k15}れ{\k30}は{\1grd(0,&HFF0000&,&H0000FF&)}テスト
 {\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text မြန်မာ é 👩‍👩‍👧‍👦
@@ -40,14 +41,22 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 foreach(var scale in new[]{1d,1.25,1.5,2})Capture(window,$"editor-dark-{scale*100:0}",scale);
                 Capture(styles,"styles-dark-normal",1);
                 CheckMainFields();CheckSyntax(text);
+                _normalEditorWidth=window.FindControl<Grid>("EventEditorRegion")!.Bounds.Width;
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Light;
                 return false;
             case 2:
                 Capture(window,"editor-light-normal",1);Capture(styles,"styles-light-normal",1);CheckSyntax(text);
                 window.Width=1040;window.Height=760;styles.Width=940;styles.Height=650;
+                // Hosted Windows may constrain both requested window sizes to
+                // its work area. Also narrow the real splitter pane so reflow
+                // is exercised even on that desktop, without a fake window.
+                var workspace=window.FindControl<Grid>("UpperWorkspace")!;
+                workspace.ColumnDefinitions[0].Width=new GridLength(1,GridUnitType.Star);
+                workspace.ColumnDefinitions[2].Width=new GridLength(480);
                 return false;
             case 3:
                 Capture(window,"editor-light-narrow",1);Capture(styles,"styles-light-narrow",1);CheckMainFields();CheckStyleFields();
+                Require(window.FindControl<Grid>("EventEditorRegion")!.Bounds.Width<_normalEditorWidth-50,"Responsive verification must exercise a genuinely narrower editor pane.");
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Dark;
                 return false;
             case 4:
