@@ -253,11 +253,12 @@ public sealed partial class MainWindowViewModel
 
     private void DisposeSubtitleRenderer()
     {
-        lock (_subtitleRendererGate)
+        _=Task.Run(()=>
         {
-            _subtitleRenderer?.Dispose();
-            _subtitleRenderer = null;
-            _subtitleRendererRevision = -1;
-        }
+            lock(_subtitleRendererGate)
+            {
+                _subtitleRenderer?.Dispose();_subtitleRenderer=null;_subtitleRendererRevision=-1;
+            }
+        });
     }
 }

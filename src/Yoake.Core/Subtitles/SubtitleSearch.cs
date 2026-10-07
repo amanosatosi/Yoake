@@ -8,9 +8,11 @@ public sealed record SubtitleSearchMatch(AssEvent Line, int Index, int Length);
 public sealed class SubtitleSearch
 {
     private readonly Regex _regex;
+    private readonly bool _regularExpression;
     public SubtitleSearch(SubtitleSearchOptions options)
     {
         if (string.IsNullOrEmpty(options.Query)) throw new ArgumentException("Enter search text.");
+        _regularExpression=options.RegularExpression;
         _regex = new Regex(options.RegularExpression ? options.Query : Regex.Escape(options.Query), options.MatchCase ? RegexOptions.None : RegexOptions.IgnoreCase, TimeSpan.FromMilliseconds(250));
     }
     public SubtitleSearchMatch? Find(IReadOnlyList<AssEvent> lines, AssEvent? current, int offset, bool backwards, CancellationToken token=default)
@@ -34,13 +36,13 @@ public sealed class SubtitleSearch
     {
         var found = _regex.Match(match.Line.Text, match.Index);
         if (!found.Success || found.Index != match.Index || found.Length != match.Length) throw new InvalidOperationException("Search result changed; find again.");
-        editor.SetField(match.Line, "Text", match.Line.Text[..match.Index] + found.Result(replacement) + match.Line.Text[(match.Index + match.Length)..], "Replace subtitle text");
+        editor.SetField(match.Line, "Text", match.Line.Text[..match.Index] + (_regularExpression?found.Result(replacement):replacement) + match.Line.Text[(match.Index + match.Length)..], "Replace subtitle text");
     }
     public sealed record Replacement(AssEvent Line,string Original,string Text);
     public Replacement[] PrepareReplacements(IEnumerable<AssEvent> lines,string replacement,CancellationToken token=default)
     {
         var edits=new List<Replacement>();
-        foreach(var line in lines){token.ThrowIfCancellationRequested();var original=line.Text;var text=_regex.Replace(original,replacement);if(text!=original)edits.Add(new(line,original,text));}
+        foreach(var line in lines){token.ThrowIfCancellationRequested();var original=line.Text;var text=_regularExpression?_regex.Replace(original,replacement):_regex.Replace(original,_=>replacement);if(text!=original)edits.Add(new(line,original,text));}
         return edits.ToArray();
     }
     public static int ApplyReplacements(SubtitleEditor editor,IReadOnlyList<Replacement> edits)

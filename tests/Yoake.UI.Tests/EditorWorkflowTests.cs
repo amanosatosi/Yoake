@@ -74,6 +74,20 @@ public sealed class EditorWorkflowTests : IDisposable
         var doc=AssDocument.CreateEmpty();var editor=new SubtitleEditor(doc);editor.Insert(null,false);var path=Path.Combine(_root,"open.ass");doc.Save(path);
         Assert.True(_model.OpenSubtitle(path));Assert.Single(_model.Events);Assert.Equal(path,_model.RecentFiles[0]);await Command(CommandIds.GridDuplicate);Assert.Equal(2,_model.Events.Count);
     }
+
+    [Fact] public async Task UndoCancelsDraftBeforeUndoingCommittedChanges()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="uncommitted";await Command(CommandIds.EditUndo);Assert.Single(_model.Events);Assert.Equal("",_model.Draft!.Text);
+        await Command(CommandIds.EditUndo);Assert.Empty(_model.Events);
+    }
+    [Fact] public async Task StartingGestureCommitsPendingTextAndCancellationKeepsThatCommit()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="pending";Assert.True(_model.BeginGesture("Drag"));_model.UpdateTimingGesture(2,1);_model.CancelGesture();Assert.Equal("pending",_model.SelectedEvent!.Text);Assert.Equal(0,_model.SelectedEvent.StartMilliseconds);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
+    }
+    [Fact] public async Task LowercaseFormatFieldsRemainEditable()
+    {
+        var path=Path.Combine(_root,"lowercase.ass");File.WriteAllText(path,"[Events]\nFormat: layer,start,end,style,name,marginl,marginr,marginv,effect,text\nDialogue: 0,0:00:00.00,0:00:02.00,Default,Old,0,0,0,,Text\n");Assert.True(_model.OpenSubtitle(path));_model.Draft!.Actor="New";await Command(CommandIds.EditCommit);Assert.Equal("New",_model.Events[0].Actor);
+    }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
     private sealed class TestDialogs : IEditorDialogs
     {

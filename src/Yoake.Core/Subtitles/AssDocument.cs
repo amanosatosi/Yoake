@@ -74,11 +74,19 @@ public sealed class AssDocument
             if (trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
             if (line.Record is { } record)
             {
-                if (format is null || !format.SequenceEqual(record.Format, StringComparer.OrdinalIgnoreCase)) { output.Append("Format: ").AppendJoin(", ", record.Format).Append(_newline); format = record.Format; }
-                output.Append(record.Serialize());
+                var different=format is null||!format.SequenceEqual(record.Format,StringComparer.OrdinalIgnoreCase);
+                if(different)output.Append("Format: ").AppendJoin(", ",record.Format).Append(_newline);
+                output.Append(record.Serialize()).Append(line.Ending);
+                // Restore the slot's Format before unrelated raw source lines.
+                // Unknown record kinds may depend on that Format too.
+                if(different&&format is not null)
+                {
+                    if(line.Ending.Length==0)output.Append(_newline);
+                    output.Append("Format: ").AppendJoin(", ",format).Append(line.Ending);
+                }
+                else if(different)format=record.Format;
             }
-            else output.Append(line.Raw);
-            output.Append(line.Ending);
+            else output.Append(line.Raw).Append(line.Ending);
         }
         return _cached = output.ToString();
     }

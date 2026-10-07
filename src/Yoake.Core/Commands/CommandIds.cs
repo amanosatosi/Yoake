@@ -2,6 +2,12 @@ namespace Yoake.Core.Commands;
 
 public static class CommandIds
 {
+    public const string GestureBegin="editor/gesture/begin";
+    public const string GestureTiming="editor/gesture/timing";
+    public const string GesturePosition="editor/gesture/position";
+    public const string GestureClip="editor/gesture/clip";
+    public const string GestureCommit="editor/gesture/commit";
+    public const string GestureCancel="editor/gesture/cancel";
     public const string GridColumnWidths = "view/grid-column-widths";
     public const string SubtitleNew = "subtitle/new";
     public const string SubtitleOpen = "subtitle/open";

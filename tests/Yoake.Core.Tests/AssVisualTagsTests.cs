@@ -28,4 +28,16 @@ public sealed class AssVisualTagsTests
         var e=new SubtitleEditor(AssDocument.CreateEmpty()); e.Insert(null,false); e.Document.Events[0].Text="日本語 abc ABC";
         var search=new SubtitleSearch(new("abc")); Assert.Equal(1,search.ReplaceAll(e,e.Document.Events,"x")); Assert.Equal("日本語 x x",e.Document.Events[0].Text); e.Undo.Undo(); Assert.Equal("日本語 abc ABC",e.Document.Events[0].Text);
     }
+
+    [Fact] public void FirstStaticPositionMatchesMangetsuAuthority()
+    {
+        const string text="{\\pos(1,2)\\pos(3,4)\\future(x)}Text";
+        Assert.Equal(text.Replace("pos(1,2)","pos(5,6)"),AssVisualTags.SetPosition(text,new(5,6)));Assert.Equal(new AssPoint(1,2),AssVisualTags.Position(text));
+    }
+    [Fact] public void RelativeMangetsuPositionIsNotSilentlyReinterpreted()=>Assert.Throws<InvalidOperationException>(()=>AssVisualTags.SetPosition("{\\pos(+10,+20)}Text",new(5,6)));
+    [Fact] public void VectorTranslationPreservesScaleAndCommandSpacing()
+    {
+        const string text="{\\iclip(3,m  0 0 l 400 0)\\unknown(x)}Text";
+        Assert.Equal("{\\iclip(3,m  40 80 l 440 80)\\unknown(x)}Text",AssVisualTags.TranslateClip(text,new(10,20)));
+    }
 }

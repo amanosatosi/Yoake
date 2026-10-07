@@ -24,14 +24,31 @@ public sealed partial class MainWindowViewModel
     private string _gestureText = "";
     private long _gestureStart, _gestureEnd;
     public bool InverseClip { get; set; }
-    public bool BeginGesture(string name)
+    public sealed record TimingGestureUpdate(int Part,double Delta);
+    public sealed record PositionGestureUpdate(double X,double Y);
+    public sealed record ClipGestureUpdate(int PointIndex,AssPoint Point,AssPoint Anchor);
+    // Gesture commands are deliberately synchronous; pointer capture cannot
+    // await mutations or permit deferred work to outlive its transaction.
+    private void InvokeGesture(string id,object? parameter=null)
+    {
+        var result=_registry.InvokeAsync(id,CurrentContext(),parameter);
+        if(!result.IsCompleted)throw new InvalidOperationException("Gesture command must complete synchronously.");
+        result.GetAwaiter().GetResult();
+    }
+    public bool BeginGesture(string name){InvokeGesture(CommandIds.GestureBegin,name);return _gesture is not null;}
+    public void UpdateTimingGesture(int part,double delta)=>InvokeGesture(CommandIds.GestureTiming,new TimingGestureUpdate(part,delta));
+    public void UpdatePositionGesture(double x,double y)=>InvokeGesture(CommandIds.GesturePosition,new PositionGestureUpdate(x,y));
+    public void UpdateClipGesture(int index,AssPoint point,AssPoint anchor)=>InvokeGesture(CommandIds.GestureClip,new ClipGestureUpdate(index,point,anchor));
+    public void EndGesture()=>InvokeGesture(CommandIds.GestureCommit);
+    public void CancelGesture()=>InvokeGesture(CommandIds.GestureCancel);
+    private bool BeginGestureCore(string name)
     {
         CancelGesture(); if (!CommitDraft() || ActiveEditor is null || SelectedEvent is null) return false;
         _gestureEditor=ActiveEditor; _gestureLine=SelectedEvent; _gestureText=SelectedEvent.Text;
         _gestureStart=SelectedEvent.StartMilliseconds??0; _gestureEnd=SelectedEvent.EndMilliseconds??_gestureStart;
         _gesture=_gestureEditor.Undo.BeginTransaction(name); return true;
     }
-    public void UpdateTimingGesture(int part, double deltaSeconds)
+    private void UpdateTimingGestureCore(int part, double deltaSeconds)
     {
         if (_gesture is null || _gestureEditor is null || _gestureLine is null) return;
         var delta=(long)Math.Round(deltaSeconds*1000/10)*10;
@@ -40,19 +57,19 @@ public sealed partial class MainWindowViewModel
         if (part==2 && _gestureStart+delta<0) end=_gestureEnd-_gestureStart;
         start=Math.Min(start,end); _gestureEditor.SetTiming(_gestureLine,start,end);
     }
-    public void UpdatePositionGesture(double x,double y)
+    private void UpdatePositionGestureCore(double x,double y)
     {
         if (_gesture is null || _gestureEditor is null || _gestureLine is null) return;
         _gestureEditor.SetField(_gestureLine,"Text",AssVisualTags.SetPosition(_gestureText,new(x,y)),"Position subtitle");
     }
-    public void UpdateClipGesture(int pointIndex,AssPoint point,AssPoint anchor)
+    private void UpdateClipGestureCore(int pointIndex,AssPoint point,AssPoint anchor)
     {
         if (_gesture is null || _gestureEditor is null || _gestureLine is null) return;
         var text=pointIndex==-2 ? AssVisualTags.TranslateClip(_gestureText,new(point.X-anchor.X,point.Y-anchor.Y)) : pointIndex>=0 ? AssVisualTags.MoveClipPoint(_gestureText,pointIndex,point) : AssVisualTags.SetRectangle(_gestureText,InverseClip,anchor,point);
         _gestureEditor.SetField(_gestureLine,"Text",text,"Edit subtitle clip");
     }
-    public void EndGesture() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); ReloadDraft(); } }
-    public void CancelGesture() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); if(gesture is not null)ReloadDraft(); }
+    private void EndGestureCore() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); ReloadDraft(); } }
+    private void CancelGestureCore() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); if(gesture is not null)ReloadDraft(); }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
     private AssEvent[] Selection() => SelectedEvents.Where(Events.Contains).DefaultIfEmpty(SelectedEvent).OfType<AssEvent>().Distinct().ToArray();
     private void Select(AssEvent? line) { SelectedEvents.Clear(); if(line is not null)SelectedEvents.Add(line); SelectedEvent=line; }
@@ -77,6 +94,13 @@ public sealed partial class MainWindowViewModel
         }
         void S(string id,string label,Action action,Func<bool>? available=null)=>R(id,label,_=>{action();return ValueTask.CompletedTask;},available);
         bool HasLine()=>HasSelectedEvent && _gesture is null;
+        void GestureStep(Action action){try{action();}catch{CancelGestureCore();throw;}}
+        R(CommandIds.GestureBegin,"Begin editor gesture",i=>{BeginGestureCore(i.Parameter as string??"Edit subtitle");return ValueTask.CompletedTask;});
+        R(CommandIds.GestureTiming,"Drag subtitle timing",i=>{if(i.Parameter is TimingGestureUpdate p)GestureStep(()=>UpdateTimingGestureCore(p.Part,p.Delta));return ValueTask.CompletedTask;});
+        R(CommandIds.GesturePosition,"Drag subtitle position",i=>{if(i.Parameter is PositionGestureUpdate p)GestureStep(()=>UpdatePositionGestureCore(p.X,p.Y));return ValueTask.CompletedTask;});
+        R(CommandIds.GestureClip,"Drag subtitle clip",i=>{if(i.Parameter is ClipGestureUpdate p)GestureStep(()=>UpdateClipGestureCore(p.PointIndex,p.Point,p.Anchor));return ValueTask.CompletedTask;});
+        S(CommandIds.GestureCommit,"Commit editor gesture",EndGestureCore);
+        S(CommandIds.GestureCancel,"Cancel editor gesture",CancelGestureCore);
         R(CommandIds.GridColumnWidths,"Resize subtitle columns",i=>
         {
             if(i.Parameter is double[] widths&&widths.Length==8&&widths.All(w=>double.IsFinite(w)&&w>=24&&w<=600))
@@ -90,7 +114,7 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.SubtitleClose,"Close tab  Ctrl+W",async i=>{if(i.Parameter is Guid id)await CloseDocumentAsync(id);else if(_activeId is {} active)await CloseDocumentAsync(active);});
         R(CommandIds.SubtitleRevert,"Reload from disk…",async _=>{if(!CommitDraft() || ActiveSubtitlePath is not {} path || Dialogs is null || !await Dialogs.ConfirmRevertAsync())return; var doc=AssDocument.Load(path); var session=_workspace.ActiveDocument!; var state=_documents[session.Id]; Attach(session,doc); var replacement=_documents[session.Id]; replacement.Media=state.Media; replacement.Waveform=state.Waveform; replacement.Time=state.Time; state.Loading?.Cancel(); _activeId=null; SynchronizeActiveDocument();},()=>ActiveSubtitlePath is not null);
         R(CommandIds.WorkspaceActivateTab,"Activate tab",i=>{if(i.Parameter is Guid id && CommitDraft())_workspace.Activate(id);return ValueTask.CompletedTask;});
-        S(CommandIds.EditUndo,"Undo  Ctrl+Z",()=>{CancelGesture(); if(Draft?.IsChanged==true){ReloadDraft();return;} _undo.Undo();},()=>Draft?.IsChanged==true || _undo.CanUndo || _gesture is not null);
+        S(CommandIds.EditUndo,"Undo  Ctrl+Z",()=>{var wasGesture=_gesture is not null;CancelGesture();if(wasGesture)return; if(Draft?.IsChanged==true){ReloadDraft();return;} _undo.Undo();},()=>Draft?.IsChanged==true || _undo.CanUndo || _gesture is not null);
         S(CommandIds.EditRedo,"Redo  Ctrl+Y",()=>{CancelGesture(); if(CommitDraft())_undo.Redo();},()=>_undo.CanRedo);
         S(CommandIds.EditCommit,"Commit line  Ctrl+Enter",()=>CommitDraft(),HasLine);
         S(CommandIds.EditCommitNext,"Commit and next  Enter",()=>{if(CommitDraft()){if(SelectedEvent==Events.LastOrDefault())RunEdit(e=>Select(e.Insert(SelectedEvent,true,SelectedEvent?.EndMilliseconds??0)));else Navigate(1);}},HasLine);

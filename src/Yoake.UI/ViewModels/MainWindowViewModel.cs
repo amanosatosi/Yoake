@@ -133,6 +133,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public bool CommitDraft()
     {
+        if(_gesture is not null){SubtitleStatus="Finish or cancel the current gesture first.";return false;}
         if (Draft?.IsChanged!=true || SelectedEvent is null || ActiveEditor is null) return true;
         try { ActiveEditor.EditEvent(SelectedEvent,Draft.Values); ReloadDraft(); return true; }
         catch(Exception e) { SubtitleStatus=e.Message; return false; }
@@ -168,6 +169,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public bool SaveActiveSubtitle(string path)
     {
+        CancelGesture();
         if (!CommitDraft() || ActiveEditor is null || _workspace.ActiveDocument is not { } session) return false;
         try { var full=Path.GetFullPath(path); if (_workspace.Documents.Any(s=>s.Id!=session.Id && string.Equals(s.Path,full,StringComparison.OrdinalIgnoreCase))) throw new InvalidOperationException("This path is already open in another tab."); ActiveEditor.Document.Save(full); session.Path=full; session.Title=Path.GetFileName(full); ActiveEditor.MarkSaved(); Remember(full); SubtitleStatus=$"Saved {session.Title}"; OnPropertyChanged(nameof(ActiveSubtitlePath)); return true; }
         catch(Exception e) { SubtitleStatus=$"Save failed: {e.Message}"; return false; }
@@ -181,6 +183,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public async Task<bool> CloseDocumentAsync(Guid id)
     {
         if (!_documents.TryGetValue(id,out var state)) return true;
+        CancelGesture();
         if (!CommitDraft()) return false;
         if (!_workspace.Activate(id)) return false;
         if (state.Editor.IsDirty)
@@ -225,7 +228,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             token.ThrowIfCancellationRequested();
             if (_disposed || !_documents.ContainsKey(id)) { opened?.Dispose(); return false; }
             var old=state.Media; state.Media=opened; opened=null; state.Time=0; state.Waveform=Array.Empty<float>(); if (old is not null) _=Task.Run(old.Dispose);
-            if (_activeId==id) { _media=state.Media; DisposeSubtitleRenderer(); MediaDurationSeconds=_media!.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(CanPlayMedia)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
+            if (_activeId==id) { _media=state.Media; MediaDurationSeconds=_media!.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(CanPlayMedia)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
             var media=state.Media!; float[] peaks=[];
             var analysis=_jobs.Run("Audio peaks",ct=> { peaks=media.BuildWaveform(cancellationToken:ct); return Task.CompletedTask; },token); await analysis.Completion;
             token.ThrowIfCancellationRequested(); state.Waveform=peaks;
@@ -272,7 +275,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public void Dispose()
     {
-        if (_disposed) return; CancelGesture(); _disposed=true; StopPlayback(); _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
+        if (_disposed) return; CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
         foreach(var state in _documents.Values) { state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
         foreach(var tab in Tabs) tab.Dispose(); Tabs.Clear(); DisposeSubtitleRenderer(); VideoFrame=null;
     }

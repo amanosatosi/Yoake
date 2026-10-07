@@ -111,4 +111,45 @@ public sealed class SubtitleEditorTests
         var text="[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+string.Concat(Enumerable.Range(0,5000).Select(i=>$"Dialogue: 0,0:00:00.00,0:00:02.00,Default,,0,0,0,,Line {i}\n"));
         var e=new SubtitleEditor(AssDocument.Parse(text)); var last=e.Document.Events[^1]; e.Delete(e.Document.Events.Take(10).ToArray()); Assert.Same(last,e.Document.Events[^1]); e.Undo.Undo(); Assert.Equal(text,e.Document.Serialize());
     }
+
+    [Fact] public void UnknownRecordRetainsItsFormatContextAfterMove()
+    {
+        const string source="[Events]\nFormat: Start,End,Text\nDialogue: 0:00:00.00,0:00:01.00,A\nVendor: do,not,reinterpret\nFormat: Text,End,Start,Extra\nDialogue: B,0:00:02.00,0:00:01.00,opaque\n";
+        var e=new SubtitleEditor(AssDocument.Parse(source));e.Move([e.Document.Events[1]],-1);
+        Assert.Contains("Format: Start, End, Text\nVendor: do,not,reinterpret",e.Document.Serialize());
+        e.Undo.Undo();Assert.Equal(source,e.Document.Serialize());
+    }
+    [Fact] public void BulkMovePreservesSelectedOrdering()
+    {
+        var e=Open();var original=e.Document.Events.ToArray();e.Move(original.Take(2),1);
+        Assert.Equal(new[]{original[2],original[0],original[1]},e.Document.Events.ToArray());
+        e.Undo.Undo();Assert.Equal(Fixture,e.Document.Serialize());
+    }
+    [Fact] public void ToggleUndoRestoresOriginalTypeSpellingAndIndentation()
+    {
+        const string source="[Events]\nFormat: Start,End,Text\n  dIaLoGuE :\t0:00:00.00,0:00:01.00,Text\n";
+        var e=new SubtitleEditor(AssDocument.Parse(source));e.ToggleComment(e.Document.Events);Assert.Contains("  Comment :\t",e.Document.Serialize());e.Undo.Undo();Assert.Equal(source,e.Document.Serialize());
+    }
+    [Fact] public void LongGestureCoalescesRecordChangesBeforeUndo()
+    {
+        var e=Open();var line=e.Document.Events[0];using(var drag=e.Undo.BeginTransaction("Long drag")){for(var i=0;i<100;i++)e.SetTiming(line,1000+i*10,3000+i*10);drag.Commit();}
+        var changes=0;e.Document.Changed+=(_,_)=>changes++;e.Undo.Undo();Assert.Equal(1,changes);Assert.Equal(Fixture,e.Document.Serialize());
+    }
+    [Fact] public void PresentationStateDoesNotDirtyOrInvalidateSource()
+    {
+        var e=Open();var revision=e.Document.Revision;e.Document.UpdateCurrentEvent(e.Document.Events[0]);e.Document.UpdateActiveTime(1500);
+        Assert.True(e.Document.Events[0].IsCurrent);Assert.True(e.Document.Events[0].IsActive);Assert.Equal(revision,e.Document.Revision);Assert.False(e.IsDirty);
+    }
+    [Fact] public void LiteralReplacementDoesNotExpandRegexSubstitutions()
+    {
+        var e=Open();var search=new SubtitleSearch(new("Sign"));search.ReplaceAll(e,[e.Document.Events[2]],"$& $1");Assert.EndsWith("$& $1",e.Document.Events[2].Text);
+    }
+    [Fact] public void PreparedReplacementRejectsChangedSourceWithoutPartialEdit()
+    {
+        var e=Open();var search=new SubtitleSearch(new("Sign"));var edits=search.PrepareReplacements(e.Document.Events,"Replaced");e.SetField(e.Document.Events[2],"Text","Changed","Edit");Assert.Throws<InvalidOperationException>(()=>SubtitleSearch.ApplyReplacements(e,edits));Assert.Equal("Changed",e.Document.Events[2].Text);
+    }
+    [Theory] [InlineData(false)] [InlineData(true)] public void Utf32BomRoundTrips(bool bigEndian)
+    {
+        var path=Path.Combine(Path.GetTempPath(),Guid.NewGuid()+".ass");try{var encoding=new UTF32Encoding(bigEndian,true,true);File.WriteAllText(path,Fixture,encoding);var doc=AssDocument.Load(path);doc.Save(path);Assert.Equal(Fixture,AssDocument.Load(path).Serialize());Assert.True(File.ReadAllBytes(path).AsSpan().StartsWith(encoding.GetPreamble()));}finally{File.Delete(path);}
+    }
 }
