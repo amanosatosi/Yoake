@@ -64,6 +64,15 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 PrepareStyleSwitching();
                 return false; // Newly selected library controls need a real layout pass.
             case 5:
+                Named<FontPicker>(styles,"StyleFont").GetVisualDescendants().OfType<AutoCompleteBox>().Single().SetCurrentValue(AutoCompleteBox.TextProperty,"Missing 日本 字体");
+                Require(Named<ListBox>(styles,"ScriptStyles").Focus(),"The script list must accept keyboard focus.");
+                return false;
+            case 6:
+                Require(Named<FontPicker>(styles,"StyleFont").FontName==_first!.Get("Fontname"),"Returning to the already selected script row must activate its inline draft.");
+                Require(Named<ListBox>(styles,"LibraryStyles").Focus(),"The library list must accept keyboard focus.");
+                return false;
+            case 7:
+                Require(Named<FontPicker>(styles,"StyleFont").FontName=="Missing 日本 字体","Returning to the already selected library row must retain its committed draft.");
                 FinishStyleSwitching();
                 var sample=Named<TextBox>(styles,"PreviewSample");
                 sample.SetCurrentValue(TextBox.TextProperty,"obsolete preview");

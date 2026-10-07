@@ -86,6 +86,7 @@ public sealed class StylesWindow : Window
             _collection=_library.Collections.FirstOrDefault(c=>c.Name==next);ResetLibrarySelection();RefreshCollections();
         };
         _scriptList.SelectionChanged+=(_,_)=>Select(false);_libraryList.SelectionChanged+=(_,_)=>Select(true);
+        SelectOnFocus(_scriptList,false);SelectOnFocus(_libraryList,true);
         _sample.TextChanged+=(_,_)=>RequestPreview();_previewMode.SelectionChanged+=(_,_)=>RequestPreview();
         Closing+=(_,e)=>{if(!Commit())e.Cancel=true;};Closed+=(_,_)=>Preview.Dispose();
         AddHandler(KeyDownEvent,(_,e)=>
@@ -96,6 +97,15 @@ public sealed class StylesWindow : Window
         Select(false);
     }
     private static void At(Grid grid,Control child,int row){Grid.SetRow(child,row);grid.Children.Add(child);}
+    private void SelectOnFocus(ListBox list,bool library)
+    {
+        // Both lists retain a selection for copy commands. Returning to an
+        // already selected row must still activate its inline editor.
+        list.GotFocus+=(_,_)=>Dispatcher.UIThread.Post(()=>
+        {
+            if(list.IsKeyboardFocusWithin)Select(library);
+        });
+    }
     private void Register(string id,string label,Panel bar,Action action)=>RegisterAsync(id,label,bar,()=>{action();return Task.CompletedTask;});
     private void RegisterAsync(string id,string label,Panel bar,Func<Task> action)
     {
