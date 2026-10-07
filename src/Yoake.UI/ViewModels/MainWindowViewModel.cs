@@ -59,15 +59,17 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public string? PreviewSource()
     {
         var revision=PreviewRevision;if(_previewSourceRevision==revision)return _previewSource;
-        try{_previewSource=_activeSubtitleDocument?.SerializePreview(SelectedEvent,Draft.IsChanged?Draft.Values:null);}
+        try{_previewSource=_activeSubtitleDocument?.SerializePreview(SelectedEvent,Draft?.IsChanged==true?Draft.Values:null);}
         catch(ArgumentException){_previewSource=_activeSubtitleDocument?.Serialize();}
         _previewSourceRevision=revision;return _previewSource;
     }
     private byte[]? _decodedPixels;
     public event EventHandler? FrameReady;
     private bool _disposed;
-    private readonly AssEvent _emptyLine=AssDocument.CreateEmpty().NewEvent();
     private EventEditDraft? _draft;
+    private readonly EventEditDraft _emptyDraft=new(AssDocument.CreateEmpty().NewEvent());
+    public EventEditDraft EditorDraft=>Draft??_emptyDraft;
+    public string VisualText=>_gesture is not null?SelectedEvent?.Text??"":Draft?.Text??"";
     private CancellationTokenSource? _editBurstDelay;
     public IEditorDialogs? Dialogs { get; set; }
     public SubtitleEditor? ActiveEditor => _activeId is { } id && _documents.TryGetValue(id,out var state) ? state.Editor : null;
@@ -83,13 +85,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public void SetSelectedEvents(IEnumerable<AssEvent> lines)=>_selection.Replace(lines);
     public bool IsSynchronizingSelection { get; private set; }
     public int TextCursor { get; set; }
-    public EventEditDraft Draft
+    public EventEditDraft? Draft
     {
-        get => _draft??=new EventEditDraft(_emptyLine);
+        get => _draft;
         private set
         {
             if (_draft is not null) _draft.PropertyChanged -= DraftChanged;
-            SetField(ref _draft,value);
+            SetField(ref _draft,value);OnPropertyChanged(nameof(EditorDraft));
             if (_draft is not null) _draft.PropertyChanged += DraftChanged;
             RefreshFormatting();
         }
@@ -97,7 +99,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private void DraftChanged(object? sender,PropertyChangedEventArgs e)
     {
         if(e.PropertyName is nameof(EventEditDraft.IsChanged) or nameof(EventEditDraft.Duration))return;
-        try{SelectedEvent?.ShowDraft(Draft.Values);}catch(ArgumentException){/* Invalid metadata remains editable, never saved. */}
+        try{SelectedEvent?.ShowDraft(Draft?.Values);}catch(ArgumentException){/* Invalid metadata remains editable, never saved. */}
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();var delay=new CancellationTokenSource();_editBurstDelay=delay;
         _=FinalizeBurstAsync(delay.Token);
@@ -174,7 +176,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private void ReloadDraft()
     {
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
-        SelectedEvent?.ShowDraft(null);Draft=new EventEditDraft(SelectedEvent??_emptyLine);
+        SelectedEvent?.ShowDraft(null);Draft=SelectedEvent is {} line?new EventEditDraft(line):null;
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));OnPropertyChanged(nameof(SelectedIsComment));
         if(_workspace.ActiveDocument is {} session)session.IsDirty=ActiveEditor?.IsDirty??false;
     }

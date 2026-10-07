@@ -163,22 +163,22 @@
         <DockPanel><TextBlock Text="EDIT PANEL" FontSize="11" FontWeight="SemiBold" /><Button Content="Finish · Ctrl+Enter" Command="{Binding Actions[edit/commit]}" Padding="4,0" HorizontalAlignment="Right" FontSize="11" /></DockPanel>
         <Grid Grid.Row="1" ColumnDefinitions="80,1.2*,26,*,*,86" ColumnSpacing="3">
           <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
-          <ComboBox Height="26" VerticalAlignment="Center" Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding Draft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
+          <ComboBox Height="26" VerticalAlignment="Center" Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding EditorDraft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
           <Button Height="26" VerticalAlignment="Center" Grid.Column="2" Content="…" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" />
-          <AutoCompleteBox Height="26" VerticalAlignment="Center" Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding Draft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
-          <TextBox Height="26" VerticalAlignment="Center" Grid.Column="4" Text="{Binding Draft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
-          <NumericUpDown Name="LineLayer" Grid.Column="5" Value="{Binding Draft.LayerNumber, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
+          <AutoCompleteBox Height="26" VerticalAlignment="Center" Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
+          <TextBox Height="26" VerticalAlignment="Center" Grid.Column="4" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
+          <NumericUpDown Name="LineLayer" Grid.Column="5" Value="{Binding EditorDraft.LayerNumber, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
         </Grid>
         <WrapPanel Grid.Row="2" Name="TimingFields">
           <Grid ColumnDefinitions="Auto,96,Auto,96,Auto,72" ColumnSpacing="3" Margin="0,0,8,2">
-            <TextBlock Text="Start" FontSize="10" VerticalAlignment="Center" /><TextBox Name="LineStart" Grid.Column="1" Text="{Binding Draft.Start, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start h:mm:ss.cc" />
-            <TextBlock Grid.Column="2" Text="End" FontSize="10" VerticalAlignment="Center" /><TextBox Name="LineEnd" Grid.Column="3" Text="{Binding Draft.End, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End h:mm:ss.cc" />
-            <TextBlock Grid.Column="4" Text="Dur." FontSize="10" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding Draft.Duration}" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Text="Start" FontSize="10" VerticalAlignment="Center" /><TextBox Name="LineStart" Grid.Column="1" Text="{Binding EditorDraft.Start, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start h:mm:ss.cc" />
+            <TextBlock Grid.Column="2" Text="End" FontSize="10" VerticalAlignment="Center" /><TextBox Name="LineEnd" Grid.Column="3" Text="{Binding EditorDraft.End, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End h:mm:ss.cc" />
+            <TextBlock Grid.Column="4" Text="Dur." FontSize="10" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding EditorDraft.Duration}" FontSize="11" VerticalAlignment="Center" />
           </Grid>
           <Grid ColumnDefinitions="Auto,86,Auto,86,Auto,86" ColumnSpacing="3" Margin="0,0,0,2">
-            <TextBlock Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Value="{Binding Draft.LeftMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
-            <TextBlock Grid.Column="2" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Value="{Binding Draft.RightMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
-            <TextBlock Grid.Column="4" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Value="{Binding Draft.VerticalMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
+            <TextBlock Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Value="{Binding EditorDraft.LeftMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
+            <TextBlock Grid.Column="2" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Value="{Binding EditorDraft.RightMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
+            <TextBlock Grid.Column="4" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Value="{Binding EditorDraft.VerticalMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
           </Grid>
         </WrapPanel>
         <WrapPanel Grid.Row="3" Name="FormattingToolbar">
@@ -198,7 +198,7 @@
           </StackPanel>
         </WrapPanel>
         <TextBlock Grid.Row="4" Text="Enter: finish and next · Shift+Enter: newline · Ctrl+Shift+D: split" FontSize="10" VerticalAlignment="Center" />
-        <controls:AssTextBox Name="SubtitleText" Grid.Row="5" FontSize="14" Text="{Binding Draft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+        <controls:AssTextBox Name="SubtitleText" Grid.Row="5" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
       </Grid>
     </Border>
   </Grid>

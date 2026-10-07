@@ -31,9 +31,9 @@ public sealed class VisualOverlayControl : Control
     private AssPoint Script(Point point){var rect=VideoRect();var size=Model!.ScriptSize;return new((point.X-rect.X)/rect.Width*size.Width,(point.Y-rect.Y)/rect.Height*size.Height);}
     private AssPoint DefaultPosition()
     {
-        var model=Model!;var line=model.SelectedEvent!;var size=model.ScriptSize;var style=model.ActiveEditor?.Document.Styles.FirstOrDefault(s=>s.Name==model.Draft.Style);
+        var model=Model!;var line=model.SelectedEvent!;var size=model.ScriptSize;var style=model.ActiveEditor?.Document.Styles.FirstOrDefault(s=>s.Name==model.EditorDraft.Style);
         var alignment=int.TryParse(style?.Get("Alignment"),out var a)?Math.Clamp(a,1,9):2;
-        double Margin(string name){var v=model.Draft.Values.GetValueOrDefault(name,line.Get(name));return int.TryParse(v,out var m)&&m>0?m:int.TryParse(style?.Get(name),out m)?m:20;}
+        double Margin(string name){var v=model.EditorDraft.Values.GetValueOrDefault(name,line.Get(name));return int.TryParse(v,out var m)&&m>0?m:int.TryParse(style?.Get(name),out m)?m:20;}
         var col=(alignment-1)%3;var row=(alignment-1)/3;
         return new(col==0?Margin("MarginL"):col==2?size.Width-Margin("MarginR"):size.Width/2,row==0?size.Height-Margin("MarginV"):row==2?Margin("MarginV"):size.Height/2);
     }
@@ -43,9 +43,9 @@ public sealed class VisualOverlayControl : Control
         var pen=new Pen(Brushes.Cyan,1);
         if(model.ActiveVisualTool=="Position")
         {
-            var point=Screen(AssVisualTags.Position(model.Draft.Text)??DefaultPosition());context.DrawLine(pen,point-new Vector(10,0),point+new Vector(10,0));context.DrawLine(pen,point-new Vector(0,10),point+new Vector(0,10));context.DrawEllipse(null,pen,point,5,5);
+            var point=Screen(AssVisualTags.Position(model.VisualText)??DefaultPosition());context.DrawLine(pen,point-new Vector(10,0),point+new Vector(10,0));context.DrawLine(pen,point-new Vector(0,10),point+new Vector(0,10));context.DrawEllipse(null,pen,point,5,5);
         }
-        else if(AssVisualTags.Clip(model.Draft.Text) is {} clip)
+        else if(AssVisualTags.Clip(model.VisualText) is {} clip)
         {
             var points=clip.Points.Select(Screen).ToArray();
             if(clip.Rectangular)context.DrawRectangle(null,pen,new Rect(points[0],points[1]));

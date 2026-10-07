@@ -75,7 +75,7 @@ public sealed class EditorWorkflowTests : IDisposable
     {
         await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;
         Assert.True(_model.BeginGesture("Timing gesture"));_model.UpdateTimingGesture(2,1);_model.UpdateTimingGesture(2,2);_model.CancelGesture();Assert.Equal(0,line.StartMilliseconds);
-        Assert.True(_model.BeginGesture("Position gesture"));_model.UpdatePositionGesture(100,200);_model.UpdatePositionGesture(300,400);_model.EndGesture();Assert.Equal(new AssPoint(300,400),AssVisualTags.Position(line.Text));
+        Assert.True(_model.BeginGesture("Position gesture"));_model.UpdatePositionGesture(100,200);Assert.Equal(new AssPoint(100,200),AssVisualTags.Position(_model.VisualText));Assert.Contains("\\pos(100,200)",_model.PreviewSource());_model.UpdatePositionGesture(300,400);_model.EndGesture();Assert.Equal(new AssPoint(300,400),AssVisualTags.Position(line.Text));
         Assert.Equal("Position gesture",_model.ActiveEditor!.Undo.NextUndoName);await Command(CommandIds.EditUndo);Assert.Equal("",line.Text);
     }
     [Fact] public async Task MultiRowCommandsWorkAcrossUndo()
