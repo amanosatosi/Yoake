@@ -45,7 +45,7 @@ public sealed partial class MainWindowViewModel
         await StartPlaybackAsync();
     }
 
-    public async Task StartPlaybackAsync()
+    public async Task StartPlaybackAsync(double? endSeconds = null)
     {
         var session = _media;
         if (session is null || (!session.HasVideo && !session.HasAudio) || _disposed)
@@ -106,6 +106,8 @@ public sealed partial class MainWindowViewModel
                 var seconds = session.HasAudio
                     ? BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits))
                     : start + stopwatch.Elapsed.TotalSeconds;
+
+                if (endSeconds is { } stopAt && seconds >= stopAt) { SetPlaybackTime(stopAt); player?.Stop(); break; }
 
                 if (MediaDurationSeconds > 0 && seconds >= MediaDurationSeconds)
                 {
@@ -194,40 +196,7 @@ public sealed partial class MainWindowViewModel
             _clockUpdateFromPlayback = false;
         }
 
-        UpdatePlaybackSelection(seconds);
-    }
 
-    private void UpdatePlaybackSelection(double seconds)
-    {
-        var milliseconds = (long)Math.Round(seconds * 1000);
-        AssEvent? active = null;
-        foreach (var candidate in Events)
-        {
-            if (candidate.StartMilliseconds is not { } start ||
-                candidate.EndMilliseconds is not { } end)
-            {
-                continue;
-            }
-
-            if (milliseconds >= start && milliseconds < end)
-            {
-                active = candidate;
-                break;
-            }
-        }
-
-        if (active is null || ReferenceEquals(active, SelectedEvent))
-            return;
-
-        _selectionFromPlayback = true;
-        try
-        {
-            SelectedEvent = active;
-        }
-        finally
-        {
-            _selectionFromPlayback = false;
-        }
     }
 
     private string? CompositeSubtitles(

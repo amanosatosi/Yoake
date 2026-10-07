@@ -11,6 +11,7 @@ public enum ThemePreference
 
 public sealed record AppSettings
 {
+    public string[] RecentFiles { get; init; } = [];
     public int SchemaVersion { get; init; } = 1;
     public ThemePreference Theme { get; init; } = ThemePreference.System;
     public double MainSplitRatio { get; init; } = 0.5;

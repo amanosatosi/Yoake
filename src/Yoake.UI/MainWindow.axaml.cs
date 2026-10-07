@@ -3,207 +3,125 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Platform.Storage;
+using Avalonia.Threading;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using Yoake.Core.Commands;
+using Yoake.Core.Hotkeys;
+using Yoake.Core.Subtitles;
+using Yoake.UI.Services;
 using Yoake.UI.ViewModels;
 
 namespace Yoake.UI;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IEditorDialogs
 {
-    private static readonly FilePickerFileType SubtitleFiles = new("ASS/SSA subtitles")
-    {
-        Patterns = ["*.ass", "*.ssa"],
-    };
-
-    private static readonly FilePickerFileType MediaFiles = new("Video/audio")
-    {
-        Patterns = ["*.mkv", "*.mp4", "*.webm", "*.avi", "*.mov", "*.m2ts", "*.ts", "*.mp3", "*.flac", "*.wav", "*.m4a", "*.ogg", "*.opus"],
-    };
-
-    private static readonly string[] SameBasenameMediaExtensions =
-        [".mkv", ".mp4", ".webm", ".m2ts", ".ts", ".avi", ".mov"];
-
+    private bool _closingAllowed, _closingPending, _selectionSync;
+    private MainWindowViewModel? _model;
+    private static readonly FilePickerFileType SubtitleFiles=new("ASS/SSA subtitles"){Patterns=["*.ass","*.ssa"]};
+    private static readonly FilePickerFileType MediaFiles=new("Video/audio"){Patterns=["*.mkv","*.mp4","*.webm","*.avi","*.mov","*.m2ts","*.ts","*.mp3","*.flac","*.wav","*.m4a","*.ogg","*.opus"]};
     public MainWindow()
     {
         InitializeComponent();
-
-        if (OperatingSystem.IsWindows())
+        if(OperatingSystem.IsWindows()){WindowDecorations=Avalonia.Controls.WindowDecorations.Full;ExtendClientAreaToDecorationsHint=true;ExtendClientAreaTitleBarHeightHint=36;TitleTabStrip.Padding=new Thickness(0,0,140,0);}
+        DataContextChanged+=(_,_)=>AttachModel();
+        AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
+        Closing+=HandleClosing;
+        Closed+=(_,_)=>_model?.Dispose();
+    }
+    private void AttachModel()
+    {
+        if(_model is not null){_model.PropertyChanged-=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        _model=DataContext as MainWindowViewModel;
+        if(_model is not null){_model.Dialogs=this;_model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
+    }
+    private void ModelChanged(object? sender,PropertyChangedEventArgs e)
+    {
+        if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
+    }
+    private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }
+    private void SyncSelection()
+    {
+        if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null)return;
+        _selectionSync=true;
+        try{SubtitleRows.SelectedItems.Clear();foreach(var line in _model.SelectedEvents)if(_model.Events.Contains(line))SubtitleRows.SelectedItems.Add(line);}
+        finally{_selectionSync=false;}
+    }
+    private void GridSelectionChanged(object? sender,SelectionChangedEventArgs e)
+    {
+        if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null)return;
+        _selectionSync=true;
+        try{_model.SelectedEvents.Clear();foreach(var line in SubtitleRows.SelectedItems.OfType<AssEvent>())_model.SelectedEvents.Add(line);}
+        finally{_selectionSync=false;}
+    }
+    private async void HandleKey(object? sender,KeyEventArgs e)
+    {
+        if(_model is null||e.Handled)return;
+        var control=e.Source as Control;var context=HotkeyContext.Default;
+        for(var current=control;current is not null;current=current.Parent as Control)
         {
-            WindowDecorations = Avalonia.Controls.WindowDecorations.Full;
-            ExtendClientAreaToDecorationsHint = true;
-            ExtendClientAreaTitleBarHeightHint = 36;
-            TitleTabStrip.Padding = new Thickness(0, 0, 140, 0);
+            if(current==SubtitleRows){context=HotkeyContext.SubtitleGrid;break;}
+            if(current==EventEditorRegion){context=HotkeyContext.SubtitleEdit;break;}
+            if(current==AudioRegion){context=HotkeyContext.Audio;break;}
+            if(current==VideoRegion){context=HotkeyContext.Video;break;}
         }
-
-        Closed += (_, _) => (DataContext as IDisposable)?.Dispose();
+        // Shift+Enter and IME input remain with the native text editor.
+        if(e.Key==Key.Enter && e.KeyModifiers==Avalonia.Input.KeyModifiers.Shift)return;
+        var modifiers=Yoake.Core.Hotkeys.KeyModifiers.None;
+        if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Control;
+        if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Shift;
+        if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Alt))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Alt;
+        if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Meta))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Meta;
+        // Enter in metadata commits, without advancing while a dropdown is open.
+        var binding=_model.Hotkeys.Resolve(new(e.Key.ToString(),modifiers),[HotkeyContext.Default,context]);
+        if(binding is null)return;
+        _model.TextCursor=SubtitleText.CaretIndex;
+        e.Handled=true;
+        await _model.Registry.InvokeAsync(binding.CommandId,new(FocusContext:context.ToString()));
     }
-
-    private async void OpenSubtitleClick(object? sender, RoutedEventArgs e)
+    private async void HandleClosing(object? sender,WindowClosingEventArgs e)
     {
-        if (DataContext is not MainWindowViewModel viewModel)
-            return;
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Open subtitle",
-            AllowMultiple = false,
-            FileTypeFilter = [SubtitleFiles, FilePickerFileTypes.All],
-        });
-        if (files.Count == 0)
-            return;
-        var path = LocalPath(files[0]);
-        if (path is not null && viewModel.OpenSubtitle(path))
-            await TryOpenAssociatedMediaAsync(viewModel, path);
+        if(_closingAllowed||_model is null)return;e.Cancel=true;if(_closingPending)return;_closingPending=true;
+        try{if(await _model.CloseWindowAsync()){_closingAllowed=true;Close();}}
+        catch(Exception exception){_model.Registry.ReportFailure("window/close",exception);}
+        finally{_closingPending=false;}
     }
-
-    private async void SaveSubtitleClick(object? sender, RoutedEventArgs e)
+    private async void VideoSeekReleased(object? sender,PointerReleasedEventArgs e)
     {
-        if (DataContext is not MainWindowViewModel viewModel)
-            return;
-        var path = viewModel.ActiveSubtitlePath;
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            var file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
-            {
-                Title = "Save subtitle",
-                SuggestedFileName = viewModel.SuggestedSubtitleFileName,
-                DefaultExtension = "ass",
-                ShowOverwritePrompt = true,
-                FileTypeChoices = [SubtitleFiles],
-            });
-            path = file is null ? null : LocalPath(file);
-        }
-        if (!string.IsNullOrWhiteSpace(path))
-            viewModel.SaveActiveSubtitle(path);
+        if(_model is null)return;
+        try{await _model.SeekPlaybackAsync(_model.CurrentTimeSeconds);}catch(Exception exception){_model.Registry.ReportFailure(CommandIds.VideoSeek,exception);}
     }
-
-    private async void OpenMediaClick(object? sender, RoutedEventArgs e)
+    private void AudioModeChanged(object? sender,SelectionChangedEventArgs e){if(AudioDisplay is not null&&sender is ComboBox box)AudioDisplay.Spectrogram=box.SelectedIndex==1;}
+    private async void RecentFileClick(object? sender,RoutedEventArgs e){if(_model is not null&&sender is Control{DataContext:string path})await _model.Registry.InvokeAsync(CommandIds.SubtitleOpen,new(),path);}
+    private static string? LocalPath(IStorageItem item)=>item.Path is{IsAbsoluteUri:true,IsFile:true} uri?uri.LocalPath:null;
+    public async Task<string?> OpenSubtitleAsync()
     {
-        if (DataContext is not MainWindowViewModel viewModel)
-            return;
-        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Open video/audio",
-            AllowMultiple = false,
-            FileTypeFilter = [MediaFiles, FilePickerFileTypes.All],
-        });
-        if (files.Count == 0)
-            return;
-        var path = LocalPath(files[0]);
-        if (path is not null)
-            await viewModel.OpenMediaAsync(path);
+        var files=await StorageProvider.OpenFilePickerAsync(new(){Title="Open subtitle",AllowMultiple=false,FileTypeFilter=[SubtitleFiles,FilePickerFileTypes.All]});return files.Count>0?LocalPath(files[0]):null;
     }
-
-    private async void PlayPauseClick(object? sender, RoutedEventArgs e)
+    public async Task<string?> OpenMediaAsync()
     {
-        if (DataContext is MainWindowViewModel viewModel)
-            await viewModel.TogglePlaybackAsync();
+        var files=await StorageProvider.OpenFilePickerAsync(new(){Title="Open video/audio",AllowMultiple=false,FileTypeFilter=[MediaFiles,FilePickerFileTypes.All]});return files.Count>0?LocalPath(files[0]):null;
     }
-
-    private void StopPlaybackClick(object? sender, RoutedEventArgs e)
+    public async Task<string?> SaveSubtitleAsync(string suggestedName)
     {
-        if (DataContext is MainWindowViewModel viewModel)
-            viewModel.StopPlayback();
+        var file=await StorageProvider.SaveFilePickerAsync(new(){Title="Save subtitle",SuggestedFileName=suggestedName,DefaultExtension="ass",ShowOverwritePrompt=true,FileTypeChoices=[SubtitleFiles]});return file is null?null:LocalPath(file);
     }
-
-    private async void VideoSeekReleased(object? sender, PointerReleasedEventArgs e)
+    public async Task<UnsavedChoice> ConfirmUnsavedAsync(string title)
     {
-        if (DataContext is MainWindowViewModel viewModel)
-            await viewModel.SeekPlaybackAsync(viewModel.CurrentTimeSeconds);
+        var result=await AskAsync("Unsaved changes",$"Save changes to {title}?",["Save","Discard","Cancel"]);return result==0?UnsavedChoice.Save:result==1?UnsavedChoice.Discard:UnsavedChoice.Cancel;
     }
-
-    private void CloseTabClick(object? sender, RoutedEventArgs e)
+    public async Task<bool> ConfirmRevertAsync()=>await AskAsync("Reload subtitle","Discard edits and reload the file from disk?",["Reload","Cancel"])==0;
+    private async Task<int> AskAsync(string title,string message,string[] choices)
     {
-        if (sender is Control { DataContext: DocumentTabViewModel tab } && tab.CloseCommand.CanExecute(null))
-        {
-            tab.CloseCommand.Execute(null);
-            e.Handled = true;
-        }
+        var dialog=new Window{Title=title,Width=440,SizeToContent=SizeToContent.Height,CanResize=false,WindowStartupLocation=WindowStartupLocation.CenterOwner};
+        var panel=new StackPanel{Margin=new Thickness(18),Spacing=14};panel.Children.Add(new TextBlock{Text=message,TextWrapping=Avalonia.Media.TextWrapping.Wrap});
+        var buttons=new StackPanel{Orientation=Avalonia.Layout.Orientation.Horizontal,Spacing=8,HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Right};
+        for(var i=0;i<choices.Length;i++){var index=i;var button=new Button{Content=choices[i],IsDefault=i==0,IsCancel=i==choices.Length-1};button.Click+=(_,_)=>dialog.Close(index);buttons.Children.Add(button);}
+        panel.Children.Add(buttons);dialog.Content=panel;return await dialog.ShowDialog<int>(this);
     }
-
-    private static async Task TryOpenAssociatedMediaAsync(MainWindowViewModel viewModel, string subtitlePath)
-    {
-        var mediaPath = FindAssociatedMedia(subtitlePath);
-        if (mediaPath is not null)
-            await viewModel.OpenMediaAsync(mediaPath);
-    }
-
-    private static string? FindAssociatedMedia(string subtitlePath)
-    {
-        var scriptDirectory = Path.GetDirectoryName(subtitlePath) ?? string.Empty;
-        string? videoReference = null;
-        string? audioReference = null;
-
-        try
-        {
-            var inProjectGarbage = false;
-            foreach (var rawLine in File.ReadLines(subtitlePath))
-            {
-                var line = rawLine.Trim();
-                if (line.StartsWith('[') && line.EndsWith(']'))
-                {
-                    inProjectGarbage = string.Equals(line, "[Aegisub Project Garbage]", StringComparison.OrdinalIgnoreCase);
-                    continue;
-                }
-                if (!inProjectGarbage)
-                    continue;
-
-                var colon = line.IndexOf(':');
-                if (colon <= 0)
-                    continue;
-                var key = line[..colon].Trim();
-                var value = line[(colon + 1)..].Trim();
-                if (string.Equals(key, "Video File", StringComparison.OrdinalIgnoreCase))
-                    videoReference = value;
-                else if (string.Equals(key, "Audio File", StringComparison.OrdinalIgnoreCase))
-                    audioReference = value;
-            }
-        }
-        catch
-        {
-            // ASS loading already succeeded; media discovery is best-effort only.
-        }
-
-        var video = ResolveAegisubMediaReference(videoReference, scriptDirectory, null);
-        if (video is not null)
-            return video;
-
-        var audio = ResolveAegisubMediaReference(audioReference, scriptDirectory, video);
-        if (audio is not null)
-            return audio;
-
-        var stem = Path.Combine(scriptDirectory, Path.GetFileNameWithoutExtension(subtitlePath));
-        foreach (var extension in SameBasenameMediaExtensions)
-        {
-            var candidate = stem + extension;
-            if (File.Exists(candidate))
-                return candidate;
-        }
-        return null;
-    }
-
-    private static string? ResolveAegisubMediaReference(string? reference, string scriptDirectory, string? videoPath)
-    {
-        if (string.IsNullOrWhiteSpace(reference))
-            return null;
-        var value = reference.Trim().Trim('"');
-        if (string.Equals(value, "?video", StringComparison.OrdinalIgnoreCase))
-            return videoPath;
-        if (value.StartsWith("?dummy:", StringComparison.OrdinalIgnoreCase))
-            return null;
-        if (value.StartsWith("?script", StringComparison.OrdinalIgnoreCase))
-            value = value[7..].TrimStart('/', '\\');
-
-        var candidate = Path.IsPathRooted(value) ? value : Path.Combine(scriptDirectory, value);
-        try
-        {
-            candidate = Path.GetFullPath(candidate);
-        }
-        catch
-        {
-            return null;
-        }
-        return File.Exists(candidate) ? candidate : null;
-    }
-
-    private static string? LocalPath(IStorageItem item)
-        => item.Path is { IsAbsoluteUri: true, IsFile: true } uri ? uri.LocalPath : null;
+    public async Task<string?> ReadClipboardAsync()=>Clipboard is null?null:await Clipboard.TryGetTextAsync();
+    public async Task WriteClipboardAsync(string text){if(Clipboard is not null)await Clipboard.SetTextAsync(text);}
+    public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor).ShowDialog(this);
+    public Task ShowScriptInfoAsync(SubtitleEditor editor)=>new ScriptInfoWindow(editor).ShowDialog(this);
+    public Task ShowFindAsync(MainWindowViewModel model)=>new FindWindow(model).ShowDialog(this);
 }

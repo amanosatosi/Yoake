@@ -31,6 +31,8 @@ jobs:
         run: dotnet restore tests/Yoake.Core.Tests/Yoake.Core.Tests.csproj
       - name: Build core tests
         run: dotnet build tests/Yoake.Core.Tests/Yoake.Core.Tests.csproj -c Release --no-restore
+      - name: Build editor UI and compiled bindings
+        run: dotnet build src/Yoake.UI/Yoake.UI.csproj -c Release
       - name: Test core
         run: dotnet test tests/Yoake.Core.Tests/Yoake.Core.Tests.csproj -c Release --no-build
 
