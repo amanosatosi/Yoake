@@ -11,6 +11,7 @@ public enum ThemePreference
 
 public sealed record AppSettings
 {
+    public double[] GridColumnWidths { get; init; } = [40,65,48,92,92,110,100,90];
     public string[] RecentFiles { get; init; } = [];
     public int SchemaVersion { get; init; } = 1;
     public ThemePreference Theme { get; init; } = ThemePreference.System;

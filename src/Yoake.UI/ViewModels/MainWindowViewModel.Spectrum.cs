@@ -6,6 +6,10 @@ using Yoake.Native;
 namespace Yoake.UI.ViewModels;
 public sealed partial class MainWindowViewModel
 {
+    public async Task<T> RunAnalysisAsync<T>(string name,Func<CancellationToken,T> work,CancellationToken token)
+    {
+        T result=default!;var job=_jobs.Run(name,ct=>{result=work(ct);return Task.CompletedTask;},token);await job.Completion;return result;
+    }
     private readonly Dictionary<(FfmsMediaSession Media,double Start,double Duration),AudioSpectrumTile> _spectrumCache=[];
     public async Task<WriteableBitmap?> CreateSpectrumAsync(double start,double duration,CancellationToken token)
     {

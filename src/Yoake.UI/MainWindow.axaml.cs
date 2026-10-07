@@ -26,6 +26,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         InitializeComponent();
         if(OperatingSystem.IsWindows()){WindowDecorations=Avalonia.Controls.WindowDecorations.Full;ExtendClientAreaToDecorationsHint=true;ExtendClientAreaTitleBarHeightHint=36;TitleTabStrip.Padding=new Thickness(0,0,140,0);}
+        SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&e.Property==TextBox.CaretIndexProperty)_model.TextCursor=SubtitleText.CaretIndex;};
@@ -36,7 +37,36 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is not null){_model.FrameReady-=FrameReady;_model.PropertyChanged-=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
-        if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;_model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
+        if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;
+            for(var i=0;i<Math.Min(8,_model.GridColumnWidths.Count);i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(_model.GridColumnWidths[i]);_model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
+    }
+    private int _resizeColumn=-1;
+    private double _resizeStart, _resizeWidth;
+    private void HeaderPressed(object? sender,PointerPressedEventArgs e)
+    {
+        if(!e.GetCurrentPoint(ColumnHeader).Properties.IsLeftButtonPressed)return;
+        var x=e.GetPosition(ColumnHeader).X;double boundary=0;
+        for(var i=0;i<8;i++)
+        {
+            boundary+=ColumnHeader.ColumnDefinitions[i].ActualWidth+4;
+            if(Math.Abs(x-boundary)>7)continue;
+            _resizeColumn=i;_resizeStart=e.GetPosition(this).X;_resizeWidth=ColumnHeader.ColumnDefinitions[i].ActualWidth;e.Pointer.Capture(ColumnHeader);e.Handled=true;break;
+        }
+    }
+    private void HeaderMoved(object? sender,PointerEventArgs e)
+    {
+        if(_resizeColumn<0)return;
+        ColumnHeader.ColumnDefinitions[_resizeColumn].Width=new GridLength(Math.Clamp(_resizeWidth+e.GetPosition(this).X-_resizeStart,24,600));ApplyRowWidths();e.Handled=true;
+    }
+    private async void HeaderReleased(object? sender,PointerReleasedEventArgs e)
+    {
+        if(_resizeColumn<0)return;_resizeColumn=-1;e.Pointer.Capture(null);
+        if(_model is not null)await _model.Registry.InvokeAsync(CommandIds.GridColumnWidths,new(),ColumnHeader.ColumnDefinitions.Take(8).Select(c=>c.Width.Value).ToArray());
+    }
+    private void ApplyRowWidths()
+    {
+        foreach(var row in SubtitleRows.GetVisualDescendants().OfType<Grid>().Where(g=>g.Tag as string=="SubtitleRow"))
+            for(var i=0;i<8;i++)if(row.ColumnDefinitions[i].Width!=ColumnHeader.ColumnDefinitions[i].Width)row.ColumnDefinitions[i].Width=ColumnHeader.ColumnDefinitions[i].Width;
     }
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
@@ -55,7 +85,13 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null)return;
         _selectionSync=true;
-        try{_model.SelectedEvents.Clear();foreach(var line in SubtitleRows.SelectedItems.OfType<AssEvent>())_model.SelectedEvents.Add(line);}
+        try
+        {
+            var next=e.AddedItems.OfType<AssEvent>().LastOrDefault()??SubtitleRows.SelectedItems.OfType<AssEvent>().FirstOrDefault();
+            _model.SelectedEvent=next;
+            if(_model.SelectedEvent!=next){Dispatcher.UIThread.Post(SyncSelection);return;}
+            _model.SelectedEvents.Clear();foreach(var line in SubtitleRows.SelectedItems.OfType<AssEvent>())_model.SelectedEvents.Add(line);
+        }
         finally{_selectionSync=false;}
     }
     private async void HandleKey(object? sender,KeyEventArgs e)

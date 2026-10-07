@@ -90,7 +90,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (ReferenceEquals(_selectedEvent,value)) return;
             if (!CommitDraft()) { OnPropertyChanged(); return; }
             CancelGesture();
-            _selectedEvent=value; ReloadDraft(); OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));
+            _selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft(); OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));
             if (value?.StartMilliseconds is { } start && !IsPlaying) CurrentTimeSeconds=start/1000d;
             _registry.NotifyStateChanged();
         }
@@ -208,7 +208,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         var state=id is { } key && _documents.TryGetValue(key,out var found) ? found : null;
         _activeSubtitleDocument=state?.Editor.Document; _media=state?.Media;
         _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SelectedEvents.Clear(); if (_selectedEvent is not null) SelectedEvents.Add(_selectedEvent);
-        ReloadDraft(); VideoFrame=null; WaveformSamples=state?.Waveform ?? Array.Empty<float>(); MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
+        _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft(); VideoFrame=null; WaveformSamples=state?.Waveform ?? Array.Empty<float>(); MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
         _currentTimeSeconds=state?.Time ?? 0;
         foreach(var name in new[]{nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia)}) OnPropertyChanged(name);
         MediaStatus=_media?.SourcePath ?? "Open video/audio"; InvalidateSubtitlePreview(true); _registry.NotifyStateChanged();

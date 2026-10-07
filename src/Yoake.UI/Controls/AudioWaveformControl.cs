@@ -85,7 +85,12 @@ public sealed class AudioWaveformControl : Control
         var cursor=X(model.CurrentTimeSeconds);context.DrawLine(new Pen(Brushes.White,1),new(cursor,0),new(cursor,Bounds.Height));
         // Second grid, useful even with no audio loaded.
         var step=Math.Max(0.1,Math.Pow(10,Math.Floor(Math.Log10(_span/8))));
-        for(var t=Math.Ceiling(_start/step)*step;t<_start+_span;t+=step){var x=X(t);context.DrawLine(neighbor,new(x,Bounds.Height-5),new(x,Bounds.Height));}
+        for(var t=Math.Ceiling(_start/step)*step;t<_start+_span;t+=step)
+        {
+            var x=X(t);context.DrawLine(neighbor,new(x,Bounds.Height-5),new(x,Bounds.Height));
+            var label=new FormattedText(AssTime.Format((long)(t*1000)),System.Globalization.CultureInfo.InvariantCulture,FlowDirection.LeftToRight,Typeface.Default,9,Brushes.LightGray);
+            context.DrawText(label,new Point(x+2,Bounds.Height-14));
+        }
     }
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
@@ -125,7 +130,7 @@ public sealed class AudioWaveformControl : Control
         var cancellation=new CancellationTokenSource();_analysis=cancellation;
         try { var bitmap=await model.CreateSpectrumAsync(_start,_span,cancellation.Token);if(cancellation.IsCancellationRequested){bitmap?.Dispose();return;}var old=_spectrum;_spectrum=bitmap;old?.Dispose();InvalidateVisual(); }
         catch(OperationCanceledException) { }
-        catch(Exception e){model.Registry.ReportFailure("audio/spectrogram",e);}
+        catch(Exception e){if(!cancellation.IsCancellationRequested)model.Registry.ReportFailure("audio/spectrogram",e);}
     }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e){Cancel();_analysis?.Cancel();_spectrum?.Dispose();_spectrum=null;base.OnDetachedFromVisualTree(e);}
 }

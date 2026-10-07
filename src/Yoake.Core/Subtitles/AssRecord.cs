@@ -53,7 +53,8 @@ public sealed class AssEvent : AssRecord
     public string Text { get => Get("Text"); set => Set("Text", value); }
     private string? _startSource, _endSource;
     private long? _startTime, _endTime;
-    private bool _isActive;
+    private bool _isActive, _isCurrent;
+    public bool IsCurrent {get=>_isCurrent;internal set{if(_isCurrent==value)return;_isCurrent=value;Notify(nameof(IsCurrent));}}
     public bool IsActive { get=>_isActive; internal set {if(_isActive==value)return;_isActive=value;Notify(nameof(IsActive));} }
     public long? StartMilliseconds {get {var source=Start;if(_startSource!=source){_startSource=source;_startTime=AssTime.TryParse(source,out var t)?t:null;}return _startTime;} }
     public long? EndMilliseconds {get {var source=End;if(_endSource!=source){_endSource=source;_endTime=AssTime.TryParse(source,out var t)?t:null;}return _endTime;} }

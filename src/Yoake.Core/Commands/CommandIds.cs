@@ -2,6 +2,7 @@ namespace Yoake.Core.Commands;
 
 public static class CommandIds
 {
+    public const string GridColumnWidths = "view/grid-column-widths";
     public const string SubtitleNew = "subtitle/new";
     public const string SubtitleOpen = "subtitle/open";
     public const string SubtitleSave = "subtitle/save";

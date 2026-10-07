@@ -86,6 +86,8 @@ public sealed class AssDocument
     {
         var bytes = File.ReadAllBytes(path); Encoding encoding; var skip = 0;
         if (bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF })) { encoding = new UTF8Encoding(true, true); skip = 3; }
+        else if (bytes.AsSpan().StartsWith(new byte[] { 0xFF, 0xFE, 0x00, 0x00 })) { encoding = new UTF32Encoding(false,true,true); skip=4; }
+        else if (bytes.AsSpan().StartsWith(new byte[] { 0x00, 0x00, 0xFE, 0xFF })) { encoding = new UTF32Encoding(true,true,true); skip=4; }
         else if (bytes.AsSpan().StartsWith(new byte[] { 0xFF, 0xFE })) { encoding = new UnicodeEncoding(false, true, true); skip = 2; }
         else if (bytes.AsSpan().StartsWith(new byte[] { 0xFE, 0xFF })) { encoding = new UnicodeEncoding(true, true, true); skip = 2; }
         else encoding = new UTF8Encoding(false, true);
@@ -145,7 +147,7 @@ public sealed class AssDocument
             if (old >= 0) target.Move(old, i); else target.Insert(i, items[i]);
         }
     }
-    private void RecordChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { if (e.PropertyName is not "Number" and not "IsActive") Touch(); }
+    private void RecordChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { if (e.PropertyName is not "Number" and not "IsActive" and not "IsCurrent") Touch(); }
     internal void Touch() { _cached = null; if(_updateDepth>0){_pendingChange=true;return;} Revision++; Changed?.Invoke(this, EventArgs.Empty); }
     internal IDisposable BeginUpdate() { _updateDepth++;return new UpdateScope(this); }
     private sealed class UpdateScope(AssDocument owner) : IDisposable
@@ -156,6 +158,13 @@ public sealed class AssDocument
             if(owner._pendingSync){owner._pendingSync=false;owner.Synchronize();}
             if(owner._pendingChange){owner._pendingChange=false;owner.Touch();}
         }
+    }
+    private AssEvent? _currentEvent;
+    public void UpdateCurrentEvent(AssEvent? line)
+    {
+        if(_currentEvent==line)return;
+        if(_currentEvent is not null)_currentEvent.IsCurrent=false;
+        _currentEvent=line;if(line is not null)line.IsCurrent=true;
     }
     public void UpdateActiveTime(long milliseconds)
     {

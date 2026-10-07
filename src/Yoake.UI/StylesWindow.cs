@@ -51,7 +51,7 @@ public sealed class StylesWindow : Window
         try
         {
             var values=_inputs.ToDictionary(p=>p.Key,p=>p.Value.Text??"");
-            StyleValidation.Validate(values);
+            StyleValidation.Validate(values.Where(p=>_selected.Get(p.Key)!=p.Value).ToDictionary());
             _editor.EditStyle(_selected,values);_status.Text="Style applied. Rename updates event references; delete requires a replacement.";return true;
         }
         catch(Exception e){_status.Text=e.Message;return false;}
@@ -86,7 +86,7 @@ internal static class StyleValidation
             }
             if(p.Key is "PrimaryColour" or "SecondaryColour" or "OutlineColour" or "BackColour")
             {
-                var color=p.Value.Trim();if(!color.StartsWith("&H",StringComparison.OrdinalIgnoreCase)||!uint.TryParse(color[2..].TrimEnd('&'),System.Globalization.NumberStyles.HexNumber,null,out _))throw new ArgumentException($"{p.Key}: enter ASS &HAABBGGRR hex color.");
+                var color=p.Value.Trim();if(!(color.StartsWith("&H",StringComparison.OrdinalIgnoreCase)&&uint.TryParse(color[2..].TrimEnd('&'),System.Globalization.NumberStyles.HexNumber,null,out _))&&!int.TryParse(color,out _)&&!uint.TryParse(color,out _))throw new ArgumentException($"{p.Key}: enter ASS &HAABBGGRR hex color.");
             }
             if(p.Key is "Alignment" or "BorderStyle" or "MarginL" or "MarginR" or "MarginV" or "Encoding" or "Bold" or "Italic" or "Underline" or "StrikeOut")
                 if(!int.TryParse(p.Value,out var integer)||p.Key=="Alignment"&&integer is <1 or >9)throw new ArgumentException($"Invalid {p.Key}.");
