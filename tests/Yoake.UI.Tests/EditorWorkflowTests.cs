@@ -81,6 +81,15 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.Equal(2,_model.SelectedEvents.Count);Assert.Contains(first,_model.SelectedEvents);Assert.Contains(second,_model.SelectedEvents);
         _model.SelectedEvent=null;Assert.Empty(_model.SelectedEvents);Assert.Null(_model.Draft);
     }
+    [Fact] public async Task StyleManagerMutationsRefreshMainStyleChoicesBeforeDraftSelection()
+    {
+        await Command(CommandIds.GridInsertAfter);var style=_model.ActiveEditor!.Document.Styles[0];
+        var observed=false;
+        _model.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(MainWindowViewModel.EditorDraft)&&_model.Draft?.Style=="Renamed 日本")observed=_model.StyleNames.Contains(_model.Draft.Style);};
+        _model.ActiveEditor.EditStyle(style,new Dictionary<string,string>{{"Name","Renamed 日本"}});
+        Assert.True(observed);Assert.Equal("Renamed 日本",_model.Draft!.Style);Assert.Contains("Renamed 日本",_model.StyleNames);
+        await Command(CommandIds.EditUndo);Assert.Equal("Default",_model.Draft.Style);Assert.Contains("Default",_model.StyleNames);Assert.DoesNotContain("Renamed 日本",_model.StyleNames);
+    }
     [Fact] public async Task TimingAndVisualGesturesRollbackOnCancelAndCommitOnce()
     {
         await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;

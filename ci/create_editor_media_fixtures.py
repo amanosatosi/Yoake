@@ -33,7 +33,17 @@ for frame in range(frames):
 (root / 'video.avi').write_bytes(chunk(b'RIFF', b'AVI ' + header + list_chunk(b'movi', video) + chunk(b'idx1', index)))
 with wave.open(str(root / 'audio.wav'), 'wb') as audio:
     audio.setparams((1, 2, 48000, 96000, 'NONE', 'not compressed'))
-    audio.writeframes(b''.join(struct.pack('<h', 0 if i < 24000 else int(16000 * math.sin(2 * math.pi * 440 * i / 48000))) for i in range(96000)))
+    def sample(i):
+        t = i / 48000
+        if t < 0.5:
+            return 0
+        # Speech-like bursts with a varying asymmetric envelope. A constant
+        # sine at timing zoom necessarily looks like a flat solid rectangle.
+        burst = math.sin(math.pi * ((t - 0.5) % 0.3) / 0.3) ** 2
+        amplitude = (0.3 + 0.5 * (0.5 + 0.5 * math.sin(2 * math.pi * 1.7 * t))) * burst
+        carrier = math.sin(2 * math.pi * 440 * t)
+        return int(24000 * amplitude * (carrier if carrier < 0 else carrier * 0.7))
+    audio.writeframes(b''.join(struct.pack('<h', sample(i)) for i in range(96000)))
 print('Created deterministic AVI and PCM audio fixtures')
 
 # A real large multilingual document for container virtualization and end/middle scrolling.

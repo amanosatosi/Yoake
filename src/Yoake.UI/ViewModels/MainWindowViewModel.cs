@@ -25,6 +25,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private sealed class DocumentState(SubtitleEditor editor)
     {
         public SubtitleEditor Editor { get; } = editor;
+        public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
         public FfmsMediaSession? Media;
         public WaveformData? Waveform;
         public double Time;
@@ -112,7 +113,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         try{await Task.Delay(900,token);Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(!token.IsCancellationRequested&&!_disposed)CommitDraft();});}catch(OperationCanceledException){}
     }
     public IReadOnlyList<AssEvent> Events => _activeSubtitleDocument?.Events ?? (IReadOnlyList<AssEvent>)Array.Empty<AssEvent>();
-    public IReadOnlyList<string> StyleNames => _activeSubtitleDocument?.Styles.Select(s=>s.Name).ToArray() ?? [];
+    public IReadOnlyList<string> StyleNames => _activeId is {} id&&_documents.TryGetValue(id,out var state)?state.StyleNames:[];
     public IReadOnlyList<string> ActorNames => Events.Select(l=>l.Actor).Where(s=>s.Length>0).Distinct().Order().ToArray();
     public AssEvent? SelectedEvent
     {
@@ -195,7 +196,19 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         var state=new DocumentState(new SubtitleEditor(document)); _documents[session.Id]=state;
         document.Changed+=(_,_)=> { session.IsDirty=true; if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision)); } };
-        state.Editor.Undo.Changed+=(_,_)=> { session.IsDirty=state.Editor.IsDirty; if (_activeId==session.Id) { ReloadDraft(); _registry.NotifyStateChanged(); } };
+        state.Editor.Undo.Changed+=(_,_)=>
+        {
+            session.IsDirty=state.Editor.IsDirty;
+            var names=document.Styles.Select(s=>s.Name).ToArray();var namesChanged=!names.SequenceEqual(state.StyleNames);
+            if(namesChanged)state.StyleNames=names;
+            if(_activeId==session.Id)
+            {
+                // Refresh choices before the draft binding selects the renamed
+                // style. Otherwise ComboBox retains an absent/blank selection.
+                if(namesChanged)OnPropertyChanged(nameof(StyleNames));
+                ReloadDraft();_registry.NotifyStateChanged();
+            }
+        };
         state.Editor.MarkSaved();
     }
     public bool OpenSubtitle(string path)

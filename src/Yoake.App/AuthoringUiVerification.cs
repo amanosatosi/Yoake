@@ -95,7 +95,8 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 _previewRevision=styles.Preview.RequestedRevision;
                 return false;
             case 8:
-                _colors=new AssColorDialog(new AssColor(255,128,192,128),Path.Combine(Path.GetDirectoryName(report)!,"recent-colors.txt"));_colors.Show(window);return false;
+                Require(window.FindControl<ComboBox>("LineStyle")!.SelectedItem as string==model.Draft!.Style,"Style rename must refresh and select the current style in the main editor.");
+                _colors=new AssColorDialog(new AssColor(255,128,192,128),Path.Combine(Path.GetDirectoryName(report)!,"recent-colors.txt")){RequestedThemeVariant=ThemeVariant.Dark};_colors.Show(window);return false;
             case 9:
                 Require(_colors is not null,"Canonical color dialog must open.");
                 Require(Named<ColorSpectrum>(_colors!,"ColorSpectrum").Bounds.Width>=256&&Named<ColorSpectrum>(_colors!,"ColorSpectrum").Bounds.Height>=256,"Canonical picker must realize a full 2D spectrum.");

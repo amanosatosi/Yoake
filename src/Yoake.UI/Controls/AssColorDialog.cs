@@ -23,6 +23,7 @@ public sealed class AssColorDialog : Window
     private readonly TextBox _exact=new(){Name="AssHex",Padding=new Thickness(4,1)};
     private readonly TextBox _html=new(){Name="HtmlHex",Padding=new Thickness(4,1)};
     private readonly Border _preview=new();
+    private readonly Border _transparencyGradient=new();
     private readonly TextBlock _error=new(){TextWrapping=TextWrapping.Wrap,FontSize=11};
     private readonly RecentColorStore _recent;
     private readonly CommandRegistry _commands=new(new FileAppLog(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Yoake","authoring.log")));
@@ -36,9 +37,13 @@ public sealed class AssColorDialog : Window
         var root=new Grid{Margin=new Thickness(10),ColumnDefinitions=new("316,*"),RowDefinitions=new("Auto,Auto,Auto"),ColumnSpacing=12,RowSpacing=8};Content=root;
         var left=new StackPanel{Spacing=6};root.Children.Add(left);
         left.Children.Add(new TextBlock{Text="Color spectrum · HSV/H",FontWeight=FontWeight.SemiBold});
-        var spectra=new Grid{ColumnDefinitions=new("*,24,24"),ColumnSpacing=4,Height=256};spectra.Children.Add(_spectrum);Grid.SetColumn(_hue,1);spectra.Children.Add(_hue);var alphaStrip=new Grid();alphaStrip.Children.Add(new CheckerboardControl());alphaStrip.Children.Add(_alpha);Grid.SetColumn(alphaStrip,2);spectra.Children.Add(alphaStrip);left.Children.Add(spectra);
+        var spectra=new Grid{ColumnDefinitions=new("*,24,24"),ColumnSpacing=4,Height=256};spectra.Children.Add(_spectrum);
+        // Fluent's slider template does not paint Slider.Background. Keep the
+        // component gradients as explicit visuals behind the native slider input.
+        var hueStrip=new Grid{Name="HueStrip"};var hueGradient=new Border();hueStrip.Children.Add(hueGradient);hueStrip.Children.Add(_hue);Grid.SetColumn(hueStrip,1);spectra.Children.Add(hueStrip);
+        var alphaStrip=new Grid();alphaStrip.Children.Add(new CheckerboardControl());alphaStrip.Children.Add(_transparencyGradient);alphaStrip.Children.Add(_alpha);Grid.SetColumn(alphaStrip,2);spectra.Children.Add(alphaStrip);left.Children.Add(spectra);
         var hueStops=new GradientStops();for(var h=0;h<=360;h+=60){var c=ColorSpace.FromHsv(h,1,1);hueStops.Add(new(Color.FromRgb(c.Red,c.Green,c.Blue),h/360d));}
-        _hue.Background=new LinearGradientBrush{StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(0,1,RelativeUnit.Relative),GradientStops=hueStops};
+        hueGradient.Background=new LinearGradientBrush{StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(0,1,RelativeUnit.Relative),GradientStops=hueStops};
         ToolTip.SetTip(_hue,"Hue (degrees)");ToolTip.SetTip(_alpha,"ASS transparency: 00 opaque, FF transparent");
         var previews=new Grid{ColumnDefinitions=new("*,*"),Height=40};var original=Preview(color);previews.Children.Add(original);var current=new Grid();current.Children.Add(new CheckerboardControl());current.Children.Add(_preview);Grid.SetColumn(current,1);previews.Children.Add(current);left.Children.Add(previews);
         left.Children.Add(new TextBlock{Text="Original                                      Current",FontSize=11});
@@ -103,7 +108,7 @@ public sealed class AssColorDialog : Window
         for(var s=0;s<3;s++)for(var i=0;i<3;i++)_channels[s][i].Value=(decimal)Math.Round(values[s][i],2);
         if(updateExact)_exact.Text=_color.StyleValue;if(updateHtml)_html.Text=ColorSpace.Html(_color);
         _preview.Background=new SolidColorBrush(Color.FromArgb(_color.Opacity,_color.Red,_color.Green,_color.Blue));
-        _alpha.Background=new LinearGradientBrush{StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(0,1,RelativeUnit.Relative),GradientStops=[new(Color.FromRgb(_color.Red,_color.Green,_color.Blue),0),new(Colors.Transparent,1)]};_sync=false;
+        _transparencyGradient.Background=new LinearGradientBrush{StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(0,1,RelativeUnit.Relative),GradientStops=[new(Color.FromRgb(_color.Red,_color.Green,_color.Blue),0),new(Colors.Transparent,1)]};_sync=false;
     }
     private void StartDropper()
     {

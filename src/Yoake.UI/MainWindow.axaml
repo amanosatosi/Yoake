@@ -163,7 +163,7 @@
         <DockPanel><TextBlock Text="EDIT PANEL" FontSize="11" FontWeight="SemiBold" /><Button Content="Finish · Ctrl+Enter" Command="{Binding Actions[edit/commit]}" Padding="4,0" HorizontalAlignment="Right" FontSize="11" /></DockPanel>
         <Grid Grid.Row="1" ColumnDefinitions="80,1.2*,26,*,*,86" ColumnSpacing="3">
           <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
-          <ComboBox Height="26" VerticalAlignment="Center" Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding EditorDraft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
+          <ComboBox Name="LineStyle" Height="26" VerticalAlignment="Center" Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding EditorDraft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
           <Button Height="26" VerticalAlignment="Center" Grid.Column="2" Content="…" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" />
           <AutoCompleteBox Height="26" VerticalAlignment="Center" Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
           <TextBox Height="26" VerticalAlignment="Center" Grid.Column="4" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
