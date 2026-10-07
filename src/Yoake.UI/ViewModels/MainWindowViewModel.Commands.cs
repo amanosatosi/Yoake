@@ -107,6 +107,16 @@ public sealed partial class MainWindowViewModel
         }
         void S(string id,string label,Action action,Func<bool>? available=null)=>R(id,label,_=>{action();return ValueTask.CompletedTask;},available);
         bool HasLine()=>HasSelectedEvent && _gesture is null;
+        S(CommandIds.FormatBold,"Bold  Ctrl+B",()=>ToggleFormat("b"),HasLine);
+        S(CommandIds.FormatItalic,"Italic  Ctrl+I",()=>ToggleFormat("i"),HasLine);
+        S(CommandIds.FormatUnderline,"Underline  Ctrl+U",()=>ToggleFormat("u"),HasLine);
+        S(CommandIds.FormatStrikeout,"Strikeout",()=>ToggleFormat("s"),HasLine);
+        R(CommandIds.FormatFont,"Font family and size…",_=>FormatFontAsync(),HasLine);
+        foreach(var item in new[]{(CommandIds.FormatPrimary,1),(CommandIds.FormatSecondary,2),(CommandIds.FormatOutline,3),(CommandIds.FormatShadow,4)})
+        {var channel=item.Item2;R(item.Item1,"Choose subtitle color…",_=>FormatColorAsync(channel),HasLine);}
+        S(CommandIds.FormatReset,"Reset to line style",()=>FormatText("Reset formatting",(text,start,end,style)=>AssFormatting.Reset(text,start,end,style,ResolveFormatStyle)),HasLine);
+        R(CommandIds.EditComment,"Dialogue / Comment",invocation=>{if(invocation.Parameter is bool desired)RunEdit(e=>{if(SelectedEvent!.IsComment!=desired)e.ToggleComment([SelectedEvent]);});return ValueTask.CompletedTask;},HasLine);
+
         void GestureStep(Action action){try{action();}catch{CancelGestureCore();throw;}}
         R(CommandIds.GestureBegin,"Begin editor gesture",i=>{BeginGestureCore(i.Parameter as string??"Edit subtitle");return ValueTask.CompletedTask;});
         R(CommandIds.GestureTiming,"Drag subtitle timing",i=>{if(i.Parameter is TimingGestureUpdate p)GestureStep(()=>UpdateTimingGestureCore(p.Part,p.Delta));return ValueTask.CompletedTask;});
@@ -171,6 +181,7 @@ public sealed partial class MainWindowViewModel
         void H(string id,string key,KeyModifiers modifiers=KeyModifiers.None,HotkeyContext context=HotkeyContext.Always)=>Hotkeys.Add(new(id,context,new(key,modifiers)));
         H(CommandIds.SubtitleNew,"N",KeyModifiers.Control);H(CommandIds.SubtitleOpen,"O",KeyModifiers.Control);H(CommandIds.SubtitleSave,"S",KeyModifiers.Control);H(CommandIds.SubtitleSaveAs,"S",KeyModifiers.Control|KeyModifiers.Shift);H(CommandIds.SubtitleClose,"W",KeyModifiers.Control);
         H(CommandIds.EditUndo,"Z",KeyModifiers.Control);H(CommandIds.EditRedo,"Y",KeyModifiers.Control);H(CommandIds.EditRedo,"Z",KeyModifiers.Control|KeyModifiers.Shift);H(CommandIds.EditFind,"F",KeyModifiers.Control);
+        H(CommandIds.FormatBold,"B",KeyModifiers.Control,HotkeyContext.SubtitleEdit);H(CommandIds.FormatItalic,"I",KeyModifiers.Control,HotkeyContext.SubtitleEdit);H(CommandIds.FormatUnderline,"U",KeyModifiers.Control,HotkeyContext.SubtitleEdit);
         H(CommandIds.EditCommit,"Enter",KeyModifiers.Control);H(CommandIds.EditCommitNext,"Enter",context:HotkeyContext.SubtitleEdit);H(CommandIds.EditCommitNext,"Enter",context:HotkeyContext.SubtitleGrid);
         H(CommandIds.EditCancel,"Escape");H(CommandIds.VideoStop,"Escape",context:HotkeyContext.Video);H(CommandIds.VideoStop,"Escape",context:HotkeyContext.Audio);
         foreach(var context in new[]{HotkeyContext.Video,HotkeyContext.Audio,HotkeyContext.SubtitleGrid}){H(CommandIds.VideoPlay,"Space",context:context);H(CommandIds.AudioPlaySelection,"R",context:context);}

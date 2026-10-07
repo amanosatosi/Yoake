@@ -14,6 +14,7 @@ using Yoake.Core.Logging;
 using Yoake.Core.Subtitles;
 using Yoake.UI.Services;
 using Yoake.UI.ViewModels;
+using Yoake.UI.Controls;
 
 namespace Yoake.UI;
 
@@ -34,15 +35,15 @@ public partial class MainWindow : Window, IEditorDialogs
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
         VideoSeekBar.AddHandler(PointerPressedEvent,VideoSeekPressed,RoutingStrategies.Tunnel,true);
         VideoSeekBar.AddHandler(PointerReleasedEvent,VideoSeekReleased,RoutingStrategies.Tunnel,true);
-        SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&e.Property==TextBox.CaretIndexProperty)_model.TextCursor=SubtitleText.CaretIndex;};
+        SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_model.TextCursor=SubtitleText.CaretIndex;_model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;}};
         Closing+=HandleClosing;
         Closed+=(_,_)=>_model?.Dispose();
     }
     private void AttachModel()
     {
-        if(_model is not null){_model.FrameReady-=FrameReady;_model.PropertyChanged-=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        if(_model is not null){_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.PropertyChanged-=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
-        if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;
+        if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
@@ -76,6 +77,18 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         foreach(var row in SubtitleRows.GetVisualDescendants().OfType<Grid>().Where(g=>g.Tag as string=="SubtitleRow"))
             for(var i=0;i<Math.Min(8,Math.Min(row.ColumnDefinitions.Count,ColumnHeader.ColumnDefinitions.Count));i++)if(row.ColumnDefinitions[i].Width!=ColumnHeader.ColumnDefinitions[i].Width)row.ColumnDefinitions[i].Width=ColumnHeader.ColumnDefinitions[i].Width;
+    }
+    private void FormattingApplied(object? sender,EventArgs args)
+    {
+        if(_model is null)return;var start=_model.TextSelectionStart;var end=_model.TextSelectionEnd;var cursor=_model.TextCursor;SubtitleText.Focus();SubtitleText.CaretIndex=cursor;SubtitleText.SelectionStart=start;SubtitleText.SelectionEnd=end;
+    }
+    public Task<AssColor?> ChooseColorAsync(AssColor color)=>new AssColorDialog(color).ShowDialog<AssColor?>(this);
+    public async Task<FontChoice?> ChooseFontAsync(string family,string size)
+    {
+        var dialog=new Window{Title="Subtitle font",Width=380,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};
+        var panel=new StackPanel{Margin=new Thickness(12),Spacing=6};var picker=new FontPicker{FontName=family};panel.Children.Add(picker);
+        var number=new NumericUpDown{Minimum=0.1m,Maximum=10000,Increment=1,Value=decimal.TryParse(size,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var value)?value:60};
+        panel.Children.Add(new TextBlock{Text="Size"});panel.Children.Add(number);var apply=new Button{Content="Apply font",IsDefault=true};apply.Click+=(_,_)=>dialog.Close(new FontChoice(picker.FontName,(number.Value??60).ToString(System.Globalization.CultureInfo.InvariantCulture)));panel.Children.Add(apply);var cancel=new Button{Content="Cancel",IsCancel=true};cancel.Click+=(_,_)=>dialog.Close();panel.Children.Add(cancel);dialog.Content=panel;return await dialog.ShowDialog<FontChoice?>(this);
     }
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
@@ -190,7 +203,7 @@ public partial class MainWindow : Window, IEditorDialogs
         return data is null?null:await data.TryGetTextAsync();
     }
     public async Task WriteClipboardAsync(string text){if(Clipboard is not null){var data=new DataTransfer();data.Add(DataTransferItem.CreateText(text));await Clipboard.SetDataAsync(data);await Clipboard.FlushAsync();}}
-    public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor).ShowDialog(this);
+    public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor,_model?.StyleLibraryPath, _model?.SelectedEvent).ShowDialog(this);
     public Task ShowScriptInfoAsync(SubtitleEditor editor)=>new ScriptInfoWindow(editor).ShowDialog(this);
     public Task ShowFindAsync(MainWindowViewModel model)=>new FindWindow(model).ShowDialog(this);
 }

@@ -4,11 +4,26 @@
              RequestedThemeVariant="Default">
   <Application.Styles>
     <FluentTheme />
+    <StyleInclude Source="avares://Yoake.UI/Controls/AssEditor.axaml" />
   </Application.Styles>
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="AssSyntaxText">#252A32</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxBrace">#6C7280</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxTag">#175EAD</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxMangetsuTag">#74429B</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxKaraoke">#A14A13</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxParameter">#625341</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxNumber">#825026</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxColor">#16734D</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxEscape">#A03749</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxSeparator">#69717D</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxDrawing">#176E80</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxUnknown">#6E6475</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxFurigana">#7950A2</SolidColorBrush>
+
           <SolidColorBrush x:Key="AppBackgroundBrush">#F3F4F6</SolidColorBrush>
           <SolidColorBrush x:Key="PanelBrush">#FFFFFF</SolidColorBrush>
           <SolidColorBrush x:Key="TabStripBrush">#EAECF0</SolidColorBrush>
@@ -20,6 +35,20 @@
           <SolidColorBrush x:Key="IconAccentBrush">#4467D7</SolidColorBrush>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="AssSyntaxText">#E9ECF1</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxBrace">#929BAA</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxTag">#8AB8F0</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxMangetsuTag">#C8A0EB</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxKaraoke">#F0B172</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxParameter">#C6BDAC</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxNumber">#DBBD91</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxColor">#82C6A3</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxEscape">#EF9C9F</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxSeparator">#A8B1BF</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxDrawing">#83C7D8</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxUnknown">#AEA3B7</SolidColorBrush>
+          <SolidColorBrush x:Key="AssSyntaxFurigana">#C5ACE9</SolidColorBrush>
+
           <SolidColorBrush x:Key="AppBackgroundBrush">#17191D</SolidColorBrush>
           <SolidColorBrush x:Key="PanelBrush">#202329</SolidColorBrush>
           <SolidColorBrush x:Key="TabStripBrush">#14161A</SolidColorBrush>

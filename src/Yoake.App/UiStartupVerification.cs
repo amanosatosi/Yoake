@@ -18,6 +18,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private int _ticks, _layouts;
     private bool _opened, _loaded, _inserted;
+    private StylesWindow? _styles;
 
     public void Start()
     {
@@ -52,12 +53,26 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             Require(ReferenceEquals(window.FindControl<AudioWaveformControl>("AudioDisplay")?.Model, model), "Waveform model binding must initialize.");
             Require(ReferenceEquals(window.FindControl<VisualOverlayControl>("VisualOverlay")?.Model, model), "Visual overlay model binding must initialize.");
             Require(window.GetVisualDescendants().OfType<Button>().Count(b => b.Command is not null) >= 8, "Toolbar command bindings must initialize.");
+            var text = window.FindControl<AssTextBox>("SubtitleText")!;
+            Require(text.GetVisualDescendants().OfType<AssTextPresenter>().Any(), "ASS editor must use its real native text presenter.");
+            if (_styles is null)
+            {
+                _styles = new StylesWindow(model.ActiveEditor!, model.StyleLibraryPath, model.SelectedEvent);
+                _styles.Show(window);
+                return; // Exercise the shipping inline style editor and background Mangetsu preview.
+            }
+            Require(_styles.Preview.LastError is null, "Mangetsu style preview failed: " + _styles.Preview.LastError);
+            if (!_styles.Preview.HasFrame) return;
+            Require(_styles.GetVisualDescendants().OfType<FontPicker>().Any(), "Style font picker must be realized.");
+            Require(_styles.GetVisualDescendants().OfType<AssColorField>().Any(), "Style color controls must be realized.");
+            Require(_styles.GetVisualDescendants().OfType<AssAlignmentPicker>().Any(), "Style alignment control must be realized.");
+            _styles.Close();
             Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
             Invoke(CommandIds.EditUndo); // Restore a clean untitled document before normal shutdown.
             Require(!model.ActiveEditor!.IsDirty, "Startup probe must leave no unsaved document.");
             _timer.Stop();
-            StartupDiagnostics.Checkpoint($"UI verified: opened, loaded, {_layouts} layouts, 10 dispatcher ticks, real row/selection/custom-control/command bindings");
-            options.FinishVerification($"PASS: real MainWindow opened/visible/loaded; native platform; {_layouts} layouts; dispatcher responsive; real model, grid row/selection, custom controls and command bindings; no Avalonia startup errors.\n");
+            StartupDiagnostics.Checkpoint($"UI verified: opened, loaded, {_layouts} layouts, 10 dispatcher ticks, real row/selection/custom-control/command bindings, ASS editor, inline style controls and Mangetsu style preview");
+            options.FinishVerification($"PASS: real MainWindow opened/visible/loaded; native platform; {_layouts} layouts; dispatcher responsive; real model, grid row/selection, custom controls and command bindings; ASS text presenter and inline Styles Manager with real Mangetsu preview; no Avalonia startup errors.\n");
             StartupDiagnostics.Complete();
             desktop.Shutdown(0);
         }

@@ -107,6 +107,15 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.SelectedEvent=_model.Events[1];_model.Draft!.Actor="restored";await Command(CommandIds.EditCommit);Assert.Equal("restored",_model.Events[1].Actor);
         Assert.False(_model.IsSynchronizingSelection);
     }
+    [Fact] public async Task SelectionFormattingCommitsDraftAndHasIndependentUndo()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="Hello world";
+        _model.TextSelectionStart=6;_model.TextSelectionEnd=11;
+        await Command(CommandIds.FormatBold);Assert.Equal("Hello {\\b1}world{\\b0}",_model.SelectedEvent!.Text);
+        Assert.Equal("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
+        await Command(CommandIds.EditUndo);Assert.Equal("Hello world",_model.SelectedEvent.Text);
+        await Command(CommandIds.EditRedo);Assert.Equal("Hello {\\b1}world{\\b0}",_model.SelectedEvent.Text);
+    }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
     private sealed class TestDialogs : IEditorDialogs
     {

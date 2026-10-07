@@ -140,13 +140,44 @@
     </Border>
     <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
     <Border Grid.Row="2" Margin="3,3,6,6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-      <Grid Name="EventEditorRegion" Margin="6" RowDefinitions="24,28,28,28,24,*" IsEnabled="{Binding HasSelectedEvent}">
-        <DockPanel><TextBlock Text="EDIT PANEL" FontWeight="SemiBold" FontSize="12" /><Button Content="Commit (Ctrl+Enter)" Command="{Binding Actions[edit/commit]}" Padding="5,0" HorizontalAlignment="Right" /><TextBlock Text="{Binding SelectedEvent.Duration, StringFormat='Duration {0}'}" Margin="8,0" FontSize="11" /></DockPanel>
-        <Grid Grid.Row="1" ColumnDefinitions="40,*,34,*,38,60" ColumnSpacing="4"><TextBlock Text="Start" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Draft.Start, Mode=TwoWay}" Padding="4,1" /><TextBlock Grid.Column="2" Text="End" VerticalAlignment="Center" /><TextBox Grid.Column="3" Text="{Binding Draft.End, Mode=TwoWay}" Padding="4,1" /><TextBlock Grid.Column="4" Text="Layer" VerticalAlignment="Center" /><TextBox Grid.Column="5" Text="{Binding Draft.Layer, Mode=TwoWay}" Padding="4,1" /></Grid>
-        <Grid Grid.Row="2" ColumnDefinitions="40,*,40,*" ColumnSpacing="4"><TextBlock Text="Style" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding Draft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="4,1" /><TextBlock Grid.Column="2" Text="Actor" VerticalAlignment="Center" /><AutoCompleteBox Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding Draft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="4,1" /></Grid>
-        <Grid Grid.Row="3" ColumnDefinitions="40,*,18,54,18,54,18,54" ColumnSpacing="4"><TextBlock Text="Effect" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Draft.Effect, Mode=TwoWay}" Padding="4,1" /><TextBlock Grid.Column="2" Text="L" VerticalAlignment="Center" /><TextBox Grid.Column="3" Text="{Binding Draft.MarginL, Mode=TwoWay}" Padding="4,1" /><TextBlock Grid.Column="4" Text="R" VerticalAlignment="Center" /><TextBox Grid.Column="5" Text="{Binding Draft.MarginR, Mode=TwoWay}" Padding="4,1" /><TextBlock Grid.Column="6" Text="V" VerticalAlignment="Center" /><TextBox Grid.Column="7" Text="{Binding Draft.MarginV, Mode=TwoWay}" Padding="4,1" /></Grid>
+      <Grid Name="EventEditorRegion" Margin="5" RowDefinitions="20,28,28,28,14,*" IsEnabled="{Binding HasSelectedEvent}">
+        <Grid.Styles>
+          <Style Selector="TextBox"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
+          <Style Selector="ComboBox"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
+          <Style Selector="NumericUpDown"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
+          <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
+        </Grid.Styles>
+        <DockPanel><TextBlock Text="EDIT PANEL" FontSize="11" FontWeight="SemiBold" /><Button Content="Commit · Ctrl+Enter" Command="{Binding Actions[edit/commit]}" Padding="4,0" HorizontalAlignment="Right" FontSize="11" /></DockPanel>
+        <Grid Grid.Row="1" ColumnDefinitions="82,*,26,*,*,60" ColumnSpacing="3">
+          <CheckBox Content="Comment" IsChecked="{Binding SelectedEvent.IsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
+          <ComboBox Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding Draft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
+          <Button Grid.Column="2" Content="…" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" />
+          <AutoCompleteBox Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding Draft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" Watermark="Actor" ToolTip.Tip="Actor / Name" />
+          <TextBox Grid.Column="4" Text="{Binding Draft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
+          <NumericUpDown Grid.Column="5" Value="{Binding Draft.LayerNumber, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
+        </Grid>
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,*,Auto,70,Auto,58,Auto,58,Auto,58" ColumnSpacing="3">
+          <TextBlock Text="Start" FontSize="10" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Draft.Start, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start h:mm:ss.cc" />
+          <TextBlock Grid.Column="2" Text="End" FontSize="10" VerticalAlignment="Center" /><TextBox Grid.Column="3" Text="{Binding Draft.End, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End h:mm:ss.cc" />
+          <TextBlock Grid.Column="4" Text="Dur." FontSize="10" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding Draft.Duration}" FontSize="11" VerticalAlignment="Center" />
+          <TextBlock Grid.Column="6" Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Grid.Column="7" Value="{Binding Draft.LeftMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Left margin" />
+          <TextBlock Grid.Column="8" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Grid.Column="9" Value="{Binding Draft.RightMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Right margin" />
+          <TextBlock Grid.Column="10" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Grid.Column="11" Value="{Binding Draft.VerticalMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Vertical margin" />
+        </Grid>
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="3">
+          <Button Content="B" FontWeight="Bold" Command="{Binding Actions[text/format/bold]}" Padding="6,0" ToolTip.Tip="Bold · Ctrl+B" />
+          <Button Content="I" FontStyle="Italic" Command="{Binding Actions[text/format/italic]}" Padding="6,0" ToolTip.Tip="Italic · Ctrl+I" />
+          <Button Content="U" Command="{Binding Actions[text/format/underline]}" Padding="6,0" ToolTip.Tip="Underline · Ctrl+U" />
+          <Button Content="S̶" Command="{Binding Actions[text/format/strikeout]}" Padding="6,0" ToolTip.Tip="Strikeout" />
+          <Button Content="Font…" Command="{Binding Actions[text/format/font]}" Padding="5,0" ToolTip.Tip="Font family and size for selection" />
+          <Button Content="Primary" Command="{Binding Actions[text/format/primary]}" Padding="4,0" FontSize="11" ToolTip.Tip="Primary color / alpha" />
+          <Button Content="Secondary" Command="{Binding Actions[text/format/secondary]}" Padding="4,0" FontSize="11" ToolTip.Tip="Secondary karaoke color / alpha" />
+          <Button Content="Outline" Command="{Binding Actions[text/format/outline]}" Padding="4,0" FontSize="11" ToolTip.Tip="Outline color / alpha" />
+          <Button Content="Shadow" Command="{Binding Actions[text/format/shadow]}" Padding="4,0" FontSize="11" ToolTip.Tip="Shadow color / alpha" />
+          <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="4,0" FontSize="11" ToolTip.Tip="Reset to line style at caret / selection" />
+        </StackPanel>
         <TextBlock Grid.Row="4" Text="Enter: commit and next · Shift+Enter: newline · Ctrl+Shift+D: split" FontSize="10" VerticalAlignment="Center" />
-        <TextBox Name="SubtitleText" Grid.Row="5" FontSize="14" Padding="5" Text="{Binding Draft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" PlaceholderText="Select a subtitle row" />
+        <controls:AssTextBox Name="SubtitleText" Grid.Row="5" FontSize="14" Text="{Binding Draft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" />
       </Grid>
     </Border>
   </Grid>

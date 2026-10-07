@@ -174,6 +174,11 @@ public sealed class SubtitleEditor(AssDocument document)
         Structure("Delete style", () => Document.Remove(style)); transaction.Commit();
     }
     public void MoveStyle(AssStyle style, int direction) { Require(style); var i = Document.Styles.IndexOf(style) + Math.Sign(direction); if (i >= 0 && i < Document.Styles.Count) Structure("Reorder styles", () => Document.Swap(style, Document.Styles[i])); }
+    internal void DeleteLibraryStyle(AssStyle style)
+    {
+        Require(style);if(Document.Events.Count!=0)throw new InvalidOperationException("Library deletion requires a style-only document.");
+        Structure("Delete library preset",()=>Document.Remove(style));
+    }
     public void SetScriptInfo(IReadOnlyDictionary<string, string> values)
     {
         var changed=values.Where(p=>Document.GetScriptInfo(p.Key)!=p.Value).ToArray();if(changed.Length==0)return;
