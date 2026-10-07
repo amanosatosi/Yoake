@@ -28,7 +28,7 @@ public sealed class FontPicker : UserControl
         var panel=new StackPanel();var row=new Grid{ColumnDefinitions=new("*,Auto")};row.Children.Add(_entry);Grid.SetColumn(_browse,1);row.Children.Add(_browse);panel.Children.Add(row);panel.Children.Add(_status);Content=panel;
         _popup.PlacementTarget=this;var browser=new Border{Child=_list,BorderThickness=new Thickness(1),BorderBrush=Brushes.Gray};_popup.Child=browser;
         browser.Bind(Border.BackgroundProperty,this.GetResourceObservable("AppBackgroundBrush"));
-        _browse.Click+=(_,_)=>OpenBrowser();ToolTip.SetTip(_browse,"Browse all installed font families (Alt+Down)");
+        _browse.Click+=(_,_)=>{if(_popup.IsOpen)CloseBrowser();else OpenBrowser();};ToolTip.SetTip(_browse,"Browse all installed font families (Alt+Down)");
         _entry.KeyDown+=(_,e)=>{if(e.Key==Key.Down){OpenBrowser();_list.Focus();e.Handled=true;}else if(e.Key==Key.Escape)_popup.IsOpen=false;};
         _list.KeyDown+=(_,e)=>{if(e.Key==Key.Enter){Choose();e.Handled=true;}else if(e.Key==Key.Escape){_popup.IsOpen=false;_entry.Focus();e.Handled=true;}};
         _list.DoubleTapped+=(_,_)=>Choose();
@@ -43,6 +43,7 @@ public sealed class FontPicker : UserControl
         DetachedFromVisualTree+=(_,_)=>_popup.IsOpen=false;
     }
     public void OpenBrowser(){_entry.IsDropDownOpen=false;_list.ItemsSource=_fonts;_list.SelectedItem=_fonts.FirstOrDefault(f=>f.Equals(FontName,StringComparison.OrdinalIgnoreCase));_popup.IsOpen=true;}
+    public void CloseBrowser()=>_popup.IsOpen=false;
     private void Choose(){if(_list.SelectedItem is not string family)return;SetCurrentValue(FontNameProperty,family);ValueChanged?.Invoke(this,EventArgs.Empty);_popup.IsOpen=false;_entry.Focus();}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {

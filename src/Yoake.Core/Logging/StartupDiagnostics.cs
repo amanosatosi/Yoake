@@ -13,6 +13,7 @@ public static class StartupDiagnostics
     private static string _version = "unknown";
     private static bool _startupComplete;
     public static int FrameworkErrorCount { get; private set; }
+    public static int BindingWarningCount {get;private set;}
     public static string? LogDirectory => _directory;
 
     public static void Initialize(string version, string? directory = null)
@@ -43,12 +44,13 @@ public static class StartupDiagnostics
         }
     }
 
-    public static void FrameworkMessage(string message, bool error)
+    public static void FrameworkMessage(string message, bool error, bool bindingWarning=false)
     {
         lock (Gate)
         {
             if (_startupComplete) return;
             if (error) FrameworkErrorCount++;
+            if(bindingWarning)BindingWarningCount++;
             Checkpoint("Avalonia: " + message);
         }
     }

@@ -55,19 +55,20 @@ public sealed partial class MainWindowViewModel
         var start=part==1 ? _gestureStart : Math.Max(0,_gestureStart+delta);
         var end=part==0 ? _gestureEnd : Math.Max(start,_gestureEnd+delta);
         if (part==2 && _gestureStart+delta<0) end=_gestureEnd-_gestureStart;
-        start=Math.Min(start,end); _gestureEditor.SetTiming(_gestureLine,start,end);
+        start=Math.Min(start,end); _gestureEditor.SetTiming(_gestureLine,start,end);GestureChanged();
     }
     private void UpdatePositionGestureCore(double x,double y)
     {
         if (_gesture is null || _gestureEditor is null || _gestureLine is null) return;
-        _gestureEditor.SetField(_gestureLine,"Text",AssVisualTags.SetPosition(_gestureText,new(x,y)),"Position subtitle");
+        _gestureEditor.SetField(_gestureLine,"Text",AssVisualTags.SetPosition(_gestureText,new(x,y)),"Position subtitle");GestureChanged();
     }
     private void UpdateClipGestureCore(int pointIndex,AssPoint point,AssPoint anchor)
     {
         if (_gesture is null || _gestureEditor is null || _gestureLine is null) return;
         var text=pointIndex==-2 ? AssVisualTags.TranslateClip(_gestureText,new(point.X-anchor.X,point.Y-anchor.Y)) : pointIndex>=0 ? AssVisualTags.MoveClipPoint(_gestureText,pointIndex,point) : AssVisualTags.SetRectangle(_gestureText,InverseClip,anchor,point);
-        _gestureEditor.SetField(_gestureLine,"Text",text,"Edit subtitle clip");
+        _gestureEditor.SetField(_gestureLine,"Text",text,"Edit subtitle clip");GestureChanged();
     }
+    private void GestureChanged(){InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));}
     private void EndGestureCore() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); ReloadDraft(); } }
     private void CancelGestureCore() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); if(gesture is not null)ReloadDraft(); }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
@@ -106,6 +107,12 @@ public sealed partial class MainWindowViewModel
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext);
         }
         void S(string id,string label,Action action,Func<bool>? available=null)=>R(id,label,_=>{action();return ValueTask.CompletedTask;},available);
+        R("styles/layout","Remember style list proportions",i=>
+        {
+            if(i.Parameter is double[] weights&&weights.Length==3&&weights.All(w=>double.IsFinite(w)&&w>0))
+            {_settings=(_settings with{StyleSplitWeights=(double[])weights.Clone()}).Normalize();_settingsStore.Save(_settings);}
+            return ValueTask.CompletedTask;
+        });
         bool HasLine()=>HasSelectedEvent && _gesture is null;
         foreach(var setting in new[]{"audio/volume","audio/mute","audio/display/height","audio/display/intensity"})
         {var id=setting;R(id,id,i=>{SaveAudioSetting(id,i.Parameter);return ValueTask.CompletedTask;});}

@@ -33,12 +33,12 @@ public sealed class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task AudioCommandsPersistVolumeMuteAndIndependentDisplayControls()
     {
-        await Command("audio/volume",0.35);await Command("audio/mute",true);await Command("audio/display/intensity",3d);await Command("audio/display/height",210d);
-        var settings=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal(0.35,settings.PlaybackVolume);Assert.True(settings.PlaybackMuted);Assert.Equal(3,settings.AudioIntensity);Assert.Equal(210,settings.AudioDisplayHeight);
+        await Command("audio/volume",0.35);await Command("audio/mute",true);await Command("audio/display/intensity",3d);await Command("audio/display/height",210d);await Command("styles/layout",new double[]{1.1,1.2,3.5});
+        var settings=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal(0.35,settings.PlaybackVolume);Assert.True(settings.PlaybackMuted);Assert.Equal(3,settings.AudioIntensity);Assert.Equal(210,settings.AudioDisplayHeight);Assert.Equal(new double[]{1.1,1.2,3.5},settings.StyleSplitWeights);
     }
     [Fact] public async Task NewDocumentIsConnectedAndInsertCanBeEdited()
     {
-        Assert.NotNull(_model.ActiveEditor);Assert.Empty(_model.Events);await Command(CommandIds.GridInsertAfter);
+        Assert.NotNull(_model.ActiveEditor);Assert.Empty(_model.Events);Assert.Null(_model.Draft);Assert.Equal("",_model.EditorDraft.Text);await Command(CommandIds.GridInsertAfter);
         Assert.Single(_model.Events);Assert.NotNull(_model.Draft);_model.Draft!.Text="日本語 မြန်မာ 👩‍👩‍👧‍👦";
         Assert.True(_workspace.ActiveDocument!.IsDirty);await Command(CommandIds.EditCommit);
         Assert.Equal("日本語 မြန်မာ 👩‍👩‍👧‍👦",_model.Events[0].Text);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);

@@ -12,7 +12,7 @@ internal sealed class StartupLogSink(ILogSink? previous) : ILogSink
         try
         {
             if (level >= LogEventLevel.Warning)
-                StartupDiagnostics.FrameworkMessage($"{level} [{area}] {messageTemplate} | {string.Join(" | ", propertyValues.Select(v => v?.ToString()))}", level >= LogEventLevel.Error);
+                StartupDiagnostics.FrameworkMessage($"{level} [{area}] {messageTemplate} | {string.Join(" | ", propertyValues.Select(v => v?.ToString()))}", level >= LogEventLevel.Error, area=="Binding");
         }
         catch (Exception) { /* A diagnostic sink must not create a startup crash. */ }
         if (previous?.IsEnabled(level, area) == true) previous.Log(level, area, source, messageTemplate, propertyValues);

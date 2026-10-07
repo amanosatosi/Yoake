@@ -24,3 +24,5 @@ FontPicker caches asynchronous installed-family enumeration. Its visible dropdow
 opens a virtualized full list immediately, independently of the search prefix.
 Typing still searches and accepts an exact family. Unavailable names are marked
 without substituting their stored value.
+
+Both style colors and selection formatting use the same history file beside the active settings profile, including portable profiles. Collection/list splitter proportions are stored through the settings command, and collection editing stays collapsed until needed.

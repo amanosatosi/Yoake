@@ -23,6 +23,7 @@ public sealed record AppSettings
     public bool PlaybackMuted {get;init;}
     public double? AudioDisplayHeight {get;init;}
     public double? AudioIntensity {get;init;}
+    public double[]? StyleSplitWeights {get;init;}
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? FutureSettings { get; set; }
@@ -50,6 +51,7 @@ public sealed record AppSettings
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
         return this with { GridColumnWidths = widths, RecentFiles = recent, Theme = theme,
             CompactGridColumnWidths=CompactGridColumnWidths is {Length:7} compact&&compact.All(w=>double.IsFinite(w)&&w>=24&&w<=600)?compact:null,
+            StyleSplitWeights=StyleSplitWeights is {Length:3} split&&split.All(w=>double.IsFinite(w)&&w>0)?split.Select(w=>Math.Clamp(w,0.1,10)).ToArray():null,
             PlaybackVolume=PlaybackVolume is {} volume&&double.IsFinite(volume)?Math.Clamp(volume,0,1):0.8,
             AudioDisplayHeight=AudioDisplayHeight is {} audioHeight&&double.IsFinite(audioHeight)?Math.Clamp(audioHeight,100,400):160,
             AudioIntensity=AudioIntensity is {} intensity&&double.IsFinite(intensity)?Math.Clamp(intensity,0.1,8):1,

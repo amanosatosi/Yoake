@@ -15,6 +15,8 @@ public sealed class AssColorField : UserControl
     private readonly TextBox _exact=new(){MinWidth=106,Padding=new Thickness(4,1),FontSize=11};
     private bool _sync;
     public string Value {get=>GetValue(ValueProperty);set=>SetValue(ValueProperty,value);}
+    public string? RecentColorsPath {get;set;}
+    public Action<Exception>? ReportFailure {get;set;}
     public event EventHandler? ValueChanged;
     public event EventHandler? ValueCommitted;
     public AssColorField()
@@ -31,10 +33,10 @@ public sealed class AssColorField : UserControl
             try
             {
                 var initial=AssColor.TryParse(Value,out var parsed)?parsed:new AssColor(255,255,255,0);
-                var result=await new AssColorDialog(initial).ShowDialog<AssColor?>(owner);
+                var result=await new AssColorDialog(initial,RecentColorsPath).ShowDialog<AssColor?>(owner);
                 if(result is {} color){SetCurrentValue(ValueProperty,color.StyleValue);ValueChanged?.Invoke(this,EventArgs.Empty);ValueCommitted?.Invoke(this,EventArgs.Empty);}
             }
-            catch(Exception exception){ToolTip.SetTip(_exact,exception.Message);}
+            catch(Exception exception){ReportFailure?.Invoke(exception);ToolTip.SetTip(_exact,exception.Message);}
         };
         Refresh();
     }

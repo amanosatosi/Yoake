@@ -1,5 +1,6 @@
 param(
   [Parameter(Mandatory = $true)][string]$Executable,
+  [string]$MediaFixturesRoot,
   [string]$VerificationRoot
 )
 $ErrorActionPreference = 'Stop'
@@ -30,6 +31,7 @@ foreach ($case in @('clean', 'legacy', 'damaged', 'null-collections', 'irrecover
     if ($null -ne $json) { Set-Content -LiteralPath (Join-Path $profile 'settings.json') -Value $json -Encoding utf8 }
   }
   $arguments = @('--verify-ui-startup', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $profile), '--diagnostics-directory', ('"{0}"' -f $logs))
+  if ($MediaFixturesRoot) { $arguments += @('--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot)))) }
   $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
   try {
     if (-not $process.WaitForExit(40000)) { throw "UI startup verification timed out: $case" }

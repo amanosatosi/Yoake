@@ -34,6 +34,7 @@ public partial class MainWindow : Window, IEditorDialogs
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
         Opened+=(_,_)=>UpdateChrome();
+        LayoutUpdated+=(_,_)=>UpdateChrome();
         ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(UpdateChrome);
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
         TitleTabStrip.SizeChanged+=(_,_)=>UpdateTabLimit();
@@ -85,7 +86,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is null)return;var start=_model.TextSelectionStart;var end=_model.TextSelectionEnd;var cursor=_model.TextCursor;SubtitleText.Focus();SubtitleText.CaretIndex=cursor;SubtitleText.SelectionStart=start;SubtitleText.SelectionEnd=end;
     }
-    public Task<AssColor?> ChooseColorAsync(AssColor color)=>new AssColorDialog(color).ShowDialog<AssColor?>(this);
+    public Task<AssColor?> ChooseColorAsync(AssColor color)=>new AssColorDialog(color,_model?.RecentColorsPath).ShowDialog<AssColor?>(this);
     public async Task<FontChoice?> ChooseFontAsync(string family,string size)
     {
         var dialog=new Window{Title="Subtitle font",Width=380,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};
@@ -160,10 +161,26 @@ public partial class MainWindow : Window, IEditorDialogs
         catch(Exception exception){_model.Registry.ReportFailure("window/close",exception);}
         finally{_closingPending=false;}
     }
+    public bool RedundantCaptionHidden {get;private set;}
     private void UpdateChrome()
     {
-        if(OperatingSystem.IsWindows()&&TryGetPlatformHandle() is {} handle)
-            TitleTabStrip.Padding=new Thickness(0,0,Yoake.Native.WindowsChrome.Configure(handle.Handle,RenderScaling),0);
+        if(!OperatingSystem.IsWindows())return;
+        // Avalonia 12's extended client area uses a decoration overlay. Its
+        // title text paints ABOVE our tabs; hiding Win32 NC text alone cannot
+        // fix that. Keep the framework caption buttons and their platform roles.
+        var root=this.GetVisualAncestors().LastOrDefault()??this;
+        var decorations=root.GetVisualDescendants().OfType<Avalonia.Controls.Chrome.WindowDrawnDecorations>().FirstOrDefault();
+        var parts=decorations?.GetVisualDescendants().OfType<Control>().ToArray()??[];
+        if(parts.FirstOrDefault(c=>c.Name=="PART_TitleTextPanel") is {} title)
+        {title.IsVisible=false;RedundantCaptionHidden=true;}
+        var buttons=parts.FirstOrDefault(c=>c.Name=="PART_OverlayPanel");
+        double inset=0;
+        if(buttons is {IsVisible:true}&&buttons.Bounds.Width>0&&buttons.TranslatePoint(default,this) is {} top)
+            inset=Math.Max(0,ClientSize.Width-top.X);
+        else if(TryGetPlatformHandle() is {} handle)
+            inset=Yoake.Native.WindowsChrome.CaptionWidth(handle.Handle,RenderScaling);
+        var padding=new Thickness(0,0,inset,0);
+        if(TitleTabStrip.Padding!=padding)TitleTabStrip.Padding=padding;
         UpdateTabLimit();
     }
     private void UpdateTabLimit()=>TabScroll.MaxWidth=Math.Max(0,TitleTabStrip.Bounds.Width-TitleTabStrip.Padding.Right-80);
@@ -202,7 +219,7 @@ public partial class MainWindow : Window, IEditorDialogs
         return data is null?null:await data.TryGetTextAsync();
     }
     public async Task WriteClipboardAsync(string text){if(Clipboard is not null){var data=new DataTransfer();data.Add(DataTransferItem.CreateText(text));await Clipboard.SetDataAsync(data);await Clipboard.FlushAsync();}}
-    public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor,_model?.StyleLibraryPath, _model?.SelectedEvent).ShowDialog(this);
+    public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor,_model?.StyleLibraryPath, _model?.SelectedEvent,_model?.StyleSplitWeights,weights=>{if(_model is {} model)_=model.Registry.InvokeAsync("styles/layout",new(),weights);}).ShowDialog(this);
     public Task ShowScriptInfoAsync(SubtitleEditor editor)=>new ScriptInfoWindow(editor).ShowDialog(this);
     public Task ShowFindAsync(MainWindowViewModel model)=>new FindWindow(model).ShowDialog(this);
 }

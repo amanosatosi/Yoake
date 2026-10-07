@@ -13,6 +13,7 @@ public sealed class VideoFrameSlider : Control
     public static readonly StyledProperty<MainWindowViewModel?> ModelProperty=AvaloniaProperty.Register<VideoFrameSlider,MainWindowViewModel?>(nameof(Model));
     public MainWindowViewModel? Model{get=>GetValue(ModelProperty);set=>SetValue(ModelProperty,value);}
     private bool _drag,_resume;
+    public int RenderedKeyframeMarks {get;private set;}
     public int KeyframeCount=>Model?.Keyframes.Count??0;
     public VideoFrameSlider(){Focusable=true;MinHeight=24;ToolTip.SetTip(this,"Seek by frame · Shift+click: nearest keyframe · Wheel: frames · Shift+wheel: keyframes");}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs e)
@@ -31,8 +32,9 @@ public sealed class VideoFrameSlider : Control
         context.FillRectangle(Brushes.Transparent,new Rect(Bounds.Size));
         var accent=this.TryFindResource("IconAccentBrush",ActualThemeVariant,out var value)&&value is IBrush brush?brush:Brushes.DodgerBlue;
         var track=new Pen(Brushes.Gray,1);context.DrawLine(track,new(5,Bounds.Height/2),new(Math.Max(5,Bounds.Width-5),Bounds.Height/2));
+        RenderedKeyframeMarks=0;
         if(Model is not {} model)return;var last=-1;
-        foreach(var key in model.Keyframes){var pixel=(int)X(key);if(pixel==last)continue;last=pixel;context.DrawLine(new Pen(accent,1),new(pixel,2),new(pixel,8));}
+        foreach(var key in model.Keyframes){var pixel=(int)X(key);if(pixel==last)continue;last=pixel;RenderedKeyframeMarks++;context.DrawLine(new Pen(accent,1),new(pixel,2),new(pixel,8));}
         context.DrawRectangle(accent,null,new Rect(X(model.CurrentFrame)-3,7,6,Math.Max(4,Bounds.Height-10)));
         if(IsFocused)context.DrawRectangle(null,new Pen(accent,1),new Rect(Bounds.Size).Deflate(1));
     }

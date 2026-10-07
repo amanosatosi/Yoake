@@ -17,6 +17,8 @@ public sealed partial class MainWindowViewModel
     private Dictionary<string,string> CaretFormatState()=>AssFormatting.State(Draft!.Text,
         AssFormatting.Boundary(Draft.Text,Math.Min(TextSelectionStart,TextSelectionEnd),TextSelectionStart==TextSelectionEnd),FormattingStyle,ResolveFormatStyle);
     public event EventHandler? TextFormattingApplied;
+    public double[] StyleSplitWeights=>_settings.StyleSplitWeights??[1,1,3.4];
+    public string RecentColorsPath=>Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!,"recent-colors.txt");
     public string StyleLibraryPath=>Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!,"style-library.json");
     private AssStyle FormattingStyle=>ActiveEditor!.Document.Styles.FirstOrDefault(s=>s.Name==(Draft?.Style??SelectedEvent?.Style))??ActiveEditor.Document.Styles.FirstOrDefault()??AssDocument.CreateEmpty().Styles[0];
     private void FormatText(string name,Func<string,int,int,AssStyle,AssTextEdit> operation)

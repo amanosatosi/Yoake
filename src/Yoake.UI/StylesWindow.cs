@@ -22,15 +22,13 @@ public sealed class StylesWindow : Window
     private readonly SubtitleEditor _script;
     private readonly AssEvent? _currentLine;
     private readonly StyleLibraryStore _library;
+    private readonly string _recentColorsPath;
     private readonly CommandRegistry _commands=new();
     private readonly ListBox _scriptList=new(){Name="ScriptStyles",SelectionMode=SelectionMode.Multiple},_libraryList=new(){Name="LibraryStyles",SelectionMode=SelectionMode.Multiple};
     private readonly ComboBox _collections=new(){Name="StyleCollections",HorizontalAlignment=HorizontalAlignment.Stretch,Padding=new Thickness(4,1),MinHeight=24};
     private readonly TextBox _collectionName=new(){Name="CollectionName",PlaceholderText="Collection name",Padding=new Thickness(4,1),MinHeight=24};
-    private readonly ComboBox _replacement=new(){Padding=new Thickness(4,1),MinHeight=24,HorizontalAlignment=HorizontalAlignment.Stretch};
     private readonly StackPanel _fields=new(){Spacing=4};
     private Panel? _fieldTarget;
-    private readonly StackPanel _replacementPanel=new(){Spacing=3};
-    private readonly TextBlock _replacementHint=new(){FontSize=10,TextWrapping=TextWrapping.Wrap};
     private readonly TextBlock _status=new(){FontSize=11,TextWrapping=TextWrapping.Wrap};
     private readonly TextBlock _identity=new(){FontSize=12,FontWeight=FontWeight.SemiBold};
     private readonly TextBox _sample=new(){Name="PreviewSample",Text="Yoake 0123\\N日本語 テスト\\Nမြန်မာ",Padding=new Thickness(4,2),MinHeight=26};
@@ -44,26 +42,29 @@ public sealed class StylesWindow : Window
     public CommandRegistry Registry=>_commands;
     private bool _refreshing,_applying,_applyOk=true;
     public StylePreviewControl Preview {get;}=new();
-    public StylesWindow(SubtitleEditor editor,string? libraryPath=null,AssEvent? currentLine=null)
+    public StylesWindow(SubtitleEditor editor,string? libraryPath=null,AssEvent? currentLine=null,double[]? splitWeights=null,Action<double[]>? saveLayout=null)
     {
         _script=editor;_currentLine=currentLine;
-        _library=new(libraryPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Yoake","style-library.json"));
+        var libraryFile=libraryPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Yoake","style-library.json");
+        _library=new(libraryFile);_recentColorsPath=Path.Combine(Path.GetDirectoryName(libraryFile)!,"recent-colors.txt");
         if(_library.Collections.Count==0)_library.Create("Personal");
         FontSize=12;Title="Styles Manager";Width=1180;Height=740;MinWidth=940;MinHeight=570;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         this.Bind(BackgroundProperty,this.GetResourceObservable("AppBackgroundBrush"));
         var root=new Grid{ColumnDefinitions=new("1*,4,1*,4,3.4*"),RowDefinitions=new("*,Auto"),Margin=new Thickness(8),ColumnSpacing=5,RowSpacing=5};Content=root;
+        if(splitWeights is {Length:3})for(var i=0;i<3;i++)root.ColumnDefinitions[i*2].Width=new GridLength(splitWeights[i],GridUnitType.Star);
+        Closed+=(_,_)=>{try{saveLayout?.Invoke(new[]{root.ColumnDefinitions[0].ActualWidth,root.ColumnDefinitions[2].ActualWidth,root.ColumnDefinitions[4].ActualWidth}.Select(w=>w/200).ToArray());}catch(Exception e){_commands.ReportFailure("styles/layout",e);}};
         root.ColumnDefinitions[0].MinWidth=168;root.ColumnDefinitions[2].MinWidth=160;root.ColumnDefinitions[4].MinWidth=440;
         foreach(var column in new[]{1,3}){var splitter=new GridSplitter{ResizeDirection=GridResizeDirection.Columns,Background=new SolidColorBrush(Color.FromArgb(70,128,128,128))};Grid.SetColumn(splitter,column);root.Children.Add(splitter);}
-        var storage=new Grid{RowDefinitions=new("22,28,Auto,Auto,*,Auto"),RowSpacing=3};root.Children.Add(storage);
+        var storage=new Grid{RowDefinitions=new("22,28,Auto,*,Auto"),RowSpacing=3};root.Children.Add(storage);
         storage.Children.Add(new TextBlock{Text="STYLE LIBRARY",FontWeight=FontWeight.SemiBold,FontSize=12});At(storage,_collections,1);
-        var collectionEdit=new Expander{Header="Manage collections",Content=_collectionName,FontSize=11,Padding=new Thickness(0)};At(storage,collectionEdit,2);
-        var catalogBar=new UniformGrid{Columns=3};At(storage,catalogBar,3);var libraryBar=new UniformGrid{Columns=2};At(storage,libraryBar,5);At(storage,_libraryList,4);
-        var script=new Grid{RowDefinitions=new("22,Auto,*,Auto,Auto"),RowSpacing=3};Grid.SetColumn(script,2);root.Children.Add(script);
+        var collectionControls=new StackPanel{Spacing=3};collectionControls.Children.Add(_collectionName);
+        var collectionEdit=new Expander{Header="Manage collections",Content=collectionControls,FontSize=11,Padding=new Thickness(0)};At(storage,collectionEdit,2);
+        var catalogBar=new UniformGrid{Columns=3};collectionControls.Children.Add(catalogBar);var libraryBar=new UniformGrid{Columns=2};At(storage,libraryBar,4);At(storage,_libraryList,3);
+        var script=new Grid{RowDefinitions=new("22,Auto,*,Auto"),RowSpacing=3};Grid.SetColumn(script,2);root.Children.Add(script);
         script.Children.Add(new TextBlock{Text="CURRENT SCRIPT",FontWeight=FontWeight.SemiBold,FontSize=12});
         var copyBar=new StackPanel{Spacing=3};At(script,copyBar,1);At(script,_scriptList,2);var scriptBar=new UniformGrid{Columns=2};At(script,scriptBar,3);
-        _replacementPanel.Children.Add(_replacementHint);_replacementPanel.Children.Add(_replacement);At(script,_replacementPanel,4);
         var pane=new Grid{Name="StyleEditorPane",RowDefinitions=new("24,*,28,150"),RowSpacing=3};Grid.SetColumn(pane,4);root.Children.Add(pane);
-        pane.Children.Add(_identity);At(pane,new ScrollViewer{Content=_fields,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled},1);
+        pane.Children.Add(_identity);At(pane,new ScrollViewer{Name="StyleProperties",Content=_fields,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled},1);
         var footer=new Grid{ColumnDefinitions=new("*,Auto")};Grid.SetRow(footer,1);Grid.SetColumnSpan(footer,5);root.Children.Add(footer);footer.Children.Add(_status);
         var editBar=new StackPanel{Orientation=Orientation.Horizontal,Spacing=3,HorizontalAlignment=HorizontalAlignment.Right};Grid.SetColumn(editBar,1);footer.Children.Add(editBar);At(pane,Preview,3);
         var sampleRow=new Grid{ColumnDefinitions=new("150,*"),ColumnSpacing=5};sampleRow.Children.Add(_previewMode);Grid.SetColumn(_sample,1);sampleRow.Children.Add(_sample);At(pane,sampleRow,2);
@@ -192,11 +193,6 @@ public sealed class StylesWindow : Window
         var selectedScript=_scriptList.SelectedItems?.OfType<string>().ToArray()??[];var selectedLibrary=_libraryList.SelectedItems?.OfType<string>().ToArray()??[];
         var scriptNames=_script.Document.Styles.Select(s=>s.Name).ToArray();_scriptList.ItemsSource=scriptNames;
         RestoreSelection(_scriptList,scriptNames,selectedScript,_scriptSelected?.Name);
-        var replacement=_replacement.SelectedItem as string;
-        var choices=scriptNames.Where(n=>n!=_scriptSelected?.Name).ToArray();_replacement.ItemsSource=choices;
-        _replacement.SelectedItem=choices.Contains(replacement)?replacement:choices.FirstOrDefault();
-        var count=_scriptSelected is null?0:_script.Document.Events.Count(e=>e.Style==_scriptSelected.Name);
-        _replacementPanel.IsVisible=false;
         var libraryNames=_collection is null?Array.Empty<string>():_library.Editor(_collection).Document.Styles.Select(s=>s.Name).ToArray();_libraryList.ItemsSource=libraryNames;RestoreSelection(_libraryList,libraryNames,selectedLibrary,_librarySelected?.Name);
         _refreshing=false;
     }
@@ -240,7 +236,7 @@ public sealed class StylesWindow : Window
         var colors=new UniformGrid{Columns=2,Rows=2};_fields.Children.Add(colors);
         foreach(var pair in new[]{("PrimaryColour","Primary"),("SecondaryColour","Secondary"),("OutlineColour","Outline"),("BackColour","Shadow")})
         {
-            if(!_draft.Has(pair.Item1))continue;var field=pair.Item1;var input=new AssColorField{Name="Style"+field,Value=_draft.Get(field)};input.ValueChanged+=(_,_)=>Changed(field,input.Value);input.ValueCommitted+=(_,_)=>Invoke("styles/apply");FinishOnBlur(input);
+            if(!_draft.Has(pair.Item1))continue;var field=pair.Item1;var input=new AssColorField{Name="Style"+field,Value=_draft.Get(field),RecentColorsPath=_recentColorsPath,ReportFailure=e=>_commands.ReportFailure("styles/color",e)};input.ValueChanged+=(_,_)=>Changed(field,input.Value);input.ValueCommitted+=(_,_)=>Invoke("styles/apply");FinishOnBlur(input);
             var row=Row(pair.Item2,input,58);row.Margin=new Thickness(0,0,6,2);colors.Children.Add(row);
         }
         var transforms=new Grid{ColumnDefinitions=new("*,*"),ColumnSpacing=8};_fields.Children.Add(transforms);

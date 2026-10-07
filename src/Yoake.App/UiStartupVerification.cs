@@ -37,6 +37,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
         {
             if (!_inserted)
             {
+                Require(model.Draft is null&&StartupDiagnostics.BindingWarningCount==0,"Initial empty document must produce no binding warnings.");
                 Invoke(CommandIds.GridInsertAfter);
                 _inserted = true;
                 return; // Let real row containers/bindings and selection initialize.
@@ -91,10 +92,11 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             Require(_styles.GetVisualDescendants().OfType<FontPicker>().Any(), "Style font picker must be realized.");
             Require(_styles.GetVisualDescendants().OfType<AssColorField>().Any(), "Style color controls must be realized.");
             Require(_styles.GetVisualDescendants().OfType<AssAlignmentPicker>().Any(), "Style alignment control must be realized.");
-            _authoring??=new(window,model,_styles,options.VerificationReport!);
+            _authoring??=new(window,model,_styles,options.VerificationReport!,options.VerificationMedia);
             if(!_authoring.Tick())return;
             _styles.Close();
             Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
+            Require(StartupDiagnostics.BindingWarningCount==0,"Authoring controls logged binding warnings; inspect startup.log.");
             while(model.ActiveEditor!.Undo.CanUndo)Invoke(CommandIds.EditUndo); // Undo the real editing probe before normal shutdown.
             Require(!model.ActiveEditor!.IsDirty, "Startup probe must leave no unsaved document.");
             _timer.Stop();

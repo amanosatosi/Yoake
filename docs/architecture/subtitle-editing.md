@@ -19,3 +19,5 @@ Event drafts now provide live presentation without changing saved source. AssEve
 AssTextBox delegates shaping, IME and ordinary navigation to Avalonia. Only Up on the first shaped visual line and Down on the final shaped visual line override movement, including Shift selection anchors. Preedit bypasses this override.
 
 Saving preserves UTF BOM/endianness and each source line ending, and replaces the destination only after a temporary file is written and flushed. Legacy code-page files are rejected before editing. No new runtime dependency or reflection-based serialization/editor framework is used.
+
+Undo transactions defer document change notifications. Gesture updates therefore invalidate the preview revision explicitly while reading transactional document state; commit/cancel then reload the normal draft. A nullable active draft represents no selected row; a separate detached `EditorDraft` supplies safe empty bindings without inventing a selected document record.

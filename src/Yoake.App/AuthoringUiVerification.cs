@@ -17,13 +17,17 @@ namespace Yoake.App;
 // Runs against the shipping controls after they are opened. DIP geometry is
 // checked at two window widths; 96/120/144/192-DPI captures aid visual review.
 // Raster captures do not simulate Windows monitor-DPI transitions or real IME.
-internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewModel model, StylesWindow styles, string report)
+internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewModel model, StylesWindow styles, string report, string? mediaFixtures)
 {
     private int _stage;
     private long _previewRevision;
     private double _normalEditorWidth;
     private AssStyle? _first, _second;
     private AssColorDialog? _colors;
+    private Task<bool>? _mediaLoading;
+    private long _draftRevision;
+    private byte[]? _beforeDraft;
+    private string? _committedText;
     private const string Sample = @"{\fad(200,200)\bord3\1c&HFFFFFF&\3c&H000000&}<仮|かり>の糸\N{\k20}こ{\k15}れ{\k30}は{\1grd(0,&HFF0000&,&H0000FF&)}テスト
 {\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text မြန်မာ é 👩‍👩‍👧‍👦
 {\fnArial\future(opaque)\p1}m 0 0 l 20 0 20 20{\p0}";
@@ -43,7 +47,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 text.CaretIndex=text.SelectionStart=text.SelectionEnd=Sample.Length;
                 return false;
             case 1:
-                CheckGrid();CheckNavigation(text);
+                CheckGrid();CheckNavigation(text);CheckStandardStyleVisibility();CheckChrome();
                 foreach(var scale in new[]{1d,1.25,1.5,2})Capture(window,$"editor-dark-{scale*100:0}",scale);
                 Capture(styles,"styles-dark-normal",1);
                 CheckMainFields();CheckSyntax(text);
@@ -52,6 +56,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Light;
                 return false;
             case 2:
+                Named<FontPicker>(styles,"StyleFont").CloseBrowser();
                 Capture(window,"editor-light-normal",1);Capture(styles,"styles-light-normal",1);CheckSyntax(text);
                 window.Width=1040;window.Height=760;styles.Width=940;styles.Height=650;
                 // Hosted Windows may constrain both requested window sizes to
@@ -96,12 +101,71 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Require(Named<StackPanel>(_colors!,"RecentColors").Bounds.Height>0,"Recent colors must have a separate visible area.");Capture(_colors!,"color-picker-dark",1);_colors!.RequestedThemeVariant=ThemeVariant.Light;return false;
             case 10:
                 Capture(_colors!,"color-picker-light",1);_colors!.Close();return false;
+            case 11:
+                Require(mediaFixtures is not null,"Packaged authoring verification requires deterministic media fixtures.");
+                _mediaLoading=model.OpenMediaAsync(Path.Combine(mediaFixtures!,"video.avi"));return false;
+            case 12:
+                if(!_mediaLoading!.IsCompleted){_stage--;return false;}
+                Require(_mediaLoading.Result&&model.VideoFrame is not null,"Real video must load into MainWindow.");
+                Require(model.FrameTimes.Count==10&&model.Keyframes.Count>0,"FFMS2 must supply actual frame/keyframe metadata.");
+                var slider=window.FindControl<VideoFrameSlider>("VideoSeekBar")!;
+                Capture(slider,"video-keyframe-ruler",2);
+                Require(slider.RenderedKeyframeMarks>0,"Keyframe metadata must reach actual ruler drawing.");
+                var snap=slider.FrameAt(slider.Bounds.Width*0.55,true);
+                Require(model.Keyframes.Contains(snap),"Shift-click coordinates must snap to an actual FFMS2 keyframe.");
+                _committedText=model.SelectedEvent!.Text;_beforeDraft=FramePixels();
+                foreach(var value in new[]{"L","Live","{\\an5}Live draft 日本語"})text.SetCurrentValue(TextBox.TextProperty,value);
+                _draftRevision=model.PreviewRevision;
+                Require(model.SelectedEvent.Text==_committedText&&model.Draft!.IsChanged,"Typing must leave permanent text unchanged before idle commit.");return false;
+            case 13:
+                if(model.DisplayedPreviewRevision<_draftRevision){_stage--;return false;}
+                Require(model.DisplayedPreviewRevision==model.PreviewRevision,"Displayed preview must reflect the latest draft revision.");
+                Require(model.Draft!.IsChanged&&model.SelectedEvent!.Text==_committedText,"Mangetsu must show the draft before idle commit.");
+                Require(!_beforeDraft!.AsSpan().SequenceEqual(FramePixels()),"Live draft must change actual composited video pixels.");
+                Capture(window,"editor-live-draft",1);Invoke(model.Registry,CommandIds.EditCancel);
+                Require(model.SelectedEvent.Text==_committedText&&!model.Draft.IsChanged,"Escape must revert the entire pending edit burst.");
+                _mediaLoading=model.OpenMediaAsync(Path.Combine(mediaFixtures!,"audio.wav"));return false;
+            case 14:
+                if(!_mediaLoading!.IsCompleted){_stage--;return false;}
+                Require(_mediaLoading.Result&&model.WaveformSamples is {Count:>100},"Real audio must generate the signed waveform.");
+                Require(model.WaveformSamples!.Envelopes.Min(p=>p.Minimum)<-0.1&&model.WaveformSamples.Envelopes.Max(p=>p.Maximum)>0.1,"Audio fixture must produce both signed extrema.");
+                var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;audio.VisibleSeconds=2;audio.ViewportStart=0;
+                return false;
+            case 15:
+                Capture(window,"editor-signed-waveform",1);return false;
             default:
                 Require(styles.Preview.LastError is null,"Latest style preview failed: "+styles.Preview.LastError);
                 if(!styles.Preview.HasCurrentFrame||styles.Preview.DisplayedRevision<_previewRevision)return false;
                 CheckStyleFields();Capture(styles,"styles-dark-narrow",1);
                 return true;
         }
+    }
+    private byte[] FramePixels()
+    {
+        using var buffer=model.VideoFrame!.Lock();var pixels=new byte[buffer.RowBytes*buffer.Size.Height];
+        System.Runtime.InteropServices.Marshal.Copy(buffer.Address,pixels,0,pixels.Length);return pixels;
+    }
+    private void CheckChrome()
+    {
+        if(!OperatingSystem.IsWindows())return;
+        Require(window.RedundantCaptionHidden,"The framework caption text must be suppressed above the first tab.");
+        var strip=window.FindControl<Border>("TitleTabStrip")!;
+        var tabs=window.FindControl<ScrollViewer>("TabScroll")!;
+        Require(strip.Padding.Right>0,"Caption buttons must reserve their measured area.");
+        var right=tabs.TranslatePoint(new Point(tabs.Bounds.Width,0),window)!.Value.X;
+        Require(right<=window.ClientSize.Width-strip.Padding.Right,"Tabs must end before caption buttons.");
+    }
+    private void CheckStandardStyleVisibility()
+    {
+        var scroll=Named<ScrollViewer>(styles,"StyleProperties");
+        Require(scroll.Extent.Height<=scroll.Viewport.Height+1,"All standard style fields must fit without scrolling at ordinary desktop size.");
+        foreach(var name in new[]{"StyleFontsize","StyleScaleX","StyleScaleY","StyleSpacing","StyleAngle","StyleMarginL","StyleMarginR","StyleMarginV","StyleEncoding","StyleAlignment"})
+        {
+            var field=styles.GetVisualDescendants().OfType<Control>().Single(c=>c.Name==name);
+            var y=field.TranslatePoint(default,scroll)!.Value.Y;
+            Require(y>=0&&y+field.Bounds.Height<=scroll.Bounds.Height+1,name+" must remain visible with the preview.");
+        }
+        Require(styles.Preview.Bounds.Height>=150,"Preview must remain visible while standard fields are edited.");
     }
     private void CheckGrid()
     {
