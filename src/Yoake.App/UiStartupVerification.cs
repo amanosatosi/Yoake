@@ -58,7 +58,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             if (!_editorVerified)
             {
                 const string source = "{\\bord2\\1c&H88FF00&\\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦\\NHello";
-                text.Text = source;
+                text.SetCurrentValue(TextBox.TextProperty, source);
                 Require(model.Draft?.Text == source, "Real ASS TextBox must update the edit draft without rewriting source.");
                 Invoke(CommandIds.EditCommit);
                 text.CaretIndex = source.Length;
