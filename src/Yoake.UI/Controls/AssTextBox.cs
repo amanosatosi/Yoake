@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using Avalonia.Utilities;
 using Yoake.Core.Subtitles;
 
 namespace Yoake.UI.Controls;

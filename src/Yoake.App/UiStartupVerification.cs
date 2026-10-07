@@ -17,7 +17,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private int _ticks, _layouts;
-    private bool _opened, _loaded, _inserted;
+    private bool _opened, _loaded, _inserted, _editorVerified;
     private StylesWindow? _styles;
 
     public void Start()
@@ -54,7 +54,30 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             Require(ReferenceEquals(window.FindControl<VisualOverlayControl>("VisualOverlay")?.Model, model), "Visual overlay model binding must initialize.");
             Require(window.GetVisualDescendants().OfType<Button>().Count(b => b.Command is not null) >= 8, "Toolbar command bindings must initialize.");
             var text = window.FindControl<AssTextBox>("SubtitleText")!;
-            Require(text.GetVisualDescendants().OfType<AssTextPresenter>().Any(), "ASS editor must use its real native text presenter.");
+            var presenter = text.GetVisualDescendants().OfType<AssTextPresenter>().Single();
+            if (!_editorVerified)
+            {
+                const string source = "{\\bord2\\1c&H88FF00&\\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦\\NHello";
+                text.Text = source;
+                Require(model.Draft?.Text == source, "Real ASS TextBox must update the edit draft without rewriting source.");
+                Invoke(CommandIds.EditCommit);
+                text.CaretIndex = source.Length;
+                text.SelectionStart = source.Length - 5;
+                text.SelectionEnd = source.Length;
+                Invoke(CommandIds.FormatBold);
+                Require(model.SelectedEvent!.Text.EndsWith("{\\b1}Hello{\\b0}", StringComparison.Ordinal), "Real selection formatting must preserve text and restore bold state.");
+                Require(presenter.TextLayout.TextLines.Count > 0, "Tagged Unicode must shape through the ASS text presenter.");
+                var formatted = text.Text;
+                presenter.PreeditText = "にほんご";
+                Require(presenter.TextLayout.TextLines.Count > 0, "IME preedit must use valid native text layout.");
+                presenter.PreeditText = null;
+                Require(text.Text == formatted, "IME preedit presentation must not modify the source.");
+                Invoke(CommandIds.EditUndo);
+                Require(model.SelectedEvent.Text == source, "Formatting undo must restore the exact tagged Unicode source.");
+                Invoke(CommandIds.EditUndo); // Undo text entry; the inserted row remains for style preview.
+                _editorVerified = true;
+                return;
+            }
             if (_styles is null)
             {
                 _styles = new StylesWindow(model.ActiveEditor!, model.StyleLibraryPath, model.SelectedEvent);
