@@ -20,7 +20,7 @@ namespace Yoake.UI;
 
 public partial class MainWindow : Window, IEditorDialogs
 {
-    private bool _closingAllowed, _closingPending, _selectionSync, _resumeVideoSeek;
+    private bool _closingAllowed, _closingPending, _selectionSync;
     private MainWindowViewModel? _model;
     private static readonly FilePickerFileType SubtitleFiles=new("ASS/SSA subtitles"){Patterns=["*.ass","*.ssa"]};
     private static readonly FilePickerFileType MediaFiles=new("Video/audio"){Patterns=["*.mkv","*.mp4","*.webm","*.avi","*.mov","*.m2ts","*.ts","*.mp3","*.flac","*.wav","*.m4a","*.ogg","*.opus"]};
@@ -28,13 +28,13 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         InitializeComponent();
         StartupDiagnostics.Checkpoint("MainWindow XAML initialized");
-        if(OperatingSystem.IsWindows()){WindowDecorations=Avalonia.Controls.WindowDecorations.Full;ExtendClientAreaToDecorationsHint=true;ExtendClientAreaTitleBarHeightHint=36;TitleTabStrip.Padding=new Thickness(0,0,140,0);}
+        if(OperatingSystem.IsWindows()){WindowDecorations=Avalonia.Controls.WindowDecorations.Full;ExtendClientAreaToDecorationsHint=true;ExtendClientAreaTitleBarHeightHint=36;}
         StartupDiagnostics.Checkpoint("MainWindow native decorations configured");
         SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
-        VideoSeekBar.AddHandler(PointerPressedEvent,VideoSeekPressed,RoutingStrategies.Tunnel,true);
-        VideoSeekBar.AddHandler(PointerReleasedEvent,VideoSeekReleased,RoutingStrategies.Tunnel,true);
+        Opened+=(_,_)=>UpdateChrome();
+        PropertyChanged+=(_,e)=>{if(e.Property==RenderScalingProperty||e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_model.TextCursor=SubtitleText.CaretIndex;_model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;}};
         Closing+=HandleClosing;
         Closed+=(_,_)=>_model?.Dispose();
@@ -47,6 +47,7 @@ public partial class MainWindow : Window, IEditorDialogs
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
+            TemporalTextColumn.RowDefinitions[0].Height=new GridLength(_model.AudioDisplayHeight);
             _model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
             StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
     }
@@ -56,7 +57,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(!e.GetCurrentPoint(ColumnHeader).Properties.IsLeftButtonPressed)return;
         var x=e.GetPosition(ColumnHeader).X;double boundary=0;
-        for(var i=0;i<Math.Min(8,ColumnHeader.ColumnDefinitions.Count);i++)
+        for(var i=0;i<Math.Min(7,ColumnHeader.ColumnDefinitions.Count);i++)
         {
             boundary+=ColumnHeader.ColumnDefinitions[i].ActualWidth+4;
             if(Math.Abs(x-boundary)>7)continue;
@@ -71,12 +72,12 @@ public partial class MainWindow : Window, IEditorDialogs
     private async void HeaderReleased(object? sender,PointerReleasedEventArgs e)
     {
         if(_resizeColumn<0)return;_resizeColumn=-1;e.Pointer.Capture(null);
-        if(_model is not null)await _model.Registry.InvokeAsync(CommandIds.GridColumnWidths,new(),ColumnHeader.ColumnDefinitions.Take(8).Select(c=>c.Width.Value).ToArray());
+        if(_model is not null)await _model.Registry.InvokeAsync(CommandIds.GridColumnWidths,new(),ColumnHeader.ColumnDefinitions.Take(7).Select(c=>c.Width.Value).ToArray());
     }
     private void ApplyRowWidths()
     {
         foreach(var row in SubtitleRows.GetVisualDescendants().OfType<Grid>().Where(g=>g.Tag as string=="SubtitleRow"))
-            for(var i=0;i<Math.Min(8,Math.Min(row.ColumnDefinitions.Count,ColumnHeader.ColumnDefinitions.Count));i++)if(row.ColumnDefinitions[i].Width!=ColumnHeader.ColumnDefinitions[i].Width)row.ColumnDefinitions[i].Width=ColumnHeader.ColumnDefinitions[i].Width;
+            for(var i=0;i<Math.Min(7,Math.Min(row.ColumnDefinitions.Count,ColumnHeader.ColumnDefinitions.Count));i++)if(row.ColumnDefinitions[i].Width!=ColumnHeader.ColumnDefinitions[i].Width)row.ColumnDefinitions[i].Width=ColumnHeader.ColumnDefinitions[i].Width;
     }
     private void FormattingApplied(object? sender,EventArgs args)
     {
@@ -93,6 +94,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
+        if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight)&&_model is not null)TemporalTextColumn.RowDefinitions[0].Height=new GridLength(_model.AudioDisplayHeight);
         if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }
@@ -156,17 +158,10 @@ public partial class MainWindow : Window, IEditorDialogs
         catch(Exception exception){_model.Registry.ReportFailure("window/close",exception);}
         finally{_closingPending=false;}
     }
-    private void VideoSeekPressed(object? sender,PointerPressedEventArgs e)
+    private void UpdateChrome()
     {
-        if(_model is null||!e.GetCurrentPoint(VideoSeekBar).Properties.IsLeftButtonPressed)return;
-        _resumeVideoSeek=_model.IsPlaying;
-        _model.StopPlayback();
-    }
-    private async void VideoSeekReleased(object? sender,PointerReleasedEventArgs e)
-    {
-        if(_model is null)return;
-        var resume=_resumeVideoSeek;_resumeVideoSeek=false;
-        try{await _model.SeekPlaybackAsync(_model.CurrentTimeSeconds);if(resume)_= _model.StartPlaybackAsync();}catch(Exception exception){_model.Registry.ReportFailure(CommandIds.VideoSeek,exception);}
+        if(OperatingSystem.IsWindows()&&TryGetPlatformHandle() is {} handle)
+            TitleTabStrip.Padding=new Thickness(0,0,Yoake.Native.WindowsChrome.Configure(handle.Handle,RenderScaling),0);
     }
     private void AudioModeChanged(object? sender,SelectionChangedEventArgs e){if(AudioDisplay is not null&&sender is ComboBox box)AudioDisplay.Spectrogram=box.SelectedIndex==1;}
     private async void RecentFileClick(object? sender,RoutedEventArgs e){if(_model is not null&&sender is Control{DataContext:string path})await _model.Registry.InvokeAsync(CommandIds.SubtitleOpen,new(),path);}

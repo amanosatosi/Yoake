@@ -75,6 +75,7 @@ public sealed partial class MainWindowViewModel
             if (session.HasAudio)
             {
                 player = new WindowsWaveOutStream();
+                player.SetVolume(PlaybackVolume,PlaybackMuted);
                 _audioPlayer = player;
                 audioTask = Task.Run(
                     () => player.PlayAsync(

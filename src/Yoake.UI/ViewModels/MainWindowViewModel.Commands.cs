@@ -15,7 +15,7 @@ public sealed partial class MainWindowViewModel
     public ICommand ThemeCycleCommand => Actions[CommandIds.ViewThemeCycle];
     public ICommand PositionToolCommand => Actions[CommandIds.VideoToolPosition];
     public ICommand ClipToolCommand => Actions[CommandIds.VideoToolClip];
-    public IReadOnlyList<double> GridColumnWidths=>_settings.GridColumnWidths;
+    public IReadOnlyList<double> GridColumnWidths=>_settings.CompactGridColumnWidths??new[]{_settings.GridColumnWidths[0],36,_settings.GridColumnWidths[3],_settings.GridColumnWidths[4],_settings.GridColumnWidths[5],_settings.GridColumnWidths[6],_settings.GridColumnWidths[7]};
     public double AudioWindowSeconds { get; set; } = 20;
     public event EventHandler? AudioZoomChanged;
     private IUndoTransaction? _gesture;
@@ -107,6 +107,8 @@ public sealed partial class MainWindowViewModel
         }
         void S(string id,string label,Action action,Func<bool>? available=null)=>R(id,label,_=>{action();return ValueTask.CompletedTask;},available);
         bool HasLine()=>HasSelectedEvent && _gesture is null;
+        foreach(var setting in new[]{"audio/volume","audio/mute","audio/display/height","audio/display/intensity"})
+        {var id=setting;R(id,id,i=>{SaveAudioSetting(id,i.Parameter);return ValueTask.CompletedTask;});}
         S(CommandIds.FormatBold,"Bold  Ctrl+B",()=>ToggleFormat("b"),HasLine);
         S(CommandIds.FormatItalic,"Italic  Ctrl+I",()=>ToggleFormat("i"),HasLine);
         S(CommandIds.FormatUnderline,"Underline  Ctrl+U",()=>ToggleFormat("u"),HasLine);
@@ -126,8 +128,8 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.GestureCancel,"Cancel editor gesture",CancelGestureCore);
         R(CommandIds.GridColumnWidths,"Resize subtitle columns",i=>
         {
-            if(i.Parameter is double[] widths&&widths.Length==8&&widths.All(w=>double.IsFinite(w)&&w>=24&&w<=600))
-            {_settings=_settings with{GridColumnWidths=(double[])widths.Clone()};_settingsStore.Save(_settings);}
+            if(i.Parameter is double[] widths&&widths.Length==7&&widths.All(w=>double.IsFinite(w)&&w>=24&&w<=600))
+            {_settings=_settings with{CompactGridColumnWidths=(double[])widths.Clone()};_settingsStore.Save(_settings);}
             return ValueTask.CompletedTask;
         });
         S(CommandIds.SubtitleNew,"New  Ctrl+N",CreateNewDocument);
@@ -164,6 +166,8 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.AudioPlayCursor,"Play from cursor",()=>{_ = StartPlaybackAsync();},()=>CanPlayMedia);
         S(CommandIds.AudioPlaySelection,"Play current line  R",()=>{if(!CommitDraft()||SelectedEvent is null)return;StopPlayback();CurrentTimeSeconds=(SelectedEvent.StartMilliseconds??0)/1000d;_=StartPlaybackAsync((SelectedEvent.EndMilliseconds??0)/1000d);},()=>CanPlayMedia&&HasLine());
         R(CommandIds.VideoFrameNext,"Next frame  Right",async _=>await StepFrameAsync(1),()=>_media?.HasVideo==true);
+        R("video/seek/frame","Seek to frame",async i=>{if(i.Parameter is int frame)await SeekFrameAsync(frame);},()=>_media?.HasVideo==true);
+        foreach(var delta in new[]{-1,1}){var step=delta;R(step>0?"video/frame/next-keyframe":"video/frame/previous-keyframe","Step keyframe",async _=>await SeekFrameAsync(Yoake.Core.Media.FrameNavigation.StepKeyframe(Keyframes,CurrentFrame,step)),()=>_media?.HasVideo==true);}
         R(CommandIds.VideoFramePrevious,"Previous frame  Left",async _=>await StepFrameAsync(-1),()=>_media?.HasVideo==true);
         R(CommandIds.VideoSeek,"Seek to exact time",async i=>{if(i.Parameter is string text&&AssTime.TryParse(text,out var ms))await SeekPlaybackAsync(ms/1000d);else throw new ArgumentException("Enter h:mm:ss.cc");},()=>CanPlayMedia);
         S(CommandIds.TimingSetStart,"Set start to current time  Ctrl+3",()=>RunEdit(e=>{var line=SelectedEvent!;using var t=e.Undo.BeginTransaction("Set line start");e.SetTiming(line,(long)(CurrentTimeSeconds*1000),Math.Max((long)(CurrentTimeSeconds*1000),line.EndMilliseconds??0));t.Commit();}),HasLine);
@@ -173,7 +177,7 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.StylesManage,"Styles Manager…",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} editor){await Dialogs.ShowStylesAsync(editor);OnPropertyChanged(nameof(StyleNames));ReloadDraft();}});
         R(CommandIds.ScriptInfoEdit,"Script Info…",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} editor)await Dialogs.ShowScriptInfoAsync(editor);});
         R(CommandIds.EditFind,"Find / Replace…  Ctrl+F",async _=>{if(CommitDraft()&&Dialogs is not null)await Dialogs.ShowFindAsync(this);});
-        S(CommandIds.AudioZoomIn,"Zoom audio in  +",()=>{AudioWindowSeconds=Math.Max(0.5,AudioWindowSeconds/2);AudioZoomChanged?.Invoke(this,EventArgs.Empty);});
+        S(CommandIds.AudioZoomIn,"Zoom audio in  +",()=>{AudioWindowSeconds=Math.Max(0.02,AudioWindowSeconds/2);AudioZoomChanged?.Invoke(this,EventArgs.Empty);});
         S(CommandIds.AudioZoomOut,"Zoom audio out  -",()=>{AudioWindowSeconds=Math.Min(3600,AudioWindowSeconds*2);AudioZoomChanged?.Invoke(this,EventArgs.Empty);});
         S(CommandIds.VideoToolPosition,"Position tool",()=>{CancelGesture();ActiveVisualTool="Position";});
         S(CommandIds.VideoToolClip,"Clip tool",()=>{CancelGesture();ActiveVisualTool="Clip";});

@@ -50,6 +50,31 @@ public static class IconGeometries
     {
         internal static readonly Geometry Value = Geometry.Parse("M6 14L12 8L18 14L16 16L12 12L8 16Z");
     }
+    public static Geometry StyleBottom => StyleBottomHolder.Value;
+    private static class StyleBottomHolder
+    {
+        internal static readonly Geometry Value = Geometry.Parse("M 3.75,18.5625 L 3.75,17.0625 L 11.0625,17.0625 L 3.75,5.4375 L 20.25,5.4375 L 12.9375,17.0625 L 20.25,17.0625 L 20.25,18.5625 L 12,18.5625 L 3.75,18.5625 z");
+    }
+    public static Geometry StyleDown => StyleDownHolder.Value;
+    private static class StyleDownHolder
+    {
+        internal static readonly Geometry Value = Geometry.Parse("M 3.75,5.4375 L 20.25,5.4375 L 12,18.5625 L 3.75,5.4375 z");
+    }
+    public static Geometry StyleSort => StyleSortHolder.Value;
+    private static class StyleSortHolder
+    {
+        internal static readonly Geometry Value = Geometry.Parse("M 13.6875,4.875 C 16.6875,5.8125 19.125,8.25 19.125,11.625 C 19.125,14.0625 18,16.3125 16.125,17.625 L 15,15.75 L 12,20.8125 L 18,20.8125 L 17.0625,19.125 C 19.5,17.4375 21,14.8125 21,11.625 C 21,7.875 18.375,4.5 14.4375,3.1875 C 13.125,2.8125 12.5625,4.5 13.6875,4.875 z M 6,3 L 6.9375,4.6875 C 4.5,6.375 3,9 3,12.1875 C 3,15.9375 5.625,19.3125 9.5625,20.625 C 10.875,21 11.4375,19.3125 10.3125,18.9375 C 7.3125,18 4.875,15.5625 4.875,12.1875 C 4.875,9.75 6,7.5 7.875,6.1875 L 9,8.0625 L 12,3 L 6,3 z");
+    }
+    public static Geometry StyleTop => StyleTopHolder.Value;
+    private static class StyleTopHolder
+    {
+        internal static readonly Geometry Value = Geometry.Parse("M 3.75,5.4375 L 3.75,6.9375 L 11.0625,6.9375 L 3.75,18.5625 L 20.25,18.5625 L 12.9375,6.9375 L 20.25,6.9375 L 20.25,5.4375 L 12,5.4375 L 3.75,5.4375 z");
+    }
+    public static Geometry StyleUp => StyleUpHolder.Value;
+    private static class StyleUpHolder
+    {
+        internal static readonly Geometry Value = Geometry.Parse("M 3.75,18.5625 L 20.25,18.5625 L 12,5.4375 L 3.75,18.5625 z");
+    }
     public static Geometry Theme => ThemeHolder.Value;
     private static class ThemeHolder
     {

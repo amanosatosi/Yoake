@@ -4,13 +4,34 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using Avalonia.Utilities;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 using Yoake.Core.Subtitles;
 
 namespace Yoake.UI.Controls;
 
 // Keep TextBox itself in charge of input, clipboard, accessibility, IME and
 // shaped-cluster navigation. Only its real text presenter's colors change.
-public sealed class AssTextBox : TextBox { }
+public sealed class AssTextBox : TextBox
+{
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if(!e.Handled&&MoveAtVisualBoundary(e.Key,e.KeyModifiers)){e.Handled=true;return;}
+        base.OnKeyDown(e);
+    }
+    public bool MoveAtVisualBoundary(Key key,KeyModifiers modifiers)
+    {
+        if(key is not Key.Up and not Key.Down||(modifiers&~KeyModifiers.Shift)!=0)return false;
+        var presenter=this.GetVisualDescendants().OfType<TextPresenter>().FirstOrDefault();
+        if(presenter is null||!string.IsNullOrEmpty(presenter.PreeditText))return false;
+        var layout=presenter.TextLayout;var line=layout.GetLineIndexFromCharacterIndex(CaretIndex,true);
+        if(key==Key.Up&&line!=0||key==Key.Down&&line!=layout.TextLines.Count-1)return false;
+        var target=key==Key.Up?0:Text?.Length??0;
+        var anchor=SelectionStart==SelectionEnd?CaretIndex:SelectionStart;
+        CaretIndex=target;SelectionStart=modifiers.HasFlag(KeyModifiers.Shift)?anchor:target;SelectionEnd=target;
+        return true;
+    }
+}
 
 public sealed class AssTextPresenter : TextPresenter
 {

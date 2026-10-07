@@ -1,3 +1,4 @@
+using Yoake.Core.Audio;
 using System.Runtime.InteropServices;
 
 namespace Yoake.Native;
@@ -36,6 +37,9 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     private nint _audioSource;
     private bool _disposed;
     private double[] _frameTimes = [];
+    private int[] _keyframes=[];
+    public IReadOnlyList<double> FrameTimes=>_frameTimes;
+    public IReadOnlyList<int> Keyframes=>_keyframes;
 
     private FfmsMediaSession(string path, nint videoSource, nint audioSource, MediaInfo info)
     {
@@ -188,13 +192,16 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
                 var timeBase = (FfmsTimeBase*)Native.FFMS_GetTimeBase(track);
                 if (timeBase == null || timeBase->Den == 0) throw new InvalidOperationException("Invalid FFMS2 time base.");
                 session._frameTimes = new double[frameCount];
+                List<int> keyframes=[];
                 for (var i = 0; i < frameCount; i++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var frameInfo = (FfmsFrameInfo*)Native.FFMS_GetFrameInfo(track, i);
                     if (frameInfo == null) throw new InvalidOperationException("Missing FFMS2 frame timestamp.");
+                    if(frameInfo->KeyFrame!=0)keyframes.Add(i);
                     session._frameTimes[i] = (double)frameInfo->PTS * timeBase->Num / timeBase->Den / 1000d;
                 }
+                session._keyframes=keyframes.ToArray();
             }
             if(session._frameTimes.Length>0)
             {
@@ -254,28 +261,35 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         }
     }
 
-    // Full, sequential peaks, 10 ms per bucket. No sparse sampling that misses
-    // speech, and no lock held for the whole analysis (playback may read audio).
-    public float[] BuildWaveform(CancellationToken cancellationToken = default)
+    // A bounded signed overview (<= 2M envelopes) plus a cached pyramid.
+    // Fine zoom requests viewport analysis below the overview resolution.
+    public WaveformData BuildWaveform(CancellationToken cancellationToken = default)
     {
-        if (!HasAudio || Info.SampleRate <= 0) return [];
-        var framesPerBucket = Math.Max(1, Info.SampleRate / 100);
-        var count = checked((int)((Info.AudioSamples + framesPerBucket - 1) / framesPerBucket));
-        var peaks = new float[count];
-        for (long start = 0; start < Info.AudioSamples;)
+        var step=Math.Max(Math.Max(1,Info.SampleRate/1000),(int)Math.Ceiling(Info.AudioSamples/2000000d));
+        return BuildEnvelope(0,Info.AudioSamples,step,cancellationToken);
+    }
+    public WaveformData BuildWaveformViewport(double start,double duration,int columns,CancellationToken token)
+    {
+        var first=TimeToAudioFrame(start);var count=Math.Min(Info.AudioSamples-first,(long)Math.Ceiling(duration*Info.SampleRate));
+        var step=(int)Math.Max(1,Math.Ceiling(count/(double)Math.Clamp(columns,1,4096)));
+        return BuildEnvelope(first,count,step,token);
+    }
+    private WaveformData BuildEnvelope(long first,long frames,int step,CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();if(!HasAudio||Info.SampleRate<=0)return new([],1);
+        var count=checked((int)((frames+step-1)/step));var peaks=new WaveformEnvelope[count];
+        Array.Fill(peaks,new WaveformEnvelope(1,-1));
+        for(long start=first;start<first+frames;)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-            var audio = ReadAudioFrames(start, Info.SampleRate);
-            if (audio.FrameCount == 0) break;
-            for (var frame = 0; frame < audio.FrameCount; frame++)
+            token.ThrowIfCancellationRequested();var audio=ReadAudioFrames(start,(int)Math.Min(Info.SampleRate,first+frames-start));if(audio.FrameCount==0)break;
+            for(var f=0;f<audio.FrameCount;f++)
             {
-                var bucket = (int)((start + frame) / framesPerBucket);
-                for (var channel = 0; channel < Info.Channels; channel++)
-                    peaks[bucket] = Math.Max(peaks[bucket], Math.Min(1, Math.Abs(audio.Samples[frame * Info.Channels + channel])));
+                var index=(int)((start-first+f)/step);var envelope=WaveformEnvelope.FromSamples(audio.Samples.AsSpan(f*Info.Channels,Info.Channels));
+                peaks[index]=WaveformEnvelope.Merge(peaks[index],envelope);
             }
-            start += audio.FrameCount;
+            start+=audio.FrameCount;
         }
-        return peaks;
+        return new(peaks,step/(double)Info.SampleRate,first/(double)Info.SampleRate,token);
     }
     public double AdjacentFrameTime(double seconds, int direction)
     {

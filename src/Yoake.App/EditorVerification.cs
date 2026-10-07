@@ -33,7 +33,7 @@ internal static class EditorVerification
             }
             using(var audio=FfmsMediaSession.Open(Path.Combine(fixtures,"audio.wav")))
             {
-                var peaks=audio.BuildWaveform();if(peaks.Length<100||peaks.Max()<0.1)throw new InvalidOperationException("Audio peak analysis failed.");
+                var peaks=audio.BuildWaveform();if(peaks.Count<100||peaks.Envelopes.Max(p=>p.Maximum)<0.1||peaks.Envelopes.Min(p=>p.Minimum)>-0.1)throw new InvalidOperationException("Audio peak analysis failed.");
                 var spectrum=audio.BuildSpectrum(0,2,64,CancellationToken.None);if(spectrum.Bgra.Where((_,i)=>i%4!=3).All(v=>v==0))throw new InvalidOperationException("Spectrogram analysis failed.");
                 using var cancellation=new CancellationTokenSource();cancellation.Cancel();
                 try{audio.BuildWaveform(cancellation.Token);throw new InvalidOperationException("Peak cancellation failed.");}catch(OperationCanceledException){}

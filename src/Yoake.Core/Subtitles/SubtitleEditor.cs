@@ -162,20 +162,89 @@ public sealed class SubtitleEditor(AssDocument document)
         if (string.IsNullOrWhiteSpace(probe.Name) || Document.Styles.Any(s => !ReferenceEquals(s, style) && s.Name == probe.Name)) throw new ArgumentException("Style names must be nonempty and unique.");
         using var transaction = Undo.BeginTransaction("Edit style"); var oldName = style.Name;
         foreach (var pair in values) SetField(style, pair.Key, pair.Value, "Edit style");
-        if (oldName != style.Name) foreach (var line in Document.Events.Where(l => l.Style == oldName)) SetField(line, "Style", style.Name, "Rename style references");
+        if (oldName != style.Name) ReplaceStyleReferences(oldName, style.Name);
         transaction.Commit();
     }
     public void DeleteStyle(AssStyle style, string? replacement = null)
     {
         Require(style);
-        var references = Document.Events.Where(l => l.Style == style.Name).ToArray();
+        var references = Document.Events.Where(l => l.Style == style.Name || AssStyleReferences.Uses(l.Text, style.Name)).ToArray();
         if (references.Length > 0 && !Document.Styles.Any(s => s != style && s.Name == replacement))
             throw new ArgumentException("This style is used by subtitles. Choose a different replacement style before deleting.");
         using var transaction = Undo.BeginTransaction("Delete style");
-        foreach (var line in references) SetField(line, "Style", replacement!, "Replace style references");
+        if (references.Length > 0) ReplaceStyleReferences(style.Name, replacement!);
         Structure("Delete style", () => Document.Remove(style)); transaction.Commit();
     }
     public void MoveStyle(AssStyle style, int direction) { Require(style); var i = Document.Styles.IndexOf(style) + Math.Sign(direction); if (i >= 0 && i < Document.Styles.Count) Structure("Reorder styles", () => Document.Swap(style, Document.Styles[i])); }
+    public void DeleteStyles(IEnumerable<AssStyle> selection, string? replacement=null)
+    {
+        var set=selection.ToHashSet();foreach(var style in set)Require(style);if(set.Count==0)return;
+        var names=set.Select(s=>s.Name).ToHashSet(StringComparer.Ordinal);
+        var used=Document.Events.Any(e=>names.Contains(e.Style)||names.Any(n=>AssStyleReferences.Uses(e.Text,n)));
+        if(used&&!Document.Styles.Any(s=>!set.Contains(s)&&s.Name==replacement))throw new ArgumentException("Choose a surviving replacement style.");
+        using var transaction=Undo.BeginTransaction("Delete styles");
+        if(used)foreach(var name in names)ReplaceStyleReferences(name,replacement!);
+        Structure("Delete styles",()=>{foreach(var style in set)Document.Remove(style);});transaction.Commit();
+    }
+    private void ReplaceStyleReferences(string oldName, string newName)
+    {
+        foreach (var line in Document.Events)
+        {
+            if (line.Style == oldName) SetField(line, "Style", newName, "Replace style references");
+            var text = AssStyleReferences.Replace(line.Text, oldName, newName);
+            if (text != line.Text) SetField(line, "Text", text, "Replace style reset references");
+        }
+    }
+    public IReadOnlyList<AssStyle> CopyStyles(IEnumerable<AssStyle> source)
+    {
+        var copies = source.Select(s => s.Clone()).ToArray();
+        var names = Document.Styles.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
+        foreach (var copy in copies)
+        {
+            var stem = copy.Name; var n = 1;
+            if (string.IsNullOrWhiteSpace(stem)) throw new ArgumentException("Style names must be nonempty.");
+            while (!names.Add(copy.Name)) copy.Name = stem + " " + n++;
+        }
+        if (copies.Length > 0) Structure("Copy styles", () => { foreach (var copy in copies) Document.Insert(copy); });
+        return copies;
+    }
+    public string CopyStyleText(IEnumerable<AssStyle> source)
+    {
+        var document = AssDocument.Parse("[V4+ Styles]\n");
+        foreach (var style in source) { Require(style); document.Insert(style.Clone()); }
+        return document.Serialize();
+    }
+    public IReadOnlyList<AssStyle> PasteStyles(string text)
+    {
+        var parsed = AssDocument.Parse(text.TrimStart().StartsWith('[') ? text : "[V4+ Styles]\nFormat: " + string.Join(",", AssDocument.StyleFormat) + "\n" + text);
+        if (parsed.Styles.Count == 0 || parsed.Styles.Any(s => s.Fields.Length != s.Format.Length || !s.FieldNames.Contains("Name", StringComparer.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(s.Name)))
+            throw new ArgumentException("Clipboard contains no complete ASS styles. Nothing was pasted.");
+        return CopyStyles(parsed.Styles);
+    }
+    public void ReorderStyles(IEnumerable<AssStyle> selection, StyleOrder action)
+    {
+        var set = selection.ToHashSet(); foreach (var style in set) Require(style);
+        var order = Document.Styles.ToList();
+        if (action == StyleOrder.Sort) order = order.OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase).ThenBy(s => s.Name, StringComparer.Ordinal).ToList();
+        else if (action is StyleOrder.Top or StyleOrder.Bottom)
+            order = (action == StyleOrder.Top ? order.Where(set.Contains).Concat(order.Where(s => !set.Contains(s))) : order.Where(s => !set.Contains(s)).Concat(order.Where(set.Contains))).ToList();
+        else
+        {
+            var indices = action == StyleOrder.Up ? Enumerable.Range(1, Math.Max(0, order.Count - 1)) : Enumerable.Range(0, Math.Max(0, order.Count - 1)).Reverse();
+            foreach (var i in indices)
+            {
+                var j = i + (action == StyleOrder.Up ? -1 : 1);
+                if (set.Contains(order[i]) && !set.Contains(order[j])) (order[i], order[j]) = (order[j], order[i]);
+            }
+        }
+        if (order.SequenceEqual(Document.Styles)) return;
+        Structure(action == StyleOrder.Sort ? "Sort styles" : "Reorder styles", () =>
+        {
+            var slots = Document.Source.Select((line, index) => (line, index)).Where(p => p.line.Record is AssStyle).ToArray();
+            for (var i = 0; i < slots.Length; i++) Document.Source[slots[i].index] = slots[i].line with { Record = order[i] };
+            Document.Restore(Document.Source.ToArray());
+        });
+    }
     internal void DeleteLibraryStyle(AssStyle style)
     {
         Require(style);if(Document.Events.Count!=0)throw new InvalidOperationException("Library deletion requires a style-only document.");

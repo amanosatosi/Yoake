@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Yoake.Core.Audio;
 
 namespace Yoake.Native;
 
@@ -20,6 +21,9 @@ public sealed partial class WindowsWaveOutStream : IDisposable
     private int _sampleRate;
     private int _channels;
     private long _mediaStartFrame;
+    private double _volume=0.8;
+    private bool _muted;
+    public void SetVolume(double volume,bool muted){Volatile.Write(ref _volume,Math.Clamp(volume,0,1));Volatile.Write(ref _muted,muted);}
 
     public async Task PlayAsync(
         FfmsMediaSession media,
@@ -39,7 +43,7 @@ public sealed partial class WindowsWaveOutStream : IDisposable
 
         StartDevice(media.Info.SampleRate, media.Info.Channels, startFrame);
 
-        var chunkFrames = Math.Max(1024, media.Info.SampleRate / 4);
+        var chunkFrames = Math.Max(512, media.Info.SampleRate / 50);
         var nextFrame = startFrame;
         try
         {
@@ -173,8 +177,9 @@ public sealed partial class WindowsWaveOutStream : IDisposable
             return 0;
 
         var pcm = new short[decoded.Samples.Length];
+        var volume=Volatile.Read(ref _volume);var muted=Volatile.Read(ref _muted);
         for (var i = 0; i < pcm.Length; i++)
-            pcm[i] = (short)Math.Round(Math.Clamp(decoded.Samples[i], -1f, 1f) * short.MaxValue);
+            pcm[i] = PlaybackGain.Pcm16(decoded.Samples[i],volume,muted);
 
         lock (_gate)
         {

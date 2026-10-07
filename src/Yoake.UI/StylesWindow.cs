@@ -11,6 +11,7 @@ using Yoake.Core.Commands;
 using Yoake.Core.Subtitles;
 using Yoake.UI.Commands;
 using Yoake.UI.Controls;
+using Yoake.UI.Icons;
 
 namespace Yoake.UI;
 
@@ -22,11 +23,12 @@ public sealed class StylesWindow : Window
     private readonly AssEvent? _currentLine;
     private readonly StyleLibraryStore _library;
     private readonly CommandRegistry _commands=new();
-    private readonly ListBox _scriptList=new(){Name="ScriptStyles"},_libraryList=new(){Name="LibraryStyles"};
+    private readonly ListBox _scriptList=new(){Name="ScriptStyles",SelectionMode=SelectionMode.Multiple},_libraryList=new(){Name="LibraryStyles",SelectionMode=SelectionMode.Multiple};
     private readonly ComboBox _collections=new(){Name="StyleCollections",HorizontalAlignment=HorizontalAlignment.Stretch,Padding=new Thickness(4,1),MinHeight=24};
     private readonly TextBox _collectionName=new(){Name="CollectionName",PlaceholderText="Collection name",Padding=new Thickness(4,1),MinHeight=24};
     private readonly ComboBox _replacement=new(){Padding=new Thickness(4,1),MinHeight=24,HorizontalAlignment=HorizontalAlignment.Stretch};
     private readonly StackPanel _fields=new(){Spacing=4};
+    private Panel? _fieldTarget;
     private readonly StackPanel _replacementPanel=new(){Spacing=3};
     private readonly TextBlock _replacementHint=new(){FontSize=10,TextWrapping=TextWrapping.Wrap};
     private readonly TextBlock _status=new(){FontSize=11,TextWrapping=TextWrapping.Wrap};
@@ -52,18 +54,19 @@ public sealed class StylesWindow : Window
         var root=new Grid{ColumnDefinitions=new("1*,4,1*,4,3.4*"),RowDefinitions=new("*,Auto"),Margin=new Thickness(8),ColumnSpacing=5,RowSpacing=5};Content=root;
         root.ColumnDefinitions[0].MinWidth=168;root.ColumnDefinitions[2].MinWidth=160;root.ColumnDefinitions[4].MinWidth=440;
         foreach(var column in new[]{1,3}){var splitter=new GridSplitter{ResizeDirection=GridResizeDirection.Columns,Background=new SolidColorBrush(Color.FromArgb(70,128,128,128))};Grid.SetColumn(splitter,column);root.Children.Add(splitter);}
-        var storage=new Grid{RowDefinitions=new("22,28,28,Auto,*,Auto"),RowSpacing=3};root.Children.Add(storage);
-        storage.Children.Add(new TextBlock{Text="STYLE LIBRARY",FontWeight=FontWeight.SemiBold,FontSize=12});At(storage,_collections,1);At(storage,_collectionName,2);
+        var storage=new Grid{RowDefinitions=new("22,28,Auto,Auto,*,Auto"),RowSpacing=3};root.Children.Add(storage);
+        storage.Children.Add(new TextBlock{Text="STYLE LIBRARY",FontWeight=FontWeight.SemiBold,FontSize=12});At(storage,_collections,1);
+        var collectionEdit=new Expander{Header="Manage collections",Content=_collectionName,FontSize=11,Padding=new Thickness(0)};At(storage,collectionEdit,2);
         var catalogBar=new UniformGrid{Columns=3};At(storage,catalogBar,3);var libraryBar=new UniformGrid{Columns=2};At(storage,libraryBar,5);At(storage,_libraryList,4);
         var script=new Grid{RowDefinitions=new("22,Auto,*,Auto,Auto"),RowSpacing=3};Grid.SetColumn(script,2);root.Children.Add(script);
         script.Children.Add(new TextBlock{Text="CURRENT SCRIPT",FontWeight=FontWeight.SemiBold,FontSize=12});
         var copyBar=new StackPanel{Spacing=3};At(script,copyBar,1);At(script,_scriptList,2);var scriptBar=new UniformGrid{Columns=2};At(script,scriptBar,3);
         _replacementPanel.Children.Add(_replacementHint);_replacementPanel.Children.Add(_replacement);At(script,_replacementPanel,4);
-        var pane=new Grid{RowDefinitions=new("24,*,28,28,180"),RowSpacing=3};Grid.SetColumn(pane,4);root.Children.Add(pane);
+        var pane=new Grid{Name="StyleEditorPane",RowDefinitions=new("24,*,28,150"),RowSpacing=3};Grid.SetColumn(pane,4);root.Children.Add(pane);
         pane.Children.Add(_identity);At(pane,new ScrollViewer{Content=_fields,HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled},1);
-        var editBar=new StackPanel{Orientation=Orientation.Horizontal,Spacing=3};At(pane,editBar,2);At(pane,Preview,4);
-        var sampleRow=new Grid{ColumnDefinitions=new("150,*"),ColumnSpacing=5};sampleRow.Children.Add(_previewMode);Grid.SetColumn(_sample,1);sampleRow.Children.Add(_sample);At(pane,sampleRow,3);
-        Grid.SetRow(_status,1);Grid.SetColumnSpan(_status,5);root.Children.Add(_status);
+        var footer=new Grid{ColumnDefinitions=new("*,Auto")};Grid.SetRow(footer,1);Grid.SetColumnSpan(footer,5);root.Children.Add(footer);footer.Children.Add(_status);
+        var editBar=new StackPanel{Orientation=Orientation.Horizontal,Spacing=3,HorizontalAlignment=HorizontalAlignment.Right};Grid.SetColumn(editBar,1);footer.Children.Add(editBar);At(pane,Preview,3);
+        var sampleRow=new Grid{ColumnDefinitions=new("150,*"),ColumnSpacing=5};sampleRow.Children.Add(_previewMode);Grid.SetColumn(_sample,1);sampleRow.Children.Add(_sample);At(pane,sampleRow,2);
         _commands.CommandFailed+=(_,e)=>{_applyOk=false;_status.Text=e.Exception.Message;};
         Register("styles/apply","Apply",editBar,()=>{Apply();RefreshLists();});
         Register("styles/undo","Undo",editBar,()=>{if(!Commit())return;_target?.Undo.Undo();SaveLibrary();Reload();});
@@ -76,8 +79,8 @@ public sealed class StylesWindow : Window
             if(_collection is null||!Commit()||!await ConfirmDeleteCollection())return;
             _library.Delete(_collection);_collection=_library.Collections.FirstOrDefault();ResetLibrarySelection();RefreshCollections();
         });
-        Register("styles/to-script","Library → Script",copyBar,()=>{if(!Commit()||_librarySelected is null)return;var style=StyleLibraryStore.Copy(_librarySelected,_script);RefreshLists();_scriptList.SelectedItem=style.Name;});
-        Register("styles/to-library","Script → Library",copyBar,()=>{if(!Commit()||_scriptSelected is null||_collection is null)return;var style=StyleLibraryStore.Copy(_scriptSelected,_library.Editor(_collection));_library.Save();RefreshLists();_libraryList.SelectedItem=style.Name;});
+        Register("styles/to-script","Library → Script",copyBar,()=>{if(!Commit())return;var styles=_script.CopyStyles(SelectedStyles(true));RefreshLists();SelectNames(_scriptList,styles);});
+        Register("styles/to-library","Script → Library",copyBar,()=>{if(!Commit()||_collection is null)return;var styles=_library.Editor(_collection).CopyStyles(SelectedStyles(false));_library.Save();RefreshLists();SelectNames(_libraryList,styles);});
         AddOperations(scriptBar,false);AddOperations(libraryBar,true);
         _collections.SelectionChanged+=(_,_)=>
         {
@@ -111,6 +114,8 @@ public sealed class StylesWindow : Window
     {
         _commands.Register(new AppCommand(new(id,label,label,"Styles"),async(_,_)=>await action()));
         var button=new Button{Content=label,Tag=id,HorizontalAlignment=HorizontalAlignment.Stretch,Command=new RegistryCommand(_commands,id,()=>new()),Padding=new Thickness(5,1),MinHeight=24,Margin=new Thickness(1),FontSize=11};
+        var geometry=id.Split('/').Last() switch{"up"=>IconGeometries.StyleUp,"down"=>IconGeometries.StyleDown,"top"=>IconGeometries.StyleTop,"bottom"=>IconGeometries.StyleBottom,"sort"=>IconGeometries.StyleSort,_=>null};
+        if(geometry is not null){var icon=new PathIcon{Width=14,Height=14,Data=geometry};icon.Bind(PathIcon.ForegroundProperty,this.GetResourceObservable("IconForegroundBrush"));var content=new StackPanel{Orientation=Orientation.Horizontal,Spacing=4};content.Children.Add(icon);content.Children.Add(new TextBlock{Text=label});button.Content=content;}
         ToolTip.SetTip(button,id=="styles/to-script"?"Copy the selected library preset into the current script; duplicate names get a suffix.":id=="styles/to-library"?"Copy the selected script style into this library collection; duplicate names get a suffix.":label);bar.Children.Add(button);
     }
     private void Invoke(string id)
@@ -130,22 +135,36 @@ public sealed class StylesWindow : Window
         finally{_applying=false;}
     }
     private void SaveLibrary(){if(_target is not null&&!ReferenceEquals(_target,_script))_library.Save();}
+    private AssStyle[] SelectedStyles(bool library)
+    {
+        var names=(library?_libraryList:_scriptList).SelectedItems?.OfType<string>().ToHashSet()??[];
+        var editor=library?_collection is null?null:_library.Editor(_collection):_script;
+        return editor?.Document.Styles.Where(s=>names.Contains(s.Name)).ToArray()??[];
+    }
+    private static void SelectNames(ListBox list,IEnumerable<AssStyle> styles)
+    {
+        list.SelectedItems?.Clear();foreach(var style in styles)list.SelectedItems?.Add(style.Name);
+    }
     private void AddOperations(Panel bar,bool library)
     {
         var prefix=library?"library/preset/":"script/style/";
         SubtitleEditor? Target()=>library?_collection is null?null:_library.Editor(_collection):_script;
         AssStyle? Selected()=>library?_librarySelected:_scriptSelected;
         Register(prefix+"new","New",bar,()=>{if(!Commit()||Target() is not {} editor)return;var added=editor.AddStyle();if(library)_library.Save();RefreshLists();(library?_libraryList:_scriptList).SelectedItem=added.Name;});
-        Register(prefix+"duplicate","Duplicate",bar,()=>{if(!Commit()||Target() is not {} editor||Selected() is not {} selected)return;var added=editor.AddStyle(selected);if(library)_library.Save();RefreshLists();(library?_libraryList:_scriptList).SelectedItem=added.Name;});
-        foreach(var direction in new[]{-1,1})
+        Register(prefix+"duplicate","Duplicate",bar,()=>{if(!Commit()||Target() is not {} editor)return;var added=editor.CopyStyles(SelectedStyles(library));if(library)_library.Save();RefreshLists();SelectNames(library?_libraryList:_scriptList,added);});
+        foreach(var order in Enum.GetValues<StyleOrder>())
         {
-            var delta=direction;Register(prefix+(delta<0?"up":"down"),delta<0?"Up":"Down",bar,()=>{if(!Commit()||Selected() is not {} selected||Target() is not {} editor)return;editor.MoveStyle(selected,delta);if(library)_library.Save();RefreshLists();});
+            var action=order;Register(prefix+action.ToString().ToLowerInvariant(),action.ToString(),bar,()=>{if(!Commit()||Target() is not {} editor)return;editor.ReorderStyles(SelectedStyles(library),action);if(library)_library.Save();RefreshLists();});
         }
-        Register(prefix+"delete","Delete",bar,()=>
+        RegisterAsync(prefix+"copy","Copy",bar,async()=>{if(!Commit()||Target() is not {} editor||Clipboard is null)return;var data=new DataTransfer();data.Add(DataTransferItem.CreateText(editor.CopyStyleText(SelectedStyles(library))));await Clipboard.SetDataAsync(data);await Clipboard.FlushAsync();});
+        RegisterAsync(prefix+"paste","Paste",bar,async()=>{if(!Commit()||Target() is not {} editor||Clipboard is null)return;using var data=await Clipboard.TryGetDataAsync();var text=data is null?null:await data.TryGetTextAsync();if(string.IsNullOrWhiteSpace(text))return;var added=editor.PasteStyles(text);if(library)_library.Save();RefreshLists();SelectNames(library?_libraryList:_scriptList,added);});
+        RegisterAsync(prefix+"delete","Delete",bar,async()=>
         {
-            if(!Commit()||Selected() is not {} selected)return;
-            if(library){if(_collection is null)return;_library.DeletePreset(_collection,selected);_librarySelected=null;}
-            else{_script.DeleteStyle(selected,_replacement.SelectedItem as string??"");_scriptSelected=null;}
+            if(!Commit()||Target() is not {} editor)return;var selected=SelectedStyles(library);if(selected.Length==0)return;
+            string? replacement=null;
+            if(!library&&editor.Document.Events.Any(e=>selected.Any(s=>e.Style==s.Name||AssStyleReferences.Uses(e.Text,s.Name))))
+            {replacement=await ChooseReplacement(selected);if(replacement is null)return;}
+            editor.DeleteStyles(selected,replacement);if(library){_library.Save();_librarySelected=null;}else _scriptSelected=null;
             _session.Select(null,null);RefreshLists();(library?_libraryList:_scriptList).SelectedIndex=0;Select(library);
         });
         RegisterAsync(prefix+"import","Import ASS…",bar,async()=>
@@ -157,6 +176,13 @@ public sealed class StylesWindow : Window
             _status.Text=$"Imported {imported.Styles.Count} styles; duplicate names received a suffix.";
         });
     }
+    private async Task<string?> ChooseReplacement(AssStyle[] deleting)
+    {
+        var choices=_script.Document.Styles.Except(deleting).Select(s=>s.Name).ToArray();if(choices.Length==0)throw new InvalidOperationException("Referenced styles require a surviving replacement.");
+        var dialog=new Window{Title="Replace style references",Width=360,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};
+        var panel=new StackPanel{Margin=new Thickness(12),Spacing=6};panel.Children.Add(new TextBlock{Text="Replace event styles and explicit \\r resets with:",TextWrapping=TextWrapping.Wrap});var choice=new ComboBox{ItemsSource=choices,SelectedIndex=0,HorizontalAlignment=HorizontalAlignment.Stretch};panel.Children.Add(choice);
+        var ok=new Button{Content="Replace and delete",IsDefault=true};ok.Click+=(_,_)=>dialog.Close(choice.SelectedItem as string);panel.Children.Add(ok);var cancel=new Button{Content="Cancel",IsCancel=true};cancel.Click+=(_,_)=>dialog.Close();panel.Children.Add(cancel);dialog.Content=panel;return await dialog.ShowDialog<string?>(this);
+    }
     private void RefreshCollections()
     {
         _refreshing=true;_collections.ItemsSource=_library.Collections.Select(c=>c.Name).ToArray();_collections.SelectedItem=_collection?.Name;_collectionName.Text=_collection?.Name??"";_refreshing=false;RefreshLists();
@@ -164,14 +190,21 @@ public sealed class StylesWindow : Window
     private void RefreshLists()
     {
         _refreshing=true;
-        var scriptNames=_script.Document.Styles.Select(s=>s.Name).ToArray();_scriptList.ItemsSource=scriptNames;_scriptList.SelectedItem=_scriptSelected?.Name;
+        var selectedScript=_scriptList.SelectedItems?.OfType<string>().ToArray()??[];var selectedLibrary=_libraryList.SelectedItems?.OfType<string>().ToArray()??[];
+        var scriptNames=_script.Document.Styles.Select(s=>s.Name).ToArray();_scriptList.ItemsSource=scriptNames;
+        RestoreSelection(_scriptList,scriptNames,selectedScript,_scriptSelected?.Name);
         var replacement=_replacement.SelectedItem as string;
         var choices=scriptNames.Where(n=>n!=_scriptSelected?.Name).ToArray();_replacement.ItemsSource=choices;
         _replacement.SelectedItem=choices.Contains(replacement)?replacement:choices.FirstOrDefault();
         var count=_scriptSelected is null?0:_script.Document.Events.Count(e=>e.Style==_scriptSelected.Name);
-        _replacementPanel.IsVisible=count>0;_replacementHint.Text=$"Used by {count} line(s). Replace with:";
-        _libraryList.ItemsSource=_collection is null?Array.Empty<string>():_library.Editor(_collection).Document.Styles.Select(s=>s.Name).ToArray();_libraryList.SelectedItem=_librarySelected?.Name;
+        _replacementPanel.IsVisible=false;
+        var libraryNames=_collection is null?Array.Empty<string>():_library.Editor(_collection).Document.Styles.Select(s=>s.Name).ToArray();_libraryList.ItemsSource=libraryNames;RestoreSelection(_libraryList,libraryNames,selectedLibrary,_librarySelected?.Name);
         _refreshing=false;
+    }
+    private static void RestoreSelection(ListBox list,string[] names,string[] selected,string? active)
+    {
+        foreach(var name in selected.Where(names.Contains))list.SelectedItems?.Add(name);
+        if(active is not null&&names.Contains(active)&&list.SelectedItems?.Contains(active)!=true)list.SelectedItems?.Add(active);
     }
     private void Select(bool library)
     {
@@ -194,33 +227,40 @@ public sealed class StylesWindow : Window
     {
         _fields.Children.Clear();if(_draft is null){_identity.Text="Select a script style or library preset";Preview.Clear();return;}
         _identity.Text=(ReferenceEquals(_target,_script)?"Script style · ":"Library preset · ")+_selected!.Name;
-        Text("Name","Name");Heading("Font");
-        if(_draft.Has("Fontname")){var picker=new FontPicker{Name="StyleFont",FontName=_draft.Get("Fontname")};picker.ValueChanged+=(_,_)=>Changed("Fontname",picker.FontName);FinishOnBlur(picker);_fields.Children.Add(picker);}
-        Number("Fontsize","Size",0.1m,10000,1);
+        _fieldTarget=_fields;
+        Text("Name","Identity");Heading("Font");
+        var fontRow=new Grid{ColumnDefinitions=new("*,96"),ColumnSpacing=5};_fields.Children.Add(fontRow);
+        if(_draft.Has("Fontname")){var picker=new FontPicker{Name="StyleFont",FontName=_draft.Get("Fontname")};picker.ValueChanged+=(_,_)=>Changed("Fontname",picker.FontName);FinishOnBlur(picker);fontRow.Children.Add(picker);}
+        var sizeGroup=new StackPanel();Grid.SetColumn(sizeGroup,1);fontRow.Children.Add(sizeGroup);Number("Fontsize","",0.1m,10000,1,sizeGroup);
         var flags=new WrapPanel();foreach(var pair in new[]{("Bold","Bold"),("Italic","Italic"),("Underline","Underline"),("StrikeOut","Strikeout")})
         {
-            if(!_draft.Has(pair.Item1))continue;var field=pair.Item1;var box=new CheckBox{Content=pair.Item2,IsChecked=_draft.Flag(field),FontSize=12,Margin=new Thickness(0,0,10,0)};
+            if(!_draft.Has(pair.Item1))continue;var field=pair.Item1;var box=new CheckBox{Content=pair.Item2,IsChecked=_draft.Flag(field),FontSize=12,MinHeight=22,Margin=new Thickness(0,0,8,0)};
             box.Click+=(_,_)=>{Changed(field,box.IsChecked==true?"-1":"0");Invoke("styles/apply");};flags.Children.Add(box);
         }
-        _fields.Children.Add(flags);Heading("Colors · exact ASS alpha / BGR retained");
-        var colors=new WrapPanel();
+        _fields.Children.Add(flags);Heading("Colors");
+        var colors=new UniformGrid{Columns=2,Rows=2};_fields.Children.Add(colors);
         foreach(var pair in new[]{("PrimaryColour","Primary"),("SecondaryColour","Secondary"),("OutlineColour","Outline"),("BackColour","Shadow")})
         {
             if(!_draft.Has(pair.Item1))continue;var field=pair.Item1;var input=new AssColorField{Name="Style"+field,Value=_draft.Get(field)};input.ValueChanged+=(_,_)=>Changed(field,input.Value);input.ValueCommitted+=(_,_)=>Invoke("styles/apply");FinishOnBlur(input);
-            var row=Row(pair.Item2,input,64);row.Width=248;row.Margin=new Thickness(0,0,8,3);colors.Children.Add(row);
+            var row=Row(pair.Item2,input,58);row.Margin=new Thickness(0,0,6,2);colors.Children.Add(row);
         }
-        _fields.Children.Add(colors);Heading("Outline / shadow");
+        var transforms=new Grid{ColumnDefinitions=new("*,*"),ColumnSpacing=8};_fields.Children.Add(transforms);
+        var outline=new StackPanel{Spacing=2};transforms.Children.Add(outline);_fieldTarget=outline;Heading("Outline / shadow");
         if(_draft.Has("BorderStyle"))
         {
             var raw=_draft.Get("BorderStyle");var values=raw is "1" or "3"?new[]{"1 · Outline","3 · Opaque box"}:new[]{"1 · Outline","3 · Opaque box",raw+" · Custom source value"};
             var input=new ComboBox{ItemsSource=values,SelectedIndex=raw=="1"?0:raw=="3"?1:2,Padding=new Thickness(4,1),MinHeight=24,HorizontalAlignment=HorizontalAlignment.Stretch};
-            input.SelectionChanged+=(_,_)=>{Changed("BorderStyle",input.SelectedIndex==0?"1":input.SelectedIndex==1?"3":raw);Invoke("styles/apply");};_fields.Children.Add(Row("Border",input));
+            input.SelectionChanged+=(_,_)=>{Changed("BorderStyle",input.SelectedIndex==0?"1":input.SelectedIndex==1?"3":raw);Invoke("styles/apply");};outline.Children.Add(Row("Border",input,48));
         }
         Numbers(("Outline","Outline",0,1000,0.1m),("Shadow","Shadow",0,1000,0.1m));
-        Heading("Scale / transformation");Numbers(("ScaleX","Scale X %",0.01m,100000,1),("ScaleY","Scale Y %",0.01m,100000,1),("Spacing","Spacing",-10000,10000,0.1m),("Angle","Rotation °",-360000,360000,1));
-        Heading("Alignment / margins");
-        if(_draft.Has("Alignment")){var alignment=new AssAlignmentPicker{Name="StyleAlignment",Value=(int)Math.Clamp(_draft.Number("Alignment",2),1,9)};alignment.ValueChanged+=(_,_)=>{Changed("Alignment",alignment.Value.ToString(CultureInfo.InvariantCulture));Invoke("styles/apply");};_fields.Children.Add(Row("Anchor",alignment));}
-        Numbers(("MarginL","Left",0,int.MaxValue,1),("MarginR","Right",0,int.MaxValue,1),("MarginV","Vertical",0,int.MaxValue,1));Heading("Encoding");Number("Encoding","Encoding",int.MinValue,int.MaxValue,1);
+        var scale=new StackPanel{Spacing=2};Grid.SetColumn(scale,1);transforms.Children.Add(scale);_fieldTarget=scale;Heading("Scale / transformation");
+        Numbers(("ScaleX","X %",0.01m,100000,1),("ScaleY","Y %",0.01m,100000,1),("Spacing","Spacing",-10000,10000,0.1m),("Angle","Angle",-360000,360000,1));
+        _fieldTarget=_fields;Heading("Alignment / margins / encoding");
+        var placement=new Grid{ColumnDefinitions=new("118,*"),ColumnSpacing=8};_fields.Children.Add(placement);
+        if(_draft.Has("Alignment")){var alignment=new AssAlignmentPicker{Name="StyleAlignment",Value=(int)Math.Clamp(_draft.Number("Alignment",2),1,9)};alignment.ValueChanged+=(_,_)=>{Changed("Alignment",alignment.Value.ToString(CultureInfo.InvariantCulture));Invoke("styles/apply");};placement.Children.Add(alignment);}
+        var margins=new StackPanel{Spacing=2};Grid.SetColumn(margins,1);placement.Children.Add(margins);_fieldTarget=margins;
+        Numbers(("MarginL","Left",0,int.MaxValue,1),("MarginR","Right",0,int.MaxValue,1),("MarginV","Vertical",0,int.MaxValue,1),("Encoding","Encoding",int.MinValue,int.MaxValue,1));
+        _fieldTarget=_fields;
         var advanced=new StackPanel{Spacing=3};var standard=AssDocument.StyleFormat.ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach(var name in _selected.FieldNames.Where(n=>!standard.Contains(n)))
         {
@@ -232,24 +272,24 @@ public sealed class StylesWindow : Window
     {
         var row=new Grid{ColumnDefinitions=new($"{labelWidth},*"),ColumnSpacing=5};row.Children.Add(new TextBlock{Text=label,FontSize=12,VerticalAlignment=VerticalAlignment.Center});Grid.SetColumn(input,1);row.Children.Add(input);return row;
     }
-    private void Heading(string text)=>_fields.Children.Add(new TextBlock{Text=text,FontWeight=FontWeight.SemiBold,FontSize=12,Margin=new Thickness(0,5,0,1)});
+    private void Heading(string text)=>(_fieldTarget??_fields).Children.Add(new TextBlock{Text=text,FontWeight=FontWeight.SemiBold,FontSize=12,Margin=new Thickness(0,5,0,1)});
     private void Text(string field,string label)
     {
         if(_draft?.Has(field)!=true)return;var input=new TextBox{Name="Style"+field,Text=_draft.Get(field),Padding=new Thickness(4,1),MinHeight=24};input.PropertyChanged+=(_,e)=>{if(e.Property==TextBox.TextProperty)Changed(field,input.Text??"");};FinishOnBlur(input);_fields.Children.Add(Row(label,input));
     }
     private void Numbers(params (string Field,string Label,decimal Minimum,decimal Maximum,decimal Increment)[] values)
     {
-        var group=new WrapPanel();_fields.Children.Add(group);
+        var group=new WrapPanel();(_fieldTarget??_fields).Children.Add(group);
         foreach(var value in values)Number(value.Field,value.Label,value.Minimum,value.Maximum,value.Increment,group);
     }
     private void Number(string field,string label,decimal minimum,decimal maximum,decimal increment,Panel? parent=null)
     {
         if(_draft?.Has(field)!=true)return;var value=_draft.Number(field);var input=new NumericUpDown{Name="Style"+field,Minimum=Math.Min(minimum,value),Maximum=Math.Max(maximum,value),Value=value,Increment=increment,Padding=new Thickness(4,1),MinHeight=24,FormatString=increment<1?"0.##":"0"};
         input.ValueChanged+=(_,_)=>{if(input.Value is {} number)Changed(field,number.ToString(CultureInfo.InvariantCulture));};FinishOnBlur(input);
-        input.Width=110;input.HorizontalAlignment=HorizontalAlignment.Left;
-        var row=Row(label,input,parent is null?90:72);row.Margin=new Thickness(0,0,8,2);
-        if(parent is not null)row.Width=190;
-        (parent??_fields).Children.Add(row);
+        input.Width=90;input.HorizontalAlignment=HorizontalAlignment.Left;
+        var row=Row(label,input,string.IsNullOrEmpty(label)?0:parent is null?90:48);row.Margin=new Thickness(0,0,8,2);
+        if(parent is not null)row.Width=string.IsNullOrEmpty(label)?96:145;
+        (parent??_fieldTarget??_fields).Children.Add(row);
     }
     private void FinishOnBlur(Control input)
     {
@@ -261,7 +301,7 @@ public sealed class StylesWindow : Window
     }
     private void Changed(string field,string value)
     {
-        if(_draft is null||_applying)return;_draft.Set(field,value);RequestPreview();
+        if(_draft is null||_applying)return;_draft.Set(field,value);_identity.Text=(ReferenceEquals(_target,_script)?"Script style - ":"Library preset - ")+_selected!.Name+(_draft.IsChanged?" (unapplied)":"");RequestPreview();
     }
     private void RequestPreview()
     {

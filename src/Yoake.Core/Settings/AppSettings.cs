@@ -18,6 +18,11 @@ public sealed record AppSettings
     public ThemePreference Theme { get; init; } = ThemePreference.System;
     public double MainSplitRatio { get; init; } = 0.5;
     public double GridHeight { get; init; } = 230;
+    public double[]? CompactGridColumnWidths {get;init;}
+    public double? PlaybackVolume {get;init;}
+    public bool PlaybackMuted {get;init;}
+    public double? AudioDisplayHeight {get;init;}
+    public double? AudioIntensity {get;init;}
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? FutureSettings { get; set; }
@@ -44,6 +49,10 @@ public sealed record AppSettings
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
         return this with { GridColumnWidths = widths, RecentFiles = recent, Theme = theme,
+            CompactGridColumnWidths=CompactGridColumnWidths is {Length:7} compact&&compact.All(w=>double.IsFinite(w)&&w>=24&&w<=600)?compact:null,
+            PlaybackVolume=PlaybackVolume is {} volume&&double.IsFinite(volume)?Math.Clamp(volume,0,1):0.8,
+            AudioDisplayHeight=AudioDisplayHeight is {} audioHeight&&double.IsFinite(audioHeight)?Math.Clamp(audioHeight,100,400):160,
+            AudioIntensity=AudioIntensity is {} intensity&&double.IsFinite(intensity)?Math.Clamp(intensity,0.1,8):1,
             MainSplitRatio = ratio, GridHeight = height, SchemaVersion = SchemaVersion > 0 ? SchemaVersion : defaults.SchemaVersion };
     }
 }

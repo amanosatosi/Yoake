@@ -46,9 +46,9 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             Require(window.TryGetPlatformHandle() is not null, "Native window platform must exist.");
             Require(ReferenceEquals(window.DataContext, model) && model.ActiveEditor is not null, "Real document model must be attached.");
             var header = window.FindControl<Grid>("ColumnHeader")!;
-            Require(header.ColumnDefinitions.Count == 9 && header.ColumnDefinitions.Take(8).All(c => c.ActualWidth > 0 && double.IsFinite(c.ActualWidth)), "Column headers must finish valid layout.");
+            Require(header.ColumnDefinitions.Count == 8 && header.ColumnDefinitions.Take(7).All(c => c.ActualWidth > 0 && double.IsFinite(c.ActualWidth)), "Column headers must finish valid layout.");
             var rows = window.FindControl<ListBox>("SubtitleRows")!;
-            Require(ReferenceEquals(rows.ItemsSource, model.Events) && model.Events.Count == 1, "Real grid ItemsSource must be bound.");
+            Require(ReferenceEquals(rows.ItemsSource, model.Events) && (_authoring is null?model.Events.Count==1:model.Events.Count>=1), "Real grid ItemsSource must be bound.");
             Require(rows.SelectedItems?.Contains(model.SelectedEvent!) == true, "Grid selection binding must initialize.");
             Require(rows.GetVisualDescendants().OfType<Grid>().Any(g => g.Tag as string == "SubtitleRow" && g.Bounds.Height > 0), "A real subtitle row template must be realized and laid out.");
             Require(ReferenceEquals(window.FindControl<AudioWaveformControl>("AudioDisplay")?.Model, model), "Waveform model binding must initialize.");

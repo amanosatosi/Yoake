@@ -53,7 +53,7 @@ public sealed class StyleLibraryStore
     public IReadOnlyList<AssStyle> Import(AssDocument source,SubtitleEditor destination)
     {
         // Each copied style retains its own Format, including future fields.
-        List<AssStyle> result=[];foreach(var style in source.Styles)result.Add(Copy(style,destination));return result;
+        return destination.CopyStyles(source.Styles);
     }
     public void Save()
     {

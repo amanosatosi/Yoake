@@ -22,6 +22,20 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task DraftFeedbackIsLiveCoalescedAndRevertible()
+    {
+        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;var revision=_model.PreviewRevision;
+        foreach(var text in new[]{"m","mi","mixed မြန်မာ"})_model.Draft.Text=text;
+        Assert.Equal("mixed မြန်မာ",line.DisplayText);Assert.Equal("",line.Text);Assert.True(_model.PreviewRevision>revision);
+        await Command(CommandIds.EditCancel);Assert.Equal("",line.DisplayText);Assert.Equal("",_model.Draft.Text);
+        _model.Draft.Text="one burst";_model.Draft.Text="one burst 日本語";await Command(CommandIds.EditCommit);Assert.Equal("one burst 日本語",line.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal("",line.Text);Assert.Single(_model.Events);
+    }
+    [Fact] public async Task AudioCommandsPersistVolumeMuteAndIndependentDisplayControls()
+    {
+        await Command("audio/volume",0.35);await Command("audio/mute",true);await Command("audio/display/intensity",3d);await Command("audio/display/height",210d);
+        var settings=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal(0.35,settings.PlaybackVolume);Assert.True(settings.PlaybackMuted);Assert.Equal(3,settings.AudioIntensity);Assert.Equal(210,settings.AudioDisplayHeight);
+    }
     [Fact] public async Task NewDocumentIsConnectedAndInsertCanBeEdited()
     {
         Assert.NotNull(_model.ActiveEditor);Assert.Empty(_model.Events);await Command(CommandIds.GridInsertAfter);

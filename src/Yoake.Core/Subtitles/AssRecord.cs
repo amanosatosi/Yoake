@@ -51,6 +51,20 @@ public sealed class AssEvent : AssRecord
     public string MarginV { get => Get("MarginV"); set => Set("MarginV", value); }
     public string Effect { get => Get("Effect"); set => Set("Effect", value); }
     public string Text { get => Get("Text"); set => Set("Text", value); }
+    private AssEvent? _display;
+    public string DisplayText=>(_display??this).Text.Replace("\r", " ").Replace("\n", " ");
+    public string DisplayStyle=>(_display??this).Style;
+    public string DisplayActor=>(_display??this).Actor;
+    public string DisplayEffect=>(_display??this).Effect;
+    public string DisplayStart=>(_display??this).Start;
+    public string DisplayEnd=>(_display??this).End;
+    public string DisplayLayer=>(_display??this).Layer;
+    public void ShowDraft(IReadOnlyDictionary<string,string>? values)
+    {
+        _display=null;
+        if(values is not null){var clone=Clone();foreach(var p in values)clone.Set(p.Key,p.Value);_display=clone;}
+        foreach(var name in new[]{nameof(DisplayText),nameof(DisplayStyle),nameof(DisplayActor),nameof(DisplayEffect),nameof(DisplayStart),nameof(DisplayEnd),nameof(DisplayLayer)})Notify(name);
+    }
     private string? _startSource, _endSource;
     private long? _startTime, _endTime;
     private bool _isActive, _isCurrent;

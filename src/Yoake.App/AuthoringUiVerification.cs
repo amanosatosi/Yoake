@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.TextFormatting;
@@ -22,6 +23,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private long _previewRevision;
     private double _normalEditorWidth;
     private AssStyle? _first, _second;
+    private AssColorDialog? _colors;
     private const string Sample = @"{\fad(200,200)\bord3\1c&HFFFFFF&\3c&H000000&}<仮|かり>の糸\N{\k20}こ{\k15}れ{\k30}は{\1grd(0,&HFF0000&,&H0000FF&)}テスト
 {\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text မြန်မာ é 👩‍👩‍👧‍👦
 {\fnArial\future(opaque)\p1}m 0 0 l 20 0 20 20{\p0}";
@@ -32,15 +34,20 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         switch(_stage++)
         {
             case 0:
+                foreach(var sample in new[]{"日本語", "မြန်မာ", "Latin é", "العربية", "👩‍👩‍👧‍👦"})
+                {var line=model.ActiveEditor!.Insert(null,false);model.ActiveEditor.SetField(line,"Text",sample,"Mixed-script UI fixture");}
+                model.ActiveEditor!.ToggleComment([model.Events.Last()]);
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Dark;
                 text.SetCurrentValue(TextBox.TextProperty,Sample);
                 Invoke(model.Registry,CommandIds.EditCommit);
                 text.CaretIndex=text.SelectionStart=text.SelectionEnd=Sample.Length;
                 return false;
             case 1:
+                CheckGrid();CheckNavigation(text);
                 foreach(var scale in new[]{1d,1.25,1.5,2})Capture(window,$"editor-dark-{scale*100:0}",scale);
                 Capture(styles,"styles-dark-normal",1);
                 CheckMainFields();CheckSyntax(text);
+                var font=Named<FontPicker>(styles,"StyleFont");Require(font.InstalledFamilies.Count>0,"Installed font browser must load actual families.");font.OpenBrowser();Require(font.IsBrowserOpen,"Font dropdown must open immediately without requiring a typed search.");
                 _normalEditorWidth=window.FindControl<Grid>("EventEditorRegion")!.Bounds.Width;
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Light;
                 return false;
@@ -81,12 +88,42 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 sample.SetCurrentValue(TextBox.TextProperty,@"Yoake 0123\N日本語 テスト\Nမြန်မာ");
                 _previewRevision=styles.Preview.RequestedRevision;
                 return false;
+            case 8:
+                _colors=new AssColorDialog(new AssColor(255,128,192,128),Path.Combine(Path.GetDirectoryName(report)!,"recent-colors.txt"));_colors.Show(window);return false;
+            case 9:
+                Require(_colors is not null,"Canonical color dialog must open.");
+                Require(Named<ColorSpectrum>(_colors!,"ColorSpectrum").Bounds.Width>=256&&Named<ColorSpectrum>(_colors!,"ColorSpectrum").Bounds.Height>=256,"Canonical picker must realize a full 2D spectrum.");
+                Require(Named<StackPanel>(_colors!,"RecentColors").Bounds.Height>0,"Recent colors must have a separate visible area.");Capture(_colors!,"color-picker-dark",1);_colors!.RequestedThemeVariant=ThemeVariant.Light;return false;
+            case 10:
+                Capture(_colors!,"color-picker-light",1);_colors!.Close();return false;
             default:
                 Require(styles.Preview.LastError is null,"Latest style preview failed: "+styles.Preview.LastError);
                 if(!styles.Preview.HasCurrentFrame||styles.Preview.DisplayedRevision<_previewRevision)return false;
                 CheckStyleFields();Capture(styles,"styles-dark-narrow",1);
                 return true;
         }
+    }
+    private void CheckGrid()
+    {
+        var rows=window.FindControl<ListBox>("SubtitleRows")!;
+        var containers=rows.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+        Require(containers.Length>=6,"Mixed-script grid fixture must realize all ordinary scripts.");
+        Require(containers.All(r=>Math.Abs(r.Bounds.Height-30)<0.1),"Japanese/Burmese/Arabic/Latin/emoji/comment/selected rows must all be exactly 30 DIP.");
+        var header=window.FindControl<Grid>("ColumnHeader")!;var labels=header.Children.OfType<TextBlock>().Select(t=>t.Text).ToArray();
+        Require(labels.SequenceEqual(new[]{"#","L","Start","End","Style","Actor","Effect","Text"}),"Compact grid must omit Type and label layer L.");
+        Require(!window.FindControl<Border>("SubtitleGridRegion")!.GetVisualDescendants().OfType<Button>().Any(),"Grid must not have a permanent button toolbar.");
+        Require(rows.GetVisualDescendants().OfType<Grid>().Any(g=>g.Classes.Contains("comment")),"Comment state must reach the theme-aware row class.");
+    }
+    private static void CheckNavigation(AssTextBox text)
+    {
+        text.CaretIndex=text.SelectionStart=text.SelectionEnd=1;
+        Require(text.MoveAtVisualBoundary(Key.Up,KeyModifiers.None)&&text.CaretIndex==0,"Up on first visual line must reach text start.");
+        text.CaretIndex=text.SelectionStart=text.SelectionEnd=1;
+        Require(text.MoveAtVisualBoundary(Key.Up,KeyModifiers.Shift)&&text.SelectionStart==1&&text.SelectionEnd==0,"Shift+Up must preserve selection anchor.");
+        var end=text.Text!.Length;text.CaretIndex=text.SelectionStart=text.SelectionEnd=end-1;
+        Require(text.MoveAtVisualBoundary(Key.Down,KeyModifiers.None)&&text.CaretIndex==end,"Down on final visual line must reach text end.");
+        text.CaretIndex=text.SelectionStart=text.SelectionEnd=end-1;
+        Require(text.MoveAtVisualBoundary(Key.Down,KeyModifiers.Shift)&&text.SelectionStart==end-1&&text.SelectionEnd==end,"Shift+Down must extend selection to end.");
     }
 
     private void CheckMainFields()
@@ -100,6 +137,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(window.GetVisualDescendants().OfType<AssColorButton>().Count(b=>b.Bounds.Width>=30&&b.Bounds.Height>=24&&b.Command is not null)==4,"All four command-backed color swatches must be realized.");
         var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
         Require(audio.TranslatePoint(default,window)!.Value.Y<editor.TranslatePoint(default,window)!.Value.Y,"Audio must remain above the edit panel.");
+        Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>20&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>20&&window.FindControl<Slider>("AudioSize")!.Bounds.Height>20,"Three independent audio controls must be realized.");
+        Require(window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!.Bounds.Width>200,"Audio must have an attached horizontal panner.");
+        var video=window.FindControl<Grid>("VideoRegion")!;var tools=window.FindControl<Border>("VisualToolsBar")!;
+        var videoBottom=video.TranslatePoint(new Point(0,video.Bounds.Height),window)!.Value.Y;var toolsTop=tools.TranslatePoint(default,window)!.Value.Y;
+        Require(toolsTop-videoBottom<12,"Visual tools must immediately adjoin the video workspace.");
     }
 
     private void FocusSelectedStyle(string name)

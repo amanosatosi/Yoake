@@ -10,15 +10,15 @@ public sealed partial class MainWindowViewModel
     {
         T result=default!;var job=_jobs.Run(name,ct=>{result=work(ct);return Task.CompletedTask;},token);await job.Completion;return result;
     }
-    private readonly Dictionary<(FfmsMediaSession Media,double Start,double Duration),AudioSpectrumTile> _spectrumCache=[];
+    private readonly Dictionary<(FfmsMediaSession Media,double Start,double Duration,double Intensity),AudioSpectrumTile> _spectrumCache=[];
     public async Task<WriteableBitmap?> CreateSpectrumAsync(double start,double duration,CancellationToken token)
     {
         var media=_media;if(media?.HasAudio!=true)return null;
-        var key=(media,Math.Round(start,2),Math.Round(duration,2));
+        var intensity=AudioIntensity;var key=(media,Math.Round(start,2),Math.Round(duration,2),intensity);
         if(!_spectrumCache.TryGetValue(key,out var tile))
         {
             AudioSpectrumTile? result=null;
-            var job=_jobs.Run("Spectrogram viewport",ct=>{result=media.BuildSpectrum(start,duration,256,ct);return Task.CompletedTask;},token);
+            var job=_jobs.Run("Spectrogram viewport",ct=>{result=media.BuildSpectrum(start,duration,256,ct,intensity);return Task.CompletedTask;},token);
             await job.Completion;token.ThrowIfCancellationRequested();if(!ReferenceEquals(media,_media))return null;
             tile=result!;if(_spectrumCache.Count>=4)_spectrumCache.Remove(_spectrumCache.Keys.First());_spectrumCache[key]=tile;
         }

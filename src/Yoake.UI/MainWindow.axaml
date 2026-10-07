@@ -114,38 +114,41 @@
 </StackPanel></DockPanel></Grid></Border>
 <Grid Grid.Row="2" Name="UpperWorkspace">
   <Grid.ColumnDefinitions><ColumnDefinition Width="2*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="3*" MinWidth="480" /></Grid.ColumnDefinitions>
-  <Grid Grid.Column="0" RowDefinitions="*,4,42" Name="VisualColumn">
+  <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn">
     <Border Grid.Row="0" Margin="6,6,3,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-      <Grid Name="VideoRegion" RowDefinitions="24,*,34,28">
+      <Grid Name="VideoRegion" RowDefinitions="24,*,26,28,18">
         <TextBlock Text="VIDEO" FontWeight="SemiBold" Margin="7,3" />
         <Border Grid.Row="1" Margin="5,0" Background="Black" ClipToBounds="True"><Grid><Image Name="VideoImage" Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border>
-        <Grid Grid.Row="2" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="4" Margin="5,2">
-          <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Grid.Column="1" Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />
-          <Slider Name="VideoSeekBar" Grid.Column="2" Minimum="0" Maximum="{Binding MediaDurationSeconds}" Value="{Binding CurrentTimeSeconds, Mode=TwoWay}" />
-          <TextBlock Grid.Column="3" Text="{Binding TimeDisplay}" VerticalAlignment="Center" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DurationDisplay}" VerticalAlignment="Center" Opacity="0.65" FontSize="11" />
-        </Grid>
+        <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="2" Margin="5,0" Model="{Binding}" />
         <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="4" Margin="5,0">
-          <Button Content="Prev frame" Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame" /><Button Content="Next frame" Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame" />
-          <TextBox Name="ExactTime" Width="100" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
+          <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />
+          <Button Content="◀" Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame" /><Button Content="▶" Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame" />
+          <TextBox Name="ExactTime" Width="92" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
         </StackPanel>
+        <Grid Grid.Row="4" ColumnDefinitions="*,Auto" ColumnSpacing="4" Margin="5,0"><TextBlock Text="{Binding FramePositionDisplay}" FontSize="10" TextTrimming="CharacterEllipsis" /><TextBlock Grid.Column="1" Text="{Binding RelativeTimingDisplay}" FontSize="10" ToolTip.Tip="Frame time relative to subtitle start; end" /></Grid>
       </Grid>
     </Border>
-    <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
-    <Border Grid.Row="2" Margin="6,3,3,6" Background="{DynamicResource PanelBrush}"><StackPanel Orientation="Horizontal" Spacing="4" Margin="6,2">
+    <Border Grid.Row="1" Name="VisualToolsBar" Margin="6,0,3,3" Background="{DynamicResource PanelBrush}"><StackPanel Orientation="Horizontal" Spacing="4" Margin="6,2">
       <TextBlock Text="VISUAL TOOLS" FontSize="11" VerticalAlignment="Center" />
-      <Button Command="{Binding PositionToolCommand}" Padding="5,1" ToolTip.Tip="Position: drag on video"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Position}" /></Button>
-      <Button Command="{Binding ClipToolCommand}" Padding="5,1" ToolTip.Tip="Clip: drag to create rectangle; drag handles to edit; Shift+drag moves clip"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Clip}" /></Button>
-      <TextBlock Text="{Binding ActiveVisualTool}" FontSize="11" VerticalAlignment="Center" /><CheckBox Content="New clip inverse" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="11" />
+      <ToggleButton Classes="authoring" IsChecked="{Binding IsPositionTool, Mode=OneWay}" Command="{Binding PositionToolCommand}" Padding="5,1" ToolTip.Tip="Position: drag on video"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Position}" /></ToggleButton>
+      <ToggleButton Classes="authoring" IsChecked="{Binding IsClipTool, Mode=OneWay}" Command="{Binding ClipToolCommand}" Padding="5,1" ToolTip.Tip="Clip: drag to create rectangle; drag handles to edit; Shift+drag moves clip"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Clip}" /></ToggleButton>
+      <CheckBox Content="New clip inverse" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="11" />
     </StackPanel></Border>
   </Grid>
   <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
   <Grid Grid.Column="2" Name="TemporalTextColumn">
     <Grid.RowDefinitions><RowDefinition Height="130" MinHeight="72" /><RowDefinition Height="4" /><RowDefinition Height="*" MinHeight="264" /></Grid.RowDefinitions>
     <Border Grid.Row="0" Margin="3,6,6,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-      <Grid Name="AudioRegion" RowDefinitions="26,*,20">
-        <StackPanel Orientation="Horizontal" Spacing="4" Margin="6,1"><TextBlock Text="AUDIO" FontWeight="SemiBold" VerticalAlignment="Center" /><Button Content="−" Command="{Binding Actions[audio/zoom/out]}" Padding="5,0" /><Button Content="+" Command="{Binding Actions[audio/zoom/in]}" Padding="5,0" /><Button Content="Play line" Command="{Binding Actions[audio/play/selection]}" Padding="5,0" /><ComboBox Name="AudioMode" SelectedIndex="0" SelectionChanged="AudioModeChanged" Padding="5,0"><ComboBoxItem Content="Waveform" /><ComboBoxItem Content="Spectrogram" /></ComboBox></StackPanel>
-        <controls:AudioWaveformControl Name="AudioDisplay" ToolTip.Tip="Click: seek · Green/red: drag start/end · Shift+drag inside line: move timing · Wheel: scroll · Ctrl+wheel: zoom" Grid.Row="1" Margin="5,0" Model="{Binding}" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
-        <TextBlock Grid.Row="2" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" FontSize="10" Margin="6,1" />
+      <Grid Name="AudioRegion" RowDefinitions="26,*,16,16">
+        <StackPanel Orientation="Horizontal" Spacing="4" Margin="6,1"><TextBlock Text="AUDIO" FontWeight="SemiBold" VerticalAlignment="Center" /><Button Content="−" Command="{Binding Actions[audio/zoom/out]}" Padding="5,0" /><Button Content="+" Command="{Binding Actions[audio/zoom/in]}" Padding="5,0" /><Button Content="Play line" Command="{Binding Actions[audio/play/selection]}" Padding="5,0" /><ToggleButton Classes="authoring" Content="Mute" IsChecked="{Binding PlaybackMuted, Mode=TwoWay}" Padding="4,0" ToolTip.Tip="Mute editor playback" /><Button Content="▶/Ⅱ" Command="{Binding Actions[video/play]}" Padding="4,0" ToolTip.Tip="Play / pause from cursor" /><ComboBox Name="AudioMode" SelectedIndex="0" SelectionChanged="AudioModeChanged" Padding="5,0"><ComboBoxItem Content="Waveform" /><ComboBoxItem Content="Spectrogram" /></ComboBox></StackPanel>
+        <Grid Grid.Row="1" ColumnDefinitions="*,24,24,24" ColumnSpacing="2" Margin="5,0">
+          <controls:AudioWaveformControl Name="AudioDisplay" ToolTip.Tip="Click: seek · Green/red: drag start/end · Shift+drag inside line: move timing · Wheel: pan · Ctrl+wheel: zoom" Model="{Binding}" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
+          <Slider Grid.Column="1" Name="AudioSize" Orientation="Vertical" Minimum="100" Maximum="400" Value="{Binding AudioDisplayHeight, Mode=TwoWay}" ToolTip.Tip="Visualizer height (DIP)" />
+          <Slider Grid.Column="2" Name="AudioIntensity" Orientation="Vertical" Minimum="0.1" Maximum="8" Value="{Binding AudioIntensity, Mode=TwoWay}" ToolTip.Tip="Display amplitude / spectral intensity (independent of volume)" />
+          <Slider Grid.Column="3" Name="AudioVolume" Orientation="Vertical" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding PlaybackVolume, Mode=TwoWay}" ToolTip.Tip="Playback volume · 0–100%" />
+        </Grid>
+        <ScrollBar Grid.Row="2" Name="AudioPanner" Orientation="Horizontal" Minimum="0" Maximum="{Binding #AudioDisplay.MaximumPan}" ViewportSize="{Binding #AudioDisplay.VisibleSeconds}" Value="{Binding #AudioDisplay.ViewportStart, Mode=TwoWay}" SmallChange="0.5" LargeChange="5" Margin="5,0,80,0" ToolTip.Tip="Pan the visible audio time range" />
+        <TextBlock Grid.Row="3" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" FontSize="10" Margin="6,0" />
       </Grid>
     </Border>
     <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
@@ -157,9 +160,9 @@
           <Style Selector="NumericUpDown"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
           <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
         </Grid.Styles>
-        <DockPanel><TextBlock Text="EDIT PANEL" FontSize="11" FontWeight="SemiBold" /><Button Content="Commit · Ctrl+Enter" Command="{Binding Actions[edit/commit]}" Padding="4,0" HorizontalAlignment="Right" FontSize="11" /></DockPanel>
+        <DockPanel><TextBlock Text="EDIT PANEL" FontSize="11" FontWeight="SemiBold" /><Button Content="Finish · Ctrl+Enter" Command="{Binding Actions[edit/commit]}" Padding="4,0" HorizontalAlignment="Right" FontSize="11" /></DockPanel>
         <Grid Grid.Row="1" ColumnDefinitions="80,1.2*,26,*,*,86" ColumnSpacing="3">
-          <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedEvent.IsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
+          <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
           <ComboBox Height="26" VerticalAlignment="Center" Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding Draft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
           <Button Height="26" VerticalAlignment="Center" Grid.Column="2" Content="…" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" />
           <AutoCompleteBox Height="26" VerticalAlignment="Center" Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding Draft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
@@ -194,7 +197,7 @@
             <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="5,0" FontSize="11" ToolTip.Tip="Reset to line style at caret / selection" />
           </StackPanel>
         </WrapPanel>
-        <TextBlock Grid.Row="4" Text="Enter: commit and next · Shift+Enter: newline · Ctrl+Shift+D: split" FontSize="10" VerticalAlignment="Center" />
+        <TextBlock Grid.Row="4" Text="Enter: finish and next · Shift+Enter: newline · Ctrl+Shift+D: split" FontSize="10" VerticalAlignment="Center" />
         <controls:AssTextBox Name="SubtitleText" Grid.Row="5" FontSize="14" Text="{Binding Draft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
       </Grid>
     </Border>
@@ -202,10 +205,10 @@
 </Grid>
 <GridSplitter Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
 <Border Grid.Row="4" Margin="6" Name="SubtitleGridRegion" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-<Grid RowDefinitions="26,24,*"><DockPanel Margin="6,1"><TextBlock Text="SUBTITLE GRID" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,12,0" /><StackPanel Orientation="Horizontal" Spacing="4"><Button Content="Insert" Command="{Binding Actions[grid/insert/after]}" Padding="5,0" /><Button Content="Duplicate" Command="{Binding Actions[grid/duplicate]}" Padding="5,0" /><Button Content="Delete" Command="{Binding Actions[grid/delete]}" Padding="5,0" /><Button Content="Styles…" Command="{Binding Actions[styles/manage]}" Padding="5,0" /></StackPanel></DockPanel>
-<Border Grid.Row="1" Padding="10,2" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1"><Grid Name="ColumnHeader" PointerPressed="HeaderPressed" PointerMoved="HeaderMoved" PointerReleased="HeaderReleased" ColumnDefinitions="40,65,48,92,92,110,100,90,*" ColumnSpacing="4" ToolTip.Tip="Drag a column boundary to resize"><TextBlock Text="#" /><TextBlock Grid.Column="1" Text="Type" /><TextBlock Grid.Column="2" Text="Layer" /><TextBlock Grid.Column="3" Text="Start" /><TextBlock Grid.Column="4" Text="End" /><TextBlock Grid.Column="5" Text="Style" /><TextBlock Grid.Column="6" Text="Actor" /><TextBlock Grid.Column="7" Text="Effect" /><TextBlock Grid.Column="8" Text="Text" /></Grid></Border>
-<ListBox Name="SubtitleRows" Grid.Row="2" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
-<ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,2" /></Style></ListBox.Styles>
+<Grid RowDefinitions="24,*" ToolTip.Tip="SUBTITLE GRID">
+<Border Padding="10,2" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1"><Grid Name="ColumnHeader" PointerPressed="HeaderPressed" PointerMoved="HeaderMoved" PointerReleased="HeaderReleased" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4" ToolTip.Tip="Drag a column boundary to resize"><TextBlock Text="#" /><TextBlock Grid.Column="1" Text="L" ToolTip.Tip="Layer" /><TextBlock Grid.Column="2" Text="Start" /><TextBlock Grid.Column="3" Text="End" /><TextBlock Grid.Column="4" Text="Style" /><TextBlock Grid.Column="5" Text="Actor" /><TextBlock Grid.Column="6" Text="Effect" /><TextBlock Grid.Column="7" Text="Text" /></Grid></Border>
+<ListBox Name="SubtitleRows" Grid.Row="1" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
+<ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,0" /><Setter Property="Height" Value="30" /><Setter Property="MinHeight" Value="30" /><Setter Property="MaxHeight" Value="30" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style><Style Selector="Grid.subtitle-row TextBlock"><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" /></Style><Style Selector="Grid.subtitle-row.comment TextBlock"><Setter Property="Foreground" Value="{DynamicResource AssSyntaxUnknown}" /></Style><Style Selector="ListBoxItem:selected Grid.subtitle-row TextBlock"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style></ListBox.Styles>
 <ListBox.ContextMenu><ContextMenu>
 <MenuItem Header="Insert before" Command="{Binding Actions[grid/insert/before]}" />
 <MenuItem Header="Insert after" Command="{Binding Actions[grid/insert/after]}" />
@@ -221,6 +224,6 @@
 <MenuItem Header="Cut lines" Command="{Binding Actions[grid/cut]}" />
 <MenuItem Header="Paste lines" Command="{Binding Actions[grid/paste]}" />
 <MenuItem Header="Select all lines" Command="{Binding Actions[grid/select-all]}" />
-</ContextMenu></ListBox.ContextMenu><ListBox.ItemTemplate><DataTemplate x:DataType="sub:AssEvent"><Grid Tag="SubtitleRow" ColumnDefinitions="40,65,48,92,92,110,100,90,*" ColumnSpacing="4">
-<Border Grid.ColumnSpan="9" BorderBrush="{DynamicResource AssSyntaxBrace}" BorderThickness="0,0,0,1" Opacity="0.35" IsVisible="{Binding IsComment}" /><Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource IconAccentBrush}" IsVisible="{Binding IsCurrent}" /><Border Grid.ColumnSpan="9" Background="{DynamicResource IconAccentBrush}" Opacity="0.12" IsVisible="{Binding IsActive}" /><TextBlock Text="{Binding Number}" FontSize="11" Margin="5,0,0,0" /><TextBlock Grid.Column="1" Text="{Binding Kind}" FontSize="11" /><TextBlock Grid.Column="2" Text="{Binding Layer}" FontSize="11" /><TextBlock Grid.Column="3" Text="{Binding Start}" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding End}" FontSize="11" /><TextBlock Grid.Column="5" Text="{Binding Style}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="6" Text="{Binding Actor}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="7" Text="{Binding Effect}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="8" Text="{Binding Text}" TextTrimming="CharacterEllipsis" FontSize="12" />
+</ContextMenu></ListBox.ContextMenu><ListBox.ItemTemplate><DataTemplate x:DataType="sub:AssEvent"><Grid Tag="SubtitleRow" Classes="subtitle-row" Classes.comment="{Binding IsComment}" Height="30" ClipToBounds="True" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4">
+<Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource IconAccentBrush}" IsVisible="{Binding IsCurrent}" /><Border Grid.ColumnSpan="8" Background="{DynamicResource IconAccentBrush}" Opacity="0.12" IsVisible="{Binding IsActive}" /><TextBlock Text="{Binding Number}" FontSize="11" Margin="5,0,0,0" /><TextBlock Grid.Column="1" Text="{Binding DisplayLayer}" FontSize="11" /><TextBlock Grid.Column="2" Text="{Binding DisplayStart}" FontSize="11" /><TextBlock Grid.Column="3" Text="{Binding DisplayEnd}" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DisplayStyle}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="5" Text="{Binding DisplayActor}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="6" Text="{Binding DisplayEffect}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="7" Text="{Binding DisplayText}" MaxLines="1" TextTrimming="CharacterEllipsis" FontSize="12" />
 </Grid></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></Border></Grid></Window>

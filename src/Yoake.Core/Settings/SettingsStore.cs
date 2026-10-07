@@ -53,6 +53,7 @@ public sealed class SettingsStore(string path)
         var defaults = new AppSettings();
         var theme = defaults.Theme; var schema = defaults.SchemaVersion;
         var ratio = defaults.MainSplitRatio; var height = defaults.GridHeight;
+        double? volume=null,audioHeight=null,intensity=null;var muted=false;double[]? compact=null;
         double[]? widths = null; string[]? recent = null;
         Dictionary<string, JsonElement> future = [];
         foreach (var member in root.EnumerateObject())
@@ -63,6 +64,11 @@ public sealed class SettingsStore(string path)
                 case "theme": if (TryReadInt(member.Value, out var value)) theme = (ThemePreference)value; break;
                 case "mainSplitRatio": ratio = ReadNumber(member.Value); break;
                 case "gridHeight": height = ReadNumber(member.Value); break;
+                case "playbackVolume":volume=ReadNumber(member.Value);break;
+                case "playbackMuted":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)muted=member.Value.GetBoolean();break;
+                case "audioDisplayHeight":audioHeight=ReadNumber(member.Value);break;
+                case "audioIntensity":intensity=ReadNumber(member.Value);break;
+                case "compactGridColumnWidths":if(member.Value.ValueKind==JsonValueKind.Array)compact=member.Value.EnumerateArray().Take(8).Select(ReadNumber).ToArray();break;
                 case "gridColumnWidths":
                     if (member.Value.ValueKind == JsonValueKind.Array) widths = member.Value.EnumerateArray().Take(9).Select(ReadNumber).ToArray();
                     break;
@@ -73,7 +79,8 @@ public sealed class SettingsStore(string path)
             }
         }
         return new AppSettings { Theme = theme, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
-            GridColumnWidths = widths!, RecentFiles = recent!, FutureSettings = future };
+            GridColumnWidths = widths!, RecentFiles = recent!, FutureSettings = future,
+            PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,CompactGridColumnWidths=compact };
     }
 
     private static double ReadNumber(JsonElement value)

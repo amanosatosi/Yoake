@@ -8,7 +8,7 @@ public sealed partial class FfmsMediaSession
 {
     // Bounded viewport analysis, independent of waveform peak storage. No giant
     // whole-film spectrogram allocation; callers cache a few tiles per document.
-    public AudioSpectrumTile BuildSpectrum(double start, double duration, int columns, CancellationToken token)
+    public AudioSpectrumTile BuildSpectrum(double start, double duration, int columns, CancellationToken token,double intensity=1)
     {
         const int size=512, bands=128;
         columns=Math.Clamp(columns,32,512);
@@ -31,7 +31,7 @@ public sealed partial class FfmsMediaSession
                 // Linear 0..Nyquist, with decibel brightness. Black at silence.
                 var bin=1+y*(size/2-1)/(bands-1);
                 var db=20*Math.Log10(Math.Max(1e-7,fft[bin].Magnitude/(size/2)));
-                var value=Math.Clamp((db+80)/80,0,1);
+                var value=Math.Clamp((db+80+20*Math.Log10(Math.Clamp(intensity,0.1,8)))/80,0,1);
                 var offset=((bands-1-y)*columns+x)*4;
                 pixels[offset]=(byte)(Math.Min(1,value*2)*180);
                 pixels[offset+1]=(byte)(value*value*255);

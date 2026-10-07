@@ -11,6 +11,7 @@ public sealed class AssDocument
     private bool _bom;
     private string _newline = "\r\n";
     private string? _cached;
+    private readonly Dictionary<AssEvent,(int Start,int Length)> _eventSpans=[];
     private int _updateDepth;
     private bool _pendingSync, _pendingChange;
     private readonly ObservableCollection<AssEvent> _events = [];
@@ -67,7 +68,7 @@ public sealed class AssDocument
     public string Serialize()
     {
         if (_cached is not null) return _cached;
-        var output = new StringBuilder(); string[]? format = null;
+        var output = new StringBuilder(); string[]? format = null;_eventSpans.Clear();
         foreach (var line in Source)
         {
             var trim = line.Raw.Trim(); if (trim.StartsWith('[')) format = null;
@@ -76,7 +77,9 @@ public sealed class AssDocument
             {
                 var different=format is null||!format.SequenceEqual(record.Format,StringComparer.OrdinalIgnoreCase);
                 if(different)output.Append("Format: ").AppendJoin(", ",record.Format).Append(_newline);
-                output.Append(record.Serialize()).Append(line.Ending);
+                var start=output.Length;output.Append(record.Serialize());
+                if(record is AssEvent e)_eventSpans[e]=(start,output.Length-start);
+                output.Append(line.Ending);
                 // Restore the slot's Format before unrelated raw source lines.
                 // Unknown record kinds may depend on that Format too.
                 if(different&&format is not null)
@@ -89,6 +92,12 @@ public sealed class AssDocument
             else output.Append(line.Raw).Append(line.Ending);
         }
         return _cached = output.ToString();
+    }
+    public string SerializePreview(AssEvent? line,IReadOnlyDictionary<string,string>? values)
+    {
+        var source=Serialize();if(line is null||values is null||!_eventSpans.TryGetValue(line,out var span))return source;
+        var clone=line.Clone();foreach(var p in values)clone.Set(p.Key,p.Value);
+        return string.Concat(source.AsSpan(0,span.Start),clone.Serialize().AsSpan(),source.AsSpan(span.Start+span.Length));
     }
     public static AssDocument Load(string path)
     {
@@ -155,7 +164,12 @@ public sealed class AssDocument
             if (old >= 0) target.Move(old, i); else target.Insert(i, items[i]);
         }
     }
-    private void RecordChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { if (e.PropertyName is not "Number" and not "IsActive" and not "IsCurrent") Touch(); }
+    private void RecordChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if(e.PropertyName?.StartsWith("Display",StringComparison.Ordinal)==true)return;
+        if(e.PropertyName is not "Number" and not "IsActive" and not "IsCurrent")
+        {Touch();if(sender is AssEvent line)line.ShowDraft(null);}
+    }
     internal void Touch() { _cached = null; if(_updateDepth>0){_pendingChange=true;return;} Revision++; Changed?.Invoke(this, EventArgs.Empty); }
     internal IDisposable BeginUpdate() { _updateDepth++;return new UpdateScope(this); }
     private sealed class UpdateScope(AssDocument owner) : IDisposable
