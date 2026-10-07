@@ -48,6 +48,26 @@ public static class AssVisualTags
         if (tag.Length > 0) return text[..tag.Start] + replacement + text[(tag.Start + tag.Length)..];
         return text.StartsWith('{') ? "{" + replacement + text[1..] : "{" + replacement + "}" + text;
     }
+    public static int Alignment(string text,int fallback)
+    {
+        var tags=AssSyntax.Tags(text);var modern=tags.FirstOrDefault(t=>t.Name=="an");
+        if(modern.Name is not null&&int.TryParse(text[modern.ValueStart..modern.End].Trim(),out var alignment)&&alignment is >=1 and <=9)return alignment;
+        var legacy=tags.FirstOrDefault(t=>t.Name=="a");
+        if(legacy.Name is not null&&int.TryParse(text[legacy.ValueStart..legacy.End].Trim(),out var value))
+            return value switch{1=>1,2=>2,3=>3,5=>7,6=>8,7=>9,9=>4,10=>5,11=>6,_=>fallback};
+        return fallback;
+    }
+    public static AssPoint? PositionAtTime(string text,long relativeMilliseconds,long durationMilliseconds)
+    {
+        if(Position(text) is {} position)return position;
+        var move=Scan(text).FirstOrDefault(t=>t.Name=="move");if(move.Length==0)return null;
+        var fields=move.Arguments.Split(',');if(fields.Length is not (4 or 6)||fields.Any(p=>!TryNumber(p,out _)))return null;
+        var values=fields.Select(p=>double.Parse(p,CultureInfo.InvariantCulture)).ToArray();
+        var start=fields.Length==6?values[4]:0;var end=fields.Length==6?values[5]:durationMilliseconds;
+        if(start<=0&&end<=0){start=0;end=durationMilliseconds;}
+        var fraction=relativeMilliseconds<=start?0:relativeMilliseconds>=end||end<=start?1:(relativeMilliseconds-start)/(end-start);
+        return new(values[0]+(values[2]-values[0])*fraction,values[1]+(values[3]-values[1])*fraction);
+    }
     public static string SetPosition(string text, AssPoint point)
     {
         var tags = Scan(text);

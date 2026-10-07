@@ -23,7 +23,8 @@ public sealed partial class MainWindowViewModel
     private AssEvent? _gestureLine;
     private string _gestureText = "";
     private long _gestureStart, _gestureEnd;
-    public bool InverseClip { get; set; }
+    private bool _inverseClip;
+    public bool InverseClip {get=>_inverseClip;set=>SetField(ref _inverseClip,value);}
     public sealed record TimingGestureUpdate(int Part,double Delta);
     public sealed record PositionGestureUpdate(double X,double Y);
     public sealed record ClipGestureUpdate(int PointIndex,AssPoint Point,AssPoint Anchor);

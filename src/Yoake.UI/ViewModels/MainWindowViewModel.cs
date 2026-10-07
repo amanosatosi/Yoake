@@ -59,7 +59,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public string? PreviewSource()
     {
         var revision=PreviewRevision;if(_previewSourceRevision==revision)return _previewSource;
-        try{_previewSource=_activeSubtitleDocument?.SerializePreview(SelectedEvent,Draft?.IsChanged==true?Draft.Values:null);}
+        try{_previewSource=_activeSubtitleDocument?.SerializePreview(SelectedEvent,_gesture is null&&Draft?.IsChanged==true?Draft.Values:null);}
         catch(ArgumentException){_previewSource=_activeSubtitleDocument?.Serialize();}
         _previewSourceRevision=revision;return _previewSource;
     }
@@ -177,6 +177,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
         SelectedEvent?.ShowDraft(null);Draft=SelectedEvent is {} line?new EventEditDraft(line):null;
+        if(AssVisualTags.Clip(Draft?.Text??"") is {} clip)InverseClip=clip.Inverse;
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));OnPropertyChanged(nameof(SelectedIsComment));
         if(_workspace.ActiveDocument is {} session)session.IsDirty=ActiveEditor?.IsDirty??false;
     }

@@ -32,10 +32,10 @@ public sealed class VisualOverlayControl : Control
     private AssPoint DefaultPosition()
     {
         var model=Model!;var line=model.SelectedEvent!;var size=model.ScriptSize;var style=model.ActiveEditor?.Document.Styles.FirstOrDefault(s=>s.Name==model.EditorDraft.Style);
-        var alignment=int.TryParse(style?.Get("Alignment"),out var a)?Math.Clamp(a,1,9):2;
+        var alignment=AssVisualTags.Alignment(model.VisualText,int.TryParse(style?.Get("Alignment"),out var a)?Math.Clamp(a,1,9):2);
         double Margin(string name){var v=model.EditorDraft.Values.GetValueOrDefault(name,line.Get(name));return int.TryParse(v,out var m)&&m>0?m:int.TryParse(style?.Get(name),out m)?m:20;}
         var col=(alignment-1)%3;var row=(alignment-1)/3;
-        return new(col==0?Margin("MarginL"):col==2?size.Width-Margin("MarginR"):size.Width/2,row==0?size.Height-Margin("MarginV"):row==2?Margin("MarginV"):size.Height/2);
+        return new(col==0?Margin("MarginL"):col==2?size.Width-Margin("MarginR"):(size.Width+Margin("MarginL")-Margin("MarginR"))/2,row==0?size.Height-Margin("MarginV"):row==2?Margin("MarginV"):size.Height/2);
     }
     public override void Render(DrawingContext context)
     {
@@ -43,7 +43,7 @@ public sealed class VisualOverlayControl : Control
         var pen=new Pen(Brushes.Cyan,1);
         if(model.ActiveVisualTool=="Position")
         {
-            var point=Screen(AssVisualTags.Position(model.VisualText)??DefaultPosition());context.DrawLine(pen,point-new Vector(10,0),point+new Vector(10,0));context.DrawLine(pen,point-new Vector(0,10),point+new Vector(0,10));context.DrawEllipse(null,pen,point,5,5);
+            var point=Screen(AssVisualTags.PositionAtTime(model.VisualText,(long)(model.CurrentTimeSeconds*1000)-(line.StartMilliseconds??0),(line.EndMilliseconds??0)-(line.StartMilliseconds??0))??DefaultPosition());context.DrawLine(pen,point-new Vector(10,0),point+new Vector(10,0));context.DrawLine(pen,point-new Vector(0,10),point+new Vector(0,10));context.DrawEllipse(null,pen,point,5,5);
         }
         else if(AssVisualTags.Clip(model.VisualText) is {} clip)
         {

@@ -92,6 +92,22 @@ public sealed class UxCorrectionTests
         double[] times=[0,0.033,0.074,0.120];Assert.Equal(2,FrameNavigation.AtTime(times,0.08));Assert.Equal(3,FrameNavigation.AtTime(times,10));
         int[] keys=[0,10,30];Assert.Equal(10,FrameNavigation.NearestKeyframe(keys,19));Assert.Equal(30,FrameNavigation.NearestKeyframe(keys,26));Assert.Equal(10,FrameNavigation.NearestKeyframe(keys,20));Assert.Equal(30,FrameNavigation.StepKeyframe(keys,10,1));Assert.Equal(0,FrameNavigation.StepKeyframe(keys,10,-1));Assert.Equal("+7482ms; +4772ms",FrameNavigation.Relative(8.482,1000,3710));
     }
+    [Fact] public void VisualStandbyTracksStaticAlignmentAndMovingAnchors()
+    {
+        Assert.Equal(7,AssVisualTags.Alignment(@"{\an7}text",2));Assert.Equal(8,AssVisualTags.Alignment(@"{\a6}text",2));
+        Assert.Equal(2,AssVisualTags.Alignment(@"{\t(0,1,\an7)}text",2));
+        Assert.Equal(new AssPoint(50,100),AssVisualTags.PositionAtTime(@"{\move(0,0,100,200)}text",500,1000));
+        Assert.Equal(new AssPoint(100,200),AssVisualTags.PositionAtTime(@"{\move(0,0,100,200,100,400)}text",500,1000));
+    }
+    [Fact] public void LargeTrackPreviewUsesCachedBaseWithoutChangingOtherRows()
+    {
+        var source=new System.Text.StringBuilder(AssDocument.CreateEmpty().Serialize());
+        for(var i=0;i<20000;i++)source.Append("Dialogue: 0,0:00:00.00,0:00:02.00,Default,,0,0,0,,{\\future(opaque)}日本 မြန်မာ ").Append(i).Append("\r\n");
+        var doc=AssDocument.Parse(source.ToString());var before=doc.Serialize();var revision=doc.Revision;
+        var line=doc.Events[10000];var preview=doc.SerializePreview(line,new Dictionary<string,string>{{"Text","live draft"}});
+        Assert.Equal(20000,doc.Events.Count);Assert.Contains("live draft",preview);Assert.Contains("日本 မြန်မာ 19999",preview);
+        Assert.Same(before,doc.Serialize());Assert.Equal(revision,doc.Revision);Assert.Contains("future(opaque)",line.Text);
+    }
     [Fact] public void AudioDefaultsAndPersistencePreserveIntentionalSilence()
     {
         var defaults=new AppSettings().Normalize();Assert.Equal(0.8,defaults.PlaybackVolume);Assert.Equal(1,defaults.AudioIntensity);
