@@ -16,8 +16,8 @@ public sealed class AssColorDialog : Window
 {
     private AssColor _color;
     private readonly ColorSpectrum _spectrum=new(){Name="ColorSpectrum"};
-    private readonly Slider _hue=new(){Name="ColorHue",Minimum=0,Maximum=359.99,Orientation=Orientation.Vertical,Width=24};
-    private readonly Slider _alpha=new(){Name="ColorTransparency",Minimum=0,Maximum=255,Orientation=Orientation.Vertical,Width=24};
+    private readonly Slider _hue=new(){Name="ColorHue",Minimum=0,Maximum=359.99,Orientation=Orientation.Vertical,IsDirectionReversed=true,Width=24};
+    private readonly Slider _alpha=new(){Name="ColorTransparency",Minimum=0,Maximum=255,Orientation=Orientation.Vertical,IsDirectionReversed=true,Width=24};
     private readonly NumericUpDown[][] _channels=[new NumericUpDown[3],new NumericUpDown[3],new NumericUpDown[3]];
     private readonly NumericUpDown _alphaNumber=new(){Minimum=0,Maximum=255,Increment=1,Width=92,FormatString="0",Padding=new Thickness(3,1)};
     private readonly TextBox _exact=new(){Name="AssHex",Padding=new Thickness(4,1)};
@@ -92,13 +92,14 @@ public sealed class AssColorDialog : Window
     private void FromNumbers(int space)
     {
         var numbers=_channels[space];double N(int i)=>(double)(numbers[i].Value??0);
+        if(space>0){_sync=true;_spectrum.SetHue(N(0));_sync=false;}
         _color=space switch{0=>new((byte)N(0),(byte)N(1),(byte)N(2),_color.Transparency),1=>ColorSpace.FromHsv(N(0),N(1)/100,N(2)/100,_color.Transparency),_=>ColorSpace.FromHsl(N(0),N(1)/100,N(2)/100,_color.Transparency)};Refresh();
     }
     private void Invalid(string message){_valid=false;_error.Text=message;}
     private void Refresh(bool updateExact=true,bool updateHtml=true)
     {
         _sync=true;_valid=true;_error.Text="";_spectrum.SetColor(_color);_hue.Value=_spectrum.Hue;_alpha.Value=_color.Transparency;_alphaNumber.Value=_color.Transparency;
-        var hsv=ColorSpace.Hsv(_color);var hsl=ColorSpace.Hsl(_color);double[][] values=[[_color.Red,_color.Green,_color.Blue],[hsv.Hue,hsv.Saturation*100,hsv.Component*100],[hsl.Hue,hsl.Saturation*100,hsl.Component*100]];
+        var hsv=ColorSpace.Hsv(_color);var hsl=ColorSpace.Hsl(_color);double[][] values=[[_color.Red,_color.Green,_color.Blue],[_spectrum.Hue,hsv.Saturation*100,hsv.Component*100],[_spectrum.Hue,hsl.Saturation*100,hsl.Component*100]];
         for(var s=0;s<3;s++)for(var i=0;i<3;i++)_channels[s][i].Value=(decimal)Math.Round(values[s][i],2);
         if(updateExact)_exact.Text=_color.StyleValue;if(updateHtml)_html.Text=ColorSpace.Html(_color);
         _preview.Background=new SolidColorBrush(Color.FromArgb(_color.Opacity,_color.Red,_color.Green,_color.Blue));
@@ -109,9 +110,9 @@ public sealed class AssColorDialog : Window
         if(!OperatingSystem.IsWindows()||_droppers.Count>0)return;
         foreach(var screen in Screens.All)
         {
-            var overlay=new Window{WindowDecorations=WindowDecorations.None,ShowInTaskbar=false,Topmost=true,CanResize=false,Background=Brushes.Transparent,TransparencyLevelHint=[WindowTransparencyLevel.Transparent],Position=screen.Bounds.Position,Width=screen.Bounds.Width/screen.Scaling,Height=screen.Bounds.Height/screen.Scaling,Cursor=new Cursor(StandardCursorType.Cross)};
+            var overlay=new Window{WindowDecorations=WindowDecorations.None,ShowInTaskbar=false,Topmost=true,CanResize=false,Background=new SolidColorBrush(Color.FromArgb(1,0,0,0)),WindowStartupLocation=WindowStartupLocation.Manual,TransparencyLevelHint=[WindowTransparencyLevel.Transparent],Position=screen.Bounds.Position,Width=screen.Bounds.Width/screen.Scaling,Height=screen.Bounds.Height/screen.Scaling,Cursor=new Cursor(StandardCursorType.Cross)};
             overlay.KeyDown+=(_,e)=>{if(e.Key==Key.Escape){EndDropper();e.Handled=true;}};
-            overlay.PointerPressed+=(_,e)=>{if(!e.GetCurrentPoint(overlay).Properties.IsLeftButtonPressed){EndDropper();return;}try{_color=WindowsScreenColor.AtCursor(_color.Transparency);EndDropper();Refresh();}catch(Exception ex){EndDropper();_commands.ReportFailure("color/eyedropper",ex);}e.Handled=true;};
+            overlay.PointerPressed+=(_,e)=>{if(!e.GetCurrentPoint(overlay).Properties.IsLeftButtonPressed){EndDropper();return;}try{EndDropper();_color=WindowsScreenColor.AtCursor(_color.Transparency);Refresh();}catch(Exception ex){EndDropper();_commands.ReportFailure("color/eyedropper",ex);}e.Handled=true;};
             _droppers.Add(overlay);overlay.Show();
         }
         _error.Text="Click a screen pixel; Escape or right-click cancels. Alpha is unchanged.";

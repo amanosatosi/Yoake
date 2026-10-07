@@ -169,8 +169,7 @@ public partial class MainWindow : Window, IEditorDialogs
         // title text paints ABOVE our tabs; hiding Win32 NC text alone cannot
         // fix that. Keep the framework caption buttons and their platform roles.
         var root=this.GetVisualAncestors().LastOrDefault()??this;
-        var decorations=root.GetVisualDescendants().OfType<Avalonia.Controls.Chrome.WindowDrawnDecorations>().FirstOrDefault();
-        var parts=decorations?.GetVisualDescendants().OfType<Control>().ToArray()??[];
+        var parts=root.GetVisualDescendants().OfType<Control>().ToArray();
         if(parts.FirstOrDefault(c=>c.Name=="PART_TitleTextPanel") is {} title)
         {title.IsVisible=false;RedundantCaptionHidden=true;}
         var buttons=parts.FirstOrDefault(c=>c.Name=="PART_OverlayPanel");

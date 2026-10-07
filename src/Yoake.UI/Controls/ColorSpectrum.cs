@@ -11,6 +11,7 @@ namespace Yoake.UI.Controls;
 public sealed class ColorSpectrum : Control
 {
     private double _hue,_saturation,_value;
+    private double _brushHue=double.NaN;
     private bool _drag;
     private LinearGradientBrush _hueBrush=new();
     private static readonly LinearGradientBrush Black=new(){StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(0,1,RelativeUnit.Relative),GradientStops=[new(Colors.Transparent,0),new(Colors.Black,1)]};
@@ -26,7 +27,7 @@ public sealed class ColorSpectrum : Control
     }
     public void SetHue(double hue){_hue=hue;UpdateBrush();InvalidateVisual();ValueChanged?.Invoke(this,EventArgs.Empty);}
     public AssColor Color(byte alpha)=>ColorSpace.FromHsv(_hue,_saturation,_value,alpha);
-    private void UpdateBrush(){var c=ColorSpace.FromHsv(_hue,1,1);_hueBrush=new(){StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(1,0,RelativeUnit.Relative),GradientStops=[new(Colors.White,0),new(Avalonia.Media.Color.FromRgb(c.Red,c.Green,c.Blue),1)]};}
+    private void UpdateBrush(){if(_brushHue==_hue)return;_brushHue=_hue;var c=ColorSpace.FromHsv(_hue,1,1);_hueBrush=new(){StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(1,0,RelativeUnit.Relative),GradientStops=[new(Colors.White,0),new(Avalonia.Media.Color.FromRgb(c.Red,c.Green,c.Blue),1)]};}
     public override void Render(DrawingContext context)
     {
         context.FillRectangle(_hueBrush,new Rect(Bounds.Size));context.FillRectangle(Black,new Rect(Bounds.Size));
