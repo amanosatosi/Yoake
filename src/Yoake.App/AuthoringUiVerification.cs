@@ -39,8 +39,8 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         switch(_stage++)
         {
             case 0:
-                foreach(var sample in new[]{"日本語", "မြန်မာ", "Latin é", "العربية", "👩‍👩‍👧‍👦"})
-                {var line=model.ActiveEditor!.Insert(null,false);model.ActiveEditor.SetField(line,"Text",sample,"Mixed-script UI fixture");}
+                foreach(var gridSample in new[]{"日本語", "မြန်မာ", "Latin é", "العربية", "👩‍👩‍👧‍👦"})
+                {var line=model.ActiveEditor!.Insert(null,false);model.ActiveEditor.SetField(line,"Text",gridSample,"Mixed-script UI fixture");}
                 model.ActiveEditor!.ToggleComment([model.Events.Last()]);
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Dark;
                 text.SetCurrentValue(TextBox.TextProperty,Sample);
@@ -124,7 +124,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Require(model.Draft!.IsChanged&&model.SelectedEvent!.Text==_committedText,"Mangetsu must show the draft before idle commit.");
                 Require(!_beforeDraft!.AsSpan().SequenceEqual(FramePixels()),"Live draft must change actual composited video pixels.");
                 Capture(window,"editor-live-draft",1);Invoke(model.Registry,CommandIds.EditCancel);
-                Require(model.SelectedEvent.Text==_committedText&&!model.Draft.IsChanged,"Escape must revert the entire pending edit burst.");
+                Require(model.SelectedEvent!.Text==_committedText&&!model.Draft!.IsChanged,"Escape must revert the entire pending edit burst.");
                 _mediaLoading=model.OpenMediaAsync(Path.Combine(mediaFixtures!,"audio.wav"));return false;
             case 14:
                 if(!_mediaLoading!.IsCompleted){_stage--;return false;}
