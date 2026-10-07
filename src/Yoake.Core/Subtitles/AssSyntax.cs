@@ -56,10 +56,10 @@ public static class AssSyntax
         List<AssSyntaxToken> tokens = [];
         var block = false; var depth = 0; var drawing = false; var furi = true; var vertical = false;
         var tag = ""; var furiganaEnd = -1; var literalEnd = -1; int[] pipes = [];
-        void Add(int start, int length, AssSyntaxKind kind)
+        void Add(int start, int length, AssSyntaxKind kind, bool coalesce = true)
         {
             if (length == 0) return;
-            if (tokens.Count > 0 && tokens[^1].Kind == kind && tokens[^1].Start + tokens[^1].Length == start)
+            if (coalesce && tokens.Count > 0 && tokens[^1].Kind == kind && tokens[^1].Start + tokens[^1].Length == start)
                 tokens[^1] = tokens[^1] with { Length = tokens[^1].Length + length };
             else tokens.Add(new(start, length, kind));
         }
@@ -77,7 +77,7 @@ public static class AssSyntax
             {
                 var match = AssTagCatalog.Match(source.AsSpan(i + 1));
                 tag = source.Substring(i + 1, match.Length);
-                Add(i, match.Length + 1, match.Kind); i += match.Length + 1;
+                Add(i, match.Length + 1, match.Kind, false); i += match.Length + 1;
                 if (depth == 0)
                 {
                     var end = i; while (end < source.Length && source[end] is not '\\' and not '}') end++;
