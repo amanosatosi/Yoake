@@ -41,7 +41,7 @@ public sealed class AssColorField : UserControl
     {
         _sync=true;_exact.Text=Value;_sync=false;
         if(AssColor.TryParse(Value,out var color)){_swatch.Background=new SolidColorBrush(Color.FromArgb(color.Opacity,color.Red,color.Green,color.Blue));ToolTip.SetTip(_exact,"ASS &HAABBGGRR; alpha 00 is opaque, FF is transparent");}
-        else ToolTip.SetTip(_exact,"Keep the exact source value, or choose a valid ASS color.");
+        else {_swatch.Background=Brushes.Transparent;ToolTip.SetTip(_exact,"Keep the exact source value, or choose a valid ASS color.");}
     }
 }
 

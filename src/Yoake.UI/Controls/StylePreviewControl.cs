@@ -13,7 +13,7 @@ namespace Yoake.UI.Controls;
 // Actual Mangetsu output over a checkerboard destination; rendering stays off UI.
 public sealed class StylePreviewControl : UserControl, IDisposable
 {
-    private const int WidthPixels=640,HeightPixels=180;
+    internal const int WidthPixels=640,HeightPixels=300;
     private readonly BackgroundJobService _jobs=new();
     private readonly SemaphoreSlim _gate=new(1,1);
     private readonly Image _image=new(){Stretch=Stretch.Uniform};

@@ -1,6 +1,6 @@
 # ASS authoring controls
 
-The ASS editor remains an Avalonia TextBox. Its TextPresenter supplies colored text runs to the same shaping/layout engine, preserving native selection, clipboard, accessibility and IME input. During preedit the presenter delegates layout to Avalonia unchanged. Syntax is presentation only: cached token ranges never rewrite the subtitle source. Theme resources define semantic colors.
+The ASS editor remains an Avalonia TextBox. Its TextPresenter supplies colored text runs to the same shaping/layout engine, preserving native selection, clipboard, accessibility and IME input. During preedit the presenter delegates layout to Avalonia unchanged. Syntax is presentation only: cached token ranges never rewrite the subtitle source. Theme resources define semantic colors; imperative lookups explicitly pass ActualThemeVariant so dark/light dictionary entries resolve instead of falling back to plain foreground.
 
 The lightweight scanner handles incomplete blocks, nested function arguments, drawing mode, colors, escapes, karaoke and Mangetsu furigana. The tag catalog references Mangetsu parser names and can be extended without changing the text control. Unknown syntax stays editable. Highlighting currently rescans the changed line, with cached results when only selection/layout changes; it does not maintain a document-wide parser.
 

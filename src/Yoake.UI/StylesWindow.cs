@@ -48,6 +48,7 @@ public sealed class StylesWindow : Window
         _library=new(libraryPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Yoake","style-library.json"));
         if(_library.Collections.Count==0)_library.Create("Personal");
         FontSize=12;Title="Styles Manager";Width=1180;Height=740;MinWidth=940;MinHeight=570;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        this.Bind(BackgroundProperty,this.GetResourceObservable("AppBackgroundBrush"));
         var root=new Grid{ColumnDefinitions=new("1*,4,1*,4,3.4*"),RowDefinitions=new("*,Auto"),Margin=new Thickness(8),ColumnSpacing=5,RowSpacing=5};Content=root;
         root.ColumnDefinitions[0].MinWidth=168;root.ColumnDefinitions[2].MinWidth=160;root.ColumnDefinitions[4].MinWidth=440;
         foreach(var column in new[]{1,3}){var splitter=new GridSplitter{ResizeDirection=GridResizeDirection.Columns,Background=new SolidColorBrush(Color.FromArgb(70,128,128,128))};Grid.SetColumn(splitter,column);root.Children.Add(splitter);}
@@ -258,7 +259,7 @@ public sealed class StylesWindow : Window
         try
         {
             var style=_draft.Preview();var useLine=_previewMode.SelectedIndex==1;
-            var resX=useLine?_script.Document.GetScriptInfo("PlayResX"):"640";var resY=useLine?_script.Document.GetScriptInfo("PlayResY"):"180";
+            var resX=useLine?_script.Document.GetScriptInfo("PlayResX"):StylePreviewControl.WidthPixels.ToString(CultureInfo.InvariantCulture);var resY=useLine?_script.Document.GetScriptInfo("PlayResY"):StylePreviewControl.HeightPixels.ToString(CultureInfo.InvariantCulture);
             var doc=AssDocument.Parse($"[Script Info]\nScriptType: v4.00+\nPlayResX: {resX}\nPlayResY: {resY}\n[V4+ Styles]\n");var editor=new SubtitleEditor(doc);
             foreach(var other in _script.Document.Styles.Where(s=>s.Name!=_selected!.Name))editor.AddStyle(other);
             var copied=editor.AddStyle(style);var line=editor.Insert(null,false);editor.SetField(line,"Style",copied.Name,"Preview");

@@ -54,6 +54,6 @@ public sealed class AssTextPresenter : TextPresenter
     public IBrush? SyntaxBrush(AssSyntaxKind kind)
     {
         var key="AssSyntax"+kind;
-        return this.TryFindResource(key,out var value)&&value is IBrush brush?brush:Foreground;
+        return this.TryFindResource(key,ActualThemeVariant,out var value)&&value is IBrush brush?brush:Foreground;
     }
 }
