@@ -54,6 +54,8 @@
     <Setter Property="Theme" Value="{StaticResource SubtitleNumber}" />
     <Setter Property="MinHeight" Value="26" />
     <Setter Property="MinWidth" Value="86" />
+    <Setter Property="Height" Value="26" />
+    <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Padding" Value="4,1" />
     <Setter Property="FontSize" Value="12" />
     <Setter Property="VerticalContentAlignment" Value="Center" />

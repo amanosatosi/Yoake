@@ -89,7 +89,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var entry=input.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Name=="PART_TextBox");
         Require(entry.Bounds.Width>=48&&entry.Bounds.Height>=20,$"{input.Name}: editable numeric area collapsed to {entry.Bounds}.");
         Require(input.Bounds.Width>=86,$"{input.Name}: numeric field width must be usable.");
-        Require(input.Bounds.Height<=30,$"{input.Name}: compact numeric field must not retain a tall inner Fluent control.");
+        Require(input.Bounds.Height<=30,$"{input.Name}: compact numeric field must not retain a tall inner Fluent control (field {input.Bounds}, entry {entry.Bounds}).");
     }
 
     private void CheckStyleFields()
