@@ -1,5 +1,10 @@
 # Editor validation
 
+Packaged startup now verifies the real MainWindow with clean, legacy, damaged,
+null-collection and invalid-JSON profiles, plus fatal bootstrap reporting. See
+[startup diagnostics](docs/startup-diagnostics.md) for the reproduced crash,
+lifecycle checks and remaining ordinary-desktop validation limits.
+
 This task deliberately performs no local .NET restore/build/test, NativeAOT publish, or native dependency build. Local checks are source policy, XML/JSON/generated SVG checks, `git diff --check`, and deterministic media-fixture generation.
 
 GitHub Actions remains authoritative and now runs:

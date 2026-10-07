@@ -10,6 +10,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using Yoake.Core.Commands;
 using Yoake.Core.Hotkeys;
+using Yoake.Core.Logging;
 using Yoake.Core.Subtitles;
 using Yoake.UI.Services;
 using Yoake.UI.ViewModels;
@@ -25,7 +26,9 @@ public partial class MainWindow : Window, IEditorDialogs
     public MainWindow()
     {
         InitializeComponent();
+        StartupDiagnostics.Checkpoint("MainWindow XAML initialized");
         if(OperatingSystem.IsWindows()){WindowDecorations=Avalonia.Controls.WindowDecorations.Full;ExtendClientAreaToDecorationsHint=true;ExtendClientAreaTitleBarHeightHint=36;TitleTabStrip.Padding=new Thickness(0,0,140,0);}
+        StartupDiagnostics.Checkpoint("MainWindow native decorations configured");
         SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
@@ -40,7 +43,11 @@ public partial class MainWindow : Window, IEditorDialogs
         if(_model is not null){_model.FrameReady-=FrameReady;_model.PropertyChanged-=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
         if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;
-            for(var i=0;i<Math.Min(8,_model.GridColumnWidths.Count);i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(_model.GridColumnWidths[i]);_model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
+            var widths=_model.GridColumnWidths; // Normalized at the model boundary.
+            var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
+            for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
+            _model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
+            StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
     }
     private int _resizeColumn=-1;
     private double _resizeStart, _resizeWidth;
@@ -48,7 +55,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(!e.GetCurrentPoint(ColumnHeader).Properties.IsLeftButtonPressed)return;
         var x=e.GetPosition(ColumnHeader).X;double boundary=0;
-        for(var i=0;i<8;i++)
+        for(var i=0;i<Math.Min(8,ColumnHeader.ColumnDefinitions.Count);i++)
         {
             boundary+=ColumnHeader.ColumnDefinitions[i].ActualWidth+4;
             if(Math.Abs(x-boundary)>7)continue;
@@ -68,7 +75,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private void ApplyRowWidths()
     {
         foreach(var row in SubtitleRows.GetVisualDescendants().OfType<Grid>().Where(g=>g.Tag as string=="SubtitleRow"))
-            for(var i=0;i<8;i++)if(row.ColumnDefinitions[i].Width!=ColumnHeader.ColumnDefinitions[i].Width)row.ColumnDefinitions[i].Width=ColumnHeader.ColumnDefinitions[i].Width;
+            for(var i=0;i<Math.Min(8,Math.Min(row.ColumnDefinitions.Count,ColumnHeader.ColumnDefinitions.Count));i++)if(row.ColumnDefinitions[i].Width!=ColumnHeader.ColumnDefinitions[i].Width)row.ColumnDefinitions[i].Width=ColumnHeader.ColumnDefinitions[i].Width;
     }
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)

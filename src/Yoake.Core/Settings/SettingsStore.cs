@@ -19,12 +19,22 @@ public sealed class SettingsStore(string path)
 {
     public string Path { get; } = path;
 
-    public AppSettings Load()
+    public AppSettings Load(Action<string>? report = null)
     {
         if (!File.Exists(Path))
             return new AppSettings();
-        using var stream = File.OpenRead(Path);
-        return JsonSerializer.Deserialize(stream, SettingsJsonContext.Default.AppSettings) ?? new AppSettings();
+        try
+        {
+            using var stream = File.OpenRead(Path);
+            var settings = JsonSerializer.Deserialize(stream, SettingsJsonContext.Default.AppSettings);
+            if (settings is null) report?.Invoke("Settings JSON contained null; using defaults without changing the file.");
+            return (settings ?? new AppSettings()).Normalize(report);
+        }
+        catch (Exception exception) when (exception is JsonException or IOException or UnauthorizedAccessException)
+        {
+            report?.Invoke($"Settings could not be read ({exception.GetType().Name}: {exception.Message}); using defaults without changing the file.");
+            return new AppSettings();
+        }
     }
 
     public void Save(AppSettings settings)
@@ -35,7 +45,7 @@ public sealed class SettingsStore(string path)
         Directory.CreateDirectory(directory);
         var temporary = Path + ".tmp";
         using (var stream = File.Create(temporary))
-            JsonSerializer.Serialize(stream, settings, SettingsJsonContext.Default.AppSettings);
+            JsonSerializer.Serialize(stream, settings.Normalize(), SettingsJsonContext.Default.AppSettings);
         File.Move(temporary, Path, true);
     }
 }

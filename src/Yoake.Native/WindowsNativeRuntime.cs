@@ -12,6 +12,11 @@ public static partial class WindowsNativeRuntime
 
     public static string? ConfiguredDirectory => _configuredDirectory;
 
+    public static void ShowFatalError(string message)
+    {
+        if (OperatingSystem.IsWindows()) _ = MessageBoxW(0, message, "Yoake could not start", 0x00000010);
+    }
+
     public static void ConfigurePackagedRuntime(string applicationDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(applicationDirectory);
@@ -45,4 +50,7 @@ public static partial class WindowsNativeRuntime
 
     [LibraryImport("kernel32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     private static partial nint AddDllDirectory(string newDirectory);
+
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    private static partial int MessageBoxW(nint owner, string text, string caption, uint type);
 }

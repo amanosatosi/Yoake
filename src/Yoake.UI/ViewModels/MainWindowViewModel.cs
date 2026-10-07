@@ -128,7 +128,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public MainWindowViewModel(CommandRegistry registry, WorkspaceManager workspace, UndoManager undo, IThemeService theme, SettingsStore settingsStore, AppSettings settings)
     {
-        _registry=registry; _workspace=workspace; _theme=theme; _settingsStore=settingsStore; _settings=settings;
+        _registry=registry; _workspace=workspace; _theme=theme; _settingsStore=settingsStore; _settings=settings.Normalize();
         RegisterEditorCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;

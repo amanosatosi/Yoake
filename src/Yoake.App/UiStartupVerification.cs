@@ -1,0 +1,78 @@
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Yoake.Core.Commands;
+using Yoake.Core.Logging;
+using Yoake.UI;
+using Yoake.UI.Controls;
+using Yoake.UI.ViewModels;
+
+namespace Yoake.App;
+
+// Exercises the shipping window, compiled bindings, native platform and layout.
+// It does not substitute a headless/fake window or claim GPU/device/input QA.
+internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifetime desktop,
+    MainWindow window, MainWindowViewModel model, StartupOptions options)
+{
+    private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
+    private int _ticks, _layouts;
+    private bool _opened, _loaded, _inserted;
+
+    public void Start()
+    {
+        window.Opened += (_, _) => _opened = true;
+        window.Loaded += (_, _) => _loaded = true;
+        window.LayoutUpdated += (_, _) => _layouts++;
+        _timer.Tick += Verify;
+        _timer.Start();
+    }
+
+    private void Verify(object? sender, EventArgs args)
+    {
+        if (!_opened || !_loaded || _layouts == 0) return;
+        try
+        {
+            if (!_inserted)
+            {
+                Invoke(CommandIds.GridInsertAfter);
+                _inserted = true;
+                return; // Let real row containers/bindings and selection initialize.
+            }
+            if (++_ticks < 10) return;
+            Require(window.IsVisible && window.IsLoaded && window.ClientSize.Width > 0 && window.ClientSize.Height > 0, "Window must be visible, loaded and have a nonzero client area.");
+            Require(window.TryGetPlatformHandle() is not null, "Native window platform must exist.");
+            Require(ReferenceEquals(window.DataContext, model) && model.ActiveEditor is not null, "Real document model must be attached.");
+            var header = window.FindControl<Grid>("ColumnHeader")!;
+            Require(header.ColumnDefinitions.Count == 9 && header.ColumnDefinitions.Take(8).All(c => c.ActualWidth > 0 && double.IsFinite(c.ActualWidth)), "Column headers must finish valid layout.");
+            var rows = window.FindControl<ListBox>("SubtitleRows")!;
+            Require(ReferenceEquals(rows.ItemsSource, model.Events) && model.Events.Count == 1, "Real grid ItemsSource must be bound.");
+            Require(rows.SelectedItems?.Contains(model.SelectedEvent!) == true, "Grid selection binding must initialize.");
+            Require(rows.GetVisualDescendants().OfType<Grid>().Any(g => g.Tag as string == "SubtitleRow" && g.Bounds.Height > 0), "A real subtitle row template must be realized and laid out.");
+            Require(ReferenceEquals(window.FindControl<AudioWaveformControl>("AudioDisplay")?.Model, model), "Waveform model binding must initialize.");
+            Require(ReferenceEquals(window.FindControl<VisualOverlayControl>("VisualOverlay")?.Model, model), "Visual overlay model binding must initialize.");
+            Require(window.GetVisualDescendants().OfType<Button>().Count(b => b.Command is not null) >= 8, "Toolbar command bindings must initialize.");
+            Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
+            Invoke(CommandIds.EditUndo); // Restore a clean untitled document before normal shutdown.
+            Require(!model.ActiveEditor!.IsDirty, "Startup probe must leave no unsaved document.");
+            _timer.Stop();
+            StartupDiagnostics.Checkpoint($"UI verified: opened, loaded, {_layouts} layouts, 10 dispatcher ticks, real row/selection/custom-control/command bindings");
+            options.FinishVerification($"PASS: real MainWindow opened/visible/loaded; native platform; {_layouts} layouts; dispatcher responsive; real model, grid row/selection, custom controls and command bindings; no Avalonia startup errors.\n");
+            StartupDiagnostics.Complete();
+            desktop.Shutdown(0);
+        }
+        catch (Exception exception)
+        {
+            _timer.Stop();
+            Program.Fatal("Real MainWindow startup verification", exception);
+            desktop.Shutdown(1);
+        }
+    }
+
+    private void Invoke(string id)
+    {
+        var result = model.Registry.InvokeAsync(id, new());
+        Require(result.IsCompletedSuccessfully && result.Result, $"Startup command failed: {id}");
+    }
+    private static void Require(bool valid, string message) { if (!valid) throw new InvalidOperationException(message); }
+}

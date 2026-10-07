@@ -132,16 +132,16 @@ jobs:
       - name: Restore app
         run: dotnet restore src/Yoake.App/Yoake.App.csproj -r win-x64
       - name: Publish Windows NativeAOT
-        run: dotnet publish src/Yoake.App/Yoake.App.csproj -c Release -r win-x64 --self-contained true --no-restore -p:PublishAot=true -o artifacts/publish
+        run: dotnet publish src/Yoake.App/Yoake.App.csproj -c Release -r win-x64 --self-contained true --no-restore -p:PublishAot=true -p:SourceRevisionId=${{ github.event.pull_request.head.sha || github.sha }} -o artifacts/publish
       - name: Package portable application
         shell: pwsh
         run: .\ci\package_windows.ps1 -PublishRoot artifacts\publish -NativeRoot .ci-cache\native -OutputRoot artifacts
       - name: Verify staged native runtime closure
         shell: pwsh
         run: .\ci\verify_windows_runtime.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable
-      - name: Smoke packaged NativeAOT executable
+      - name: Verify real MainWindow startup with clean, legacy and damaged profiles
         shell: pwsh
-        run: .\ci\smoke_windows.ps1 -Executable artifacts\Yoake-Windows-x64-portable\Yoake.exe
+        run: .\ci\smoke_windows.ps1 -Executable artifacts\Yoake-Windows-x64-portable\Yoake.exe -VerificationRoot artifacts\ui-startup-verification
       - name: Verify packaged editor domain and native media/rendering providers
         shell: pwsh
         run: |
@@ -153,6 +153,12 @@ jobs:
           if (-not $process.WaitForExit(60000)) { $process.Kill(); throw 'Packaged editor verification timed out.' }
           if (Test-Path $report) { Get-Content $report }
           if ($process.ExitCode -ne 0) { throw "Packaged editor verification failed: $($process.ExitCode)" }
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: Yoake-ui-startup-diagnostics
+          path: artifacts/ui-startup-verification
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v7
         with:
           name: Yoake-Windows-x64-NativeAOT-portable

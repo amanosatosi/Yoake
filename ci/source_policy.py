@@ -64,8 +64,8 @@ app_project=(ROOT/'src/Yoake.App/Yoake.App.csproj').read_text(encoding='utf-8')
 for marker in ('ApplicationIcon', 'AvaloniaIncludeApplicationIconAsWindowIcon', 'generate-app-icon.ps1', 'yoake.ico'):
     if marker not in app_project: fail(f'Windows application icon pipeline marker missing: {marker}')
 smoke=(ROOT/'ci/smoke_windows.ps1').read_text(encoding='utf-8')
-if 'clean early exit' in smoke.lower() or 'if ($process.exitcode -ne 0)' in smoke.lower():
-    fail('startup smoke must fail on any early desktop-app exit')
+for marker in ('--verify-ui-startup', '--profile-directory', 'legacy', 'damaged', 'fatal-diagnostics', 'WaitForExit', "StartsWith('PASS:')", '$process.ExitCode -ne 0'):
+    if marker not in smoke: fail(f'real MainWindow/profile startup verification marker missing: {marker}')
 commands=(ROOT/'src/Yoake.Core/Commands/CommandRegistry.cs').read_text(encoding='utf-8')
 registry_adapter=(ROOT/'src/Yoake.UI/Commands/RegistryCommand.cs').read_text(encoding='utf-8')
 if 'ConfigureAwait(false)' in commands:
