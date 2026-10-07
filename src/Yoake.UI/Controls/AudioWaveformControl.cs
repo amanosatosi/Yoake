@@ -142,7 +142,9 @@ public sealed class AudioWaveformControl : Control
     {
         _analysis?.Cancel();_analysis?.Dispose();_analysis=null;
         _detail=null;if(Model is not {} model)return;
-        if(!_spectrogram&&(Samples is null||VisibleSeconds/Math.Max(1,Bounds.Width)>=Samples.StepSeconds))return;
+        // Supply a visible-range tile while the long-file overview is still
+        // building. Once available, use the overview unless finer detail is needed.
+        if(!_spectrogram&&Samples is not null&&VisibleSeconds/Math.Max(1,Bounds.Width)>=Samples.StepSeconds)return;
         var cancellation=new CancellationTokenSource();_analysis=cancellation;
         try {
             await Task.Delay(25,cancellation.Token);

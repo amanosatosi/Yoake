@@ -21,3 +21,5 @@ Mangetsu's BGRA compositor writes zero to destination alpha within RGBA tiles, e
 Packaged provider verification uses actual Mangetsu RGBA tile coverage to distinguish painted pixels, fully transparent pixels inside tiles, and pixels outside every tile. It requires exact destination-alpha preservation, visible RGB changes, unchanged transparent/outside RGB and row padding, using decoded opaque video plus padded synthetic frames with all alpha values, changing dimensions, and steady-state scratch reuse. Native tile inspection stays inside the provider and only runs in verification mode.
 
 GPU-backed frame storage, reusable decoder-native buffers, advanced spectrum scales, persistent media-index caches and audio processing are later provider work. No parallel FFmpeg timeline is added.
+
+While the bounded full-file overview is being generated, the waveform control can request a cancellable visible-range tile. Timing feedback therefore does not have to wait for the long-file overview to finish. Once that overview arrives it supplies ordinary zoom levels; finer zoom requests detail again.
