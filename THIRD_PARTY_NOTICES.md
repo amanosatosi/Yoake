@@ -20,9 +20,6 @@ Windows portable packages may include only the x64 Visual C++ runtime DLLs that 
 
 ## Aegisub
 
-No Aegisub asset or source file is copied into this M0 repository. Aegisub/Toshi-ban is used as a behavioral and visual reference; Yoake's functional icons remain separately authored, theme-neutral SVG geometry. If future work actually derives or copies an Aegisub asset, its exact source and BSD attribution must be recorded before merge. See `docs/architecture/asset-provenance.md`.
-# Aegisub functional movement artwork
-
 Yoake adapts five functional style-list SVG paths from
 https://github.com/amanosatosi/Aegisub_Toshi-ban at commit
 `b20d63af149568cbef00f3a22742217ecd915990`:

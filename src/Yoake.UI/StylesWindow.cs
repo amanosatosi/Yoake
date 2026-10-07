@@ -149,7 +149,6 @@ public sealed class StylesWindow : Window
     {
         var prefix=library?"library/preset/":"script/style/";
         SubtitleEditor? Target()=>library?_collection is null?null:_library.Editor(_collection):_script;
-        AssStyle? Selected()=>library?_librarySelected:_scriptSelected;
         Register(prefix+"new","New",bar,()=>{if(!Commit()||Target() is not {} editor)return;var added=editor.AddStyle();if(library)_library.Save();RefreshLists();(library?_libraryList:_scriptList).SelectedItem=added.Name;});
         Register(prefix+"duplicate","Duplicate",bar,()=>{if(!Commit()||Target() is not {} editor)return;var added=editor.CopyStyles(SelectedStyles(library));if(library)_library.Save();RefreshLists();SelectNames(library?_libraryList:_scriptList,added);});
         foreach(var order in Enum.GetValues<StyleOrder>())

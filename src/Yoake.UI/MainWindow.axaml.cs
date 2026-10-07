@@ -34,7 +34,9 @@ public partial class MainWindow : Window, IEditorDialogs
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
         Opened+=(_,_)=>UpdateChrome();
-        PropertyChanged+=(_,e)=>{if(e.Property==RenderScalingProperty||e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
+        ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(UpdateChrome);
+        PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
+        TitleTabStrip.SizeChanged+=(_,_)=>UpdateTabLimit();
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_model.TextCursor=SubtitleText.CaretIndex;_model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;}};
         Closing+=HandleClosing;
         Closed+=(_,_)=>_model?.Dispose();
@@ -162,7 +164,9 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(OperatingSystem.IsWindows()&&TryGetPlatformHandle() is {} handle)
             TitleTabStrip.Padding=new Thickness(0,0,Yoake.Native.WindowsChrome.Configure(handle.Handle,RenderScaling),0);
+        UpdateTabLimit();
     }
+    private void UpdateTabLimit()=>TabScroll.MaxWidth=Math.Max(0,TitleTabStrip.Bounds.Width-TitleTabStrip.Padding.Right-80);
     private void AudioModeChanged(object? sender,SelectionChangedEventArgs e){if(AudioDisplay is not null&&sender is ComboBox box)AudioDisplay.Spectrogram=box.SelectedIndex==1;}
     private async void RecentFileClick(object? sender,RoutedEventArgs e){if(_model is not null&&sender is Control{DataContext:string path})await _model.Registry.InvokeAsync(CommandIds.SubtitleOpen,new(),path);}
     private static string? LocalPath(IStorageItem item)=>item.Path is{IsAbsoluteUri:true,IsFile:true} uri?uri.LocalPath:null;
