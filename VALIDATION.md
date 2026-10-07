@@ -1,20 +1,18 @@
-# Foundation validation record
+# Editor validation
 
-## Performed in the artifact-construction environment
+This task deliberately performs no local .NET restore/build/test, NativeAOT publish, or native dependency build. Local checks are source policy, XML/JSON/generated SVG checks, `git diff --check`, and deterministic media-fixture generation.
 
-- `python ci/source_policy.py` passes after the review fixes.
-- All `.axaml` and `.csproj` files parse as well-formed XML.
-- GitHub Actions YAML parses successfully.
-- All repository JSON parses successfully.
-- Native dependency pins remain immutable 40-hex commits and FFmpeg/FFMS2 descriptors preserve the old-Yoake build/cache strategy.
-- Functional SVG source policy and the deliberately narrow path-only generator validation pass; the generated icon catalog is up to date.
-- The app-identity SVG was rendered with ImageMagick into a multi-resolution Windows `.ico` during validation and inspected as a valid ICO; the generated artifact is not committed because the build regenerates it from the SVG master.
-- Static guards confirm portable packaging no longer copies FFmpeg/FFMS2 install trees, uses `native/win-x64/`, emits a runtime hash manifest, and includes the Avalonia MIT text.
-- Static guards confirm the smoke test fails on any early exit, command failures are contained/logged, Avalonia command-state refreshes use the UI dispatcher, undo transactions roll back unless committed, and `DocumentSession` is observable.
-- Lightweight source/delimiter checks and archive-content checks are run before the source ZIP is produced.
+GitHub Actions remains authoritative and now runs:
 
-## Not falsely claimed as locally performed
+1. Architecture/source policy and generated SVG verification.
+2. Core regression build/tests: real fansub fixture roundtrip, field order, unknown fields/sections/tags, Unicode, mixed newlines, styles, structural operations, clipboard payloads, timing, undo/savepoints, document ownership, splitting and visual spans.
+3. UI project/compiled bindings build, plus command-model workflow tests for drafts, tab history, Save As, dirty state, unsaved-close cancellation, validation, multi-row actions and gestures. These use no additional runtime/test framework dependency beyond the existing xUnit/Avalonia references.
+4. Existing FFmpeg/FFMS2 dependency pipeline and fresh live-branch Mangetsu build.
+5. Windows NativeAOT publish with trimming/AOT errors retained, portable staging, native closure/hash checks and strict desktop startup smoke.
+6. Packaged executable `--verify-editor` using deterministic uncompressed AVI/PCM fixtures. This exercises ASS edits/undo/save/reopen, FFMS2 decode/frame stepping/audio reads, full peaks and cancellation, spectrum tiles, and Mangetsu render/update/compositing through the shipped native runtime.
 
-This construction environment does not contain the .NET SDK or PowerShell and cannot resolve GitHub/NuGet through its shell. Therefore it did **not** locally execute `dotnet restore`, compile the Avalonia projects, run xUnit, publish Windows NativeAOT, execute the PowerShell packaging scripts, or launch the Windows executable.
+The packaged provider verification reports its result under `artifacts/editor-fixtures/verification.txt`. The portable ZIP remains the release artifact. The source pipeline has not been replaced or weakened.
 
-The repository's GitHub Actions jobs are the authoritative executable validation path. `managed-tests` restores/builds/runs the Core test project. `windows-nativeaot` builds/restores the pinned native stack, generates the Windows app icon, publishes `win-x64` NativeAOT, stages only the transitive native runtime DLL closure, validates hashes and safe DLL loading, requires the packaged desktop app to remain alive during the startup smoke interval, then uploads the portable ZIP. A green CI run is required before treating binary validation as satisfied.
+Interactive release smoke is still required: real MKV/VFR files, hardware audio playback, long/complex tracks on an integrated-GPU laptop, pointer capture/Esc, clipboard exchange with Aegisub, window snapping/DPI, input-method composition and font fallback. The command-model and native-provider checks do not prove all of those UI/hardware behaviors.
+
+See `docs/editor-smoke.md` for the manual sequence and `docs/editor-limitations.md` for the intentionally limited first tools. CI run links and final status are recorded in the implementation PR.
