@@ -181,7 +181,7 @@ public sealed class StylesWindow : Window
     }
     private void BuildFields()
     {
-        _fields.Children.Clear();if(_draft is null){_identity.Text="Select a script style or library preset";return;}
+        _fields.Children.Clear();if(_draft is null){_identity.Text="Select a script style or library preset";Preview.Clear();return;}
         _identity.Text=(ReferenceEquals(_target,_script)?"Script style · ":"Library preset · ")+_selected!.Name;
         Text("Name","Name");Heading("Font");
         if(_draft.Has("Fontname")){var picker=new FontPicker{Name="StyleFont",FontName=_draft.Get("Fontname")};picker.ValueChanged+=(_,_)=>Changed("Fontname",picker.FontName);FinishOnBlur(picker);_fields.Children.Add(picker);}

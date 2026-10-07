@@ -33,6 +33,12 @@ public sealed class StylePreviewControl : UserControl, IDisposable
     {
         var grid=new Grid{RowDefinitions=new("*,Auto"),MinHeight=150};grid.Children.Add(new CheckerboardControl());grid.Children.Add(_image);Grid.SetRow(_status,1);grid.Children.Add(_status);Content=grid;
     }
+    public void Clear()
+    {
+        if(_disposed)return;
+        _job?.Cancel();Interlocked.Increment(ref _revision);
+        _image.Source=null;HasFrame=false;DisplayedRevision=0;LastError=null;_status.IsVisible=false;
+    }
     public void Update(string assSource)
     {
         if(_disposed)return;_job?.Cancel();var revision=Interlocked.Increment(ref _revision);LastError=null;

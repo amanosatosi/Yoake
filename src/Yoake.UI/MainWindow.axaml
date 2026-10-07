@@ -9,7 +9,14 @@
         Title="Yoake"
         Width="1440" Height="900"
         MinWidth="1040" MinHeight="680"
+        FontSize="12"
         Background="{DynamicResource AppBackgroundBrush}">
+  <Window.Styles>
+    <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
+    <Style Selector="TextBox"><Setter Property="MinHeight" Value="26" /></Style>
+    <Style Selector="ComboBox"><Setter Property="MinHeight" Value="26" /></Style>
+    <Style Selector="CheckBox"><Setter Property="MinHeight" Value="24" /></Style>
+  </Window.Styles>
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="66" /><RowDefinition Height="3*" MinHeight="398" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="140" /></Grid.RowDefinitions>
     <Border Grid.Row="0" Name="TitleTabStrip" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
@@ -105,7 +112,8 @@
 <Button Content="New" Command="{Binding NewDocumentCommand}" Padding="6,1" ToolTip.Tip="Ctrl+N" /><Button Content="Open ASS" Command="{Binding Actions[subtitle/open]}" Padding="6,1" ToolTip.Tip="Ctrl+O" /><Button Content="Save" Command="{Binding Actions[subtitle/save]}" Padding="6,1" ToolTip.Tip="Ctrl+S" /><Button Content="Open media" Command="{Binding Actions[media/open]}" Padding="6,1" />
 <Button Command="{Binding UndoCommand}" Padding="6,1" ToolTip.Tip="Undo (Ctrl+Z)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Undo}" /></Button><Button Command="{Binding RedoCommand}" Padding="6,1" ToolTip.Tip="Redo (Ctrl+Y)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Redo}" /></Button>
 </StackPanel></DockPanel></Grid></Border>
-<Grid Grid.Row="2" ColumnDefinitions="2*,4,3*" Name="UpperWorkspace">
+<Grid Grid.Row="2" Name="UpperWorkspace">
+  <Grid.ColumnDefinitions><ColumnDefinition Width="2*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="3*" MinWidth="480" /></Grid.ColumnDefinitions>
   <Grid Grid.Column="0" RowDefinitions="*,4,42" Name="VisualColumn">
     <Border Grid.Row="0" Margin="6,6,3,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
       <Grid Name="VideoRegion" RowDefinitions="24,*,34,28">
@@ -117,7 +125,7 @@
           <TextBlock Grid.Column="3" Text="{Binding TimeDisplay}" VerticalAlignment="Center" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DurationDisplay}" VerticalAlignment="Center" Opacity="0.65" FontSize="11" />
         </Grid>
         <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="4" Margin="5,0">
-          <Button Content="Previous frame" Command="{Binding Actions[video/frame/previous]}" Padding="4,0" /><Button Content="Next frame" Command="{Binding Actions[video/frame/next]}" Padding="4,0" />
+          <Button Content="Prev frame" Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame" /><Button Content="Next frame" Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame" />
           <TextBox Name="ExactTime" Width="100" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
         </StackPanel>
       </Grid>

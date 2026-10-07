@@ -58,6 +58,8 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 FinishStyleSwitching();
                 var sample=Named<TextBox>(styles,"PreviewSample");
                 sample.SetCurrentValue(TextBox.TextProperty,"obsolete preview");
+                styles.Preview.Clear();
+                Require(!styles.Preview.HasFrame&&!styles.Preview.HasCurrentFrame,"Clearing a style selection must remove its old preview.");
                 sample.SetCurrentValue(TextBox.TextProperty,@"Yoake 0123\N日本語 テスト\Nမြန်မာ");
                 _previewRevision=styles.Preview.RequestedRevision;
                 return false;
@@ -87,6 +89,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var entry=input.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Name=="PART_TextBox");
         Require(entry.Bounds.Width>=48&&entry.Bounds.Height>=20,$"{input.Name}: editable numeric area collapsed to {entry.Bounds}.");
         Require(input.Bounds.Width>=86,$"{input.Name}: numeric field width must be usable.");
+        Require(input.Bounds.Height<=30,$"{input.Name}: compact numeric field must not retain a tall inner Fluent control.");
     }
 
     private void CheckStyleFields()
