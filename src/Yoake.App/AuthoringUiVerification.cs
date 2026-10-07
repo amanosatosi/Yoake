@@ -140,8 +140,10 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Named<NumericUpDown>(styles,"StyleFontsize").Value=72;
         var color=Named<AssColorField>(styles,"StylePrimaryColour");
         color.GetVisualDescendants().OfType<TextBox>().Single().SetCurrentValue(TextBox.TextProperty,"&H80402010");
+        Named<TextBox>(styles,"StyleName").SetCurrentValue(TextBox.TextProperty,_first.Name+" 日本");
         Invoke(styles.Registry,"script/style/new");
-        Require(_first.Get("Fontsize")=="72"&&_first.Get("PrimaryColour")=="&H80402010","Style selection switch must commit the numeric/color draft exactly.");
+        Require(_first.Get("Fontsize")=="72"&&_first.Get("PrimaryColour")=="&H80402010",$"Style selection switch must commit the numeric/color draft exactly (size {_first.Get("Fontsize")}, color {_first.Get("PrimaryColour")}).");
+        Require(_first.Name.EndsWith(" 日本",StringComparison.Ordinal)&&model.SelectedEvent!.Style==_first.Name,"The same draft must commit its Unicode rename and update event references before switching.");
         _second=model.ActiveEditor.Document.Styles.Last();
         var scriptList=Named<ListBox>(styles,"ScriptStyles");scriptList.SelectedItem=_first.Name;
         Invoke(styles.Registry,"styles/to-library");

@@ -87,7 +87,7 @@ public sealed class StylesWindow : Window
         };
         _scriptList.SelectionChanged+=(_,_)=>Select(false);_libraryList.SelectionChanged+=(_,_)=>Select(true);
         SelectOnFocus(_scriptList,false);SelectOnFocus(_libraryList,true);
-        _sample.TextChanged+=(_,_)=>RequestPreview();_previewMode.SelectionChanged+=(_,_)=>RequestPreview();
+        _sample.PropertyChanged+=(_,e)=>{if(e.Property==TextBox.TextProperty)RequestPreview();};_previewMode.SelectionChanged+=(_,_)=>RequestPreview();
         Closing+=(_,e)=>{if(!Commit())e.Cancel=true;};Closed+=(_,_)=>Preview.Dispose();
         AddHandler(KeyDownEvent,(_,e)=>
         {
@@ -224,7 +224,7 @@ public sealed class StylesWindow : Window
         var advanced=new StackPanel{Spacing=3};var standard=AssDocument.StyleFormat.ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach(var name in _selected.FieldNames.Where(n=>!standard.Contains(n)))
         {
-            var field=name;var input=new TextBox{Name="Style"+field,Text=_draft.Get(field),Padding=new Thickness(4,1),MinHeight=24};input.TextChanged+=(_,_)=>Changed(field,input.Text??"");FinishOnBlur(input);advanced.Children.Add(Row(name,input));
+            var field=name;var input=new TextBox{Name="Style"+field,Text=_draft.Get(field),Padding=new Thickness(4,1),MinHeight=24};input.PropertyChanged+=(_,e)=>{if(e.Property==TextBox.TextProperty)Changed(field,input.Text??"");};FinishOnBlur(input);advanced.Children.Add(Row(name,input));
         }
         _fields.Children.Add(new Expander{Header="Advanced / raw future fields",Content=advanced,HorizontalAlignment=HorizontalAlignment.Stretch});RequestPreview();
     }
@@ -235,7 +235,7 @@ public sealed class StylesWindow : Window
     private void Heading(string text)=>_fields.Children.Add(new TextBlock{Text=text,FontWeight=FontWeight.SemiBold,FontSize=12,Margin=new Thickness(0,5,0,1)});
     private void Text(string field,string label)
     {
-        if(_draft?.Has(field)!=true)return;var input=new TextBox{Name="Style"+field,Text=_draft.Get(field),Padding=new Thickness(4,1),MinHeight=24};input.TextChanged+=(_,_)=>Changed(field,input.Text??"");FinishOnBlur(input);_fields.Children.Add(Row(label,input));
+        if(_draft?.Has(field)!=true)return;var input=new TextBox{Name="Style"+field,Text=_draft.Get(field),Padding=new Thickness(4,1),MinHeight=24};input.PropertyChanged+=(_,e)=>{if(e.Property==TextBox.TextProperty)Changed(field,input.Text??"");};FinishOnBlur(input);_fields.Children.Add(Row(label,input));
     }
     private void Numbers(params (string Field,string Label,decimal Minimum,decimal Maximum,decimal Increment)[] values)
     {

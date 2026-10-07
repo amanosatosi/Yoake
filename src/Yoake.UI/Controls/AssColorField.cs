@@ -22,7 +22,9 @@ public sealed class AssColorField : UserControl
         var swatch=new Grid{Width=24,Height=16};swatch.Children.Add(new CheckerboardControl());swatch.Children.Add(_swatch);
         var grid=new Grid{ColumnDefinitions=new("Auto,*"),ColumnSpacing=3};var button=new Button{Content=swatch,Padding=new Thickness(3,2),MinHeight=26};
         ToolTip.SetTip(button,"Choose RGB color and alpha");grid.Children.Add(button);Grid.SetColumn(_exact,1);grid.Children.Add(_exact);Content=grid;
-        _exact.TextChanged+=(_,_)=>{if(!_sync){SetCurrentValue(ValueProperty,_exact.Text??"");ValueChanged?.Invoke(this,EventArgs.Empty);}};
+        // TextChanged is deferred until rendering. Draft state must be current
+        // before a style-selection command can commit and replace its target.
+        _exact.PropertyChanged+=(_,e)=>{if(e.Property==TextBox.TextProperty&&!_sync){SetCurrentValue(ValueProperty,_exact.Text??"");ValueChanged?.Invoke(this,EventArgs.Empty);}};
         button.Click+=async (_,_)=>
         {
             if(TopLevel.GetTopLevel(this) is not Window owner)return;
@@ -80,10 +82,10 @@ public sealed class AssColorDialog : Window
         root.Children.Add(_alpha);
         root.Children.Add(new TextBlock{Text="ASS: &HAABBGGRR · 00 opaque / FF transparent",FontSize=11});root.Children.Add(_exact);
         root.Children.Add(new TextBlock{Text="RGB: #RRGGBB · alpha is kept separately",FontSize=11});root.Children.Add(_html);root.Children.Add(_error);
-        _exact.TextChanged+=(_,_)=>{if(_sync)return;if(AssColor.TryParse(_exact.Text,out var parsed)){_color=parsed;Refresh(false);}else _error.Text="Enter a valid ASS hex or signed decimal color.";};
-        _html.TextChanged+=(_,_)=>
+        _exact.PropertyChanged+=(_,e)=>{if(e.Property!=TextBox.TextProperty||_sync)return;if(AssColor.TryParse(_exact.Text,out var parsed)){_color=parsed;Refresh(false);}else _error.Text="Enter a valid ASS hex or signed decimal color.";};
+        _html.PropertyChanged+=(_,e)=>
         {
-            if(_sync)return;var hex=(_html.Text??"").Trim().TrimStart('#');
+            if(e.Property!=TextBox.TextProperty||_sync)return;var hex=(_html.Text??"").Trim().TrimStart('#');
             if(hex.Length==6&&uint.TryParse(hex,System.Globalization.NumberStyles.HexNumber,System.Globalization.CultureInfo.InvariantCulture,out var rgb))
             {_color=_color with{Red=(byte)(rgb>>16),Green=(byte)(rgb>>8),Blue=(byte)rgb};Refresh(updateHtml:false);}
             else _error.Text="Enter RGB #RRGGBB; ASS alpha is preserved.";
