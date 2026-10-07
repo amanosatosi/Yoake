@@ -95,6 +95,18 @@ public sealed class EditorWorkflowTests : IDisposable
         var changes=0;((System.Collections.Specialized.INotifyCollectionChanged)_model.SelectedEvents).CollectionChanged+=(_,_)=>changes++;
         await Command(CommandIds.GridSelectAll);Assert.Equal(5000,_model.SelectedEvents.Count);Assert.Equal(1,changes);
     }
+
+    [Fact] public async Task StructuralUndoAndRedoKeepCurrentDraftAttachedToALiveRow()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="first";await Command(CommandIds.EditCommit);
+        await Command(CommandIds.GridDuplicate);var duplicate=_model.SelectedEvent!;
+        await Command(CommandIds.EditUndo);Assert.DoesNotContain(duplicate,_model.Events);Assert.Contains(_model.SelectedEvent!,_model.Events);Assert.Equal("first",_model.Draft!.Text);
+        await Command(CommandIds.EditRedo);Assert.Equal(2,_model.Events.Count);Assert.Contains(_model.SelectedEvent!,_model.Events);
+        await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridDelete);Assert.Empty(_model.Events);Assert.Null(_model.Draft);
+        await Command(CommandIds.EditUndo);Assert.Equal(2,_model.Events.Count);Assert.Contains(_model.SelectedEvent!,_model.Events);Assert.All(_model.SelectedEvents,line=>Assert.Contains(line,_model.Events));
+        _model.SelectedEvent=_model.Events[1];_model.Draft!.Actor="restored";await Command(CommandIds.EditCommit);Assert.Equal("restored",_model.Events[1].Actor);
+        Assert.False(_model.IsSynchronizingSelection);
+    }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
     private sealed class TestDialogs : IEditorDialogs
     {

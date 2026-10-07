@@ -81,9 +81,22 @@ public sealed partial class MainWindowViewModel
     }
     private void RunEdit(Action<SubtitleEditor> edit)
     {
-        if(!CommitDraft() || ActiveEditor is null)return; CancelGesture(); edit(ActiveEditor);
+        if(!CommitDraft() || ActiveEditor is null)return; CancelGesture();
+        IsSynchronizingSelection=true;
+        try{edit(ActiveEditor);}finally{IsSynchronizingSelection=false;}
         if(SelectedEvent is not null && !Events.Contains(SelectedEvent))Select(Events.FirstOrDefault());
-        ReloadDraft(); OnPropertyChanged(nameof(ActorNames));
+        SetSelectedEvents(SelectedEvents.Where(Events.Contains).ToArray());
+        ReloadDraft(); OnPropertyChanged(nameof(SelectedEvent)); OnPropertyChanged(nameof(ActorNames));
+    }
+    private void ApplyHistory(bool redo)
+    {
+        var previous=SelectedEvent is null?0:Events.ToList().IndexOf(SelectedEvent);
+        IsSynchronizingSelection=true;
+        try{if(redo)_undo.Redo();else _undo.Undo();}
+        finally{IsSynchronizingSelection=false;}
+        if(SelectedEvent is null||!Events.Contains(SelectedEvent))Select(Events.ElementAtOrDefault(Math.Max(0,Math.Min(previous,Events.Count-1))));
+        SetSelectedEvents(SelectedEvents.Where(Events.Contains).ToArray());
+        ReloadDraft();OnPropertyChanged(nameof(SelectedEvent));OnPropertyChanged(nameof(StyleNames));OnPropertyChanged(nameof(ActorNames));
     }
     private void RegisterEditorCommands()
     {
@@ -114,8 +127,8 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.SubtitleClose,"Close tab  Ctrl+W",async i=>{if(i.Parameter is Guid id)await CloseDocumentAsync(id);else if(_activeId is {} active)await CloseDocumentAsync(active);});
         R(CommandIds.SubtitleRevert,"Reload from disk…",async _=>{if(!CommitDraft() || ActiveSubtitlePath is not {} path || Dialogs is null || !await Dialogs.ConfirmRevertAsync())return; var doc=AssDocument.Load(path); var session=_workspace.ActiveDocument!; var state=_documents[session.Id]; Attach(session,doc); var replacement=_documents[session.Id]; replacement.Media=state.Media; replacement.Waveform=state.Waveform; replacement.Time=state.Time; state.Loading?.Cancel(); _activeId=null; SynchronizeActiveDocument();},()=>ActiveSubtitlePath is not null);
         R(CommandIds.WorkspaceActivateTab,"Activate tab",i=>{if(i.Parameter is Guid id && CommitDraft())_workspace.Activate(id);return ValueTask.CompletedTask;});
-        S(CommandIds.EditUndo,"Undo  Ctrl+Z",()=>{var wasGesture=_gesture is not null;CancelGesture();if(wasGesture)return; if(Draft?.IsChanged==true){ReloadDraft();return;} _undo.Undo();},()=>Draft?.IsChanged==true || _undo.CanUndo || _gesture is not null);
-        S(CommandIds.EditRedo,"Redo  Ctrl+Y",()=>{CancelGesture(); if(CommitDraft())_undo.Redo();},()=>_undo.CanRedo);
+        S(CommandIds.EditUndo,"Undo  Ctrl+Z",()=>{var wasGesture=_gesture is not null;CancelGesture();if(wasGesture)return; if(Draft?.IsChanged==true){ReloadDraft();return;} ApplyHistory(false);},()=>Draft?.IsChanged==true || _undo.CanUndo || _gesture is not null);
+        S(CommandIds.EditRedo,"Redo  Ctrl+Y",()=>{CancelGesture(); if(CommitDraft())ApplyHistory(true);},()=>_undo.CanRedo);
         S(CommandIds.EditCommit,"Commit line  Ctrl+Enter",()=>CommitDraft(),HasLine);
         S(CommandIds.EditCommitNext,"Commit and next  Enter",()=>{if(CommitDraft()){if(SelectedEvent==Events.LastOrDefault())RunEdit(e=>Select(e.Insert(SelectedEvent,true,SelectedEvent?.EndMilliseconds??0)));else Navigate(1);}},HasLine);
         S(CommandIds.EditCancel,"Cancel edit / gesture  Esc",()=>{CancelGesture(); ReloadDraft();});

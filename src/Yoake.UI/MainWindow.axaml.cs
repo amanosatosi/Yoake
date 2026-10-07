@@ -77,13 +77,14 @@ public partial class MainWindow : Window, IEditorDialogs
     private void SyncSelection()
     {
         if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null)return;
+        if(SubtitleRows.SelectedItems.OfType<AssEvent>().SequenceEqual(_model.SelectedEvents))return;
         _selectionSync=true;
         try{SubtitleRows.SelectedItems=_model.SelectedEvents.Where(_model.Events.Contains).ToList();}
         finally{_selectionSync=false;}
     }
     private void GridSelectionChanged(object? sender,SelectionChangedEventArgs e)
     {
-        if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null)return;
+        if(_model is null||_model.IsSynchronizingSelection||_selectionSync||SubtitleRows.SelectedItems is null)return;
         _selectionSync=true;
         try
         {
