@@ -102,4 +102,11 @@ public sealed class AssLanguageTests
         Assert.Equal("0",AssFormatting.State("{\\b1\\b}A",100,style)["b"]);
     }
 
+    [Fact] public void CaretInsideOverrideFormatsAfterTheBlockWithoutCorruptingIt()
+    {
+        const string text=@"{\b1\future(opaque)}Hello";
+        var edit=AssFormatting.Toggle(text,3,3,"b",Default);
+        Assert.Equal(@"{\b1\future(opaque)}{\b0}Hello",edit.Text);
+    }
+
 }

@@ -50,7 +50,7 @@ public static class AssFormatting
     }
     public static AssTextEdit Toggle(string text, int start, int end, string tag, AssStyle style, Func<string,AssStyle?>? resolve = null)
     {
-        var boundary = Boundary(text, Math.Min(start,end), false);
+        var boundary = Boundary(text, Math.Min(start,end), start==end);
         var state = State(text,boundary,style,resolve);
         var enabled = !int.TryParse(state.GetValueOrDefault(tag), out var value) || value != 0;
         return Apply(text,start,end,new Dictionary<string,string>{{tag,enabled?"0":"1"}},style,resolve);
@@ -58,7 +58,7 @@ public static class AssFormatting
     public static AssTextEdit Apply(string text, int start, int end, IReadOnlyDictionary<string,string> values, AssStyle style, Func<string,AssStyle?>? resolve = null)
     {
         var hasSelection = start != end;
-        var left = Boundary(text, Math.Min(start,end), false);
+        var left = Boundary(text, Math.Min(start,end), start==end);
         var right = hasSelection ? Boundary(text,Math.Max(start,end),true) : left;
         var restore = State(text,right,style,resolve);
         var prefix = Block(values); var suffix = hasSelection ? Block(values.Keys.ToDictionary(k=>k,k=>restore.GetValueOrDefault(k,""))) : "";
@@ -82,7 +82,7 @@ public static class AssFormatting
     }
     public static AssTextEdit Reset(string text, int start, int end, AssStyle style, Func<string,AssStyle?>? resolve = null)
     {
-        var left=Boundary(text,Math.Min(start,end),false); var right=start==end?left:Boundary(text,Math.Max(start,end),true);
+        var left=Boundary(text,Math.Min(start,end),start==end); var right=start==end?left:Boundary(text,Math.Max(start,end),true);
         var suffix=start==end?"":Block(State(text,right,style,resolve));
         return new(text[..left]+"{\\r}"+text[left..right]+suffix+text[right..],left+4,left+4+right-left);
     }
