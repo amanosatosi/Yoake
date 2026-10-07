@@ -69,7 +69,17 @@ public sealed class EditorWorkflowTests : IDisposable
     [Fact] public async Task FailedValidationKeepsDraftAndCurrentRow()
     {
         await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent;await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent;
-        _model.Draft!.End="bad";_model.SelectedEvent=first;Assert.Same(second,_model.SelectedEvent);Assert.Equal("bad",_model.Draft.End);Assert.False(_model.CommitDraft());
+        _model.Draft!.End="bad";_model.SelectedEvent=first;Assert.Same(second,_model.SelectedEvent);Assert.Same(second,Assert.Single(_model.SelectedEvents));Assert.Equal("bad",_model.Draft.End);Assert.False(_model.CommitDraft());
+    }
+    [Fact] public async Task ProgrammaticRowJumpSelectsDestinationAndRetainsAnExistingBulkSelection()
+    {
+        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;
+        await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent!;
+        _model.Draft!.Text="pending second";_model.SelectedEvent=first;
+        Assert.Same(first,Assert.Single(_model.SelectedEvents));Assert.Equal("pending second",second.Text);
+        await Command(CommandIds.GridSelectAll);_model.SelectedEvent=second;
+        Assert.Equal(2,_model.SelectedEvents.Count);Assert.Contains(first,_model.SelectedEvents);Assert.Contains(second,_model.SelectedEvents);
+        _model.SelectedEvent=null;Assert.Empty(_model.SelectedEvents);Assert.Null(_model.Draft);
     }
     [Fact] public async Task TimingAndVisualGesturesRollbackOnCancelAndCommitOnce()
     {

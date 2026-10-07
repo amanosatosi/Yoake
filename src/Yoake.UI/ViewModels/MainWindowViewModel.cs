@@ -122,7 +122,12 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (ReferenceEquals(_selectedEvent,value)) return;
             if (!CommitDraft()) { OnPropertyChanged(); return; }
             CancelGesture();
-            _selectedEvent?.ShowDraft(null);_selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft(); OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));OnPropertyChanged(nameof(SelectedIsComment));
+            _selectedEvent?.ShowDraft(null);_selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft();
+            // A programmatic jump outside the bulk selection must select its
+            // destination. Moving the current row inside that selection keeps it.
+            if(value is null)SetSelectedEvents([]);
+            else if(!SelectedEvents.Contains(value))SetSelectedEvents([value]);
+            OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));OnPropertyChanged(nameof(SelectedIsComment));
             if (value?.StartMilliseconds is { } start && !IsPlaying) CurrentTimeSeconds=start/1000d;
             _registry.NotifyStateChanged();
         }
