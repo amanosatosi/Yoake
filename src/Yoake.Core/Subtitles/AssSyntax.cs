@@ -4,7 +4,7 @@ namespace Yoake.Core.Subtitles;
 
 public enum AssSyntaxKind { Text, Brace, Tag, MangetsuTag, Karaoke, Parameter, Number, Color, Escape, Separator, Drawing, Unknown, Furigana }
 public readonly record struct AssSyntaxToken(int Start, int Length, AssSyntaxKind Kind);
-public readonly record struct AssTagSpan(int Start, int End, string Name, int ValueStart, int BlockStart, int BlockEnd);
+public readonly record struct AssSyntaxTagSpan(int Start, int End, string Name, int ValueStart, int BlockStart, int BlockEnd);
 
 // Presentation catalog, not a validation whitelist. Unknown names always survive.
 // Update alongside libassmod/mangetsu's ass_parse.c. Families are explicit names,
@@ -157,7 +157,7 @@ public static class AssSyntax
 
     // Top-level tags only: a tag inside a transform is not the current static
     // state. Parameter parentheses are balanced, never split on backslashes.
-    public static IEnumerable<AssTagSpan> Tags(string source)
+    public static IEnumerable<AssSyntaxTagSpan> Tags(string source)
     {
         for (var i = 0; i < source.Length; i++)
         {
