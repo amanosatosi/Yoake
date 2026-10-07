@@ -20,6 +20,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
 {
     private int _stage;
     private long _previewRevision;
+    private AssStyle? _first, _second;
     private const string Sample = @"{\fad(200,200)\bord3\1c&HFFFFFF&\3c&H000000&}<仮|かり>の糸\N{\k20}こ{\k15}れ{\k30}は{\1grd(0,&HFF0000&,&H0000FF&)}テスト
 {\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text မြန်မာ é 👩‍👩‍👧‍👦
 {\fnArial\future(opaque)\p1}m 0 0 l 20 0 20 20{\p0}";
@@ -51,7 +52,10 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 return false;
             case 4:
                 CheckMainFields();Capture(window,"editor-dark-narrow",1);
-                CheckStyleSwitching();
+                PrepareStyleSwitching();
+                return false; // Newly selected library controls need a real layout pass.
+            case 5:
+                FinishStyleSwitching();
                 var sample=Named<TextBox>(styles,"PreviewSample");
                 sample.SetCurrentValue(TextBox.TextProperty,"obsolete preview");
                 sample.SetCurrentValue(TextBox.TextProperty,@"Yoake 0123\N日本語 テスト\Nမြန်မာ");
@@ -109,24 +113,27 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(colors.Distinct().Count()==colors.Length,"Syntax categories must have distinct semantic brushes.");
     }
 
-    private void CheckStyleSwitching()
+    private void PrepareStyleSwitching()
     {
-        var first=model.ActiveEditor!.Document.Styles[0];
+        _first=model.ActiveEditor!.Document.Styles[0];
         Named<NumericUpDown>(styles,"StyleFontsize").Value=72;
         var color=Named<AssColorField>(styles,"StylePrimaryColour");
         color.GetVisualDescendants().OfType<TextBox>().Single().SetCurrentValue(TextBox.TextProperty,"&H80402010");
         Invoke(styles.Registry,"script/style/new");
-        Require(first.Get("Fontsize")=="72"&&first.Get("PrimaryColour")=="&H80402010","Style selection switch must commit the numeric/color draft exactly.");
-        var second=model.ActiveEditor.Document.Styles.Last();
-        var scriptList=Named<ListBox>(styles,"ScriptStyles");scriptList.SelectedItem=first.Name;
+        Require(_first.Get("Fontsize")=="72"&&_first.Get("PrimaryColour")=="&H80402010","Style selection switch must commit the numeric/color draft exactly.");
+        _second=model.ActiveEditor.Document.Styles.Last();
+        var scriptList=Named<ListBox>(styles,"ScriptStyles");scriptList.SelectedItem=_first.Name;
         Invoke(styles.Registry,"styles/to-library");
+    }
+    private void FinishStyleSwitching()
+    {
         var picker=Named<FontPicker>(styles,"StyleFont");
         picker.GetVisualDescendants().OfType<AutoCompleteBox>().Single().SetCurrentValue(AutoCompleteBox.TextProperty,"Missing 日本 字体");
-        scriptList.SelectedItem=second.Name;
+        Named<ListBox>(styles,"ScriptStyles").SelectedItem=_second!.Name;
         var stored=new StyleLibraryStore(model.StyleLibraryPath);
         Require(stored.Editor(stored.Collections[0]).Document.Styles.Any(s=>s.Get("Fontname")=="Missing 日本 字体"),"Library-to-script switching must save the exact missing-font draft.");
         Invoke(styles.Registry,"script/style/delete");
-        Require(!model.ActiveEditor.Document.Styles.Contains(second)&&model.SelectedEvent!.Style==first.Name,"Unused style deletion must succeed without changing event references.");
+        Require(!model.ActiveEditor!.Document.Styles.Contains(_second)&&model.SelectedEvent!.Style==_first!.Name,"Unused style deletion must succeed without changing event references.");
     }
 
     private void Capture(Control control,string name,double scale)
