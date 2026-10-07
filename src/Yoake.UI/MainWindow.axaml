@@ -117,7 +117,7 @@
         </Grid>
         <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="4" Margin="5,0">
           <Button Content="Previous frame" Command="{Binding Actions[video/frame/previous]}" Padding="4,0" /><Button Content="Next frame" Command="{Binding Actions[video/frame/next]}" Padding="4,0" />
-          <TextBox Name="ExactTime" Width="100" Padding="4,0" Watermark="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
+          <TextBox Name="ExactTime" Width="100" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
         </StackPanel>
       </Grid>
     </Border>
@@ -146,7 +146,7 @@
         <Grid Grid.Row="2" ColumnDefinitions="40,*,40,*" ColumnSpacing="4"><TextBlock Text="Style" VerticalAlignment="Center" /><ComboBox Grid.Column="1" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding Draft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="4,1" /><TextBlock Grid.Column="2" Text="Actor" VerticalAlignment="Center" /><AutoCompleteBox Grid.Column="3" ItemsSource="{Binding ActorNames}" Text="{Binding Draft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="4,1" /></Grid>
         <Grid Grid.Row="3" ColumnDefinitions="40,*,18,54,18,54,18,54" ColumnSpacing="4"><TextBlock Text="Effect" VerticalAlignment="Center" /><TextBox Grid.Column="1" Text="{Binding Draft.Effect, Mode=TwoWay}" Padding="4,1" /><TextBlock Grid.Column="2" Text="L" VerticalAlignment="Center" /><TextBox Grid.Column="3" Text="{Binding Draft.MarginL, Mode=TwoWay}" Padding="4,1" /><TextBlock Grid.Column="4" Text="R" VerticalAlignment="Center" /><TextBox Grid.Column="5" Text="{Binding Draft.MarginR, Mode=TwoWay}" Padding="4,1" /><TextBlock Grid.Column="6" Text="V" VerticalAlignment="Center" /><TextBox Grid.Column="7" Text="{Binding Draft.MarginV, Mode=TwoWay}" Padding="4,1" /></Grid>
         <TextBlock Grid.Row="4" Text="Enter: commit and next · Shift+Enter: newline · Ctrl+Shift+D: split" FontSize="10" VerticalAlignment="Center" />
-        <TextBox Name="SubtitleText" Grid.Row="5" FontSize="14" Padding="5" Text="{Binding Draft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" Watermark="Select a subtitle row" />
+        <TextBox Name="SubtitleText" Grid.Row="5" FontSize="14" Padding="5" Text="{Binding Draft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" PlaceholderText="Select a subtitle row" />
       </Grid>
     </Border>
   </Grid>

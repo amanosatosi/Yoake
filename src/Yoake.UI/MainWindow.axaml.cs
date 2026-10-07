@@ -117,10 +117,15 @@ public partial class MainWindow : Window, IEditorDialogs
         var panel=new StackPanel{Margin=new Thickness(18),Spacing=14};panel.Children.Add(new TextBlock{Text=message,TextWrapping=Avalonia.Media.TextWrapping.Wrap});
         var buttons=new StackPanel{Orientation=Avalonia.Layout.Orientation.Horizontal,Spacing=8,HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Right};
         for(var i=0;i<choices.Length;i++){var index=i;var button=new Button{Content=choices[i],IsDefault=i==0,IsCancel=i==choices.Length-1};button.Click+=(_,_)=>dialog.Close(index);buttons.Children.Add(button);}
-        panel.Children.Add(buttons);dialog.Content=panel;return await dialog.ShowDialog<int>(this);
+        panel.Children.Add(buttons);dialog.Content=panel;return await dialog.ShowDialog<int?>(this) ?? -1;
     }
-    public async Task<string?> ReadClipboardAsync()=>Clipboard is null?null:await Clipboard.TryGetTextAsync();
-    public async Task WriteClipboardAsync(string text){if(Clipboard is not null)await Clipboard.SetTextAsync(text);}
+    public async Task<string?> ReadClipboardAsync()
+    {
+        if(Clipboard is null)return null;
+        using var data=await Clipboard.TryGetDataAsync();
+        return data is null?null:await data.TryGetTextAsync();
+    }
+    public async Task WriteClipboardAsync(string text){if(Clipboard is not null){var data=new DataTransfer();data.Add(DataTransferItem.CreateText(text));await Clipboard.SetDataAsync(data);await Clipboard.FlushAsync();}}
     public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor).ShowDialog(this);
     public Task ShowScriptInfoAsync(SubtitleEditor editor)=>new ScriptInfoWindow(editor).ShowDialog(this);
     public Task ShowFindAsync(MainWindowViewModel model)=>new FindWindow(model).ShowDialog(this);

@@ -12,7 +12,7 @@ public sealed class FindWindow : Window
     public FindWindow(MainWindowViewModel model)
     {
         Title="Find / Replace";Width=580;SizeToContent=SizeToContent.Height;CanResize=false;WindowStartupLocation=WindowStartupLocation.CenterOwner;
-        var panel=new StackPanel{Margin=new Thickness(16),Spacing=8};var find=new TextBox{Watermark="Find in event text"};var replace=new TextBox{Watermark="Replace with"};panel.Children.Add(find);panel.Children.Add(replace);
+        var panel=new StackPanel{Margin=new Thickness(16),Spacing=8};var find=new TextBox{PlaceholderText="Find in event text"};var replace=new TextBox{PlaceholderText="Replace with"};panel.Children.Add(find);panel.Children.Add(replace);
         var options=new StackPanel{Orientation=Orientation.Horizontal,Spacing=12};var matchCase=new CheckBox{Content="Match case"};var regex=new CheckBox{Content="Regular expression"};var selected=new CheckBox{Content="Selected rows"};options.Children.Add(matchCase);options.Children.Add(regex);options.Children.Add(selected);panel.Children.Add(options);
         var status=new TextBlock{TextWrapping=Avalonia.Media.TextWrapping.Wrap};var buttons=new WrapPanel{Orientation=Orientation.Horizontal};panel.Children.Add(buttons);panel.Children.Add(status);Content=panel;
         var commands=new CommandRegistry();commands.CommandFailed+=(_,e)=>status.Text=e.Exception.Message;

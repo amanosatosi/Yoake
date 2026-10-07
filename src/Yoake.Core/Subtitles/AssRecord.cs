@@ -48,7 +48,14 @@ public sealed class AssEvent : AssRecord
     public long? StartMilliseconds => AssTime.TryParse(Start, out var time) ? time : null;
     public long? EndMilliseconds => AssTime.TryParse(End, out var time) ? time : null;
     public string Duration => StartMilliseconds is { } start && EndMilliseconds is { } end ? AssTime.Format(end - start) : "";
-    internal void SetKind(bool comment) { if (IsComment == comment) return; Prefix = (comment ? "Comment" : "Dialogue") + Prefix[Prefix.IndexOf(':')..]; Notify(nameof(Kind)); Notify(nameof(IsComment)); }
+    internal void RestorePrefix(string prefix) { Prefix=prefix;Notify(nameof(Kind));Notify(nameof(IsComment)); }
+    internal void SetKind(bool comment)
+    {
+        if(IsComment==comment)return;
+        var colon=Prefix.IndexOf(':');var start=0;while(start<colon&&char.IsWhiteSpace(Prefix[start]))start++;
+        var end=colon;while(end>start&&char.IsWhiteSpace(Prefix[end-1]))end--;
+        RestorePrefix(Prefix[..start]+(comment?"Comment":"Dialogue")+Prefix[end..]);
+    }
     internal void Renumber(int number) { Number = number; Notify(nameof(Number)); }
     public AssEvent Clone() => new(Prefix, (string[])Format.Clone(), (string[])Fields.Clone());
 }

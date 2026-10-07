@@ -131,7 +131,17 @@ public sealed class AssDocument
         for (var i = 0; i < events.Length; i++) events[i].Renumber(i + 1);
         foreach (var record in events.Cast<AssRecord>().Concat(styles)) record.PropertyChanged += RecordChanged;
     }
-    private static void Sync<T>(ObservableCollection<T> target, T[] items) { for (var i = target.Count - 1; i >= 0; i--) if (!items.Contains(target[i])) target.RemoveAt(i); for (var i = 0; i < items.Length; i++) { if (i < target.Count && EqualityComparer<T>.Default.Equals(target[i], items[i])) continue; var old = target.IndexOf(items[i]); if (old >= 0) target.Move(old, i); else target.Insert(i, items[i]); } }
+    private static void Sync<T>(ObservableCollection<T> target, T[] items)
+    {
+        var live = items.ToHashSet();
+        for (var i = target.Count - 1; i >= 0; i--) if (!live.Contains(target[i])) target.RemoveAt(i);
+        for (var i = 0; i < items.Length; i++)
+        {
+            if (i < target.Count && EqualityComparer<T>.Default.Equals(target[i], items[i])) continue;
+            var old = target.IndexOf(items[i]);
+            if (old >= 0) target.Move(old, i); else target.Insert(i, items[i]);
+        }
+    }
     private void RecordChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { if (e.PropertyName != "Number") Touch(); }
     internal void Touch() { _cached = null; Revision++; Changed?.Invoke(this, EventArgs.Empty); }
     public AssEvent NewEvent() => new("Dialogue: ", EventFormat, ["0", "0:00:00.00", "0:00:02.00", Styles.FirstOrDefault()?.Name ?? "Default", "", "0", "0", "0", "", ""]);

@@ -10,7 +10,6 @@ public sealed partial class MainWindowViewModel
     private MangetsuSubtitleRenderer? _subtitleRenderer;
     private long _subtitleRevision;
     private long _subtitleRendererRevision = -1;
-    private bool _selectionFromPlayback;
     private bool _clockUpdateFromPlayback;
 
     private CancellationTokenSource? _playbackCancellation;

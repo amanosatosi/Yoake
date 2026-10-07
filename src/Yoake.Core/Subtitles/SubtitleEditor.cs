@@ -84,7 +84,7 @@ public sealed class SubtitleEditor(AssDocument document)
     public void ToggleComment(IEnumerable<AssEvent> selection)
     {
         var lines = Ordered(selection); using var transaction = Undo.BeginTransaction("Toggle Dialogue / Comment");
-        foreach (var line in lines) { var was = line.IsComment; Undo.Execute(new DelegateUndoOperation("Toggle comment", () => line.SetKind(was), () => line.SetKind(!was))); }
+        foreach (var line in lines) { var was = line.IsComment; var prefix=line.Prefix; Undo.Execute(new DelegateUndoOperation("Toggle comment", () => line.RestorePrefix(prefix), () => line.SetKind(!was))); }
         transaction.Commit();
     }
     public void Move(IEnumerable<AssEvent> selection, int direction)

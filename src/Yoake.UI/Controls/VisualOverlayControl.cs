@@ -60,7 +60,7 @@ public sealed class VisualOverlayControl : Control
         _anchor=Script(point);_handle=-1;
         if(model.ActiveVisualTool=="Clip"&&AssVisualTags.Clip(line.Text) is {} clip)
         {
-            for(var i=0;i<clip.Points.Count;i++)if((Screen(clip.Points[i])-point).Length<=10){_handle=i;break;}
+            for(var i=0;i<clip.Points.Count;i++)if(Math.Sqrt(Math.Pow(Screen(clip.Points[i]).X-point.X,2)+Math.Pow(Screen(clip.Points[i]).Y-point.Y,2))<=10){_handle=i;break;}
             // Existing vector clips are edited through their handles, never
             // silently converted to rectangular clips by a miss-click.
             if(!clip.Rectangular&&_handle<0)return;

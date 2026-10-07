@@ -58,7 +58,7 @@ public sealed class StylesWindow : Window
     }
     private void Refresh(string? name=null)
     {
-        _switching=true;var selected=name??_selected?.Name;var names=_editor.Document.Styles.Select(s=>s.Name).ToArray();_list.ItemsSource=names;_replacement.ItemsSource=names;_list.SelectedItem=names.Contains(selected)?selected:names.FirstOrDefault();_replacement.SelectedItem=names.FirstOrDefault(n=>n!=_list.SelectedItem as string);_switching=false;LoadSelection();
+        _switching=true;var selected=name??_selected?.Name;_selected=null;_inputs.Clear();var names=_editor.Document.Styles.Select(s=>s.Name).ToArray();_list.ItemsSource=names;_replacement.ItemsSource=names;_list.SelectedItem=names.Contains(selected)?selected:names.FirstOrDefault();_replacement.SelectedItem=names.FirstOrDefault(n=>n!=_list.SelectedItem as string);_switching=false;LoadSelection();
     }
     private void LoadSelection()
     {
@@ -89,7 +89,7 @@ internal static class StyleValidation
                 var color=p.Value.Trim();if(!color.StartsWith("&H",StringComparison.OrdinalIgnoreCase)||!uint.TryParse(color[2..].TrimEnd('&'),System.Globalization.NumberStyles.HexNumber,null,out _))throw new ArgumentException($"{p.Key}: enter ASS &HAABBGGRR hex color.");
             }
             if(p.Key is "Alignment" or "BorderStyle" or "MarginL" or "MarginR" or "MarginV" or "Encoding" or "Bold" or "Italic" or "Underline" or "StrikeOut")
-                if(!int.TryParse(p.Value,out var n)||p.Key=="Alignment"&&n is <1 or >9)throw new ArgumentException($"Invalid {p.Key}.");
+                if(!int.TryParse(p.Value,out var integer)||p.Key=="Alignment"&&integer is <1 or >9)throw new ArgumentException($"Invalid {p.Key}.");
         }
     }
 }

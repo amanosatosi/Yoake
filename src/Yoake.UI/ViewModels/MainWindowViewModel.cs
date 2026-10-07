@@ -62,7 +62,21 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public IReadOnlyList<string> RecentFiles => _settings.RecentFiles;
     public IList<AssEvent> SelectedEvents { get; } = new ObservableCollection<AssEvent>();
     public int TextCursor { get; set; }
-    public EventEditDraft? Draft { get => _draft; private set => SetField(ref _draft,value); }
+    public EventEditDraft? Draft
+    {
+        get => _draft;
+        private set
+        {
+            if (_draft is not null) _draft.PropertyChanged -= DraftChanged;
+            SetField(ref _draft,value);
+            if (_draft is not null) _draft.PropertyChanged += DraftChanged;
+        }
+    }
+    private void DraftChanged(object? sender,PropertyChangedEventArgs e)
+    {
+        if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false);
+        _registry.NotifyStateChanged();
+    }
     public IReadOnlyList<AssEvent> Events => _activeSubtitleDocument?.Events ?? (IReadOnlyList<AssEvent>)Array.Empty<AssEvent>();
     public IReadOnlyList<string> StyleNames => _activeSubtitleDocument?.Styles.Select(s=>s.Name).ToArray() ?? [];
     public IReadOnlyList<string> ActorNames => Events.Select(l=>l.Actor).Where(s=>s.Length>0).Distinct().Order().ToArray();
@@ -85,6 +99,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public string SubtitleStatus { get=>_subtitleStatus; private set=>SetField(ref _subtitleStatus,value); }
     public string MediaStatus { get=>_mediaStatus; private set=>SetField(ref _mediaStatus,value); }
     public string ActiveVisualTool { get=>_activeVisualTool; private set=>SetField(ref _activeVisualTool,value); }
+    public long PreviewRevision => _activeSubtitleDocument?.Revision ?? 0;
     public string TimeDisplay => AssTime.Format((long)(CurrentTimeSeconds*1000));
     public string DurationDisplay => AssTime.Format((long)(MediaDurationSeconds*1000));
     public WriteableBitmap? VideoFrame
@@ -119,7 +134,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         try { ActiveEditor.EditEvent(SelectedEvent,Draft.Values); ReloadDraft(); return true; }
         catch(Exception e) { SubtitleStatus=e.Message; return false; }
     }
-    private void ReloadDraft() { Draft=SelectedEvent is null ? null : new EventEditDraft(SelectedEvent); }
+    private void ReloadDraft() { Draft=SelectedEvent is null ? null : new EventEditDraft(SelectedEvent); if(_workspace.ActiveDocument is {} session)session.IsDirty=ActiveEditor?.IsDirty??false; }
     private void CreateNewDocument()
     {
         if (!CommitDraft()) return;
@@ -128,7 +143,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private void Attach(DocumentSession session, AssDocument document)
     {
         var state=new DocumentState(new SubtitleEditor(document)); _documents[session.Id]=state;
-        document.Changed+=(_,_)=> { session.IsDirty=true; if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(StyleNames)); } };
+        document.Changed+=(_,_)=> { session.IsDirty=true; if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision)); } };
         state.Editor.Undo.Changed+=(_,_)=> { session.IsDirty=state.Editor.IsDirty; if (_activeId==session.Id) { ReloadDraft(); _registry.NotifyStateChanged(); } };
         state.Editor.MarkSaved();
     }
@@ -183,7 +198,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private void SynchronizeActiveDocument()
     {
         var id=_workspace.ActiveDocumentId;
-        if (id==_activeId && ActiveEditor is not null) return;
+        if (id==_activeId && ActiveEditor is not null && ReferenceEquals(_activeSubtitleDocument,ActiveEditor.Document)) return;
         CancelGesture(); StopPlayback(); Interlocked.Increment(ref _seekGeneration);
         if (_activeId is { } old && _documents.TryGetValue(old,out var previous)) { previous.Time=CurrentTimeSeconds; previous.Selected=SelectedEvent; }
         _activeId=id;
