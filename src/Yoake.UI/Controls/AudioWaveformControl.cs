@@ -26,6 +26,7 @@ public sealed class AudioWaveformControl : Control
     public double VisibleSeconds{get=>GetValue(VisibleSecondsProperty);set=>SetCurrentValue(VisibleSecondsProperty,value);}
     public double MaximumPan{get=>GetValue(MaximumPanProperty);private set=>SetValue(MaximumPanProperty,value);}
     private WaveformData? _detail;
+    private readonly HashSet<int> _boundaryPixels=[];
     private double _pointerTime;
     private int _part;
     private bool _drag;
@@ -79,10 +80,11 @@ public sealed class AudioWaveformControl : Control
             }
         }
         var neighbor=new Pen(new SolidColorBrush(Color.FromArgb(90,180,180,180)),1);
+        _boundaryPixels.Clear();
         foreach(var line in model.Events)
         {
             if(line==model.SelectedEvent)continue;
-            void Boundary(long? boundary){if(boundary is {} ms){var x=X(ms/1000d);if(x>=0&&x<=Bounds.Width)context.DrawLine(neighbor,new(x,0),new(x,Bounds.Height));}}
+            void Boundary(long? boundary){if(boundary is {} ms){var x=X(ms/1000d);if(x>=0&&x<=Bounds.Width&&_boundaryPixels.Add((int)x))context.DrawLine(neighbor,new(x,0),new(x,Bounds.Height));}}
             Boundary(line.StartMilliseconds);Boundary(line.EndMilliseconds);
         }
         if(model.SelectedEvent is {} selected)

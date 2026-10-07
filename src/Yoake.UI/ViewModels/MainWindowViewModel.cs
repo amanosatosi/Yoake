@@ -275,7 +275,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             token.ThrowIfCancellationRequested();
             if (_disposed || !_documents.ContainsKey(id)) { opened?.Dispose(); return false; }
             var old=state.Media; state.Media=opened; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
-            if (_activeId==id) { _media=state.Media; MediaDurationSeconds=_media!.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
+            if (_activeId==id) { _media=state.Media;if(!_media!.HasVideo)VideoFrame=null; MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
             var media=state.Media!; WaveformData? peaks=null;
             var analysis=_jobs.Run("Audio peaks",ct=> { peaks=media.BuildWaveform(cancellationToken:ct); return Task.CompletedTask; },token); await analysis.Completion;
             token.ThrowIfCancellationRequested(); state.Waveform=peaks;

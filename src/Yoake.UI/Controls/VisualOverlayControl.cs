@@ -63,7 +63,7 @@ public sealed class VisualOverlayControl : Control
         base.OnPointerPressed(e);Focus();var model=Model;var point=e.GetPosition(this);
         if(model?.SelectedEvent is not {} line||!VideoRect().Contains(point)||!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;
         _anchor=Script(point);_handle=-1;
-        if(model.ActiveVisualTool=="Clip"&&AssVisualTags.Clip(line.Text) is {} clip)
+        if(model.ActiveVisualTool=="Clip"&&AssVisualTags.Clip(model.VisualText) is {} clip)
         {
             if(e.KeyModifiers.HasFlag(KeyModifiers.Shift))_handle=-2;
             for(var i=0;_handle!=-2&&i<clip.Points.Count;i++)if(Math.Sqrt(Math.Pow(Screen(clip.Points[i]).X-point.X,2)+Math.Pow(Screen(clip.Points[i]).Y-point.Y,2))<=10){_handle=i;break;}

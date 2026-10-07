@@ -129,6 +129,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
             case 14:
                 if(!_mediaLoading!.IsCompleted){_stage--;return false;}
                 Require(_mediaLoading.Result&&model.WaveformSamples is {Count:>100},"Real audio must generate the signed waveform.");
+                Require(model.VideoFrame is null&&model.FrameTimes.Count==0,"Replacing video with audio must clear the old video presentation.");
                 Require(model.WaveformSamples!.Envelopes.Min(p=>p.Minimum)<-0.1&&model.WaveformSamples.Envelopes.Max(p=>p.Maximum)>0.1,"Audio fixture must produce both signed extrema.");
                 var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;audio.VisibleSeconds=2;audio.ViewportStart=0;
                 return false;
