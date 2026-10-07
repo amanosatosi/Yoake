@@ -23,16 +23,21 @@ public sealed class DelegateUndoOperation(string name, Action undo, Action redo)
 
 public sealed class UndoManager
 {
-    private readonly Stack<IUndoOperation> _undo = new();
-    private readonly Stack<IUndoOperation> _redo = new();
+    private readonly Stack<HistoryItem> _undo = new();
+    private readonly Stack<HistoryItem> _redo = new();
     private UndoTransaction? _transaction;
 
+    private sealed record HistoryItem(IUndoOperation Operation, long Before, long After);
+    private long _state, _nextState, _savedState;
+    public bool IsDirty => _state != _savedState;
+    public bool IsTransactionActive => _transaction is not null;
+    public void MarkSaved() { _savedState = _state; Changed?.Invoke(this, EventArgs.Empty); }
     public event EventHandler? Changed;
 
     public bool CanUndo => _undo.Count > 0;
     public bool CanRedo => _redo.Count > 0;
-    public string? NextUndoName => _undo.TryPeek(out var item) ? item.Name : null;
-    public string? NextRedoName => _redo.TryPeek(out var item) ? item.Name : null;
+    public string? NextUndoName => _undo.TryPeek(out var item) ? item.Operation.Name : null;
+    public string? NextRedoName => _redo.TryPeek(out var item) ? item.Operation.Name : null;
 
     public IUndoTransaction BeginTransaction(string name)
     {
@@ -60,7 +65,8 @@ public sealed class UndoManager
             throw new InvalidOperationException("Cannot undo while a transaction is active.");
         if (!_undo.TryPop(out var operation))
             return false;
-        operation.Undo();
+        operation.Operation.Undo();
+        _state = operation.Before;
         _redo.Push(operation);
         Changed?.Invoke(this, EventArgs.Empty);
         return true;
@@ -72,7 +78,8 @@ public sealed class UndoManager
             throw new InvalidOperationException("Cannot redo while a transaction is active.");
         if (!_redo.TryPop(out var operation))
             return false;
-        operation.Redo();
+        operation.Operation.Redo();
+        _state = operation.After;
         _undo.Push(operation);
         Changed?.Invoke(this, EventArgs.Empty);
         return true;
@@ -80,7 +87,8 @@ public sealed class UndoManager
 
     private void PushUndo(IUndoOperation operation)
     {
-        _undo.Push(operation);
+        _undo.Push(new HistoryItem(operation, _state, ++_nextState));
+        _state = _nextState;
         _redo.Clear();
         Changed?.Invoke(this, EventArgs.Empty);
     }
