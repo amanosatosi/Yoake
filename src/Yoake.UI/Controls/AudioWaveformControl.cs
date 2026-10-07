@@ -83,13 +83,17 @@ public sealed class AudioWaveformControl : Control
             context.DrawLine(new Pen(Brushes.LimeGreen,2),new(left,0),new(left,Bounds.Height));context.DrawLine(new Pen(Brushes.OrangeRed,2),new(right,0),new(right,Bounds.Height));
         }
         var cursor=X(model.CurrentTimeSeconds);context.DrawLine(new Pen(Brushes.White,1),new(cursor,0),new(cursor,Bounds.Height));
-        // Second grid, useful even with no audio loaded.
-        var step=Math.Max(0.1,Math.Pow(10,Math.Floor(Math.Log10(_span/8))));
+        // Keep complete time labels readable as the audio pane is resized.
+        // Prefer familiar 1/2/5 intervals and avoid drawing overlapping labels.
+        var target=Math.Max(0.1,_span*64/Bounds.Width);
+        var magnitude=Math.Pow(10,Math.Floor(Math.Log10(target)));
+        var fraction=target/magnitude;
+        var step=magnitude*(fraction<=1?1:fraction<=2?2:fraction<=5?5:10);
         for(var t=Math.Ceiling(_start/step)*step;t<_start+_span;t+=step)
         {
             var x=X(t);context.DrawLine(neighbor,new(x,Bounds.Height-5),new(x,Bounds.Height));
             var label=new FormattedText(AssTime.Format((long)(t*1000)),System.Globalization.CultureInfo.InvariantCulture,FlowDirection.LeftToRight,Typeface.Default,9,Brushes.LightGray);
-            context.DrawText(label,new Point(x+2,Bounds.Height-14));
+            if(x+2+label.Width<=Bounds.Width)context.DrawText(label,new Point(x+2,Bounds.Height-14));
         }
     }
     protected override void OnPointerPressed(PointerPressedEventArgs e)
