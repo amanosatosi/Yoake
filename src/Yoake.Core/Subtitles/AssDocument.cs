@@ -157,11 +157,12 @@ public sealed class AssDocument
     {
         var live = items.ToHashSet();
         for (var i = target.Count - 1; i >= 0; i--) if (!live.Contains(target[i])) target.RemoveAt(i);
+        var present=target.ToHashSet();
         for (var i = 0; i < items.Length; i++)
         {
             if (i < target.Count && EqualityComparer<T>.Default.Equals(target[i], items[i])) continue;
-            var old = target.IndexOf(items[i]);
-            if (old >= 0) target.Move(old, i); else target.Insert(i, items[i]);
+            var old = present.Contains(items[i])?target.IndexOf(items[i]):-1;
+            if (old >= 0) target.Move(old, i); else {target.Insert(i, items[i]);present.Add(items[i]);}
         }
     }
     private void RecordChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

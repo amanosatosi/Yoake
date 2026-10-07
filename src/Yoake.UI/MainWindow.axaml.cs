@@ -37,6 +37,7 @@ public partial class MainWindow : Window, IEditorDialogs
         LayoutUpdated+=(_,_)=>UpdateChrome();
         ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(UpdateChrome);
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
+        TemporalTextColumn.SizeChanged+=(_,_)=>UpdateAudioBounds();
         TitleTabStrip.SizeChanged+=(_,_)=>UpdateTabLimit();
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_model.TextCursor=SubtitleText.CaretIndex;_model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;}};
         Closing+=HandleClosing;
@@ -50,7 +51,7 @@ public partial class MainWindow : Window, IEditorDialogs
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
-            TemporalTextColumn.RowDefinitions[0].Height=new GridLength(_model.AudioDisplayHeight);
+            UpdateAudioBounds();
             _model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
             StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
     }
@@ -94,10 +95,20 @@ public partial class MainWindow : Window, IEditorDialogs
         var number=new NumericUpDown{Minimum=0.1m,Maximum=10000,Increment=1,Value=decimal.TryParse(size,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var value)?value:60};
         panel.Children.Add(new TextBlock{Text="Size"});panel.Children.Add(number);var apply=new Button{Content="Apply font",IsDefault=true};apply.Click+=(_,_)=>dialog.Close(new FontChoice(picker.FontName,(number.Value??60).ToString(System.Globalization.CultureInfo.InvariantCulture)));panel.Children.Add(apply);var cancel=new Button{Content="Cancel",IsCancel=true};cancel.Click+=(_,_)=>dialog.Close();panel.Children.Add(cancel);dialog.Content=panel;return await dialog.ShowDialog<FontChoice?>(this);
     }
+    private void UpdateAudioBounds()
+    {
+        if(_model is null)return;
+        var available=TemporalTextColumn.Bounds.Height;
+        var maximum=available>0?Math.Clamp(available-TemporalTextColumn.RowDefinitions[2].MinHeight-4,100,400):400;
+        AudioSize.Maximum=maximum;
+        var height=Math.Clamp(_model.AudioDisplayHeight,100,maximum);
+        var row=TemporalTextColumn.RowDefinitions[0];
+        if(row.Height.Value!=height)row.Height=new GridLength(height);
+    }
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
-        if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight)&&_model is not null)TemporalTextColumn.RowDefinitions[0].Height=new GridLength(_model.AudioDisplayHeight);
+        if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight))UpdateAudioBounds();
         if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }

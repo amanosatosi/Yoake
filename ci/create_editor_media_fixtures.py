@@ -35,3 +35,11 @@ with wave.open(str(root / 'audio.wav'), 'wb') as audio:
     audio.setparams((1, 2, 48000, 96000, 'NONE', 'not compressed'))
     audio.writeframes(b''.join(struct.pack('<h', 0 if i < 24000 else int(16000 * math.sin(2 * math.pi * 440 * i / 48000))) for i in range(96000)))
 print('Created deterministic AVI and PCM audio fixtures')
+
+# A real large multilingual document for container virtualization and end/middle scrolling.
+scripts = ['日本語', 'မြန်မာ', 'Latin e\u0301', 'العربية', '👩‍👩‍👧‍👦']
+with (root / 'large.ass').open('w', encoding='utf-8', newline='') as ass:
+    ass.write('[Script Info]\nScriptType: v4.00+\nPlayResX: 1920\nPlayResY: 1080\n[V4+ Styles]\nFormat: Name,Fontname,Fontsize,PrimaryColour,Alignment,MarginL,MarginR,MarginV\nStyle: Default,Arial,60,&H00FFFFFF,2,30,30,30\n[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n')
+    for i in range(20000):
+        kind = 'Comment' if i % 13 == 0 else 'Dialogue'
+        ass.write(f'{kind}: 0,0:00:00.00,0:00:02.00,Default,,0,0,0,,{scripts[i % len(scripts)]} {i}\n')

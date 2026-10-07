@@ -28,6 +28,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private long _draftRevision;
     private byte[]? _beforeDraft;
     private string? _committedText;
+    private Guid _originalTab;
     private const string Sample = @"{\fad(200,200)\bord3\1c&HFFFFFF&\3c&H000000&}<仮|かり>の糸\N{\k20}こ{\k15}れ{\k30}は{\1grd(0,&HFF0000&,&H0000FF&)}テスト
 {\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text မြန်မာ é 👩‍👩‍👧‍👦
 {\fnArial\future(opaque)\p1}m 0 0 l 20 0 20 20{\p0}";
@@ -132,13 +133,30 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;audio.VisibleSeconds=2;audio.ViewportStart=0;
                 return false;
             case 15:
-                Capture(window,"editor-signed-waveform",1);return false;
+                Capture(window,"editor-signed-waveform",1);
+                _originalTab=model.Tabs.Single(t=>t.IsActive).Id;
+                Require(model.OpenSubtitle(Path.Combine(mediaFixtures!,"large.ass")),"Large multilingual ASS fixture must open.");return false;
+            case 16:
+                CheckVirtualizedGrid();model.SelectedEvent=model.Events[^1];return false;
+            case 17:
+                CheckVirtualizedGrid();Require(window.FindControl<ListBox>("SubtitleRows")!.GetVisualDescendants().OfType<ListBoxItem>().Any(r=>ReferenceEquals(r.DataContext,model.Events[^1])),"Scrolling to the last of 20,000 rows must realize that row.");
+                model.SelectedEvent=model.Events[10000];return false;
+            case 18:
+                CheckVirtualizedGrid();Capture(window,"editor-large-mixed-script",1);
+                var activate=model.Registry.InvokeAsync(CommandIds.WorkspaceActivateTab,new(),_originalTab);Require(activate.IsCompletedSuccessfully&&activate.Result,"Return to original editing tab after virtualization probe.");return false;
             default:
                 Require(styles.Preview.LastError is null,"Latest style preview failed: "+styles.Preview.LastError);
                 if(!styles.Preview.HasCurrentFrame||styles.Preview.DisplayedRevision<_previewRevision)return false;
                 CheckStyleFields();Capture(styles,"styles-dark-narrow",1);
                 return true;
         }
+    }
+    private void CheckVirtualizedGrid()
+    {
+        Require(model.Events.Count==20000,"Large-file verification must use all 20,000 events.");
+        var realized=window.FindControl<ListBox>("SubtitleRows")!.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+        Require(realized.Length>0&&realized.Length<100,"Grid must virtualize the large file instead of realizing every event.");
+        Require(realized.All(r=>Math.Abs(r.Bounds.Height-30)<0.1),"Recycled mixed-script containers must retain the fixed row height.");
     }
     private byte[] FramePixels()
     {
