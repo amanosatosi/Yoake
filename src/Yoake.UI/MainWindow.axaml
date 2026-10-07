@@ -10,7 +10,7 @@
         Width="1440" Height="900"
         MinWidth="1040" MinHeight="680"
         Background="{DynamicResource AppBackgroundBrush}">
-  <Grid RowDefinitions="36,66,*,4,300">
+  <Grid RowDefinitions="36,66,3*,4,2*">
     <Border Grid.Row="0" Name="TitleTabStrip" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <ScrollViewer Grid.Column="0" MaxWidth="980" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
