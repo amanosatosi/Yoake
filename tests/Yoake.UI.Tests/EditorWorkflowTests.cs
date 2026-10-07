@@ -1,0 +1,92 @@
+using Xunit;
+using Yoake.Core.Commands;
+using Yoake.Core.Settings;
+using Yoake.Core.Subtitles;
+using Yoake.Core.Undo;
+using Yoake.Core.Workspace;
+using Yoake.UI.Services;
+using Yoake.UI.ViewModels;
+
+namespace Yoake.UI.Tests;
+
+public sealed class EditorWorkflowTests : IDisposable
+{
+    private readonly string _root=Path.Combine(Path.GetTempPath(),"Yoake-tests-"+Guid.NewGuid());
+    private readonly WorkspaceManager _workspace=new();
+    private readonly MainWindowViewModel _model;
+    private readonly TestDialogs _dialogs=new();
+    public EditorWorkflowTests()
+    {
+        Directory.CreateDirectory(_root);
+        _model=new(new CommandRegistry(),_workspace,new UndoManager(),new ThemeService(),new SettingsStore(Path.Combine(_root,"settings.json")),new AppSettings());
+        _model.Dialogs=_dialogs;
+    }
+    private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task NewDocumentIsConnectedAndInsertCanBeEdited()
+    {
+        Assert.NotNull(_model.ActiveEditor);Assert.Empty(_model.Events);await Command(CommandIds.GridInsertAfter);
+        Assert.Single(_model.Events);Assert.NotNull(_model.Draft);_model.Draft!.Text="日本語 မြန်မာ 👩‍👩‍👧‍👦";
+        Assert.True(_workspace.ActiveDocument!.IsDirty);await Command(CommandIds.EditCommit);
+        Assert.Equal("日本語 မြန်မာ 👩‍👩‍👧‍👦",_model.Events[0].Text);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
+    }
+    [Fact] public async Task TabsHaveIndependentHistoryAndCommitBeforeSwitching()
+    {
+        await Command(CommandIds.GridInsertAfter);var first=_workspace.ActiveDocumentId!.Value;_model.Draft!.Text="first draft";
+        await Command(CommandIds.SubtitleNew);Assert.Empty(_model.Events);Assert.False(_model.ActiveEditor!.Undo.CanUndo);
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="second draft";
+        await Command(CommandIds.WorkspaceActivateTab,first);Assert.Equal("first draft",_model.Events[0].Text);
+        await Command(CommandIds.EditUndo);Assert.Equal("",_model.Events[0].Text);
+        await Command(CommandIds.WorkspaceActivateTab,_workspace.Documents[1].Id);Assert.Equal("second draft",_model.Events[0].Text);
+    }
+    [Fact] public async Task SaveAsChangesPathAndSavedUndoState()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="saved";var path=Path.Combine(_root,"saved.ass");
+        Assert.True(_model.SaveActiveSubtitle(path));Assert.Equal(path,_workspace.ActiveDocument!.Path);Assert.Equal("saved.ass",_workspace.ActiveDocument.Title);Assert.False(_workspace.ActiveDocument.IsDirty);
+        _model.Draft!.Actor="Actor";await Command(CommandIds.EditCommit);Assert.True(_workspace.ActiveDocument.IsDirty);
+        await Command(CommandIds.EditUndo);Assert.False(_workspace.ActiveDocument.IsDirty);
+        Assert.Equal("saved",AssDocument.Load(path).Events[0].Text);
+    }
+    [Fact] public async Task CancelUnsavedCloseRetainsDocumentAndDiscardClosesIt()
+    {
+        await Command(CommandIds.GridInsertAfter);var id=_workspace.ActiveDocumentId!.Value;
+        _dialogs.Choice=UnsavedChoice.Cancel;Assert.False(await _model.CloseDocumentAsync(id));Assert.Contains(_workspace.Documents,d=>d.Id==id);
+        _dialogs.Choice=UnsavedChoice.Discard;Assert.True(await _model.CloseDocumentAsync(id));Assert.DoesNotContain(_workspace.Documents,d=>d.Id==id);
+    }
+    [Fact] public async Task FailedValidationKeepsDraftAndCurrentRow()
+    {
+        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent;await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent;
+        _model.Draft!.End="bad";_model.SelectedEvent=first;Assert.Same(second,_model.SelectedEvent);Assert.Equal("bad",_model.Draft.End);Assert.False(_model.CommitDraft());
+    }
+    [Fact] public async Task TimingAndVisualGesturesRollbackOnCancelAndCommitOnce()
+    {
+        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;
+        Assert.True(_model.BeginGesture("Timing gesture"));_model.UpdateTimingGesture(2,1);_model.UpdateTimingGesture(2,2);_model.CancelGesture();Assert.Equal(0,line.StartMilliseconds);
+        Assert.True(_model.BeginGesture("Position gesture"));_model.UpdatePositionGesture(100,200);_model.UpdatePositionGesture(300,400);_model.EndGesture();Assert.Equal(new AssPoint(300,400),AssVisualTags.Position(line.Text));
+        Assert.Equal("Position gesture",_model.ActiveEditor!.Undo.NextUndoName);await Command(CommandIds.EditUndo);Assert.Equal("",line.Text);
+    }
+    [Fact] public async Task MultiRowCommandsWorkAcrossUndo()
+    {
+        await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridDuplicate);Assert.Equal(4,_model.Events.Count);
+        await Command(CommandIds.EditUndo);Assert.Equal(2,_model.Events.Count);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridToggleComment);Assert.All(_model.Events,l=>Assert.True(l.IsComment));
+    }
+    [Fact] public async Task ReopenConnectsLoadedRowsAndRecentFiles()
+    {
+        var doc=AssDocument.CreateEmpty();var editor=new SubtitleEditor(doc);editor.Insert(null,false);var path=Path.Combine(_root,"open.ass");doc.Save(path);
+        Assert.True(_model.OpenSubtitle(path));Assert.Single(_model.Events);Assert.Equal(path,_model.RecentFiles[0]);await Command(CommandIds.GridDuplicate);Assert.Equal(2,_model.Events.Count);
+    }
+    public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
+    private sealed class TestDialogs : IEditorDialogs
+    {
+        public UnsavedChoice Choice=UnsavedChoice.Cancel;
+        public Task<string?> OpenSubtitleAsync()=>Task.FromResult<string?>(null);
+        public Task<string?> OpenMediaAsync()=>Task.FromResult<string?>(null);
+        public Task<string?> SaveSubtitleAsync(string suggestedName)=>Task.FromResult<string?>(null);
+        public Task<UnsavedChoice> ConfirmUnsavedAsync(string title)=>Task.FromResult(Choice);
+        public Task<bool> ConfirmRevertAsync()=>Task.FromResult(false);
+        public Task<string?> ReadClipboardAsync()=>Task.FromResult<string?>(null);
+        public Task WriteClipboardAsync(string text)=>Task.CompletedTask;
+        public Task ShowStylesAsync(SubtitleEditor editor)=>Task.CompletedTask;
+        public Task ShowScriptInfoAsync(SubtitleEditor editor)=>Task.CompletedTask;
+        public Task ShowFindAsync(MainWindowViewModel model)=>Task.CompletedTask;
+    }
+}

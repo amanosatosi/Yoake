@@ -45,8 +45,12 @@ public sealed class AssEvent : AssRecord
     public string MarginV { get => Get("MarginV"); set => Set("MarginV", value); }
     public string Effect { get => Get("Effect"); set => Set("Effect", value); }
     public string Text { get => Get("Text"); set => Set("Text", value); }
-    public long? StartMilliseconds => AssTime.TryParse(Start, out var time) ? time : null;
-    public long? EndMilliseconds => AssTime.TryParse(End, out var time) ? time : null;
+    private string? _startSource, _endSource;
+    private long? _startTime, _endTime;
+    private bool _isActive;
+    public bool IsActive { get=>_isActive; internal set {if(_isActive==value)return;_isActive=value;Notify(nameof(IsActive));} }
+    public long? StartMilliseconds {get {var source=Start;if(_startSource!=source){_startSource=source;_startTime=AssTime.TryParse(source,out var t)?t:null;}return _startTime;} }
+    public long? EndMilliseconds {get {var source=End;if(_endSource!=source){_endSource=source;_endTime=AssTime.TryParse(source,out var t)?t:null;}return _endTime;} }
     public string Duration => StartMilliseconds is { } start && EndMilliseconds is { } end ? AssTime.Format(end - start) : "";
     internal void RestorePrefix(string prefix) { Prefix=prefix;Notify(nameof(Kind));Notify(nameof(IsComment)); }
     internal void SetKind(bool comment)
@@ -56,7 +60,7 @@ public sealed class AssEvent : AssRecord
         var end=colon;while(end>start&&char.IsWhiteSpace(Prefix[end-1]))end--;
         RestorePrefix(Prefix[..start]+(comment?"Comment":"Dialogue")+Prefix[end..]);
     }
-    internal void Renumber(int number) { Number = number; Notify(nameof(Number)); }
+    internal void Renumber(int number) { if(Number==number)return; Number = number; Notify(nameof(Number)); }
     public AssEvent Clone() => new(Prefix, (string[])Format.Clone(), (string[])Fields.Clone());
 }
 

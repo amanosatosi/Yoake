@@ -51,7 +51,7 @@ public sealed partial class MainWindowViewModel
         _gestureEditor.SetField(_gestureLine,"Text",text,"Edit subtitle clip");
     }
     public void EndGesture() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); ReloadDraft(); } }
-    public void CancelGesture() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); ReloadDraft(); }
+    public void CancelGesture() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); if(gesture is not null)ReloadDraft(); }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
     private AssEvent[] Selection() => SelectedEvents.Where(Events.Contains).DefaultIfEmpty(SelectedEvent).OfType<AssEvent>().Distinct().ToArray();
     private void Select(AssEvent? line) { SelectedEvents.Clear(); if(line is not null)SelectedEvents.Add(line); SelectedEvent=line; }
@@ -77,7 +77,7 @@ public sealed partial class MainWindowViewModel
         void S(string id,string label,Action action,Func<bool>? available=null)=>R(id,label,_=>{action();return ValueTask.CompletedTask;},available);
         bool HasLine()=>HasSelectedEvent && _gesture is null;
         S(CommandIds.SubtitleNew,"New  Ctrl+N",CreateNewDocument);
-        R(CommandIds.SubtitleOpen,"Open…  Ctrl+O",async i=>{var path=i.Parameter as string ?? (Dialogs is null?null:await Dialogs.OpenSubtitleAsync()); if(path is not null)OpenSubtitle(path);});
+        R(CommandIds.SubtitleOpen,"Open…  Ctrl+O",async i=>{var path=i.Parameter as string ?? (Dialogs is null?null:await Dialogs.OpenSubtitleAsync()); if(path is not null&&OpenSubtitle(path)&&_media is null&&FindAssociatedMedia(path) is {} mediaPath)await OpenMediaAsync(mediaPath);});
         R(CommandIds.SubtitleSave,"Save  Ctrl+S",async _=>{await SaveAsync();});
         R(CommandIds.SubtitleSaveAs,"Save As…  Ctrl+Shift+S",async _=>{await SaveAsync(true);});
         R(CommandIds.SubtitleClose,"Close tab  Ctrl+W",async i=>{if(i.Parameter is Guid id)await CloseDocumentAsync(id);else if(_activeId is {} active)await CloseDocumentAsync(active);});
@@ -137,6 +137,19 @@ public sealed partial class MainWindowViewModel
         H(CommandIds.GridCopy,"C",KeyModifiers.Control,HotkeyContext.SubtitleGrid);H(CommandIds.GridCut,"X",KeyModifiers.Control,HotkeyContext.SubtitleGrid);H(CommandIds.GridPaste,"V",KeyModifiers.Control,HotkeyContext.SubtitleGrid);H(CommandIds.GridSelectAll,"A",KeyModifiers.Control,HotkeyContext.SubtitleGrid);
         H(CommandIds.TimingSetStart,"D3",KeyModifiers.Control);H(CommandIds.TimingSetEnd,"D4",KeyModifiers.Control);
         H(CommandIds.AudioZoomIn,"OemPlus",context:HotkeyContext.Audio);H(CommandIds.AudioZoomOut,"OemMinus",context:HotkeyContext.Audio);
+    }
+    private string? FindAssociatedMedia(string subtitlePath)
+    {
+        var directory=Path.GetDirectoryName(subtitlePath)??"";
+        foreach(var key in new[]{"Video File","Audio File"})
+        {
+            var reference=_activeSubtitleDocument?.GetSectionValue("[Aegisub Project Garbage]",key).Trim().Trim('"');
+            if(string.IsNullOrWhiteSpace(reference)||reference.StartsWith("?dummy:",StringComparison.OrdinalIgnoreCase)||reference=="?video")continue;
+            if(reference.StartsWith("?script",StringComparison.OrdinalIgnoreCase))reference=reference[7..].TrimStart('/', '\\');
+            try {var candidate=Path.GetFullPath(Path.IsPathRooted(reference)?reference:Path.Combine(directory,reference));if(File.Exists(candidate))return candidate;}catch(ArgumentException){}
+        }
+        var stem=Path.Combine(directory,Path.GetFileNameWithoutExtension(subtitlePath));
+        return new[]{".mkv",".mp4",".webm",".m2ts",".ts",".avi",".mov"}.Select(ext=>stem+ext).FirstOrDefault(File.Exists);
     }
     private async Task StepFrameAsync(int delta)
     {

@@ -12,6 +12,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yoake.App", "src\Yoake.App\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yoake.Core.Tests", "tests\Yoake.Core.Tests\Yoake.Core.Tests.csproj", "{A1C01C5D-E1B0-4F45-9D9D-1044504FA115}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Yoake.UI.Tests", "tests\Yoake.UI.Tests\Yoake.UI.Tests.csproj", "{A1C01C5D-E1B0-4F45-9D9D-1044504FA116}"
+EndProject
 Global
     GlobalSection(SolutionConfigurationPlatforms) = preSolution
         Debug|Any CPU = Debug|Any CPU
@@ -38,5 +40,9 @@ Global
         {A1C01C5D-E1B0-4F45-9D9D-1044504FA115}.Debug|Any CPU.Build.0 = Debug|Any CPU
         {A1C01C5D-E1B0-4F45-9D9D-1044504FA115}.Release|Any CPU.ActiveCfg = Release|Any CPU
         {A1C01C5D-E1B0-4F45-9D9D-1044504FA115}.Release|Any CPU.Build.0 = Release|Any CPU
+        {A1C01C5D-E1B0-4F45-9D9D-1044504FA116}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+        {A1C01C5D-E1B0-4F45-9D9D-1044504FA116}.Debug|Any CPU.Build.0 = Debug|Any CPU
+        {A1C01C5D-E1B0-4F45-9D9D-1044504FA116}.Release|Any CPU.ActiveCfg = Release|Any CPU
+        {A1C01C5D-E1B0-4F45-9D9D-1044504FA116}.Release|Any CPU.Build.0 = Release|Any CPU
     EndGlobalSection
 EndGlobal

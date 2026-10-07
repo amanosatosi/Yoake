@@ -11,6 +11,8 @@ public sealed class AssDocument
     private bool _bom;
     private string _newline = "\r\n";
     private string? _cached;
+    private int _updateDepth;
+    private bool _pendingSync, _pendingChange;
     private readonly ObservableCollection<AssEvent> _events = [];
     private readonly ObservableCollection<AssStyle> _styles = [];
     public ReadOnlyObservableCollection<AssEvent> Events { get; }
@@ -125,6 +127,7 @@ public sealed class AssDocument
     internal void Restore(IReadOnlyList<SourceLine> source) { Source = [.. source]; Synchronize(); Touch(); }
     private void Synchronize()
     {
+        if(_updateDepth>0){_pendingSync=true;return;}
         var events = Source.Select(l => l.Record).OfType<AssEvent>().ToArray(); var styles = Source.Select(l => l.Record).OfType<AssStyle>().ToArray();
         foreach (var record in _events.Cast<AssRecord>().Concat(_styles)) record.PropertyChanged -= RecordChanged;
         Sync(_events, events); Sync(_styles, styles);
@@ -142,8 +145,22 @@ public sealed class AssDocument
             if (old >= 0) target.Move(old, i); else target.Insert(i, items[i]);
         }
     }
-    private void RecordChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { if (e.PropertyName != "Number") Touch(); }
-    internal void Touch() { _cached = null; Revision++; Changed?.Invoke(this, EventArgs.Empty); }
+    private void RecordChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) { if (e.PropertyName is not "Number" and not "IsActive") Touch(); }
+    internal void Touch() { _cached = null; if(_updateDepth>0){_pendingChange=true;return;} Revision++; Changed?.Invoke(this, EventArgs.Empty); }
+    internal IDisposable BeginUpdate() { _updateDepth++;return new UpdateScope(this); }
+    private sealed class UpdateScope(AssDocument owner) : IDisposable
+    {
+        public void Dispose()
+        {
+            if(--owner._updateDepth>0)return;
+            if(owner._pendingSync){owner._pendingSync=false;owner.Synchronize();}
+            if(owner._pendingChange){owner._pendingChange=false;owner.Touch();}
+        }
+    }
+    public void UpdateActiveTime(long milliseconds)
+    {
+        foreach(var line in _events)line.IsActive=!line.IsComment&&line.StartMilliseconds is {} start&&line.EndMilliseconds is {} end&&milliseconds>=start&&milliseconds<end;
+    }
     public AssEvent NewEvent() => new("Dialogue: ", EventFormat, ["0", "0:00:00.00", "0:00:02.00", Styles.FirstOrDefault()?.Name ?? "Default", "", "0", "0", "0", "", ""]);
     public AssStyle NewStyle() => new("Style: ", StyleFormat, ["Default", "Arial", "60", "&H00FFFFFF", "&H0000FFFF", "&H00000000", "&H64000000", "0", "0", "0", "0", "100", "100", "0", "0", "1", "2", "0", "2", "30", "30", "30", "1"]);
 }

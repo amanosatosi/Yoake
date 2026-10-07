@@ -41,6 +41,7 @@ public sealed class AudioWaveformControl : Control
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
         if(Model is not {} model)return;
+        if(e.PropertyName==nameof(MainWindowViewModel.CanPlayMedia)){_spectrum?.Dispose();_spectrum=null;_start=0;RequestSpectrum();}
         if(_lastLine!=model.SelectedEvent)
         {
             _lastLine=model.SelectedEvent;

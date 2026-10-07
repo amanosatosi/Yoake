@@ -52,7 +52,7 @@ public sealed class SubtitleEditor(AssDocument document)
         Undo.Execute(new DelegateUndoOperation(name, () => Document.Restore(before), () =>
         {
             if (after is not null) { Document.Restore(after); return; }
-            try { action(); after = Document.Source.ToArray(); }
+            try { using(Document.BeginUpdate())action(); after = Document.Source.ToArray(); }
             catch { Document.Restore(before); throw; }
         }));
     }
@@ -91,7 +91,16 @@ public sealed class SubtitleEditor(AssDocument document)
     {
         var lines = Ordered(selection); if (lines.Length == 0) return; var set = lines.ToHashSet();
         if (direction > 0) Array.Reverse(lines);
-        Structure("Move subtitles", () => { foreach (var line in lines) { var i = Document.Events.IndexOf(line) + Math.Sign(direction); if (i >= 0 && i < Document.Events.Count && !set.Contains(Document.Events[i])) Document.Swap(line, Document.Events[i]); } });
+        Structure("Move subtitles", () =>
+        {
+            var order=Document.Events.ToList();
+            foreach(var line in lines)
+            {
+                var from=order.IndexOf(line);var to=from+Math.Sign(direction);
+                if(to<0||to>=order.Count||set.Contains(order[to]))continue;
+                Document.Swap(line,order[to]);(order[from],order[to])=(order[to],order[from]);
+            }
+        });
     }
     public AssEvent Split(AssEvent line, int cursor)
     {
@@ -150,7 +159,11 @@ public sealed class SubtitleEditor(AssDocument document)
         Structure("Delete style", () => Document.Remove(style)); transaction.Commit();
     }
     public void MoveStyle(AssStyle style, int direction) { Require(style); var i = Document.Styles.IndexOf(style) + Math.Sign(direction); if (i >= 0 && i < Document.Styles.Count) Structure("Reorder styles", () => Document.Swap(style, Document.Styles[i])); }
-    public void SetScriptInfo(IReadOnlyDictionary<string, string> values) => Structure("Edit Script Info", () => { foreach (var pair in values) Document.SetScriptInfo(pair.Key, pair.Value); });
+    public void SetScriptInfo(IReadOnlyDictionary<string, string> values)
+    {
+        var changed=values.Where(p=>Document.GetScriptInfo(p.Key)!=p.Value).ToArray();if(changed.Length==0)return;
+        Structure("Edit Script Info", () => { foreach (var pair in changed) Document.SetScriptInfo(pair.Key, pair.Value); });
+    }
 }
 
 public static class AssText
