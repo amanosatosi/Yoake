@@ -78,7 +78,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null)return;
         _selectionSync=true;
-        try{SubtitleRows.SelectedItems.Clear();foreach(var line in _model.SelectedEvents)if(_model.Events.Contains(line))SubtitleRows.SelectedItems.Add(line);}
+        try{SubtitleRows.SelectedItems=_model.SelectedEvents.Where(_model.Events.Contains).ToList();}
         finally{_selectionSync=false;}
     }
     private void GridSelectionChanged(object? sender,SelectionChangedEventArgs e)
@@ -90,7 +90,7 @@ public partial class MainWindow : Window, IEditorDialogs
             var next=e.AddedItems.OfType<AssEvent>().LastOrDefault()??SubtitleRows.SelectedItems.OfType<AssEvent>().FirstOrDefault();
             _model.SelectedEvent=next;
             if(_model.SelectedEvent!=next){Dispatcher.UIThread.Post(SyncSelection);return;}
-            _model.SelectedEvents.Clear();foreach(var line in SubtitleRows.SelectedItems.OfType<AssEvent>())_model.SelectedEvents.Add(line);
+            _model.SetSelectedEvents(SubtitleRows.SelectedItems.OfType<AssEvent>().ToArray());
         }
         finally{_selectionSync=false;}
     }

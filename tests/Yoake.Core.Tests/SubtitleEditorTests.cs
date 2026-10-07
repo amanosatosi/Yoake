@@ -152,4 +152,14 @@ public sealed class SubtitleEditorTests
     {
         var path=Path.Combine(Path.GetTempPath(),Guid.NewGuid()+".ass");try{var encoding=new UTF32Encoding(bigEndian,true,true);File.WriteAllText(path,Fixture,encoding);var doc=AssDocument.Load(path);doc.Save(path);Assert.Equal(Fixture,AssDocument.Load(path).Serialize());Assert.True(File.ReadAllBytes(path).AsSpan().StartsWith(encoding.GetPreamble()));}finally{File.Delete(path);}
     }
+
+    [Fact] public void MovingAtBoundaryDoesNotCreateUndoOrDirtyState()
+    {
+        var e=Open();e.Move([e.Document.Events[0]],-1);Assert.False(e.IsDirty);Assert.False(e.Undo.CanUndo);
+    }
+    [Fact] public void NegativeLayersAreValidButNegativeMarginsAreRejected()
+    {
+        var e=Open();e.EditEvent(e.Document.Events[0],new Dictionary<string,string>{{"Layer","-1"}});Assert.Equal("-1",e.Document.Events[0].Layer);
+        Assert.Throws<ArgumentException>(()=>e.EditEvent(e.Document.Events[0],new Dictionary<string,string>{{"MarginL","-1"}}));
+    }
 }

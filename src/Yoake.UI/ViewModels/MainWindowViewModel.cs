@@ -62,7 +62,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public ObservableCollection<DocumentTabViewModel> Tabs { get; } = [];
     public Dictionary<string,ICommand> Actions { get; } = [];
     public IReadOnlyList<string> RecentFiles => _settings.RecentFiles;
-    public IList<AssEvent> SelectedEvents { get; } = new ObservableCollection<AssEvent>();
+    private readonly EventSelection _selection=[];
+    public IList<AssEvent> SelectedEvents=>_selection;
+    public void SetSelectedEvents(IEnumerable<AssEvent> lines)=>_selection.Replace(lines);
     public int TextCursor { get; set; }
     public EventEditDraft? Draft
     {
@@ -210,7 +212,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         _activeId=id;
         var state=id is { } key && _documents.TryGetValue(key,out var found) ? found : null;
         _activeSubtitleDocument=state?.Editor.Document; _media=state?.Media;
-        _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SelectedEvents.Clear(); if (_selectedEvent is not null) SelectedEvents.Add(_selectedEvent);
+        _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
         _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft(); VideoFrame=null; WaveformSamples=state?.Waveform ?? Array.Empty<float>(); MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
         _currentTimeSeconds=state?.Time ?? 0;
         foreach(var name in new[]{nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia)}) OnPropertyChanged(name);

@@ -72,7 +72,7 @@ public sealed partial class MainWindowViewModel
     private void CancelGestureCore() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); if(gesture is not null)ReloadDraft(); }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
     private AssEvent[] Selection() => SelectedEvents.Where(Events.Contains).DefaultIfEmpty(SelectedEvent).OfType<AssEvent>().Distinct().ToArray();
-    private void Select(AssEvent? line) { SelectedEvents.Clear(); if(line is not null)SelectedEvents.Add(line); SelectedEvent=line; }
+    private void Select(AssEvent? line) { SetSelectedEvents(line is null?Array.Empty<AssEvent>():new[]{line}); SelectedEvent=line; }
     private void Navigate(int delta)
     {
         if(!CommitDraft())return;
@@ -130,7 +130,7 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.GridJoin,"Join selected lines",()=>RunEdit(e=>e.Join(Selection())),HasLine);
         S(CommandIds.GridMoveUp,"Move up  Alt+Shift+Up",()=>RunEdit(e=>e.Move(Selection(),-1)),HasLine);
         S(CommandIds.GridMoveDown,"Move down  Alt+Shift+Down",()=>RunEdit(e=>e.Move(Selection(),1)),HasLine);
-        S(CommandIds.GridSelectAll,"Select all  Ctrl+A",()=>{SelectedEvents.Clear();foreach(var line in Events)SelectedEvents.Add(line);});
+        S(CommandIds.GridSelectAll,"Select all  Ctrl+A",()=>SetSelectedEvents(Events));
         R(CommandIds.GridCopy,"Copy lines  Ctrl+C",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} e)await Dialogs.WriteClipboardAsync(e.Copy(Selection()));},HasLine);
         R(CommandIds.GridCut,"Cut lines  Ctrl+X",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} e){await Dialogs.WriteClipboardAsync(e.Copy(Selection()));RunEdit(editor=>editor.Delete(Selection()));}},HasLine);
         R(CommandIds.GridPaste,"Paste lines  Ctrl+V",async _=>{if(Dialogs is not null&&await Dialogs.ReadClipboardAsync() is {} text)RunEdit(e=>Select(e.Paste(text,SelectedEvent).FirstOrDefault()));});

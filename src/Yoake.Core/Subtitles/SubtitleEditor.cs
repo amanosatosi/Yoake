@@ -44,7 +44,7 @@ public sealed class SubtitleEditor(AssDocument document)
         foreach (var pair in values) probe.Set(pair.Key, pair.Value);
         if (!AssTime.TryParse(probe.Start, out var start) || !AssTime.TryParse(probe.End, out var end) || end < start) throw new ArgumentException("Use h:mm:ss.cc times, with end at or after start.");
         foreach (var field in new[] { "Layer", "MarginL", "MarginR", "MarginV" })
-            if (probe.Index(field) >= 0 && (!int.TryParse(probe.Get(field), out var number) || number < 0)) throw new ArgumentException($"{field} must be a non-negative integer.");
+            if (probe.Index(field) >= 0 && (!int.TryParse(probe.Get(field), out var number) || field != "Layer" && number < 0)) throw new ArgumentException($"{field} must be an integer (margins must be non-negative).");
         var changed = values.Where(p => line.Get(p.Key) != probe.Get(p.Key)).ToArray();
         if (changed.Length == 0) return;
         var name = changed.Length == 1 ? changed[0].Key switch { "Text" => "Edit subtitle text", "Style" => "Change style", "Name" or "Actor" => "Change actor", "Start" or "End" => "Change line timing", "MarginL" or "MarginR" or "MarginV" => "Change margins", _ => "Edit event metadata" } : "Edit subtitle";
@@ -103,6 +103,8 @@ public sealed class SubtitleEditor(AssDocument document)
     public void Move(IEnumerable<AssEvent> selection, int direction)
     {
         var lines = Ordered(selection); if (lines.Length == 0) return; var set = lines.ToHashSet();
+        var step=Math.Sign(direction);
+        if(step==0||!lines.Any(line=>{var i=Document.Events.IndexOf(line)+step;return i>=0&&i<Document.Events.Count&&!set.Contains(Document.Events[i]);}))return;
         if (direction > 0) Array.Reverse(lines);
         Structure("Move subtitles", () =>
         {

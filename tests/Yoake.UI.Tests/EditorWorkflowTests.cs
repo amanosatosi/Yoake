@@ -88,6 +88,13 @@ public sealed class EditorWorkflowTests : IDisposable
     {
         var path=Path.Combine(_root,"lowercase.ass");File.WriteAllText(path,"[Events]\nFormat: layer,start,end,style,name,marginl,marginr,marginv,effect,text\nDialogue: 0,0:00:00.00,0:00:02.00,Default,Old,0,0,0,,Text\n");Assert.True(_model.OpenSubtitle(path));_model.Draft!.Actor="New";await Command(CommandIds.EditCommit);Assert.Equal("New",_model.Events[0].Actor);
     }
+
+    [Fact] public async Task LargeSelectAllPublishesOneSelectionChange()
+    {
+        var path=Path.Combine(_root,"large.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+string.Concat(Enumerable.Range(0,5000).Select(i=>$"Dialogue: 0,0:00:00.00,0:00:02.00,Default,,0,0,0,,Row {i}\n")));Assert.True(_model.OpenSubtitle(path));
+        var changes=0;((System.Collections.Specialized.INotifyCollectionChanged)_model.SelectedEvents).CollectionChanged+=(_,_)=>changes++;
+        await Command(CommandIds.GridSelectAll);Assert.Equal(5000,_model.SelectedEvents.Count);Assert.Equal(1,changes);
+    }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
     private sealed class TestDialogs : IEditorDialogs
     {
