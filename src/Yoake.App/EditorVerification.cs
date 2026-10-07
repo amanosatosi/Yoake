@@ -11,6 +11,7 @@ internal static class EditorVerification
     {
         try
         {
+            string alphaVerification;
             var document=AssDocument.CreateEmpty();var editor=new SubtitleEditor(document);
             editor.SetScriptInfo(new Dictionary<string,string>{{"PlayResX","160"},{"PlayResY","90"}});
             var line=editor.Insert(null,false);
@@ -25,6 +26,7 @@ internal static class EditorVerification
                 if(!video.HasVideo||video.Info.FrameCount!=10)throw new InvalidOperationException("FFMS2 did not decode the video fixture.");
                 var next=video.AdjacentFrameTime(0,1);if(next<=0||video.AdjacentFrameTime(next,-1)>=next)throw new InvalidOperationException("FFMS2 frame stepping failed.");
                 var frame=video.GetFrameAtTime(0.7);var before=(byte[])frame.Pixels.Clone();
+                alphaVerification=MangetsuAlphaVerification.Run(frame);
                 using var renderer=new MangetsuSubtitleRenderer(document.Serialize(),frame.Width,frame.Height);
                 renderer.Composite(frame,0.7);if(before.AsSpan().SequenceEqual(frame.Pixels))throw new InvalidOperationException("Mangetsu produced no subtitle pixels.");
                 editor.SetField(line,"Text",AssVisualTags.SetRectangle(line.Text,false,new(0,0),new(160,90)),"Edit clip");renderer.UpdateTrack(document.Serialize());renderer.Composite(video.GetFrameAtTime(1),1);
@@ -36,7 +38,7 @@ internal static class EditorVerification
                 using var cancellation=new CancellationTokenSource();cancellation.Cancel();
                 try{audio.BuildWaveform(cancellation.Token);throw new InvalidOperationException("Peak cancellation failed.");}catch(OperationCanceledException){}
             }
-            File.WriteAllText(report,"PASS: NativeAOT ASS edit/undo/save/reopen; FFMS2 video/frame timestamps/audio decode; full peaks/cancellation; viewport spectrum; Mangetsu render/update/composite.\nAudio device playback and manual UI gestures require interactive smoke testing.\n");
+            File.WriteAllText(report,"PASS: NativeAOT ASS edit/undo/save/reopen; FFMS2 video/frame timestamps/audio decode; full peaks/cancellation; viewport spectrum; Mangetsu render/update/composite.\n"+alphaVerification+"\nAudio device playback and manual UI gestures require interactive smoke testing.\n");
             return 0;
         }
         catch(Exception exception){File.WriteAllText(report,exception.ToString());return 1;}

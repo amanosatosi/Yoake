@@ -5,5 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Yoake.Core\Yoake.Core.csproj" />
+    <InternalsVisibleTo Include="Yoake" />
   </ItemGroup>
 </Project>
