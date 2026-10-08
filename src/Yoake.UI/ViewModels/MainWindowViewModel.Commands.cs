@@ -118,6 +118,7 @@ public sealed partial class MainWindowViewModel
         bool HasLine()=>HasSelectedEvent && _gesture is null;
         foreach(var setting in new[]{"audio/volume","audio/mute","audio/display/height","audio/display/intensity","audio/display/zoom","audio/volume/link"})
         {var id=setting;R(id,id,i=>{SaveAudioSetting(id,i.Parameter);return ValueTask.CompletedTask;});}
+        S(CommandIds.TextHardNewline,"Insert ASS hard newline  Shift+Enter",InsertHardNewline,HasLine);
         S(CommandIds.FormatBold,"Bold  Ctrl+B",()=>ToggleFormat("b"),HasLine);
         S(CommandIds.FormatItalic,"Italic  Ctrl+I",()=>ToggleFormat("i"),HasLine);
         S(CommandIds.FormatUnderline,"Underline  Ctrl+U",()=>ToggleFormat("u"),HasLine);
@@ -198,7 +199,7 @@ public sealed partial class MainWindowViewModel
         H(CommandIds.SubtitleNew,"N",KeyModifiers.Control);H(CommandIds.SubtitleOpen,"O",KeyModifiers.Control);H(CommandIds.SubtitleSave,"S",KeyModifiers.Control);H(CommandIds.SubtitleSaveAs,"S",KeyModifiers.Control|KeyModifiers.Shift);H(CommandIds.SubtitleClose,"W",KeyModifiers.Control);
         H(CommandIds.EditUndo,"Z",KeyModifiers.Control);H(CommandIds.EditRedo,"Y",KeyModifiers.Control);H(CommandIds.EditRedo,"Z",KeyModifiers.Control|KeyModifiers.Shift);H(CommandIds.EditFind,"F",KeyModifiers.Control);
         H(CommandIds.FormatBold,"B",KeyModifiers.Control,HotkeyContext.SubtitleEdit);H(CommandIds.FormatItalic,"I",KeyModifiers.Control,HotkeyContext.SubtitleEdit);H(CommandIds.FormatUnderline,"U",KeyModifiers.Control,HotkeyContext.SubtitleEdit);
-        H(CommandIds.EditCommit,"Enter",KeyModifiers.Control);H(CommandIds.EditCommitNext,"Enter",context:HotkeyContext.SubtitleEdit);H(CommandIds.EditCommitNext,"Enter",context:HotkeyContext.SubtitleGrid);
+        H(CommandIds.TextHardNewline,"Enter",KeyModifiers.Shift,HotkeyContext.SubtitleEdit);H(CommandIds.EditCommit,"Enter",KeyModifiers.Control);H(CommandIds.EditCommitNext,"Enter",context:HotkeyContext.SubtitleEdit);H(CommandIds.EditCommitNext,"Enter",context:HotkeyContext.SubtitleGrid);
         H(CommandIds.EditCancel,"Escape");H(CommandIds.VideoStop,"Escape",context:HotkeyContext.Video);H(CommandIds.VideoStop,"Escape",context:HotkeyContext.Audio);
         foreach(var context in new[]{HotkeyContext.Video,HotkeyContext.Audio,HotkeyContext.SubtitleGrid}){H(CommandIds.VideoPlay,"Space",context:context);H(CommandIds.AudioPlaySelection,"R",context:context);}
         H(CommandIds.VideoFrameNext,"Right",context:HotkeyContext.Video);H(CommandIds.VideoFramePrevious,"Left",context:HotkeyContext.Video);

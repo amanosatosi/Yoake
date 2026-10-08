@@ -149,8 +149,16 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Require(AssVectorPath.Parse(AssVisualTags.Clip(_line.Text)!.Drawing,3)!.PointCount>path.PointCount,"Insert must split the nearest segment.");Invoke(CommandIds.EditUndo);
                 VectorMode("Remove");Click(first);
                 Require(AssVectorPath.Parse(AssVisualTags.Clip(_line.Text)!.Drawing,3)!.PointCount<path.PointCount,"Remove must delete a hit point.");Invoke(CommandIds.EditUndo);
-                VectorMode("Line");Click(Add(_position,Size.Width*.2,0));Require(_line.Text!=_baseline,"Line subtool must append a line.");Invoke(CommandIds.EditUndo);
-                VectorMode("Bicubic");Click(Add(_position,Size.Width*.2,Size.Height*.1));Require(_line.Text!=_baseline,"Bicubic subtool must append a curve.");Invoke(CommandIds.EditUndo);
+                foreach(var mode in new[]{"Line","Bicubic"})
+                {
+                    VectorMode(mode);var prospective=Add(_position,Size.Width*.2,Size.Height*.1);Hover(prospective);
+                    capture(window,"visual-vector-"+mode.ToLowerInvariant()+"-prospective",1);
+                    var preview=Overlay.VectorPreviewDrawing;Require(preview is not null,"Prospective point must render a complete closed path.");
+                    var expected=path.Copy();expected.Append(map.Unmap(prospective),mode=="Bicubic");
+                    Require(preview==expected.Serialize(3),"Preview must contain the exact prospective segment and its new closing edge.");
+                    var topology=expected.Curves(true).ToArray();Require(topology[^1].Start==expected.Commands[^1].Points[^1]&&topology[^1].End==expected.Commands[0].Points[0],"Prospective closing edge must run from cursor to contour start.");
+                    Click(prospective);Require(AssVisualTags.Clip(_line.Text)!.Drawing==preview,"Committed drawing topology must match the hover preview exactly.");Invoke(CommandIds.EditUndo);
+                }
                 return false;
             case 10:
                 foreach(var mode in new[]{"Freehand","Smooth"})
@@ -190,6 +198,28 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 capture(Overlay,"visual-outside-line-time",1);Require(Overlay.RenderedHandles==0,"Seeking outside selected line times must remove stale handles.");
                 model.SetSelectedEvents([_line!]);model.ActiveEditor!.SetTiming(_line!,0,1000);Tool("Crosshair");return false;
             case 15:
+                Fixture(Plain);Tool("Clip");WaitForPreview();return false;
+            case 16:
+                if(!Ready)return Retry();
+                capture(Overlay,"visual-rectangle-no-clip-input-surface",1);
+                var a=new AssPoint(Size.Width*.4,Size.Height*.4);var b=new AssPoint(Size.Width*.6,Size.Height*.6);
+                Require(ReferenceEquals(window.InputHitTest(Root(a)),Overlay),"Empty rectangle canvas must receive real pointer hits away from its hint/handles.");
+                // Include a pending text draft, as in the real typing -> tool workflow.
+                model.Draft!.Text=Plain+" pending";_baseline=model.Draft.Text;_baselinePixels=pixels();
+                Press(b);Move(a);Require(model.HasGesture&&AssVisualTags.Clip(_line!.Text) is {Rectangular:true},"Dragging a no-clip draft must immediately create a live rectangle.");WaitForPreview();return false;
+            case 17:
+                if(!Ready)return Retry();
+                Require(!_baselinePixels!.AsSpan().SequenceEqual(pixels()),"No-clip creation must update actual Mangetsu pixels before release.");
+                capture(window,"visual-rectangle-create-live",1);Require(Overlay.RenderedHandles==4,"New rectangle must have four visible corner handles before release.");
+                var low=new AssPoint(Size.Width*.4,Size.Height*.4);var high=new AssPoint(Size.Width*.6,Size.Height*.6);
+                Release(low);var created=AssVisualTags.Clip(_line!.Text)!;
+                Require(!model.HasGesture&&!created.Inverse&&VisualGeometry.Distance(created.Points[0],low)<.001&&VisualGeometry.Distance(created.Points[1],high)<.001,"Release must commit normalized rectangle coordinates.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"One undo must remove the whole new clip and retain the committed preceding draft.");
+                Press(low);Move(high);Escape();Require(!model.HasGesture&&_line.Text==_baseline,"Escape must leave no partial newly created clip.");
+                model.InverseClip=true;Press(low);Move(high);Release(high);
+                Require(AssVisualTags.Clip(_line.Text) is {Rectangular:true,Inverse:true},"New inverse clip must create iclip from no clip.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"New inverse clip must undo exactly.");model.InverseClip=false;Tool("Crosshair");return false;
+            case 18:
                 var quick=Add(_position,Size.Width*.08,Size.Height*.05);Hover(quick);ShotBoth("crosshair",0);_baseline=_line!.Text;Press(quick,KeyModifiers.None,2);
                 Require(!model.HasGesture&&AssVisualTags.Position(_line.Text) is {} placed&&VisualGeometry.Distance(placed,quick)<.001,"Crosshair double-click must position the line and finish one transaction.");
                 Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"Quick position must undo losslessly.");Tool("Position");return true;

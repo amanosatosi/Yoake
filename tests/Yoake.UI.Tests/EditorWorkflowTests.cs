@@ -222,6 +222,14 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.Contains("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
         await Command(CommandIds.EditUndo);Assert.Equal(original,_model.Draft!.Text);
     }
+    [Fact] public async Task HardNewlineCommandReplacesSelectionImmediatelyAndUndoesWithItsEditBurst()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="abမြန်မာef";await Command(CommandIds.EditCommit);
+        var original=_model.Draft.Text;_model.TextSelectionStart=2;_model.TextSelectionEnd=original.Length-2;
+        await Command(CommandIds.TextHardNewline);Assert.Equal(@"ab\Nef",_model.Draft.Text);Assert.Equal(4,_model.TextCursor);
+        Assert.Equal(4,_model.TextSelectionStart);Assert.Equal(4,_model.TextSelectionEnd);Assert.DoesNotContain("\n",_model.Draft.Text);
+        await Command(CommandIds.EditCommit);await Command(CommandIds.EditUndo);Assert.Equal(original,_model.Draft.Text);
+    }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
     private sealed class TestDialogs : IEditorDialogs
     {

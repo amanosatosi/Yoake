@@ -21,6 +21,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
 {
     private int _stage;
     private VisualUiVerification? _visual;
+    private AuthoringInputVerification? _input;
     private long _previewRevision;
     private double _normalEditorWidth;
     private double _audioHeight;
@@ -61,6 +62,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Light;
                 return false;
             case 2:
+                _input??=new(window,model,Capture);if(!_input.Tick()){_stage--;return false;}
                 Named<FontPicker>(styles,"StyleFont").CloseBrowser();
                 Capture(window,"editor-light-normal",1);Capture(styles,"styles-light-normal",1);CheckSyntax(text);
                 window.Width=1040;window.Height=760;styles.Width=940;styles.Height=650;
@@ -139,8 +141,8 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Require(model.SelectedEvent!.Text==_committedText&&!model.Draft!.IsChanged,"Escape must revert the entire pending edit burst.");
                 window.Width=1440;window.Height=900;
                 var defaultWorkspace=window.FindControl<Grid>("UpperWorkspace")!;
-                defaultWorkspace.ColumnDefinitions[0].Width=new GridLength(2,GridUnitType.Star);
-                defaultWorkspace.ColumnDefinitions[2].Width=new GridLength(3,GridUnitType.Star);
+                defaultWorkspace.ColumnDefinitions[0].Width=new GridLength(5,GridUnitType.Star);
+                defaultWorkspace.ColumnDefinitions[2].Width=new GridLength(7,GridUnitType.Star);
                 _visual=new(window,model,Capture,FramePixels);return false;
             case 14:
                 if(!_visual!.Tick()){_stage--;return false;}
@@ -159,6 +161,20 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Require(model.BeginGesture("Audio Escape verification"),"Audio timing gesture must begin.");model.UpdateTimingGesture(2,.1);
                 audio.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=audio,Key=Key.Escape,KeyModifiers=KeyModifiers.Shift});
                 Require(!model.HasGesture&&model.SelectedEvent.Start==originalStart&&model.SelectedEvent.End==originalEnd,"Escape must cancel audio timing even while Shift is held.");
+                var pane=window.FindControl<Grid>("TemporalTextColumn")!;var heightBefore=pane.RowDefinitions[0].ActualHeight;
+                var timeControl=window.FindControl<Slider>("AudioHorizontalZoom")!;var amplitudeControl=window.FindControl<Slider>("AudioIntensity")!;var volumeControl=window.FindControl<Slider>("AudioVolume")!;
+                model.AudioVolumeLinked=false;var gain=model.PlaybackVolume;var intensity=model.AudioIntensity;
+                timeControl.Value+=5;Require(Math.Abs(audio.VisibleSeconds-model.AudioWindowSeconds)<.001&&model.PlaybackVolume==gain&&model.AudioIntensity==intensity,"Time slider must change horizontal span only.");
+                var span=audio.VisibleSeconds;amplitudeControl.Value=60;
+                Require(audio.VisibleSeconds==span&&model.PlaybackVolume==gain&&model.AudioAmplitude==60,"Amp slider must change visual amplitude only.");
+                volumeControl.Value=.35;Require(model.PlaybackVolume==.35&&audio.VisibleSeconds==span&&model.AudioAmplitude==60,"Vol slider must change playback gain only.");
+                Require(pane.RowDefinitions[0].ActualHeight==heightBefore,"Time/Amp/Vol must never resize the audio pane.");
+                var mode=window.FindControl<ComboBox>("AudioMode")!;mode.SelectedIndex=1;
+                Require(audio.Spectrogram,"Spectrogram selection must reach the visualizer.");
+                var spectralSpan=audio.VisibleSeconds;var pannerMode=window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!;
+                model.AudioWindowSeconds=1;pannerMode.Value=.25;
+                Require(Math.Abs(audio.ViewportStart-.25)<.001&&pannerMode.ViewportSize==audio.VisibleSeconds,"Spectrogram panner page must reflect its viewport and pan independently.");mode.SelectedIndex=0;
+                Require(!audio.Spectrogram,"Waveform selection must restore the same shared viewport.");
                 var volume=model.PlaybackVolume;model.AudioVolumeLinked=false;model.AudioAmplitude=60;
                 Require(model.PlaybackVolume==volume,"Unlinked display amplitude must not change playback volume.");
                 model.AudioVolumeLinked=true;model.AudioAmplitude=75;
@@ -197,7 +213,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(model.Events.Count==20000,"Large-file verification must use all 20,000 events.");
         var realized=window.FindControl<ListBox>("SubtitleRows")!.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
         Require(realized.Length>0&&realized.Length<100,"Grid must virtualize the large file instead of realizing every event.");
-        Require(realized.All(r=>Math.Abs(r.Bounds.Height-30)<0.1),"Recycled mixed-script containers must retain the fixed row height.");
+        Require(realized.All(r=>Math.Abs(r.Bounds.Height-26)<0.1),"Recycled mixed-script containers must retain the fixed row height.");
     }
     private byte[] FramePixels()
     {
@@ -231,7 +247,13 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var rows=window.FindControl<ListBox>("SubtitleRows")!;
         var containers=rows.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
         Require(containers.Length>=6,"Mixed-script grid fixture must realize all ordinary scripts.");
-        Require(containers.All(r=>Math.Abs(r.Bounds.Height-30)<0.1),"Japanese/Burmese/Arabic/Latin/emoji/comment/selected rows must all be exactly 30 DIP.");
+        Require(containers.All(r=>Math.Abs(r.Bounds.Height-26)<0.1),"Japanese/Burmese/Arabic/Latin/emoji/comment/selected rows must all be exactly 26 DIP.");
+        foreach(var label in containers.SelectMany(r=>r.GetVisualDescendants().OfType<TextBlock>()))
+        {
+            Require(label.TextLayout.Height<=26,$"Grid shaped text must fit 26 DIP: {label.Text}, height {label.TextLayout.Height}.");
+            var row=label.GetVisualAncestors().OfType<ListBoxItem>().First();var top=label.TranslatePoint(default,row)!.Value.Y;
+            Require(top>=-.1&&top+label.Bounds.Height<=26.1,"Mixed-script marks must fit inside their centered fixed row.");
+        }
         var header=window.FindControl<Grid>("ColumnHeader")!;var labels=header.Children.OfType<TextBlock>().Select(t=>t.Text).ToArray();
         Require(labels.SequenceEqual(new[]{"#","L","Start","End","Style","Actor","Effect","Text"}),"Compact grid must omit Type and label layer L.");
         Require(!window.FindControl<Border>("SubtitleGridRegion")!.GetVisualDescendants().OfType<Button>().Any(),"Grid must not have a permanent button toolbar.");
@@ -268,7 +290,10 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         foreach(var name in MainWindowViewModel.VisualToolNames)Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("VisualTool"+name) is {Bounds.Width:>20},"Baseline visual tool must realize: "+name);
         var video=window.FindControl<Grid>("VideoRegion")!;var tools=window.FindControl<Border>("VisualToolsBar")!;
         var videoBottom=video.TranslatePoint(new Point(0,video.Bounds.Height),window)!.Value.Y;var toolsTop=tools.TranslatePoint(default,window)!.Value.Y;
-        Require(toolsTop-videoBottom<12,"Visual tools must immediately adjoin the video workspace.");
+        Require(toolsTop-videoBottom<12,"Contextual options must immediately adjoin the video workspace.");
+        var primary=window.FindControl<StackPanel>("VisualPrimaryTools")!;
+        Require(primary.Orientation==Avalonia.Layout.Orientation.Vertical&&primary.Bounds.Width<40,"Primary tools must use a compact vertical rail.");
+        Require(window.FindControl<TextBlock>("VisualToolHelp") is null,"Visual help belongs in tooltips, without a permanent workspace row.");
     }
 
     private void CheckDefaultWorkspace()

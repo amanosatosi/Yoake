@@ -17,6 +17,7 @@ public sealed class VectorClipTool : VisualTool
     private bool _box;
     private AssPoint _boxEnd;
     private HashSet<int> _boxOriginal=[];
+    public string? PreviewDrawing {get;private set;}
     private AssCurve? _curve;
     private double _parameter;
     private static AssVectorPath? Parse(AssClip? clip)
@@ -48,12 +49,21 @@ public sealed class VectorClipTool : VisualTool
     }
     public override void Render(VisualCanvas c)
     {
-        var active=c.Context.Active;if(active is null)return;
+        PreviewDrawing=null;var active=c.Context.Active;if(active is null)return;
         if(!ReferenceEquals(_selectionLine,active.Line)){_selected.Clear();_selectionLine=active.Line;}
         foreach(var line in c.Context.Lines)
         {
             var clip=AssVisualTags.Clip(line.Text);var path=Path(line.Text);if(path is null)continue;
-            var transform=AssVisualTags.ClipTransform(line.Text,line.RelativeTime,line.Duration);
+            var source=line.Text;
+            // Render the actual prospective closed contour, replacing its old
+            // closing edge rather than drawing one extra dangling segment.
+            var prospective=line.Active&&c.Inside&&Initial is null&&c.Context.Model.VectorMode is "Line" or "Bicubic";
+            if(prospective)
+            {
+                var before=AssVisualTags.ClipTransform(source,line.RelativeTime,line.Duration);
+                if(before.Scale>0){path=path.Copy();path.Append(before.Unmap(c.Pointer.Script),c.Context.Model.VectorMode=="Bicubic");source=Save(line,path,c.Context.Model.InverseClip);PreviewDrawing=path.Serialize(clip?.Scale??1);}
+            }
+            var transform=AssVisualTags.ClipTransform(source,line.RelativeTime,line.Duration);
             Point Map(AssPoint p)=>c.Screen(transform.Map(p));
             var geometry=Geometry(path,Map);if(line.Active)c.ShadeGeometry(geometry,clip?.Inverse??c.Context.Model.InverseClip);c.Path(geometry,line.Active?Brushes.Cyan:Brushes.Gray);
             foreach(var curve in path.Curves())if(curve.Cubic){c.ScreenLine(Map(curve.Start),Map(curve.Control1),Brushes.Gray,true);c.ScreenLine(Map(curve.Control2),Map(curve.End),Brushes.Gray,true);}
@@ -65,7 +75,13 @@ public sealed class VectorClipTool : VisualTool
                 var highlight=new StreamGeometry();using(var g=highlight.Open()){var curve=nearest.Curve;g.BeginFigure(Map(curve.Start),false);if(curve.Cubic)g.CubicBezierTo(Map(curve.Control1),Map(curve.Control2),Map(curve.End));else g.LineTo(Map(curve.End));g.EndFigure(false);}c.Path(highlight,Brushes.Yellow);
                 if(mode=="Insert")c.Handle(transform.Map(nearest.Curve.At(nearest.T)),HandleShape.Circle,true);
             }
-            if(mode is "Line" or "Bicubic"&&path.Commands.Count>0)c.Line(transform.Map(path.Commands[^1].Points[^1]),c.Pointer.Script,Brushes.Yellow,true);
+            if(prospective&&path.Commands.Count>1)
+            {
+                var curve=path.Curves().Last();var addition=new StreamGeometry();
+                using(var g=addition.Open()){g.BeginFigure(Map(curve.Start),false);if(curve.Cubic)g.CubicBezierTo(Map(curve.Control1),Map(curve.Control2),Map(curve.End));else g.LineTo(Map(curve.End));g.EndFigure(false);}
+                c.Path(addition,Brushes.Yellow);
+                var closing=path.Curves(true).Last();c.ScreenLine(Map(closing.Start),Map(closing.End),Brushes.Yellow,true);
+            }
         }
         if(_box)c.Rectangle(Anchor.Script,_boxEnd,false,false);
     }

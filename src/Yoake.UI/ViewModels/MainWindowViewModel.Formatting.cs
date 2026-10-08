@@ -34,6 +34,15 @@ public sealed partial class MainWindowViewModel
         TextFormattingApplied?.Invoke(this,EventArgs.Empty);
     }
     private AssStyle? ResolveFormatStyle(string name)=>ActiveEditor?.Document.Styles.FirstOrDefault(s=>s.Name==name);
+    private void InsertHardNewline()
+    {
+        if(Draft is null)return;
+        var start=Math.Clamp(Math.Min(TextSelectionStart,TextSelectionEnd),0,Draft.Text.Length);
+        var end=Math.Clamp(Math.Max(TextSelectionStart,TextSelectionEnd),start,Draft.Text.Length);
+        Draft.Text=Draft.Text[..start]+@"\N"+Draft.Text[end..];
+        TextSelectionStart=TextSelectionEnd=TextCursor=start+2;
+        TextFormattingApplied?.Invoke(this,EventArgs.Empty);
+    }
     private void ToggleFormat(string tag)=>FormatText("Format "+tag,(text,start,end,style)=>AssFormatting.Toggle(text,start,end,tag,style,ResolveFormatStyle));
     private async ValueTask FormatFontAsync()
     {

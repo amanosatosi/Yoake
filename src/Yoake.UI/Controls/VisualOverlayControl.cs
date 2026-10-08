@@ -27,6 +27,7 @@ public sealed class VisualOverlayControl : Control
     private bool _inside;
     private StandardCursorType? _cursorType;
     public int RenderedHandles {get;private set;}
+    public string? VectorPreviewDrawing=>(_tool as VectorClipTool)?.PreviewDrawing;
     public string? RenderedTool {get;private set;}
     public VisualOverlayControl(){Focusable=true;ClipToBounds=true;}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -58,6 +59,8 @@ public sealed class VisualOverlayControl : Control
     }
     public override void Render(DrawingContext context)
     {
+        // Keep the entire video an input surface even before any clip/handles exist.
+        context.FillRectangle(Brushes.Transparent,new Rect(Bounds.Size));
         base.Render(context);RenderedHandles=0;RenderedTool=null;
         if(_context is not {} state||_tool is null||state.Video.Width<=0||state.Video.Height<=0)return;
         var canvas=new VisualCanvas(context,state,_pointer,_inside);using(context.PushClip(state.Video))_tool.Render(canvas);

@@ -92,8 +92,8 @@ public partial class MainWindow : Window, IEditorDialogs
     public Task<AssColor?> ChooseColorAsync(AssColor color)=>new AssColorDialog(color,_model?.RecentColorsPath).ShowDialog<AssColor?>(this);
     public async Task<FontChoice?> ChooseFontAsync(string family,string size)
     {
-        var dialog=new Window{Title="Subtitle font",Width=380,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};
-        var panel=new StackPanel{Margin=new Thickness(12),Spacing=6};var picker=new FontPicker{FontName=family};panel.Children.Add(picker);
+        var dialog=new Window{Name="SubtitleFontDialog",Title="Subtitle font",Width=380,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};
+        var panel=new StackPanel{Margin=new Thickness(12),Spacing=6};var picker=new FontPicker{Name="SubtitleFontPicker",FontName=family};panel.Children.Add(picker);
         var number=new NumericUpDown{Minimum=0.1m,Maximum=10000,Increment=1,Value=decimal.TryParse(size,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var value)?value:60};
         panel.Children.Add(new TextBlock{Text="Size"});panel.Children.Add(number);var apply=new Button{Content="Apply font",IsDefault=true};apply.Click+=(_,_)=>dialog.Close(new FontChoice(picker.FontName,(number.Value??60).ToString(System.Globalization.CultureInfo.InvariantCulture)));panel.Children.Add(apply);var cancel=new Button{Content="Cancel",IsCancel=true};cancel.Click+=(_,_)=>dialog.Close();panel.Children.Add(cancel);dialog.Content=panel;return await dialog.ShowDialog<FontChoice?>(this);
     }
@@ -142,23 +142,25 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is null||e.Handled)return;
         var control=e.Source as Control;var context=HotkeyContext.Default;
+        var ancestors=control is null?Array.Empty<Control>():control.GetVisualAncestors().OfType<Control>().Prepend(control).ToArray();
         // The overlay owns cancellation of both edit gestures and non-mutating
         // point/box selections. Do not consume its Escape as video Stop.
         if(e.Key==Key.Escape&&control is VisualOverlayControl)return;
-        for(var input=control;input is not null;input=input.Parent as Control)
+        foreach(var input in ancestors)
         {
             if(input is TextBox textBox && textBox.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
             if(e.Key==Key.Enter&&(input is AutoCompleteBox {IsDropDownOpen:true}||input is ComboBox {IsDropDownOpen:true}))return;
         }
-        for(var current=control;current is not null;current=current.Parent as Control)
+        foreach(var current in ancestors)
         {
             if(current==SubtitleRows){context=HotkeyContext.SubtitleGrid;break;}
             if(current==EventEditorRegion){context=HotkeyContext.SubtitleEdit;break;}
             if(current==AudioRegion){context=HotkeyContext.Audio;break;}
             if(current==VideoRegion){context=HotkeyContext.Video;break;}
         }
-        // Shift+Enter and IME input remain with the native text editor.
-        if(e.Key==Key.Enter && e.KeyModifiers==Avalonia.Input.KeyModifiers.Shift)return;
+        // Focus is authoritative across template/presenter boundaries.
+        if(SubtitleText.IsKeyboardFocusWithin)context=HotkeyContext.SubtitleEdit;
+        if(SubtitleText.IsKeyboardFocusWithin&&SubtitleText.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
         var modifiers=Yoake.Core.Hotkeys.KeyModifiers.None;
         if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Control))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Control;
         if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Shift;
@@ -170,6 +172,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(commandId is null)return;
         if(commandId==CommandIds.EditCommitNext && context==HotkeyContext.SubtitleEdit && !SubtitleText.IsKeyboardFocusWithin)commandId=CommandIds.EditCommit;
         _model.TextCursor=SubtitleText.CaretIndex;
+        _model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;
         e.Handled=true;
         await _model.Registry.InvokeAsync(commandId,new(FocusContext:context.ToString()));
     }

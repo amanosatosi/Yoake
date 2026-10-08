@@ -28,6 +28,7 @@ public sealed partial class MainWindowViewModel
     public bool IsVectorRemove=>VectorMode=="Remove";
     public bool IsVectorFreehand=>VectorMode=="Freehand";
     public bool IsVectorSmooth=>VectorMode=="Smooth";
+    public bool HasVisualOptions=>IsPositionTool||IsClipFamily;
     public bool IsClipFamily=>IsClipTool||IsVectorClipTool;
     public string VisualHint=>ActiveVisualTool switch
     {
@@ -82,7 +83,7 @@ public sealed partial class MainWindowViewModel
     private void SelectVisualTool(string tool)
     {
         CancelGesture();ActiveVisualTool=tool;
-        foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(VisualHint)})OnPropertyChanged(property);
+        foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(HasVisualOptions),nameof(VisualHint)})OnPropertyChanged(property);
     }
     private void ToggleVisualMove()
     {

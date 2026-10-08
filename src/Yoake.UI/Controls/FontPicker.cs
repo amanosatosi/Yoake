@@ -29,7 +29,7 @@ public sealed class FontPicker : UserControl
     {
         var panel=new StackPanel();var row=new Grid{ColumnDefinitions=new("*,Auto")};row.Children.Add(_entry);Grid.SetColumn(_browse,1);row.Children.Add(_browse);panel.Children.Add(row);panel.Children.Add(_status);Content=panel;
         var arrow=new PathIcon{Width=12,Height=12,Data=IconGeometries.StepDown};arrow.Bind(PathIcon.ForegroundProperty,this.GetResourceObservable("IconForegroundBrush"));_browse.Content=arrow;
-        _popup.PlacementTarget=this;var browser=new Border{Child=_list,BorderThickness=new Thickness(1),BorderBrush=Brushes.Gray};_popup.Child=browser;
+        _popup.PlacementTarget=this;var browser=new Border{Child=_list,BorderThickness=new Thickness(1),BorderBrush=Brushes.Gray};_popup.Child=browser;panel.Children.Add(_popup);
         browser.Bind(Border.BackgroundProperty,this.GetResourceObservable("AppBackgroundBrush"));
         _browse.Click+=(_,_)=>{if(_popup.IsOpen)CloseBrowser();else OpenBrowser();};ToolTip.SetTip(_browse,"Browse all installed font families (Alt+Down)");
         _entry.KeyDown+=(_,e)=>{if(e.Key==Key.Down&&(e.KeyModifiers is KeyModifiers.None or KeyModifiers.Alt)){OpenBrowser();_list.Focus();e.Handled=true;}else if(e.Key==Key.Escape)_popup.IsOpen=false;};
@@ -45,12 +45,19 @@ public sealed class FontPicker : UserControl
         _entry.PropertyChanged+=(_,e)=>{if(e.Property==AutoCompleteBox.TextProperty&&!_sync){SetCurrentValue(FontNameProperty,_entry.Text??"");if(_popup.IsOpen)_list.ItemsSource=_fonts.Where(f=>f.Contains(FontName,StringComparison.CurrentCultureIgnoreCase)).ToArray();Refresh();ValueChanged?.Invoke(this,EventArgs.Empty);}};
         AttachedToVisualTree+=async (_,_)=>
         {
-            try{_fonts=await Installed.Value;_entry.ItemsSource=_fonts;Refresh();}
+            try{_fonts=await Installed.Value;_entry.ItemsSource=_fonts;if(_popup.IsOpen)PopulateBrowser();Refresh();}
             catch(Exception exception){_status.Text="Font list unavailable: "+exception.Message;_status.IsVisible=true;}
         };
         DetachedFromVisualTree+=(_,_)=>_popup.IsOpen=false;
     }
-    public void OpenBrowser(){_entry.IsDropDownOpen=false;_list.ItemsSource=_fonts;_list.SelectedItem=_fonts.FirstOrDefault(f=>f.Equals(FontName,StringComparison.OrdinalIgnoreCase));_popup.IsOpen=true;Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(_popup.IsOpen)_list.Focus();});}
+    private void PopulateBrowser()
+    {
+        _list.ItemsSource=_fonts.Length>0?_fonts:new[]{string.IsNullOrWhiteSpace(FontName)?"Loading installed fonts…":FontName};
+        _list.SelectedItem=_fonts.FirstOrDefault(f=>f.Equals(FontName,StringComparison.OrdinalIgnoreCase))??(_fonts.Length==0?_list.ItemsSource.Cast<string>().First():null);
+        if(_list.SelectedItem is {} selected)_list.ScrollIntoView(selected);
+    }
+    public ListBox BrowserList=>_list;
+    public void OpenBrowser(){_entry.IsDropDownOpen=false;PopulateBrowser();_popup.IsOpen=true;Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(_popup.IsOpen){_list.Focus();if(_list.SelectedItem is {} selected)_list.ScrollIntoView(selected);}});}
     public void CloseBrowser()=>_popup.IsOpen=false;
     private void Choose(){if(_list.SelectedItem is not string family)return;SetCurrentValue(FontNameProperty,family);ValueChanged?.Invoke(this,EventArgs.Empty);_popup.IsOpen=false;_entry.Focus();}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

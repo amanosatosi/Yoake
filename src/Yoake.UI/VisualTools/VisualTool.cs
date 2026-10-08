@@ -45,7 +45,7 @@ public abstract class VisualTool : IVisualTool
     public virtual void Release(VisualToolContext context,VisualPointer pointer){Move(context,pointer);}
     public virtual void Cancel(){Initial=null;}
     public virtual StandardCursorType Cursor(VisualToolContext? context,VisualPointer pointer)=>StandardCursorType.Cross;
-    protected bool Begin(VisualToolContext context,VisualPointer pointer,string name){Anchor=pointer;Initial=context.Active;return context.Begin(name);}
+    protected bool Begin(VisualToolContext context,VisualPointer pointer,string name){var initial=context.Active;if(!context.Begin(name))return false;Anchor=pointer;Initial=initial;return true;}
     protected AssPoint Delta(VisualPointer pointer)=>pointer.Shift?VisualGeometry.Axis(VisualGeometry.Subtract(pointer.Script,Anchor.Script)):VisualGeometry.Subtract(pointer.Script,Anchor.Script);
 }
 public enum HandleShape {Square,Circle,Triangle}
