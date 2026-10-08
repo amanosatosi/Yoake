@@ -205,7 +205,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 var a=new AssPoint(Size.Width*.4,Size.Height*.4);var b=new AssPoint(Size.Width*.6,Size.Height*.6);
                 Require(ReferenceEquals(window.InputHitTest(Root(a)),Overlay),"Empty rectangle canvas must receive real pointer hits away from its hint/handles.");
                 // Include a pending text draft, as in the real typing -> tool workflow.
-                model.Draft!.Text=Plain+" pending";_baseline=model.Draft.Text;_baselinePixels=pixels();
+                model.Draft!.Text=Plain.Replace(@"\future(keep)",@"\future(pending)",StringComparison.Ordinal);_baseline=model.Draft.Text;_baselinePixels=pixels();
                 Press(b);Move(a);Require(model.HasGesture&&AssVisualTags.Clip(_line!.Text) is {Rectangular:true},"Dragging a no-clip draft must immediately create a live rectangle.");WaitForPreview();return false;
             case 17:
                 if(!Ready)return Retry();

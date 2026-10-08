@@ -170,6 +170,7 @@ public partial class MainWindow : Window, IEditorDialogs
         var binding=_model.Hotkeys.Resolve(new(e.Key.ToString(),modifiers),[HotkeyContext.Default,context]);
         var commandId=e.Key==Key.Escape&&_model.HasGesture?CommandIds.EditCancel:binding?.CommandId;
         if(commandId is null)return;
+        if(commandId==CommandIds.TextHardNewline&&!SubtitleText.IsKeyboardFocusWithin)return;
         if(commandId==CommandIds.EditCommitNext && context==HotkeyContext.SubtitleEdit && !SubtitleText.IsKeyboardFocusWithin)commandId=CommandIds.EditCommit;
         _model.TextCursor=SubtitleText.CaretIndex;
         _model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;

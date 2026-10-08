@@ -39,18 +39,18 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 arrow.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));return false;
             case 2:
                 var list=_font!.BrowserList;
-                Require(_font.IsBrowserOpen&&list.GetVisualRoot() is not null&&list.Bounds.Width>=260&&list.Bounds.Height>20,"Font browser must have an actual popup visual root and visible dimensions.");
+                Require(_font.IsBrowserOpen&&TopLevel.GetTopLevel(list) is not null&&list.Bounds.Width>=260&&list.Bounds.Height>20,"Font browser must have an actual popup visual root and visible dimensions.");
                 var rows=list.GetVisualDescendants().OfType<ListBoxItem>().Where(r=>r.Bounds.Height>0&&r.IsVisible).ToArray();
                 Require(rows.Length>0&&list.SelectedItem as string==_font.FontName,"Installed current family must be selected and realized.");
                 capture(list,"subtitle-font-browser-visible",1);
                 var scrollbar=list.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>().First(s=>s.IsVisible);
-                var root=(Avalonia.Visual)list.GetVisualRoot()!;var scrollPointer=new Pointer(414,PointerType.Mouse,true);
+                var root=(Avalonia.Visual)TopLevel.GetTopLevel(list)!;var scrollPointer=new Pointer(414,PointerType.Mouse,true);
                 scrollbar.RaiseEvent(new PointerReleasedEventArgs(scrollbar,scrollPointer,root,scrollbar.TranslatePoint(new(2,2),root)!.Value,0,new(RawInputModifiers.None,PointerUpdateKind.LeftButtonReleased),KeyModifiers.None,MouseButton.Left));
                 Require(_font.IsBrowserOpen,"Scrollbar release must not choose a font or close the browser.");
                 var choice=rows.First(r=>r.Content is string family&&family!=_font.FontName);
                 list.SelectedItem=choice.Content;
                 var pointer=new Pointer(413,PointerType.Mouse,true);
-                choice.RaiseEvent(new PointerReleasedEventArgs(choice,pointer,(Avalonia.Visual)list.GetVisualRoot()!,choice.TranslatePoint(new(4,4),(Avalonia.Visual)list.GetVisualRoot()!)!.Value,0,new(RawInputModifiers.None,PointerUpdateKind.LeftButtonReleased),KeyModifiers.None,MouseButton.Left));
+                choice.RaiseEvent(new PointerReleasedEventArgs(choice,pointer,(Avalonia.Visual)TopLevel.GetTopLevel(list)!,choice.TranslatePoint(new(4,4),(Avalonia.Visual)TopLevel.GetTopLevel(list)!)!.Value,0,new(RawInputModifiers.None,PointerUpdateKind.LeftButtonReleased),KeyModifiers.None,MouseButton.Left));
                 Require(!_font.IsBrowserOpen&&_font.FontName==(string)choice.Content!,"Clicking an actual font row must choose its exact family.");
                 _font.OpenBrowser();return false;
             case 3:
