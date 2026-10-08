@@ -104,6 +104,13 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 var resized=AssVisualTags.Clip(_line.Text)!;
                 Require(resized.Inverse&&resized.Points[0]!=clip.Points[0]&&resized.Points[1]==clip.Points[1],"Corner resize must retain inverse and the opposite corner.");
                 Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"Rectangle undo must restore source.");
+                Fixture(_line!.Text.Replace("}",@"\clippos(5,-7)\t(0,1000,\clippos(20,10))}",StringComparison.Ordinal));
+                var shiftedSource=_line.Text;var beforeMask=AssVisualTags.Clip(shiftedSource)!;
+                var offset=AssVisualTags.ClipOffset(shiftedSource,400,1000);var center=Add(_position,offset.X,offset.Y);
+                Press(center);Move(Add(center,Size.Width*.05,0));Release(Add(center,Size.Width*.05,0));
+                Require(AssVisualTags.Clip(_line.Text)!.Points.SequenceEqual(beforeMask.Points),"Moving a clip with clippos must not bake the offset into its geometry.");
+                Require(Math.Abs(AssVisualTags.ClipOffset(_line.Text,400,1000).X-offset.X-Size.Width*.05)<.001,"Animated clip offset must translate by the full drag delta.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==shiftedSource,"Clip offset drag must be one lossless undo.");
                 Fixture(At(_position)+@"\iclip(3,"+Drawing()+@")\clippos(5,-7)\t(0,1000,\clippos(~+10,~-4))}VECTOR");
                 _baseline=_line.Text;Press(_position);Move(Add(_position,Size.Width*.08,0));Release(Add(_position,Size.Width*.08,0));
                 Require(_line!.Text==_baseline&&!model.HasGesture,"Rectangular tool miss must not destroy a vector clip.");Tool("VectorClip");return false;
@@ -116,6 +123,17 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Press(first);Move(Add(first,Size.Width*.03,0));Release(Add(first,Size.Width*.03,0));
                 Require(_line.Text!=_baseline&&AssVisualTags.Clip(_line.Text) is {Inverse:true,Scale:3},"Vector point drag must preserve inverse and drawing scale.");
                 Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"One vector drag must undo as one item.");
+                var secondPoint=map.Map(path.Handles().Skip(1).First().Point);
+                var boxStart=Add(first,-ScriptDip(12),-ScriptDip(12));var boxEnd=Add(secondPoint,ScriptDip(12),ScriptDip(12));
+                Press(boxStart);Move(boxEnd);Release(boxEnd);
+                Require(!model.HasGesture&&_line.Text==_baseline,"Box selection must not mutate subtitle source.");
+                Press(first);Move(Add(first,Size.Width*.03,0));Release(Add(first,Size.Width*.03,0));
+                var grouped=AssVectorPath.Parse(AssVisualTags.Clip(_line.Text)!.Drawing,3)!.Handles().ToArray();var originalHandles=path.Handles().ToArray();
+                Require(grouped.Take(2).All(h=>Math.Abs(h.Point.X-originalHandles[h.Index].Point.X-Size.Width*.03)<.25)&&grouped[2].Point==originalHandles[2].Point,"Box-selected endpoints must drag together without moving other controls.");
+                Invoke(CommandIds.EditUndo);Press(first,KeyModifiers.Control);Release(first);
+                Press(secondPoint);Move(Add(secondPoint,Size.Width*.03,0));Release(Add(secondPoint,Size.Width*.03,0));
+                var toggled=AssVectorPath.Parse(AssVisualTags.Clip(_line.Text)!.Drawing,3)!.Handles().ToArray();
+                Require(toggled[0].Point==originalHandles[0].Point&&toggled[1].Point!=originalHandles[1].Point,"Ctrl must toggle a point out of the drag selection.");Invoke(CommandIds.EditUndo);
                 VectorMode("Convert");var curve=path.Curves().First(c=>!c.Cubic);var point=map.Map(curve.At(.5));Click(point);
                 Require(AssVectorPath.Parse(AssVisualTags.Clip(_line.Text)!.Drawing,3)!.Curves().Count(c=>c.Cubic)==path.Curves().Count(c=>c.Cubic)+1,"Convert subtool must produce a cubic drawing.");Invoke(CommandIds.EditUndo);
                 VectorMode("Insert");Click(point);
@@ -137,10 +155,12 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Fixture(At(_position)+@"\distort(1,0,1,1,0,1)}DISTORT");Tool("Distort");return false;
             case 11:
                 if(model.VisibleVisualLines().FirstOrDefault() is not {} line||model.VisualBounds(line) is not {} bounds)return Retry();
-                ShotBoth("distort",5);_baseline=_line!.Text;
+                if(model.DisplayedPreviewRevision<model.PreviewRevision)return Retry();
+                ShotBoth("distort",5);_baseline=_line!.Text;_baselinePixels=pixels();
                 var corner=Add(_position,bounds.Left,bounds.Top);Press(corner);Move(Add(corner,Size.Width*.04,-Size.Height*.04));WaitForPreview();return false;
             case 12:
                 if(!Ready)return Retry();
+                Require(!_baselinePixels!.AsSpan().SequenceEqual(pixels()),"Distort corner dragging must change actual Mangetsu pixels before commit.");
                 Require(model.HasGesture&&AssVisualTags.Distort(_line!.Text) is {Count:4},"Distort corner drag must edit four normalized points.");
                 Require(AssVisualTags.Scan(_line!.Text).Last(t=>t.Name=="distort").Arguments.Split(',').Length==8,"Intentional distort edit must upgrade six to eight slots.");
                 Require(!_line.Text.Contains(@"\perspective",StringComparison.Ordinal),"Visual tool must never emit perspective.");

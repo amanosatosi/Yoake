@@ -34,6 +34,7 @@ public sealed class VectorClipTool : VisualTool
     {
         var geometry=new StreamGeometry();using(var g=geometry.Open())
         {
+            g.SetFillRule(FillRule.NonZero);
             var open=false;
             foreach(var command in path.Commands)
             {

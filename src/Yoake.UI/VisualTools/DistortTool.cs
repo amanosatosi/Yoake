@@ -38,7 +38,12 @@ public sealed class DistortTool : OriginTool
             var pins=AssVisualTags.Distort(line.Text)??Identity;var points=pins.Select(p=>Project(line,bounds,p,layout)).ToArray();
             for(var i=0;i<4;i++){c.Line(points[i],points[(i+1)%4]);c.Handle(points[i],HandleShape.Square,Initial is not null&&_corner==i,line.Active);}
             var center=points.Aggregate(new AssPoint(),VisualGeometry.Add);c.Handle(VisualGeometry.Multiply(center,0.25),HandleShape.Circle);
-            for(var k=1;k<4;k++){var t=k/4d;c.Line(VisualGeometry.Lerp(points[0],points[1],t),VisualGeometry.Lerp(points[3],points[2],t),Avalonia.Media.Brushes.Gray);c.Line(VisualGeometry.Lerp(points[0],points[3],t),VisualGeometry.Lerp(points[1],points[2],t),Avalonia.Media.Brushes.Gray);}
+            for(var k=1;k<4;k++)
+            {
+                var t=k/4d;
+                AssPoint Along(int a,int b)=>Project(line,bounds,VisualGeometry.Lerp(pins[a],pins[b],t),layout);
+                c.Line(Along(0,1),Along(3,2),Avalonia.Media.Brushes.Gray);c.Line(Along(0,3),Along(1,2),Avalonia.Media.Brushes.Gray);
+            }
         }
         // Origin is exposed on Alt to keep it from hiding a corner/center pin.
         if(c.Pointer.Alt)Origin(c);

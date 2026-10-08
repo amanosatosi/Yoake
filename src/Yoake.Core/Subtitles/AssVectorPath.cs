@@ -51,13 +51,21 @@ public sealed class AssVectorPath
     }
     private AssVectorPath? ExpandSplines()
     {
-        if(!Commands.Any(c=>c.Kind is 's' or 'p' or 'c'))return this;
-        var result=new AssVectorPath();var last=new AssPoint();
+        if(!Commands.Any(c=>c.Kind is 'n' or 's' or 'p' or 'c'))return this;
+        var result=new AssVectorPath();var last=new AssPoint();var started=false;
         for(var i=0;i<Commands.Count;i++)
         {
             var c=Commands[i];
             if(c.Kind is 'p' or 'c')return null;
-            if(c.Kind!='s'){result.Commands.Add(c);last=c.Points[^1];continue;}
+            if(c.Kind=='n')
+            {
+                last=c.Points[0];
+                // Mangetsu updates the pen without closing an existing contour.
+                // If no segment has begun, the newest pen replaces its move.
+                if(!started){if(result.Commands.Count>0)result.Commands[^1]=new('m',[last]);else result.Commands.Add(new('m',[last]));}
+                continue;
+            }
+            if(c.Kind!='s'){result.Commands.Add(c);last=c.Points[^1];started=c.Kind!='m';continue;}
             var knots=new List<AssPoint>{last};knots.AddRange(c.Points);
             while(i+1<Commands.Count&&Commands[i+1].Kind=='p')knots.AddRange(Commands[++i].Points);
             var closed=i+1<Commands.Count&&Commands[i+1].Kind=='c';if(closed){i++;knots.AddRange(knots.Take(3).ToArray());}
@@ -67,9 +75,10 @@ public sealed class AssVectorPath
             {
                 var a=knots[k];var b=knots[k+1];var d=knots[k+2];var e=knots[k+3];
                 var start=Weighted(a,b,d,1,4,1);var end=Weighted(b,d,e,1,4,1);
-                if(k==0)result.Commands.Add(new('l',[start]));
-                result.Commands.Add(new('b',[VisualGeometry.Lerp(b,d,1d/3),VisualGeometry.Lerp(b,d,2d/3),end]));last=end;
+                if(k==0&&!started){if(result.Commands.Count>0)result.Commands[^1]=new('m',[start]);else result.Commands.Add(new('m',[start]));}
+                result.Commands.Add(new('b',[VisualGeometry.Lerp(b,d,1d/3),VisualGeometry.Lerp(b,d,2d/3),end]));last=end;started=true;
             }
+            last=knots[^1];
         }
         return result;
     }

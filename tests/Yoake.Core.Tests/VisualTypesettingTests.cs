@@ -95,6 +95,16 @@ public sealed class VisualTypesettingTests
         foreach(var smooth in new[]{false,true}){var free=AssVectorPath.Freehand([new(0,0),new(20,30),new(40,10)],smooth);Assert.NotNull(AssVectorPath.Parse(free.Serialize(1)));Assert.Equal(smooth,free.Curves().First().Cubic);}
         Assert.Null(AssVectorPath.Parse("m 0 0 b 1 2"));Assert.Null(AssVectorPath.Parse("m 0 0 x 1 2"));
     }
+    [Fact] public void SplineExpansionMatchesMangetsusInitialContourAndNoCloseMove()
+    {
+        var path=AssVectorPath.Parse("m 0 0 s 60 0 60 60 0 60")!;
+        var curve=Assert.Single(path.Curves());Assert.True(curve.Cubic);
+        Assert.Equal(new AssPoint(50,10),curve.Start);Assert.Equal(new AssPoint(60,20),curve.Control1);
+        Assert.Equal(new AssPoint(60,40),curve.Control2);Assert.Equal(new AssPoint(50,50),curve.End);
+        var noClose=AssVectorPath.Parse("m 0 0 l 100 0 n 200 200 l 100 100")!;
+        Assert.Equal(2,noClose.Curves().Count());Assert.Equal(new AssPoint(100,0),noClose.Curves().Last().Start);
+        Assert.NotNull(AssVectorPath.Parse("m 0 0 s 60 0 60 60 0 60 c"));
+    }
     [Fact] public void ClosingSegmentCanConvertAndLastPointCanBeRemovedLosslessly()
     {
         var path=AssVectorPath.Parse("m 0 0 l 100 0 100 100")!;
