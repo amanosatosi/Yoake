@@ -20,6 +20,7 @@ namespace Yoake.App;
 internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewModel model, StylesWindow styles, string report, string? mediaFixtures)
 {
     private int _stage;
+    private VisualUiVerification? _visual;
     private long _previewRevision;
     private double _normalEditorWidth;
     private AssStyle? _first, _second;
@@ -129,24 +130,27 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Require(!_beforeDraft!.AsSpan().SequenceEqual(FramePixels()),"Live draft must change actual composited video pixels.");
                 Capture(window,"editor-live-draft",1);Invoke(model.Registry,CommandIds.EditCancel);
                 Require(model.SelectedEvent!.Text==_committedText&&!model.Draft!.IsChanged,"Escape must revert the entire pending edit burst.");
-                _mediaLoading=model.OpenMediaAsync(Path.Combine(mediaFixtures!,"audio.wav"));return false;
+                _visual=new(window,model,Capture,FramePixels);return false;
             case 14:
+                if(!_visual!.Tick()){_stage--;return false;}
+                _mediaLoading=model.OpenMediaAsync(Path.Combine(mediaFixtures!,"audio.wav"));return false;
+            case 15:
                 if(!_mediaLoading!.IsCompleted){_stage--;return false;}
                 Require(_mediaLoading.Result&&model.WaveformSamples is {Count:>100},"Real audio must generate the signed waveform.");
                 Require(model.VideoFrame is null&&model.FrameTimes.Count==0,"Replacing video with audio must clear the old video presentation.");
                 Require(model.WaveformSamples!.Envelopes.Min(p=>p.Minimum)<-0.1&&model.WaveformSamples.Envelopes.Max(p=>p.Maximum)>0.1,"Audio fixture must produce both signed extrema.");
                 var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;audio.VisibleSeconds=2;audio.ViewportStart=0;
                 return false;
-            case 15:
+            case 16:
                 Capture(window,"editor-signed-waveform",1);
                 _originalTab=model.Tabs.Single(t=>t.IsActive).Id;
                 Require(model.OpenSubtitle(Path.Combine(mediaFixtures!,"large.ass")),"Large multilingual ASS fixture must open.");return false;
-            case 16:
-                CheckVirtualizedGrid();model.SelectedEvent=model.Events[^1];return false;
             case 17:
+                CheckVirtualizedGrid();model.SelectedEvent=model.Events[^1];return false;
+            case 18:
                 CheckVirtualizedGrid();Require(window.FindControl<ListBox>("SubtitleRows")!.GetVisualDescendants().OfType<ListBoxItem>().Any(r=>ReferenceEquals(r.DataContext,model.Events[^1])),"Scrolling to the last of 20,000 rows must realize that row.");
                 model.SelectedEvent=model.Events[10000];return false;
-            case 18:
+            case 19:
                 CheckVirtualizedGrid();Capture(window,"editor-large-mixed-script",1);
                 var activate=model.Registry.InvokeAsync(CommandIds.WorkspaceActivateTab,new(),_originalTab);Require(activate.IsCompletedSuccessfully&&activate.Result,"Return to original editing tab after virtualization probe.");return false;
             default:
