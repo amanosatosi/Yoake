@@ -48,7 +48,7 @@ for path in (ROOT/'src').rglob('*.cs'):
     if 'IntPtr' in text and 'Yoake.Native' not in str(path): fail(f"native pointer leaked outside Yoake.Native: {path.relative_to(ROOT)}")
 
 ui=(ROOT/'src/Yoake.UI/MainWindow.axaml').read_text(encoding='utf-8')
-for marker in ('Name="UpperWorkspace"','Name="VisualColumn"','Name="TemporalTextColumn"','Name="SubtitleGridRegion"','VIDEO','AUDIO','EDIT PANEL','SUBTITLE GRID'):
+for marker in ('Name="UpperWorkspace"','Name="VisualColumn"','Name="TemporalTextColumn"','Name="SubtitleGridRegion"','Name="VideoRegion"','Name="AudioRegion"','Name="EventEditorRegion"','SUBTITLE GRID'):
     if marker not in ui: fail(f"required workspace marker missing: {marker}")
 if 'SystemDecorations="None"' in ui or 'WindowDecorations="None"' in ui:
     fail('window chrome must retain native system/snap/maximize behavior')

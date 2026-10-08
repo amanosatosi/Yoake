@@ -43,6 +43,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
             case 1:
                 if(!Ready)return Retry();
                 Shot("position-standby",1);
+                capture(window,"editor-default-media-1440x900",1);
                 _position=model.VisibleVisualLines().Single().Position;
                 Require(AssVisualTags.Position(_line!.Text) is null,"Standby position must not insert a tag.");
                 _baseline=_line.Text;_baselinePixels=pixels();

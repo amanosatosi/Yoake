@@ -143,6 +143,8 @@ jobs:
         run: .\ci\verify_windows_runtime.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable
       - name: Generate deterministic editor media fixtures
         run: python ci/create_editor_media_fixtures.py artifacts/editor-fixtures
+      - name: Configure desktop for default workspace verification
+        run: .\ci\set_ui_verification_display.ps1
       - name: Verify real MainWindow startup with clean, legacy and damaged profiles
         shell: pwsh
         run: .\ci\smoke_windows.ps1 -Executable artifacts\Yoake-Windows-x64-portable\Yoake.exe -VerificationRoot artifacts\ui-startup-verification -MediaFixturesRoot artifacts\editor-fixtures

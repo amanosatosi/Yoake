@@ -46,6 +46,30 @@ with wave.open(str(root / 'audio.wav'), 'wb') as audio:
     audio.writeframes(b''.join(struct.pack('<h', sample(i)) for i in range(96000)))
 print('Created deterministic AVI and PCM audio fixtures')
 
+# Interleave the same video and PCM into one real two-stream AVI so workspace
+# captures exercise video and signed waveform simultaneously.
+with wave.open(str(root / 'audio.wav'), 'rb') as audio:
+    pcm = audio.readframes(audio.getnframes())
+avih_av = struct.pack('<14I', 1_000_000 // fps, frame_bytes * fps + 96000,
+                      0, 0x110, frames, 0, 2, frame_bytes, width, height, 0, 0, 0, 0)
+audio_strh = struct.pack('<4s4sIHHIIIIIIIIhhhh', b'auds', b'\0'*4,
+                         0, 0, 0, 0, 2, 96000, 0, 96000, 19200,
+                         0xFFFFFFFF, 2, 0, 0, 0, 0)
+audio_strf = struct.pack('<HHIIHH', 1, 1, 48000, 96000, 2, 16)
+header_av = list_chunk(b'hdrl', chunk(b'avih', avih_av)
+    + list_chunk(b'strl', chunk(b'strh', strh) + chunk(b'strf', strf))
+    + list_chunk(b'strl', chunk(b'strh', audio_strh) + chunk(b'strf', audio_strf)))
+packets, index_av, offset = bytearray(), bytearray(), 4
+for frame in range(frames):
+    for name, payload in [(b'00db', bytes((20 + frame, 12, 8)) * (width * height)),
+                          (b'01wb', pcm[frame*19200:(frame+1)*19200])]:
+        packet = chunk(name, payload)
+        packets.extend(packet)
+        index_av.extend(struct.pack('<4sIII', name, 0x10, offset, len(payload)))
+        offset += len(packet)
+(root / 'av.avi').write_bytes(chunk(b'RIFF', b'AVI ' + header_av
+    + list_chunk(b'movi', packets) + chunk(b'idx1', index_av)))
+
 # A real large multilingual document for container virtualization and end/middle scrolling.
 scripts = ['日本語', 'မြန်မာ', 'Latin e\u0301', 'العربية', '👩‍👩‍👧‍👦']
 with (root / 'large.ass').open('w', encoding='utf-8', newline='') as ass:
