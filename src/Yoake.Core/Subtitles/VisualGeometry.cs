@@ -43,7 +43,7 @@ public static class VisualGeometry
     {
         var x=(local.X+t.ShearX*local.Y)*t.ScaleX/100;
         var y=(local.Y+t.ShearY*local.X)*t.ScaleY/100;
-        var z=0d;var rz=-t.Z*Math.PI/180;var rx=t.X*Math.PI/180;var ry=-t.Y*Math.PI/180;
+        var z=0d;var rz=-t.Z*Math.PI/180;var rx=-t.X*Math.PI/180;var ry=-t.Y*Math.PI/180;
         (x,y)=(x*Math.Cos(rz)-y*Math.Sin(rz),x*Math.Sin(rz)+y*Math.Cos(rz));
         (y,z)=(y*Math.Cos(rx)-z*Math.Sin(rx),y*Math.Sin(rx)+z*Math.Cos(rx));
         (x,z)=(x*Math.Cos(ry)+z*Math.Sin(ry),-x*Math.Sin(ry)+z*Math.Cos(ry));

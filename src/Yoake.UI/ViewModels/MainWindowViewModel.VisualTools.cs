@@ -41,6 +41,18 @@ public sealed partial class MainWindowViewModel
         "Distort"=>"Drag corners: bilinear distortion ﾂｷ center: translate ﾂｷ eight normalized values",
         _=>""
     };
+    // Mangetsu's projection distance is 20000/64 layout pixels. The provider
+    // configures storage size to the decoded frame; explicit LayoutRes wins.
+    public double VisualLayoutScale
+    {
+        get
+        {
+            var doc=ActiveEditor?.Document;
+            var explicitLayout=int.TryParse(doc?.GetScriptInfo("LayoutResX"),out var x)&&x>0&&int.TryParse(doc?.GetScriptInfo("LayoutResY"),out var y)&&y>0;
+            var height=explicitLayout?int.Parse(doc!.GetScriptInfo("LayoutResY")!,System.Globalization.CultureInfo.InvariantCulture):VideoFrame?.PixelSize.Height??(int)ScriptSize.Height;
+            return ScriptSize.Height/Math.Max(1,height);
+        }
+    }
     public IReadOnlyList<VisualLine> VisibleVisualLines()
     {
         if(ActiveEditor is null)return [];

@@ -59,7 +59,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Require(_baselinePixels!.AsSpan().SequenceEqual(pixels()),"Escape must restore the original composited pixels.");
                 Press(_position);Move(Add(_position,Size.Width*.1,0));Move(Add(_position,Size.Width*.15,0));Release(Add(_position,Size.Width*.15,0));
                 Require(!model.HasGesture&&_line!.Text!=_baseline,"Release must commit a position drag.");
-                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"One undo must restore the entire continuous drag.");
+                Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"One undo must restore the entire continuous drag.");
                 Press(_position);Move(Add(_position,Size.Width*.12,0));_pointer.Capture(null);
                 Require(!model.HasGesture&&_line.Text==_baseline,"Pointer capture loss must roll back the real overlay drag.");
                 Press(_position);Move(Add(_position,Size.Width*.12,0));Tool("RotateZ");
@@ -70,18 +70,18 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Tool("Position");return false;
             case 4:
                 Shot("position-move-origin",4);
-                var move=AssVisualTags.Move(_line!.Text)!;_baseline=_line.Text;
+                var move=AssVisualTags.Move(_line!.Text)!.Value;_baseline=_line.Text;
                 Press(move.End);Move(Add(move.End,Size.Width*.04,0));Release(Add(move.End,Size.Width*.04,0));
-                var edited=AssVisualTags.Move(_line.Text)!;
+                var edited=AssVisualTags.Move(_line!.Text)!.Value;
                 Require(edited.Start==move.Start&&Math.Abs(edited.EndTime!.Value-400)<1,"Move end dragging must associate timing with the current FFMS2 frame.");
-                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"Move endpoint undo must preserve all original timing/source.");
+                Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"Move endpoint undo must preserve all original timing/source.");
                 Fixture(At(_position)+@"\org("+N(_position.X-Size.Width*.08)+","+N(_position.Y+Size.Height*.08)+@")}ROTATE");Tool("RotateZ");return false;
             case 5:
                 ShotBoth("rotate-z",2);var origin=AssVisualTags.Origin(_line!.Text)!.Value;_baseline=_line.Text;
                 var right=Add(origin,ScriptDip(65),0);var up=Add(origin,ScriptDip(46),-ScriptDip(46));
                 Press(right);Move(up,KeyModifiers.Control);
                 Require(Math.Abs(AssVisualTags.Scalar(_line.Text,"frz",0)-60)<.01,"Ctrl rotation must snap the ring drag to 30-degree increments.");
-                Escape();Require(_line.Text==_baseline,"Rotate Z cancel must restore exact source.");
+                Escape();Require(_line!.Text==_baseline,"Rotate Z cancel must restore exact source.");
                 Press(origin);Move(Add(origin,Size.Width*.04,0));Release(Add(origin,Size.Width*.04,0));
                 Require(AssVisualTags.Origin(_line.Text)!=origin,"Origin handle must be directly draggable.");Invoke(CommandIds.EditUndo);
                 Tool("RotateXY");return false;
@@ -90,23 +90,23 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 var anchor=Add(_position,Size.Width*.15,0);Press(anchor);Move(Add(anchor,ScriptDip(20),ScriptDip(3)),KeyModifiers.Shift|KeyModifiers.Control);
                 var transform=AssVisualTags.Transform(_line.Text,null);
                 Require(transform.X==0&&transform.Y==30,"XY Shift drag must constrain the dominant axis and Ctrl must snap it.");Escape();
-                Require(_line.Text==_baseline,"XY cancellation must preserve source.");Tool("Scale");return false;
+                Require(_line!.Text==_baseline,"XY cancellation must preserve source.");Tool("Scale");return false;
             case 7:
                 ShotBoth("scale",4);_baseline=_line!.Text;
                 Press(_position);Move(Add(_position,ScriptDip(20),-ScriptDip(10)),KeyModifiers.Alt|KeyModifiers.Control);
                 var scaled=AssVisualTags.Transform(_line.Text,null);
                 Require(scaled.ScaleX==125&&scaled.ScaleY==125,"Alt+Ctrl scaling must preserve aspect and snap to 25%.");Escape();
-                Require(_line.Text==_baseline,"Scale cancellation must preserve source.");
+                Require(_line!.Text==_baseline,"Scale cancellation must preserve source.");
                 Fixture(At(_position)+@"\iclip("+N(Size.Width*.25)+","+N(Size.Height*.25)+","+N(Size.Width*.75)+","+N(Size.Height*.75)+@")}CLIP");Tool("Clip");return false;
             case 8:
                 ShotBoth("rectangle-inverse",4);_baseline=_line!.Text;var clip=AssVisualTags.Clip(_line.Text)!;
                 Press(clip.Points[0]);Move(Add(clip.Points[0],Size.Width*.05,Size.Height*.05));Release(Add(clip.Points[0],Size.Width*.05,Size.Height*.05));
                 var resized=AssVisualTags.Clip(_line.Text)!;
                 Require(resized.Inverse&&resized.Points[0]!=clip.Points[0]&&resized.Points[1]==clip.Points[1],"Corner resize must retain inverse and the opposite corner.");
-                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"Rectangle undo must restore source.");
+                Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"Rectangle undo must restore source.");
                 Fixture(At(_position)+@"\iclip(3,"+Drawing()+@")\clippos(5,-7)\t(0,1000,\clippos(~+10,~-4))}VECTOR");
                 _baseline=_line.Text;Press(_position);Move(Add(_position,Size.Width*.08,0));Release(Add(_position,Size.Width*.08,0));
-                Require(_line.Text==_baseline&&!model.HasGesture,"Rectangular tool miss must not destroy a vector clip.");Tool("VectorClip");return false;
+                Require(_line!.Text==_baseline&&!model.HasGesture,"Rectangular tool miss must not destroy a vector clip.");Tool("VectorClip");return false;
             case 9:
                 ShotBoth("vector-select",5);
                 foreach(var mode in MainWindowViewModel.VectorModes)
@@ -115,7 +115,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 var map=AssVisualTags.ClipTransform(_line.Text,400,1000);var first=map.Map(path.Handles().First().Point);
                 Press(first);Move(Add(first,Size.Width*.03,0));Release(Add(first,Size.Width*.03,0));
                 Require(_line.Text!=_baseline&&AssVisualTags.Clip(_line.Text) is {Inverse:true,Scale:3},"Vector point drag must preserve inverse and drawing scale.");
-                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"One vector drag must undo as one item.");
+                Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"One vector drag must undo as one item.");
                 VectorMode("Convert");var curve=path.Curves().First(c=>!c.Cubic);var point=map.Map(curve.At(.5));Click(point);
                 Require(AssVectorPath.Parse(AssVisualTags.Clip(_line.Text)!.Drawing,3)!.Curves().Count(c=>c.Cubic)==path.Curves().Count(c=>c.Cubic)+1,"Convert subtool must produce a cubic drawing.");Invoke(CommandIds.EditUndo);
                 VectorMode("Insert");Click(point);
@@ -132,7 +132,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                     for(var i=1;i<=8;i++)Move(Add(start,Size.Width*.04*i,Size.Height*.08*Math.Sin(i)));
                     Release(Add(start,Size.Width*.35,0));var drawing=AssVisualTags.Clip(_line.Text)!;
                     Require(drawing.Inverse&&drawing.Scale==3&&AssVectorPath.Parse(drawing.Drawing,3) is {PointCount:>2},mode+" must produce a valid scaled inverse clip.");
-                    capture(window,"visual-vector-"+mode.ToLowerInvariant(),1);Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,mode+" must be one undo action.");
+                    capture(window,"visual-vector-"+mode.ToLowerInvariant(),1);Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,mode+" must be one undo action.");
                 }
                 Fixture(At(_position)+@"\distort(1,0,1,1,0,1)}DISTORT");Tool("Distort");return false;
             case 11:
@@ -142,9 +142,9 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
             case 12:
                 if(!Ready)return Retry();
                 Require(model.HasGesture&&AssVisualTags.Distort(_line!.Text) is {Count:4},"Distort corner drag must edit four normalized points.");
-                Require(AssVisualTags.Scan(_line.Text).Last(t=>t.Name=="distort").Arguments.Split(',').Length==8,"Intentional distort edit must upgrade six to eight slots.");
+                Require(AssVisualTags.Scan(_line!.Text).Last(t=>t.Name=="distort").Arguments.Split(',').Length==8,"Intentional distort edit must upgrade six to eight slots.");
                 Require(!_line.Text.Contains(@"\perspective",StringComparison.Ordinal),"Visual tool must never emit perspective.");
-                capture(window,"visual-distort-live-drag",1);Escape();Require(_line.Text==_baseline,"Distort cancel must restore original legacy syntax.");
+                capture(window,"visual-distort-live-drag",1);Escape();Require(_line!.Text==_baseline,"Distort cancel must restore original legacy syntax.");
                 // Visibility and multi-line checks use the same overlay host.
                 Fixture(At(_position)+"}MULTI");var second=model.Events.First(e=>!ReferenceEquals(e,_line)&&!e.IsComment);
                 model.ActiveEditor!.SetTiming(second,0,1000);model.ActiveEditor.SetField(second,"Text",At(Add(_position,Size.Width*.1,Size.Height*.15))+"}SECOND","Visual fixture");
@@ -163,7 +163,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
             case 15:
                 var quick=Add(_position,Size.Width*.08,Size.Height*.05);Hover(quick);ShotBoth("crosshair",0);_baseline=_line!.Text;Press(quick,KeyModifiers.None,2);
                 Require(!model.HasGesture&&AssVisualTags.Position(_line.Text) is {} placed&&VisualGeometry.Distance(placed,quick)<.001,"Crosshair double-click must position the line and finish one transaction.");
-                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"Quick position must undo losslessly.");Tool("Position");return true;
+                Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"Quick position must undo losslessly.");Tool("Position");return true;
             default:return true;
         }
     }

@@ -80,8 +80,9 @@ public static partial class AssVisualTags
             if(tag.Name=="r")value=fallback;
             if(tag.Name==name||name=="frz"&&tag.Name=="fr")
             {
-                var raw=text[tag.ValueStart..tag.End].Trim();var relative=raw.StartsWith('~');
-                if(TryNumber(relative?raw[1..]:raw,out var n))value=relative?value+n:n;
+                var raw=text[tag.ValueStart..tag.End].Trim();var explicitRelative=raw.StartsWith('~');var relative=explicitRelative||((name is "fscx" or "fscy")&&raw.Length>0&&(raw[0] is '+' or '-'));
+                if(TryNumber(explicitRelative?raw[1..]:raw,out var n))value=relative?value+n:n;
+                if(name is "fscx" or "fscy")value=Math.Max(0,value);
             }
         }
         return value;
@@ -95,9 +96,12 @@ public static partial class AssVisualTags
     public static string SetScalar(string text,string name,double value)
     {
         if(!double.IsFinite(value))throw new ArgumentOutOfRangeException(nameof(value));
-        var tag=InitialTags(text).LastOrDefault(t=>t.Name==name||name=="frz"&&t.Name=="fr");
+        var initial=InitialTags(text).ToArray();var reset=initial.LastOrDefault(t=>t.Name=="r");
+        var tag=initial.LastOrDefault(t=>t.Start>=reset.End&&(t.Name==name||name=="frz"&&t.Name=="fr"));
         if(tag.Name is not null)return text[..tag.Start]+"\\"+name+Number(value)+text[tag.End..];
-        return Splice(text,default,"\\"+name+Number(value));
+        var addition="\\"+name+Number(value);
+        if(reset.Name is not null)return text[..reset.End]+addition+text[reset.End..];
+        return Splice(text,default,addition);
     }
     public static AssPoint ClipOffset(string text,double time=0,double duration=0)
     {

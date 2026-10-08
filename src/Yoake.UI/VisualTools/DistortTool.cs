@@ -30,7 +30,7 @@ public sealed class DistortTool : OriginTool
     }
     public override void Render(VisualCanvas c)
     {
-        if(c.Context.Active is not {} active)return;var layout=c.Context.Model.ScriptSize.Height/288d;
+        if(c.Context.Active is not {} active)return;var layout=c.Context.Model.VisualLayoutScale;
         foreach(var line in c.Context.Lines)
         {
             var box=Initial is not null&&_boxes.TryGetValue(line.Line,out var baseline)?baseline:c.Context.Model.VisualBounds(line);
@@ -48,7 +48,7 @@ public sealed class DistortTool : OriginTool
         if(c.Active is not {} active||c.Model.VisualBounds(active) is not {} box)return false;
         if(AssVisualTags.Scan(active.Text).Any(t=>t.Name=="distort")&&AssVisualTags.Distort(active.Text) is null)return false;
         _corner=-1;DragOrigin=p.Alt&&c.Near(active.Origin,p.Screen);
-        var pins=AssVisualTags.Distort(active.Text)??Identity;var layout=c.Model.ScriptSize.Height/288d;
+        var pins=AssVisualTags.Distort(active.Text)??Identity;var layout=c.Model.VisualLayoutScale;
         for(var i=0;i<4;i++)if(c.Near(Project(active,box,pins[i],layout),p.Screen)){_corner=i;break;}
         var center=pins.Select(x=>Project(active,box,x,layout)).Aggregate(new AssPoint(),VisualGeometry.Add);
         if(!DragOrigin&&_corner<0&&!c.Near(VisualGeometry.Multiply(center,0.25),p.Screen))return false;
@@ -57,7 +57,7 @@ public sealed class DistortTool : OriginTool
     }
     public override void Move(VisualToolContext c,VisualPointer p)
     {
-        if(UpdateOrigin(c,p)||Initial is null)return;var delta=Delta(p);var corner=_corner;var layout=c.Model.ScriptSize.Height/288d;
+        if(UpdateOrigin(c,p)||Initial is null)return;var delta=Delta(p);var corner=_corner;var layout=c.Model.VisualLayoutScale;
         c.Apply(line=>
         {
             if(!_boxes.TryGetValue(line.Line,out var box))return line.Text;var pins=(AssVisualTags.Distort(line.Text)??Identity).ToArray();

@@ -39,6 +39,21 @@ public sealed class VisualTypesettingTests
         Assert.Equal(new AssTransform(15,30,45,90,60,0.2,-0.1),AssVisualTags.Transform("{\\fr20\\frz45\\frx15\\fry30\\fscx90\\fscy60\\fax0.2\\fay-0.1\\t(\\frz90)}sign",style));
         Assert.Equal("{\\frz60\\frx15\\t(\\frz90)}sign",AssVisualTags.SetScalar("{\\fr20\\frx15\\t(\\frz90)}sign","frz",60));
     }
+    [Fact] public void MangetsuRelativeScaleAndPostResetEditingStayEffective()
+    {
+        Assert.Equal(110,AssVisualTags.Scalar(@"{\fscx100\fscx+20\fscx-10}","fscx",100));
+        Assert.Equal(-20,AssVisualTags.Scalar(@"{\frz-20}","frz",0));
+        Assert.Equal(40,AssVisualTags.Scalar(AssVisualTags.SetScalar(@"{\fr20\r}sign","frz",40),"frz",0));
+        Assert.Equal(75,AssVisualTags.Scalar(AssVisualTags.SetScalar(@"{\r}sign","fscx",75),"fscx",100));
+    }
+    [Fact] public void ProjectionUsesMangetsuZXYRotationAndLayoutDistance()
+    {
+        var transform=new AssTransform(60,0,0,100,100,0,0);
+        var projected=VisualGeometry.Project(new(0,100),default,transform,2);
+        Assert.Equal(50*625/(625-100*Math.Sin(Math.PI/3)),projected.Y,8);
+        var y=VisualGeometry.Project(new(100,0),default,transform with{X=0,Y=60},2);
+        Assert.Equal(50*625/(625+100*Math.Sin(Math.PI/3)),y.X,8);
+    }
     [Fact] public void ModifierMathPreservesAspectConstrainsAndSnaps()
     {
         Assert.Equal(30,VisualGeometry.Snap(44,30));Assert.Equal(-30,VisualGeometry.Snap(-44,30));

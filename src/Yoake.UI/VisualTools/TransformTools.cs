@@ -49,7 +49,7 @@ public sealed class RotateXYTool : OriginTool
     public override void Render(VisualCanvas c)
     {
         if(c.Context.Active is not {} l)return;
-        var scale=c.Context.Model.ScriptSize.Height/288d;
+        var scale=c.Context.Model.VisualLayoutScale;
         AssPoint Project(double x,double y)=>VisualGeometry.Project(new(x,y),l.Origin,l.Transform,scale);
         for(var i=-5;i<=5;i++)
         {
@@ -76,7 +76,7 @@ public sealed class ScaleTool : VisualTool
         // Keep guides comfortably inside the video while retaining orientation.
         var p=c.Screen(l.Position);var area=c.Context.Video;p=new(Math.Clamp(p.X,area.Left+Math.Min(90,area.Width/2),area.Right-Math.Min(90,area.Width/2)),Math.Clamp(p.Y,area.Top+Math.Min(90,area.Height/2),area.Bottom-Math.Min(90,area.Height/2)));
         var center=c.Context.Script(p);var unit=c.Context.ScriptDistance(80);
-        AssPoint Project(double x,double y)=>VisualGeometry.Project(new(x*unit,y*unit),center,t,c.Context.Model.ScriptSize.Height/288d);
+        AssPoint Project(double x,double y)=>VisualGeometry.Project(new(x*unit,y*unit),center,t,c.Context.Model.VisualLayoutScale);
         c.Line(Project(-1,1.15),Project(1,1.15),Brushes.Gray);c.Line(Project(1.15,-1),Project(1.15,1),Brushes.Gray);
         var a=Project(-l.Transform.ScaleX/100,1.15);var b=Project(l.Transform.ScaleX/100,1.15);var d=Project(1.15,-l.Transform.ScaleY/100);var e=Project(1.15,l.Transform.ScaleY/100);
         c.Line(a,b);c.Line(d,e);foreach(var point in new[]{a,b,d,e})c.Handle(point,HandleShape.Circle);

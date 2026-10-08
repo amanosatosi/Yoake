@@ -33,7 +33,7 @@ Position Alt-drag explicitly creates origin. Switching tools alone never does.
 Clip geometry uses an integer drawing scale plus a separate script-space mapping
 for `clippos` and `clips`. Static/relative offsets, animation and resets resolve
 for overlay display. Translating clips with these state tags appends an explicit
-relative clippos; it does not bake vector points or rewrite animation payloads.
+relative clippos after the existing animated state; it does not bake vector points or rewrite animation payloads.
 Rectangular misses never convert vectors. Vector topology is m/n/l/b, with ASS
 s/p/c splines evaluated as cubics for editing. Point moves, line/cubic conversion,
 De Casteljau splitting, removal and sampled/freehand smoothing are deterministic.
@@ -43,7 +43,9 @@ Distort uses P0/P1/P2/P3 in memory and serializes Mangetsu's P1/P2/P3/P0 eight-s
 order. Legacy six-slot text remains intact until an explicit edit. Source bounds
 are measured in a detached neutral-geometry Mangetsu track on a background job,
 using a provider-owned reusable renderer. Measurements are cached during drags;
-normalized corner pins project through the line transform. This is a raster
+normalized corner pins project through the line transform. Projection uses
+Mangetsu's Z/X/Y order and signed axes, with distance 20000/64 layout pixels;
+explicit LayoutRes or the provider's decoded storage size defines that domain. This is a raster
 estimate of shaped outline bounds (up to a pixel), not native outline metadata.
 Multiple differently styled distortion units, animated geometry and unusual
 Mangetsu layout/anchor extensions need manual sign-matching QA; no exact native
