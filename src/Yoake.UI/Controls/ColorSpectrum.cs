@@ -17,6 +17,11 @@ public sealed class ColorSpectrum : Control
     private static readonly LinearGradientBrush Black=new(){StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(0,1,RelativeUnit.Relative),GradientStops=[new(Colors.Transparent,0),new(Colors.Black,1)]};
     public event EventHandler? ValueChanged;
     public double Hue=>_hue;
+    public CylindricalColor Hsv=>new(_hue,_saturation,_value);
+    public void SetHsv(CylindricalColor hsv)
+    {
+        _hue=(hsv.Hue%360+360)%360;_saturation=Math.Clamp(hsv.Saturation,0,1);_value=Math.Clamp(hsv.Component,0,1);UpdateBrush();InvalidateVisual();
+    }
     public ColorSpectrum(){Focusable=true;MinWidth=256;MinHeight=256;SetColor(new(255,255,255,0));}
     public void SetColor(AssColor color)
     {

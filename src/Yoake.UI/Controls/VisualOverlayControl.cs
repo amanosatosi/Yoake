@@ -46,7 +46,7 @@ public sealed class VisualOverlayControl : Control
     {
         if(e.PropertyName is nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events))
         {ReleaseCapture();_tool?.Cancel();}
-        if(e.PropertyName is nameof(MainWindowViewModel.PreviewRevision) or nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.CurrentTimeSeconds) or nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.EditorDraft) or nameof(MainWindowViewModel.VisualBounds))Refresh();
+        if(e.PropertyName is nameof(MainWindowViewModel.PreviewRevision) or nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.CurrentTimeSeconds) or nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.EditorDraft) or nameof(MainWindowViewModel.VisualBounds) or nameof(MainWindowViewModel.VisualBoundsPending))Refresh();
     }
     private void Refresh()
     {

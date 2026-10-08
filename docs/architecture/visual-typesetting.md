@@ -42,7 +42,10 @@ Unknown drawings remain text-editable and are never guessed into a new mask.
 Distort uses P0/P1/P2/P3 in memory and serializes Mangetsu's P1/P2/P3/P0 eight-slot
 order. Legacy six-slot text remains intact until an explicit edit. Source bounds
 are measured in a detached neutral-geometry Mangetsu track on a background job,
-using a provider-owned reusable renderer. Measurements are cached during drags;
+using a provider-owned reusable renderer. Header/styles are captured once per
+request and each selected event gets an immutable source snapshot; parsing,
+neutralizing paint/geometry and shaping run off the UI thread. A bounded provider
+cache reuses identical measurements across gestures. Measurements are cached during drags;
 normalized corner pins project through the line transform. Projection uses
 Mangetsu's Z/X/Y order and signed axes, with distance 20000/64 layout pixels;
 explicit LayoutRes or the provider's decoded storage size defines that domain. This is a raster

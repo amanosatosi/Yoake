@@ -128,6 +128,16 @@ public sealed class VisualTypesettingTests
         Assert.Equal(source.Replace("\\distort(1,0,1,1,0,1)","\\distort(1,0,1,1,0,1,0.2,0.3)"),result);Assert.DoesNotContain("\\perspective",result);
         Assert.Equal(pins,AssVisualTags.Distort(result));
     }
+    [Fact] public void MeasurementSnapshotsKeepFormatsAndShapingWithoutMutatingSource()
+    {
+        var doc=AssDocument.Parse("[Script Info]\nPlayResX: 384\nPlayResY: 288\n[V4+ Styles]\nFormat: Name,Fontname,Fontsize,Alignment\nStyle: Default,Arial,40,5\n[Events]\nFormat: Start,End,Style,Text,Extra\nDialogue: 0:00:00.00,0:00:01.00,Default,{\\1c&H000000&\\distort(1,0,1,1,0,1)}日本語,opaque\nDialogue: 0:00:00.00,0:00:01.00,Default,other,keep\n");
+        var original=doc.Serialize();var header=VisualMeasurement.Header(doc);Assert.DoesNotContain("Dialogue:",header);
+        var snapshot=VisualMeasurement.Snapshot(doc.Events[0],doc.Events[0].Text);
+        var track=AssDocument.Parse(VisualMeasurement.Track(header,snapshot,192,144));var measured=Assert.Single(track.Events);
+        Assert.Equal("opaque",measured.Get("Extra"));Assert.Contains("日本語",measured.Text);Assert.Contains(@"\1c&HFFFFFF&",measured.Text);
+        Assert.DoesNotContain(@"\1c&H000000&",measured.Text);Assert.DoesNotContain(@"\distort",measured.Text);
+        Assert.Equal(original,doc.Serialize());
+    }
     [Fact] public void ZoomAnchorsAndAmplitudeLinkHaveSeparateDomains()
     {
         Assert.Equal(20,AudioViewportMath.Span(AudioViewportMath.Zoom(20)),8);

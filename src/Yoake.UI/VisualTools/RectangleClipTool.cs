@@ -30,7 +30,13 @@ public sealed class RectangleClipTool : VisualTool
         if(clip is not null)
         {
             var mapping=AssVisualTags.ClipTransform(l.Text,l.RelativeTime,l.Duration);var points=Corners(clip);
-            for(var i=0;i<4;i++)if(c.Near(mapping.Map(points[i]),p.Screen)){_corner=i;break;}
+            foreach(var selected in c.Lines.OrderByDescending(line=>line.Active))
+            {
+                if(AssVisualTags.Clip(selected.Text) is not {Rectangular:true} rectangle)continue;
+                var map=AssVisualTags.ClipTransform(selected.Text,selected.RelativeTime,selected.Duration);var corners=Corners(rectangle);
+                for(var i=0;i<4;i++)if(c.Near(map.Map(corners[i]),p.Screen)){_corner=i;break;}
+                if(_corner>=0)break;
+            }
             _translate=_corner<0&&(p.Shift||new Rect(c.Screen(mapping.Map(points[0])),c.Screen(mapping.Map(points[2]))).Contains(p.Screen));
         }
         return Begin(c,p,"Edit rectangular clips");
@@ -55,5 +61,12 @@ public sealed class RectangleClipTool : VisualTool
             return AssVisualTags.SetRectangle(l.Text,clip?.Inverse??c.Model.InverseClip,mapping.Unmap(Anchor.Script),point);
         });
     }
-    public override StandardCursorType Cursor(VisualToolContext? c,VisualPointer p)=>_translate?StandardCursorType.SizeAll:StandardCursorType.Cross;
+    public override StandardCursorType Cursor(VisualToolContext? c,VisualPointer p)
+    {
+        if(Initial is not null&&_translate)return StandardCursorType.SizeAll;
+        if(c?.Active is not {} line||AssVisualTags.Clip(line.Text) is not {Rectangular:true} clip)return StandardCursorType.Cross;
+        var map=AssVisualTags.ClipTransform(line.Text,line.RelativeTime,line.Duration);var corners=Corners(clip);
+        for(var i=0;i<4;i++)if(c.Near(map.Map(corners[i]),p.Screen))return i switch{0=>StandardCursorType.TopLeftCorner,1=>StandardCursorType.TopRightCorner,2=>StandardCursorType.BottomRightCorner,_=>StandardCursorType.BottomLeftCorner};
+        return new Rect(c.Screen(map.Map(corners[0])),c.Screen(map.Map(corners[2]))).Contains(p.Screen)||p.Shift?StandardCursorType.SizeAll:StandardCursorType.Cross;
+    }
 }

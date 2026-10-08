@@ -13,9 +13,10 @@ internal static class ColorInputVerification
     {
         var pointer=new Pointer(411,PointerType.Mouse,true);
         var hue=Named<ColorStrip>(dialog,"ColorHue");var alpha=Named<ColorStrip>(dialog,"ColorTransparency");
+        capture(dialog,"color-picker-before-input",1);
         var original=hue.Value;
         Press(hue,new(12,64));Move(hue,new(12,192));
-        Require(Math.Abs(hue.Value-hue.Maximum*.75)<.01,"Hue strip drag must directly follow pointer position.");
+        Require(Math.Abs(hue.Value-hue.Maximum*.75)<.01,$"Hue strip drag must directly follow pointer position (value {hue.Value}, expected {hue.Maximum*.75}, bounds {hue.Bounds}).");
         pointer.Capture(null);Require(Math.Abs(hue.Value-original)<.01,"Color strip capture loss must restore its initial value.");
         Press(hue,new(12,64));Move(hue,new(12,192));Release(hue,new(12,192));
         Require(Math.Abs(hue.Value-hue.Maximum*.75)<.01,"Hue strip release must keep the chosen value.");
@@ -24,6 +25,10 @@ internal static class ColorInputVerification
         Require(alpha.Value==255&&dialog.SelectedColor.Transparency==255,"Alpha strip must support exact keyboard endpoints.");
         alpha.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=alpha,Key=Key.Home});
         Require(alpha.Value==0&&dialog.SelectedColor.Transparency==0,"Alpha strip Home must reach opaque.");alpha.Value=transparency;
+        var exact=Named<TextBox>(dialog,"AssHex");var previous=exact.Text;
+        Named<TextBox>(dialog,"HtmlHex").SetCurrentValue(TextBox.TextProperty,"#808080");hue.Value=143.25;
+        Require(hue.Value==143.25&&dialog.SelectedColor.Red==128&&dialog.SelectedColor.Green==128&&dialog.SelectedColor.Blue==128,"Hue authoring must remain stable on achromatic colors.");
+        exact.SetCurrentValue(TextBox.TextProperty,previous);
         if(OperatingSystem.IsWindows())
         {
             var dropper=Named<ScreenColorDropper>(dialog,"ScreenMagnifier");var button=Named<Button>(dialog,"Eyedropper");

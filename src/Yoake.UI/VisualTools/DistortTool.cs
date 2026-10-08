@@ -34,7 +34,7 @@ public sealed class DistortTool : OriginTool
         foreach(var line in c.Context.Lines)
         {
             var box=Initial is not null&&_boxes.TryGetValue(line.Line,out var baseline)?baseline:c.Context.Model.VisualBounds(line);
-            if(box is not {} bounds||bounds.Width<=0||bounds.Height<=0){if(line.Active)c.Label("Measuring shaped subtitle bounds…",c.Context.Video.TopLeft+new Vector(8,8));continue;}
+            if(box is not {} bounds||bounds.Width<=0||bounds.Height<=0){if(line.Active)c.Label(c.Context.Model.VisualBoundsPending?"Measuring shaped subtitle bounds…":"No shaped text to distort",c.Context.Video.TopLeft+new Vector(8,8));continue;}
             var pins=AssVisualTags.Distort(line.Text)??Identity;var points=pins.Select(p=>Project(line,bounds,p,layout)).ToArray();
             for(var i=0;i<4;i++){c.Line(points[i],points[(i+1)%4]);c.Handle(points[i],HandleShape.Square,Initial is not null&&_corner==i,line.Active);}
             var center=points.Aggregate(new AssPoint(),VisualGeometry.Add);c.Handle(VisualGeometry.Multiply(center,0.25),HandleShape.Circle);

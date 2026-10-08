@@ -100,6 +100,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Fixture(At(_position)+@"\iclip("+N(Size.Width*.25)+","+N(Size.Height*.25)+","+N(Size.Width*.75)+","+N(Size.Height*.75)+@")}CLIP");Tool("Clip");return false;
             case 8:
                 ShotBoth("rectangle-inverse",4);_baseline=_line!.Text;var clip=AssVisualTags.Clip(_line.Text)!;
+                Hover(clip.Points[0]);Require(Overlay.Cursor?.ToString()=="TopLeftCorner","Rectangle corner hover must show a resize cursor.");
                 Press(clip.Points[0]);Move(Add(clip.Points[0],Size.Width*.05,Size.Height*.05));Release(Add(clip.Points[0],Size.Width*.05,Size.Height*.05));
                 var resized=AssVisualTags.Clip(_line.Text)!;
                 Require(resized.Inverse&&resized.Points[0]!=clip.Points[0]&&resized.Points[1]==clip.Points[1],"Corner resize must retain inverse and the opposite corner.");

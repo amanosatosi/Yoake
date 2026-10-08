@@ -64,10 +64,10 @@ public sealed class AssColorDialog : Window
         var alphaRow=new StackPanel{Orientation=Orientation.Horizontal,Spacing=6};alphaRow.Children.Add(new TextBlock{Text="ASS transparency",VerticalAlignment=VerticalAlignment.Center});alphaRow.Children.Add(_alphaNumber);right.Children.Add(alphaRow);
         right.Children.Add(new TextBlock{Text="0 = opaque · 255 = transparent",FontSize=11});
         right.Children.Add(new TextBlock{Text="ASS &HAABBGGRR"});right.Children.Add(_exact);right.Children.Add(new TextBlock{Text="HTML #RRGGBB · alpha stays separate"});right.Children.Add(_html);
-        _spectrum.ValueChanged+=(_,_)=>{if(!_sync){_color=_spectrum.Color(_color.Transparency);Refresh();}};
+        _spectrum.ValueChanged+=(_,_)=>{if(!_sync){_color=_spectrum.Color(_color.Transparency);Refresh(updateSpectrum:false);}};
         _hue.PropertyChanged+=(_,e)=>{if(e.Property==ColorStrip.ValueProperty&&!_sync)_spectrum.SetHue(_hue.Value);};
-        _alpha.PropertyChanged+=(_,e)=>{if(e.Property==ColorStrip.ValueProperty&&!_sync){_color=_color with{Transparency=(byte)Math.Round(_alpha.Value)};Refresh();}};
-        _alphaNumber.ValueChanged+=(_,_)=>{if(!_sync&&_alphaNumber.Value is {} value){_color=_color with{Transparency=(byte)value};Refresh();}};
+        _alpha.PropertyChanged+=(_,e)=>{if(e.Property==ColorStrip.ValueProperty&&!_sync){_color=_color with{Transparency=(byte)Math.Round(_alpha.Value)};Refresh(updateSpectrum:false);}};
+        _alphaNumber.ValueChanged+=(_,_)=>{if(!_sync&&_alphaNumber.Value is {} value){_color=_color with{Transparency=(byte)value};Refresh(updateSpectrum:false);}};
         _exact.PropertyChanged+=(_,e)=>{if(e.Property!=TextBox.TextProperty||_sync)return;if(AssColor.TryParse(_exact.Text,out var c)){_color=c;Refresh(false);}else Invalid("Enter a complete ASS hex or signed decimal color.");};
         _html.PropertyChanged+=(_,e)=>{if(e.Property!=TextBox.TextProperty||_sync)return;if(ColorSpace.TryHtml(_html.Text,_color.Transparency,out var c)){_color=c;Refresh(updateHtml:false);}else Invalid("Enter HTML #RRGGBB.");};
         var palettes=new Grid{ColumnDefinitions=new("*,*"),ColumnSpacing=12};Grid.SetRow(palettes,1);Grid.SetColumnSpan(palettes,2);root.Children.Add(palettes);
@@ -109,14 +109,16 @@ public sealed class AssColorDialog : Window
     private void FromNumbers(int space)
     {
         var numbers=_channels[space];double N(int i)=>(double)(numbers[i].Value??0);
-        if(space>0){_sync=true;_spectrum.SetHue(N(0));_sync=false;}
-        _color=space switch{0=>new((byte)N(0),(byte)N(1),(byte)N(2),_color.Transparency),1=>ColorSpace.FromHsv(N(0),N(1)/100,N(2)/100,_color.Transparency),_=>ColorSpace.FromHsl(N(0),N(1)/100,N(2)/100,_color.Transparency)};Refresh();
+        if(space==0){_color=new((byte)N(0),(byte)N(1),(byte)N(2),_color.Transparency);Refresh();return;}
+        var saturation=N(1)/100;var component=N(2)/100;
+        if(space==2){var v=component+saturation*Math.Min(component,1-component);saturation=v==0?0:2*(1-component/v);component=v;}
+        _spectrum.SetHsv(new(N(0),saturation,component));_color=_spectrum.Color(_color.Transparency);Refresh(updateSpectrum:false);
     }
     private void Invalid(string message){_valid=false;_error.Text=message;}
-    private void Refresh(bool updateExact=true,bool updateHtml=true)
+    private void Refresh(bool updateExact=true,bool updateHtml=true,bool updateSpectrum=true)
     {
-        _sync=true;_valid=true;_error.Text="";_dropper.Transparency=_color.Transparency;_spectrum.SetColor(_color);_hue.Value=_spectrum.Hue;_alpha.Value=_color.Transparency;_alphaNumber.Value=_color.Transparency;
-        var hsv=ColorSpace.Hsv(_color);var hsl=ColorSpace.Hsl(_color);double[][] values=[[_color.Red,_color.Green,_color.Blue],[_spectrum.Hue,hsv.Saturation*100,hsv.Component*100],[_spectrum.Hue,hsl.Saturation*100,hsl.Component*100]];
+        _sync=true;_valid=true;_error.Text="";_dropper.Transparency=_color.Transparency;if(updateSpectrum)_spectrum.SetColor(_color);_hue.Value=_spectrum.Hue;_alpha.Value=_color.Transparency;_alphaNumber.Value=_color.Transparency;
+        var hsv=_spectrum.Hsv;var hsl=ColorSpace.Hsl(_color);double[][] values=[[_color.Red,_color.Green,_color.Blue],[_spectrum.Hue,hsv.Saturation*100,hsv.Component*100],[_spectrum.Hue,hsl.Saturation*100,hsl.Component*100]];
         for(var s=0;s<3;s++)for(var i=0;i<3;i++)_channels[s][i].Value=(decimal)Math.Round(values[s][i],2);
         if(updateExact)_exact.Text=_color.StyleValue;if(updateHtml)_html.Text=ColorSpace.Html(_color);
         _preview.Background=new SolidColorBrush(Color.FromArgb(_color.Opacity,_color.Red,_color.Green,_color.Blue));

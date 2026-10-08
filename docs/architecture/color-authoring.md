@@ -22,7 +22,9 @@ or capture loss cancels sampling without changing the chosen color; sampling
 preserves alpha. Non-Windows platforms disable the screen action. Mixed-DPI and
 real platform capture behavior still require manual Windows verification.
 Hue and alpha gradients use ColorStrip's thin black/white marker, direct pointer
-input and arrow/Home/End keys rather than a templated Slider thumb.
+input and arrow/Home/End keys rather than a templated Slider thumb. Spectrum/strip
+input keeps its continuous HSV state while deriving 8-bit RGB; a round-trip
+through quantized RGB never moves the active hue marker or loses hue on gray.
 
 FontPicker caches asynchronous installed-family enumeration. Its visible dropdown
 opens a virtualized full list immediately, independently of the search prefix.
