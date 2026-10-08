@@ -106,7 +106,7 @@ public sealed class AssVectorPath
     }
     public void Convert(AssCurve curve)
     {
-        if(curve.Command<0)return;
+        if(curve.Command<0){Commands.Insert(~curve.Command,new('b',[VisualGeometry.Lerp(curve.Start,curve.End,0.25),VisualGeometry.Lerp(curve.Start,curve.End,0.75),curve.End]));return;}
         Commands[curve.Command]=curve.Cubic?new('l',[curve.End]):new('b',[VisualGeometry.Lerp(curve.Start,curve.End,0.25),VisualGeometry.Lerp(curve.Start,curve.End,0.75),curve.End]);
     }
     public void Split(AssCurve curve,double t)

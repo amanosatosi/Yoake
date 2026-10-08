@@ -95,6 +95,14 @@ public sealed class VisualTypesettingTests
         foreach(var smooth in new[]{false,true}){var free=AssVectorPath.Freehand([new(0,0),new(20,30),new(40,10)],smooth);Assert.NotNull(AssVectorPath.Parse(free.Serialize(1)));Assert.Equal(smooth,free.Curves().First().Cubic);}
         Assert.Null(AssVectorPath.Parse("m 0 0 b 1 2"));Assert.Null(AssVectorPath.Parse("m 0 0 x 1 2"));
     }
+    [Fact] public void ClosingSegmentCanConvertAndLastPointCanBeRemovedLosslessly()
+    {
+        var path=AssVectorPath.Parse("m 0 0 l 100 0 100 100")!;
+        path.Convert(path.Curves(true).Last());Assert.True(path.Curves().Last().Cubic);
+        Assert.Equal(new AssPoint(0,0),path.Curves().Last().End);
+        const string text=@"{\iclip(m 1 2)\clippos(5,6)\future(x)\t(\clip(0,0,5,5))}sign";
+        Assert.Equal(@"{\clippos(5,6)\future(x)\t(\clip(0,0,5,5))}sign",AssVisualTags.RemoveClip(text));
+    }
     [Fact] public void VectorScaleInverseAndTransformsSurviveIntentionalTopologyEdit()
     {
         const string source="{\\iclip(3,m 0 0 l 400 400)\\clippos(2,3)\\t(\\clippos(20,30))\\unknown(x)}sign";

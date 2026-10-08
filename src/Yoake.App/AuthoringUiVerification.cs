@@ -23,6 +23,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private VisualUiVerification? _visual;
     private long _previewRevision;
     private double _normalEditorWidth;
+    private double _audioHeight;
     private AssStyle? _first, _second;
     private AssColorDialog? _colors;
     private Task<bool>? _mediaLoading;
@@ -104,6 +105,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Require(Named<ColorStrip>(_colors!,"ColorHue").Bounds.Height>=256&&Named<ColorStrip>(_colors!,"ColorTransparency").Bounds.Height>=256,"Hue/alpha use dedicated thin-selector strips.");
                 Require(!_colors!.GetVisualDescendants().OfType<Slider>().Any(),"Color strips must not contain Fluent slider thumbs.");
                 Require(Named<ScreenColorDropper>(_colors!,"ScreenMagnifier").Bounds.Width>=56,"Desktop sampling must have a 7x7 live magnifier.");
+                ColorInputVerification.Run(_colors!,Capture);
                 Require(Named<StackPanel>(_colors!,"RecentColors").Bounds.Height>0,"Recent colors must have a separate visible area.");Capture(_colors!,"color-picker-dark",1);_colors!.RequestedThemeVariant=ThemeVariant.Light;return false;
             case 10:
                 Capture(_colors!,"color-picker-light",1);_colors!.Close();return false;
@@ -133,15 +135,32 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 _visual=new(window,model,Capture,FramePixels);return false;
             case 14:
                 if(!_visual!.Tick()){_stage--;return false;}
+                // Give the real sash room beyond its minimum in the narrow window.
+                var workspaceRoot=(Grid)window.FindControl<Grid>("UpperWorkspace")!.Parent!;
+                workspaceRoot.RowDefinitions[2].Height=new GridLength(4,GridUnitType.Star);
+                workspaceRoot.RowDefinitions[4].Height=new GridLength(1,GridUnitType.Star);
                 _mediaLoading=model.OpenMediaAsync(Path.Combine(mediaFixtures!,"audio.wav"));return false;
             case 15:
                 if(!_mediaLoading!.IsCompleted){_stage--;return false;}
                 Require(_mediaLoading.Result&&model.WaveformSamples is {Count:>100},"Real audio must generate the signed waveform.");
                 Require(model.VideoFrame is null&&model.FrameTimes.Count==0,"Replacing video with audio must clear the old video presentation.");
                 Require(model.WaveformSamples!.Envelopes.Min(p=>p.Minimum)<-0.1&&model.WaveformSamples.Envelopes.Max(p=>p.Maximum)>0.1,"Audio fixture must produce both signed extrema.");
-                var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;audio.VisibleSeconds=2;audio.ViewportStart=0;
+                var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;model.AudioWindowSeconds=2;audio.ViewportStart=0;
+                var volume=model.PlaybackVolume;model.AudioVolumeLinked=false;model.AudioAmplitude=60;
+                Require(model.PlaybackVolume==volume,"Unlinked display amplitude must not change playback volume.");
+                model.AudioVolumeLinked=true;model.AudioAmplitude=75;
+                Require(Math.Abs(model.PlaybackVolume-.75)<.0001&&!window.FindControl<Slider>("AudioVolume")!.IsEnabled,"Linked amplitude must update volume and disable its slider.");
+                model.AudioVolumeLinked=false;model.AudioWindowSeconds=1;
+                Require(Math.Abs(audio.VisibleSeconds-1)<.001,"Continuous zoom must update the real waveform viewport.");
+                var panner=window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!;panner.Value=.5;
+                Require(Math.Abs(audio.ViewportStart-.5)<.001&&Math.Abs(audio.VisibleSeconds-1)<.001,"Panner must change only viewport start.");
+                var sash=window.FindControl<GridSplitter>("AudioSplitter")!;_audioHeight=window.FindControl<Grid>("TemporalTextColumn")!.RowDefinitions[0].ActualHeight;
+                sash.Focus();sash.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=sash,Key=Key.Down});
                 return false;
             case 16:
+                var splitter=window.FindControl<GridSplitter>("AudioSplitter")!;
+                splitter.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyUpEvent,Source=splitter,Key=Key.Down});
+                Require(model.AudioDisplayHeight>_audioHeight,"The real audio sash must resize and persist panel height.");
                 Capture(window,"editor-signed-waveform",1);
                 _originalTab=model.Tabs.Single(t=>t.IsActive).Id;
                 Require(model.OpenSubtitle(Path.Combine(mediaFixtures!,"large.ass")),"Large multilingual ASS fixture must open.");return false;

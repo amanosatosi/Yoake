@@ -138,6 +138,11 @@ public static partial class AssVisualTags
         var addition="\\clippos(~"+(delta.X>=0?"+":"")+Number(delta.X)+",~"+(-delta.Y>=0?"+":"")+Number(-delta.Y)+")";
         return tag.Length==0?Splice(text,default,addition):text[..(tag.Start+tag.Length)]+addition+text[(tag.Start+tag.Length)..];
     }
+    public static string RemoveClip(string text)
+    {
+        var tag=Scan(text).LastOrDefault(t=>t.Name is "clip" or "iclip");
+        return tag.Length>0?Splice(text,tag,""):text;
+    }
     public static string InvertClip(string text)
     {
         var tag=Scan(text).LastOrDefault(t=>t.Name is "clip" or "iclip");

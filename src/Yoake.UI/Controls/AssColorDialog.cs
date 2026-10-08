@@ -91,6 +91,7 @@ public sealed class AssColorDialog : Window
         ActionButton(bar,"color/paste","Paste",async()=>{if(Clipboard is null)return;using var data=await Clipboard.TryGetDataAsync();var text=data is null?null:await data.TryGetTextAsync();if(ColorSpace.TryHtml(text,_color.Transparency,out var c)||AssColor.TryParse(text,out c)){_color=c;Refresh();}else Invalid("Clipboard does not contain an ASS or HTML color.");});
         ActionButton(bar,"color/cancel","Cancel",()=>{Close();return Task.CompletedTask;},cancel:true);
         ActionButton(bar,"color/accept","OK",()=>{if(_valid){_recent.Remember(_color);Close((AssColor?)_color);}return Task.CompletedTask;},accept:true);
+        AddHandler(KeyDownEvent,(_,e)=>{if(e.Key==Key.Escape&&_dropper.IsSampling){_dropper.Cancel();e.Handled=true;}},RoutingStrategies.Tunnel);
         Closed+=(_,_)=>_dropper.Cancel();Refresh();
     }
     private void ActionButton(Panel bar,string id,string text,Func<Task> action,bool enabled=true,bool cancel=false,bool accept=false)

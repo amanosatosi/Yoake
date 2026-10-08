@@ -25,6 +25,7 @@ public sealed class VisualOverlayControl : Control
     private VisualPointer _pointer;
     private IPointer? _capture;
     private bool _inside;
+    private StandardCursorType? _cursorType;
     public int RenderedHandles {get;private set;}
     public string? RenderedTool {get;private set;}
     public VisualOverlayControl(){Focusable=true;ClipToBounds=true;}
@@ -33,7 +34,7 @@ public sealed class VisualOverlayControl : Control
         base.OnPropertyChanged(change);
         if(change.Property==ModelProperty)
         {
-            Cancel();if(change.OldValue is MainWindowViewModel old){old.PropertyChanged-=Changed;old.GestureEnded-=GestureEnded;if(old.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged-=SelectionChanged;}
+            ReleaseCapture();_tool?.Cancel();if(change.OldValue is MainWindowViewModel old){old.CancelGesture();old.PropertyChanged-=Changed;old.GestureEnded-=GestureEnded;if(old.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged-=SelectionChanged;}
             if(Model is {} model){model.PropertyChanged+=Changed;model.GestureEnded+=GestureEnded;if(model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
             Refresh();
         }
@@ -72,7 +73,7 @@ public sealed class VisualOverlayControl : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);_pointer=Pointer(e);_inside=_context?.Video.Contains(_pointer.Screen)==true;
-        try{if(_capture is not null&&_context is {} state)_tool?.Move(state,_pointer);Cursor=new Cursor(_tool?.Cursor(_context,_pointer)??StandardCursorType.Cross);InvalidateVisual();}catch(Exception ex){Fail(ex);}
+        try{if(_capture is not null&&_context is {} state)_tool?.Move(state,_pointer);var cursorType=_tool?.Cursor(_context,_pointer)??StandardCursorType.Cross;if(cursorType!=_cursorType){_cursorType=cursorType;Cursor=new Cursor(cursorType);}InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
     protected override void OnPointerExited(PointerEventArgs e){base.OnPointerExited(e);if(_capture is null)_inside=false;InvalidateVisual();}
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
