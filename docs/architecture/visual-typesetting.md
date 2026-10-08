@@ -6,7 +6,7 @@ own rendering, hit testing, hover affordances, selected points and interpretatio
 of a captured gesture. The registry chooses tools and vector subtools with stable
 `video/tool/*` and `video/vector/*` IDs. The primary selector is a compact vertical rail beside video. Contextual options
 collapse beneath navigation/playback; help is available on the canvas/options
-tooltips without a permanent helper row. The overlay paints a transparent input
+tooltips and the existing command-bar status area without a permanent helper row. The overlay paints a transparent input
 surface across the video, including the no-clip state. Packaged checks assert
 actual input hit targets before raising pointer events.
 
@@ -82,7 +82,8 @@ repeated VIDEO/AUDIO/EDIT headers and bordered cards do not consume workspace.
 Metadata groups Comment/Style/Edit Style separately from Actor, Effect and Layer.
 Timing/margins and B-I-U-S/font/colors/reset have distinct group gaps. Visual
 primary tools occupy the vertical rail; only contextual controls use a bottom
-row. Frame status shares playback horizontal space. Audio has labelled 32-DIP columns with 10-DIP gaps and a
+row. Frame status shares playback horizontal space. The default split reserves
+at least 600 DIP for video input and audio timing independently. Audio has labelled 32-DIP columns with 10-DIP gaps and a
 separator from the visualizer. Grid rows are fixed at 26 DIP, with shaped-text height and containment checks
 for Japanese, Burmese, Arabic, Latin, emoji and combining marks. The 20,000-row
 fixture verifies recycling and virtualization.

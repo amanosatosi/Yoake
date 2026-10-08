@@ -108,12 +108,12 @@
 <MenuItem Header="View">
 <MenuItem Header="Cycle theme" Command="{Binding Actions[view/theme/cycle]}" />
 </MenuItem>
-</Menu><DockPanel Grid.Row="1" Margin="6,2"><TextBlock DockPanel.Dock="Right" MaxWidth="580" Text="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><StackPanel Orientation="Horizontal" Spacing="4">
+</Menu><Grid Grid.Row="1" Margin="6,2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><TextBlock Grid.Column="2" MaxWidth="360" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Name="VisualToolStatus" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="10" VerticalAlignment="Center" /><StackPanel Orientation="Horizontal" Spacing="4">
 <Button Content="New" Command="{Binding NewDocumentCommand}" Padding="6,1" ToolTip.Tip="Ctrl+N" /><Button Content="Open ASS" Command="{Binding Actions[subtitle/open]}" Padding="6,1" ToolTip.Tip="Ctrl+O" /><Button Content="Save" Command="{Binding Actions[subtitle/save]}" Padding="6,1" ToolTip.Tip="Ctrl+S" /><Button Content="Open media" Command="{Binding Actions[media/open]}" Padding="6,1" />
 <Button Command="{Binding UndoCommand}" Padding="6,1" ToolTip.Tip="Undo (Ctrl+Z)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Undo}" /></Button><Button Command="{Binding RedoCommand}" Padding="6,1" ToolTip.Tip="Redo (Ctrl+Y)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Redo}" /></Button>
-</StackPanel></DockPanel></Grid></Border>
+</StackPanel></Grid></Grid></Border>
 <Grid Grid.Row="2" Name="UpperWorkspace">
-  <Grid.ColumnDefinitions><ColumnDefinition Width="5*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
+  <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
   <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn">
     <Border Grid.Row="0" Background="{DynamicResource PanelBrush}">
       <Grid Name="VideoRegion" Margin="6" RowDefinitions="*,22,26,Auto" RowSpacing="4">
@@ -129,7 +129,7 @@
         <ToggleButton Name="VisualToolVectorClip" Classes="authoring" IsChecked="{Binding IsVectorClipTool, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" Padding="5,2" ToolTip.Tip="VectorClip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualVector}" /></ToggleButton>
         <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
         <ToggleButton Name="VisualToolDistort" Classes="authoring" IsChecked="{Binding IsDistortTool, Mode=OneWay}" Command="{Binding Actions[video/tool/distort]}" Padding="5,2" ToolTip.Tip="Distort"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualDistort}" /></ToggleButton>
-      </StackPanel><Border Grid.Column="1" Background="Black" ClipToBounds="True"><Grid><Image Name="VideoImage" Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" ToolTip.Tip="{Binding VisualHint}" /></Grid></Border></Grid>
+      </StackPanel><Border Grid.Column="1" Background="Black" ClipToBounds="True"><Grid><Image Name="VideoImage" Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
         <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="1" Model="{Binding}" />
         <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="8">        <StackPanel Orientation="Horizontal" Spacing="4">
           <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />

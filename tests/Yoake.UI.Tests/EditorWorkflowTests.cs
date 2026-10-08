@@ -230,6 +230,15 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.Equal(4,_model.TextSelectionStart);Assert.Equal(4,_model.TextSelectionEnd);Assert.DoesNotContain("\n",_model.Draft.Text);
         await Command(CommandIds.EditCommit);await Command(CommandIds.EditUndo);Assert.Equal(original,_model.Draft.Text);
     }
+    [Fact] public void EnterEnumAliasesResolveTheActualEditorBindings()
+    {
+        var name=Yoake.UI.Commands.EditorKeyNames.FromKey(Avalonia.Input.Key.Enter);
+        Assert.Equal("Enter",name);Assert.Equal(name,Yoake.UI.Commands.EditorKeyNames.FromKey(Avalonia.Input.Key.Return));
+        var contexts=new[]{Yoake.Core.Hotkeys.HotkeyContext.Default,Yoake.Core.Hotkeys.HotkeyContext.SubtitleEdit};
+        Assert.Equal(CommandIds.EditCommitNext,_model.Hotkeys.Resolve(new(name),contexts)!.CommandId);
+        Assert.Equal(CommandIds.EditCommit,_model.Hotkeys.Resolve(new(name,Yoake.Core.Hotkeys.KeyModifiers.Control),contexts)!.CommandId);
+        Assert.Equal(CommandIds.TextHardNewline,_model.Hotkeys.Resolve(new(name,Yoake.Core.Hotkeys.KeyModifiers.Shift),contexts)!.CommandId);
+    }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
     private sealed class TestDialogs : IEditorDialogs
     {

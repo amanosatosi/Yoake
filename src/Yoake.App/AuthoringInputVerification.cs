@@ -33,15 +33,15 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 _dialog=window.OwnedWindows.OfType<Window>().Single(w=>w.Name=="SubtitleFontDialog");
                 _font=_dialog.GetVisualDescendants().OfType<FontPicker>().Single();
                 Require(_font.InstalledFamilies.Count>0,"Shipping font dialog must enumerate installed families.");
-                _font.FontName=_font.InstalledFamilies.First();
+                _font.FontName=_font.InstalledFamilies.Last();
                 var arrow=_font.GetVisualDescendants().OfType<Button>().Single(b=>b.Name=="BrowseFonts");
                 Require(arrow.Bounds.Width>0&&arrow.IsVisible,"Font browse arrow must be visible.");
                 arrow.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));return false;
             case 2:
                 var list=_font!.BrowserList;
                 Require(_font.IsBrowserOpen&&TopLevel.GetTopLevel(list) is not null&&list.Bounds.Width>=260&&list.Bounds.Height>20,"Font browser must have an actual popup visual root and visible dimensions.");
-                var rows=list.GetVisualDescendants().OfType<ListBoxItem>().Where(r=>r.Bounds.Height>0&&r.IsVisible).ToArray();
-                Require(rows.Length>0&&list.SelectedItem as string==_font.FontName,"Installed current family must be selected and realized.");
+                var rows=list.GetVisualDescendants().OfType<ListBoxItem>().Where(r=>r.Bounds.Height>0&&r.IsVisible&&r.TranslatePoint(default,list) is {} pos&&pos.Y>=0&&pos.Y<list.Bounds.Height).ToArray();
+                Require(rows.Length>0&&rows.Any(r=>r.Content as string==_font.FontName)&&list.SelectedItem as string==_font.FontName,"Installed current family must be selected and realized.");
                 capture(list,"subtitle-font-browser-visible",1);
                 var scrollbar=list.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>().First(s=>s.IsVisible);
                 var root=(Avalonia.Visual)TopLevel.GetTopLevel(list)!;var scrollPointer=new Pointer(414,PointerType.Mouse,true);
@@ -67,7 +67,7 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 _line=model.SelectedEvent!;_original=_line.Text;return false;
             case 5:
                 window.Activate();Require(Text.Focus()&&Text.IsKeyboardFocusWithin,"Shipping ASS editor must receive keyboard focus.");Text.SetCurrentValue(TextBox.TextProperty,"enter draft");Caret(3,3);PressKey(Key.Enter);
-                Require(_line!.Text=="enter draft"&&!ReferenceEquals(model.SelectedEvent,_line)&&!_line.Text.Contains('\n')&&!_line.Text.Contains('\r')&&!_line.Text.Contains(@"\N"),"Focused plain Enter must commit and advance without any newline.");
+                Require(_line!.Text=="enter draft"&&!ReferenceEquals(model.SelectedEvent,_line)&&!_line.Text.Contains('\n')&&!_line.Text.Contains('\r')&&!_line.Text.Contains(@"\N"),$"Focused plain Enter must commit and advance without any newline (enum alias {Key.Enter}, committed {_line.Text}, draft {Text.Text}, selected {model.SelectedEvent?.Number}, initial {_line.Number}, focus {Text.IsKeyboardFocusWithin}).");
                 model.SelectedEvent=_line;return false;
             case 6:
                 Text.Focus();Text.SetCurrentValue(TextBox.TextProperty,"ctrl draft");Caret(3,3);PressKey(Key.Enter,KeyModifiers.Control);

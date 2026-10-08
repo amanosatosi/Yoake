@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using Avalonia.Styling;
 using Yoake.UI.Icons;
 using Yoake.Core.Subtitles;
 
@@ -27,6 +28,7 @@ public sealed class FontPicker : UserControl
     public event EventHandler? ValueChanged;
     public FontPicker()
     {
+        _list.Styles.Add(new Style(s=>s.OfType<ListBoxItem>()){Setters={new Setter(ListBoxItem.HeightProperty,26d),new Setter(ListBoxItem.MinHeightProperty,26d),new Setter(ListBoxItem.PaddingProperty,new Thickness(6,0)),new Setter(ListBoxItem.VerticalContentAlignmentProperty,Avalonia.Layout.VerticalAlignment.Center)}});
         var panel=new StackPanel();var row=new Grid{ColumnDefinitions=new("*,Auto")};row.Children.Add(_entry);Grid.SetColumn(_browse,1);row.Children.Add(_browse);panel.Children.Add(row);panel.Children.Add(_status);Content=panel;
         var arrow=new PathIcon{Width=12,Height=12,Data=IconGeometries.StepDown};arrow.Bind(PathIcon.ForegroundProperty,this.GetResourceObservable("IconForegroundBrush"));_browse.Content=arrow;
         _popup.PlacementTarget=this;var browser=new Border{Child=_list,BorderThickness=new Thickness(1),BorderBrush=Brushes.Gray};_popup.Child=browser;panel.Children.Add(_popup);

@@ -141,7 +141,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Require(model.SelectedEvent!.Text==_committedText&&!model.Draft!.IsChanged,"Escape must revert the entire pending edit burst.");
                 window.Width=1440;window.Height=900;
                 var defaultWorkspace=window.FindControl<Grid>("UpperWorkspace")!;
-                defaultWorkspace.ColumnDefinitions[0].Width=new GridLength(5,GridUnitType.Star);
+                defaultWorkspace.ColumnDefinitions[0].Width=new GridLength(6,GridUnitType.Star);
                 defaultWorkspace.ColumnDefinitions[2].Width=new GridLength(7,GridUnitType.Star);
                 _visual=new(window,model,Capture,FramePixels);return false;
             case 14:
@@ -304,7 +304,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var rows=window.FindControl<ListBox>("SubtitleRows")!;
         File.WriteAllText(Path.Combine(Path.GetDirectoryName(report)!,"workspace-layout.txt"),$"Window: {window.ClientSize}\nVideo: {video.Bounds}\nAudio: {audio.Bounds}\nText: {text.Bounds}\nGrid: {rows.Bounds}\n");
         Require(window.ClientSize.Width>=1438&&window.ClientSize.Height>=898,"Default workspace must be verified in a real 1440x900 window, without desktop clamping.");
-        Require(video.Bounds.Width>=540&&video.Bounds.Height>=300,"Default video workspace must retain useful typesetting area.");
+        Require(video.Bounds.Width>=600&&video.Bounds.Height>=300,"Default video workspace must retain useful typesetting area.");
         Require(audio.Bounds.Width>=600&&audio.Bounds.Height>=80,"Default audio must retain a useful timing area.");
         Require(text.Bounds.Width>=600&&text.Bounds.Height>=140,"Default ASS editor must retain room for tag-heavy multiline editing.");
         Require(rows.Bounds.Height>=270,"Default subtitle grid must retain at least nine dense rows of space.");
