@@ -105,10 +105,10 @@ public partial class MainWindow : Window, IEditorDialogs
     private void ClampAudioBounds()
     {
         var available=TemporalTextColumn.Bounds.Height;if(available<=0)return;
-        var maximum=Math.Max(130,available-TemporalTextColumn.RowDefinitions[2].MinHeight-4);
+        var maximum=Math.Max(160,available-TemporalTextColumn.RowDefinitions[2].MinHeight-4);
         var row=TemporalTextColumn.RowDefinitions[0];
         var height=row.Height.IsAbsolute?row.Height.Value:row.ActualHeight;
-        var clamped=Math.Clamp(height,130,maximum);if(Math.Abs(height-clamped)>0.1)row.Height=new GridLength(clamped);
+        var clamped=Math.Clamp(height,160,maximum);if(Math.Abs(height-clamped)>0.1)row.Height=new GridLength(clamped);
     }
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)

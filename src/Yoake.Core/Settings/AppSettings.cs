@@ -55,7 +55,7 @@ public sealed record AppSettings
             CompactGridColumnWidths=CompactGridColumnWidths is {Length:7} compact&&compact.All(w=>double.IsFinite(w)&&w>=24&&w<=600)?compact:null,
             StyleSplitWeights=StyleSplitWeights is {Length:3} split&&split.All(w=>double.IsFinite(w)&&w>0)?split.Select(w=>Math.Clamp(w,0.1,10)).ToArray():null,
             PlaybackVolume=PlaybackVolume is {} volume&&double.IsFinite(volume)?Math.Clamp(volume,0,1):0.8,
-            AudioDisplayHeight=AudioDisplayHeight is {} audioHeight&&double.IsFinite(audioHeight)?Math.Clamp(audioHeight,130,1000):160,
+            AudioDisplayHeight=AudioDisplayHeight is {} audioHeight&&double.IsFinite(audioHeight)?Math.Clamp(audioHeight,160,1000):160,
             AudioIntensity=AudioIntensity is {} intensity&&double.IsFinite(intensity)?Math.Clamp(intensity,0.008,8):1,
             AudioWindowSeconds=AudioWindowSeconds is {} audioSpan&&double.IsFinite(audioSpan)?Math.Clamp(audioSpan,0.02,3600):20,
             MainSplitRatio = ratio, GridHeight = height, SchemaVersion = SchemaVersion > 0 ? SchemaVersion : defaults.SchemaVersion };

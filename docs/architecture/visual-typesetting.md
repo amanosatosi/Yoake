@@ -72,3 +72,10 @@ black/white marker over gradients. The screen dropper captures the pointer and
 samples physical desktop coordinates into a live 7x7 magnifier. Drag release or
 latched click accepts; Escape/capture loss cancels. Neighbor pixels remain
 selectable afterward; RGB sampling never changes ASS transparency.
+
+Workspace spacing follows semantic groups: 3–4 DIP within related controls,
+8 DIP between groups and 7 DIP panel insets. Visual options/help are separated
+from the primary tools. Audio controls have individual labels and 32-DIP
+columns with 8-DIP gaps; the 160-DIP minimum retains their usable slider travel.
+Metadata, timing/margins and formatting/colors/reset remain distinct groups.
+Repeated subtitle-grid rows retain their existing compact metrics.
