@@ -57,14 +57,16 @@ public sealed partial class MainWindowViewModel
     {
         if(ActiveEditor is null)return [];
         var time=(FrameTimes.Count>0?FrameTimes[CurrentFrame]:CurrentTimeSeconds)*1000;var size=ScriptSize;
-        return Selection().Where(l=>!l.IsComment&&time>=(l.StartMilliseconds??0)&&time<(l.EndMilliseconds??0)).Select(line=>
+        var visible=Selection().Where(l=>!l.IsComment&&time>=(l.StartMilliseconds??0)&&time<(l.EndMilliseconds??0)).ToArray();
+        var primary=visible.FirstOrDefault(l=>ReferenceEquals(l,SelectedEvent))??visible.FirstOrDefault();
+        return visible.Select(line=>
         {
             var active=ReferenceEquals(line,SelectedEvent);var text=active?VisualText:line.Text;
             var style=ActiveEditor.Document.Styles.FirstOrDefault(s=>s.Name==(active?EditorDraft.Style:line.Style));
             var fallback=AssVisualTags.DefaultPosition(line,style,size.Width,size.Height,text);
             var relative=time-(line.StartMilliseconds??0);var duration=(line.EndMilliseconds??0)-(line.StartMilliseconds??0);
             var position=AssVisualTags.PositionAtTime(text,(long)relative,duration)??fallback;
-            return new VisualLine(line,text,fallback,position,AssVisualTags.Origin(text)??position,AssVisualTags.Transform(text,style),relative,duration,active);
+            return new VisualLine(line,text,fallback,position,AssVisualTags.Origin(text)??position,AssVisualTags.Transform(text,style),relative,duration,ReferenceEquals(line,primary));
         }).ToArray();
     }
     public void UpdateVisualGesture(Func<VisualLine,string> edit)=>InvokeGesture("video/visual/update",edit);

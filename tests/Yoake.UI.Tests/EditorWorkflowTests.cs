@@ -113,6 +113,16 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.EndGesture();Assert.Equal("Move two visible lines",_model.ActiveEditor.Undo.NextUndoName);await Command(CommandIds.EditUndo);
         Assert.Equal(originals,_model.Events.Select(l=>l.Text).ToArray());
     }
+    [Fact] public async Task VisibleSelectionRemainsEditableWhenCurrentRowIsOutsideTheFrame()
+    {
+        await Command(CommandIds.GridInsertAfter);var visible=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(visible,0,1000);
+        await Command(CommandIds.GridInsertAfter);var hidden=_model.SelectedEvent!;_model.ActiveEditor.SetTiming(hidden,2000,3000);
+        _model.SetSelectedEvents([visible,hidden]);_model.CurrentTimeSeconds=.5;
+        var primary=Assert.Single(_model.VisibleVisualLines());Assert.Same(visible,primary.Line);Assert.True(primary.Active);
+        Assert.True(_model.BeginGesture("Visible selection"));_model.UpdateVisualGesture(l=>AssVisualTags.SetOrigin(l.Text,new(40,50)));_model.EndGesture();
+        Assert.Equal(new AssPoint(40,50),AssVisualTags.Origin(visible.Text));Assert.Equal("",hidden.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal("",visible.Text);
+    }
     [Theory][InlineData("edit/cancel")][InlineData("video/tool/rotatez")][InlineData("video/tool/vectorclip")]
     public async Task VisualCancellationAndToolSwitchRestoreTheBatch(string command)
     {

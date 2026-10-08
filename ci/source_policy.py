@@ -117,4 +117,6 @@ for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll')"):
 
 result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--check'])
 if result.returncode: fail('generated icon catalog is stale')
+result=subprocess.run([sys.executable, str(ROOT/'ci/test_icon_generator.py')])
+if result.returncode: fail('SVG semantic regression checks failed')
 print('source-policy: OK')

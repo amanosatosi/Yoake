@@ -14,11 +14,15 @@ uses a separate atomically replaced text file so dialog writes cannot overwrite
 workspace settings. No reflection serializer or dependency is introduced.
 
 WindowsScreenColor owns screen DC and cursor APIs and releases every DC.
-Temporary transparent per-screen capture windows consume the selection click;
-physical cursor coordinates support negative monitor origins and DPI scaling.
-Escape/right-click cancel without changing the chosen color; sampling preserves
-alpha. Non-Windows platforms disable the screen action. Capture/compositor and
-mixed-DPI behavior still require manual Windows verification.
+ScreenColorDropper captures pointer input inside the dialog and displays 7×7
+physical source pixels at 8× magnification. Drag release or a latched click
+accepts the center; neighboring frozen pixels remain clickable. Physical cursor
+coordinates support negative monitor origins and DPI scaling. Escape/right-click
+or capture loss cancels sampling without changing the chosen color; sampling
+preserves alpha. Non-Windows platforms disable the screen action. Mixed-DPI and
+real platform capture behavior still require manual Windows verification.
+Hue and alpha gradients use ColorStrip's thin black/white marker, direct pointer
+input and arrow/Home/End keys rather than a templated Slider thumb.
 
 FontPicker caches asynchronous installed-family enumeration. Its visible dropdown
 opens a virtualized full list immediately, independently of the search prefix.

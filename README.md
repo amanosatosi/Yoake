@@ -15,10 +15,13 @@ Undo/redo includes text, metadata, timings, multi-row operations, styles, Script
 ## Timing and visual tools
 
 - Click the audio display to seek. Drag green/red markers to change start/end. **Shift+drag inside the selected region** moves the whole timing range.
-- Wheel scrolls horizontally; Ctrl+wheel or the +/− controls zoom. Neighboring subtitle boundaries and the playback cursor share the central media time.
+- The three vertical audio controls are horizontal zoom, display amplitude, and playback volume. Link couples amplitude to volume; the audio/edit sash independently controls panel height. Wheel pans, Ctrl+wheel zooms at the pointer, and Shift+wheel adjusts amplitude. The bottom panner shares the same viewport.
 - The audio mode selector switches between full sequential waveform peaks and a working, bounded viewport spectrogram. Analysis runs as cancellable background jobs. The spectrum is intentionally a basic linear-frequency view rather than a high-end timing spectrogram.
-- **Position** lets you drag a selected line on the video. Existing static `\pos` is edited in place; a missing tag is inserted using script coordinates. Movement and Mangetsu relative/expression positions remain text edits.
-- **Clip** offers rectangular creation, rectangular corner handles, and vector control-point handles for both `\clip` and `\iclip`. **Shift+drag** translates an existing clip. Vector integer drawing scale and untouched drawing commands remain intact. New clip inverse chooses the type of newly drawn rectangles.
+- **Crosshair** shows script coordinates and double-clicks to shift the visible selection, including both move endpoints and explicit origins. **Position** shows standby/start/end/origin handles and the current frame's movement position. Endpoint drags associate their time with that frame; the contextual action converts pos/move.
+- **Rotate Z**, **Rotate X/Y**, and **Scale** provide rings, transformed grids and oriented guides. Ctrl snaps angles to 30° or scale to 25%; Shift constrains axes; Alt preserves scale aspect. Origin handles create/update `\org` explicitly.
+- **Clip** creates and resizes rectangles, shades clipped regions and deliberately moves existing masks. **Vector Clip** has Select/box selection, Line, Bicubic, Convert, Insert, Remove, Freehand and Smooth subtools. Integer drawing scale, inverse masks and animated `\clippos` survive editing.
+- **Distort** edits four corners through Mangetsu's eight-value `\distort`, upgrading a legacy six-value tag only on an intentional edit. Bounds are measured asynchronously through Mangetsu; raster bounds and complex run/layout cases have the limits documented in [visual typesetting architecture](docs/architecture/visual-typesetting.md).
+- Visual gestures edit visible selected dialogue lines together, preview during the drag, undo once and roll back on Esc, capture loss, seek or tool/document changes. Relative/expression positions that cannot be interpreted remain preserved in the text editor.
 - Mangetsu remains the preview authority. Overlays are editing handles, not another subtitle renderer.
 
 ## Shortcuts

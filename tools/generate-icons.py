@@ -41,13 +41,15 @@ def generate() -> str:
             raise SystemExit(f"{path}: functional icons require non-empty vector paths")
         layers=[]
         for node in root.iter(NS + 'path'):
-            raw=('F1 ' if node.attrib.get('fill-rule', 'nonzero')=='nonzero' else 'F0 ')+node.attrib['d'].strip()
+            def attr(name, default=None):
+                return node.attrib.get(name, root.attrib.get(name, default))
+            raw=('F1 ' if attr('fill-rule', 'nonzero')=='nonzero' else 'F0 ')+node.attrib['d'].strip()
             raw=raw.replace('\\','\\\\').replace('"','\\"')
-            width=float(node.attrib.get('stroke-width','1')) if node.attrib.get('stroke')=='currentColor' else 0
+            width=float(attr('stroke-width','1')) if attr('stroke')=='currentColor' else 0
             if not math.isfinite(width) or width<0: raise SystemExit(f'{path}: invalid stroke width')
-            cap={'butt':'Flat','round':'Round','square':'Square'}[node.attrib.get('stroke-linecap','butt')]
-            join=node.attrib.get('stroke-linejoin','miter').capitalize()
-            fill='false' if node.attrib.get('fill')=='none' else 'true'
+            cap={'butt':'Flat','round':'Round','square':'Square'}[attr('stroke-linecap','butt')]
+            join=attr('stroke-linejoin','miter').capitalize()
+            fill='false' if attr('fill')=='none' else 'true'
             layers.append(f'("{raw}", {fill}, {width:g}, PenLineCap.{cap}, PenLineJoin.{join})')
         entries.append((pascal(path.stem), ', '.join(layers)))
 

@@ -21,3 +21,12 @@ paths. Exact paths, source commit, license, attribution and explicit removal of
 decorative strokes are recorded in THIRD_PARTY_NOTICES.md. Coordinates are
 normalized at authoring time; runtime recoloring uses `IconForegroundBrush`.
 The path-only generator requires no broader runtime SVG support for these assets.
+
+## Visual typesetting and eyedropper icons
+
+Eighteen upstream functional SVG sources are normalized from the audited
+Aegisub/Toshi-ban commit. THIRD_PARTY_NOTICES.md records every exact source path,
+commit, license and modification. Paths, transforms and stroke widths are baked
+to 24 units; supported stroke and fill semantics remain in real SVG sources.
+The generated catalog widens strokes lazily, without a runtime SVG dependency.
+Application identity artwork is unchanged.
