@@ -29,7 +29,7 @@ public sealed class ScreenColorDropper : Control
     public void Begin(IPointer pointer)
     {
         Cancel();_pointer=pointer;_latched=false;_moved=false;Cursor=new Cursor(StandardCursorType.Cross);pointer.Capture(this);Focus();Sample();
-        if(_sample is {} s)_anchor=new(s.X,s.Y);_timer.Start();
+        if(_sample is {} s)_anchor=new(s.X,s.Y);_moved=false;_timer.Start();
     }
     private void Sample()
     {

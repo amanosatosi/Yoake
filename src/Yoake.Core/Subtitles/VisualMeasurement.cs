@@ -9,7 +9,7 @@ public static class VisualMeasurement
         if(!document.Events.Contains(line))throw new ArgumentException("Line does not belong to document.");
         var source=string.Concat(document.Source.Where(s=>s.Record is not AssEvent e||ReferenceEquals(e,line)).Select(s=>(s.Record?.Serialize()??s.Raw)+s.Ending));
         var clone=AssDocument.Parse(source);var target=clone.Events[0];
-        var strip=new HashSet<string>(StringComparer.Ordinal){"pos","move","org","fr","frx","fry","frz","fscx","fscy","fsc","fax","fay","distort","clip","iclip","clippos","clips","bord","xbord","ybord","shad","xshad","yshad","blur","be","alpha","1a","2a","3a","4a","fad","fade","t","wtan","ctan"};
+        var strip=new HashSet<string>(StringComparer.Ordinal){"pos","move","org","fr","frx","fry","frz","fscx","fscy","fsc","fax","fay","distort","clip","iclip","clippos","clips","bord","xbord","ybord","shad","xshad","yshad","blur","be","alpha","1a","2a","3a","4a","fad","fade","t","wtan","ctan","c","1c","2c","3c","4c","1grd","2grd","3grd","4grd"};
         foreach(var tag in AssSyntax.Tags(text).Reverse())if(strip.Contains(tag.Name))text=text[..tag.Start]+text[tag.End..];
         // Reassert neutral paint and geometry after every reset and at each run.
         const string neutral="\\frx0\\fry0\\frz0\\fax0\\fay0\\fscx100\\fscy100\\bord0\\shad0\\blur0\\be0\\alpha&H00&\\1c&HFFFFFF&";

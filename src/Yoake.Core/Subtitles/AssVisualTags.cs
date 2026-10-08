@@ -102,7 +102,7 @@ public static partial class AssVisualTags
     public static string TranslateClip(string text, AssPoint delta)
     {
         var clip=Clip(text)??throw new InvalidOperationException("Unsupported clip syntax; edit the tag in the text panel.");
-        if(Scan(text).Any(t=>t.Name is "clippos" or "clips"))return TranslateClipOffset(text,delta);
+        if(Scan(text).Any(t=>t.Name is "clippos" or "clips" || t.Name=="t"&&(t.Arguments.Contains("\\clippos",StringComparison.Ordinal)||t.Arguments.Contains("\\clips",StringComparison.Ordinal))))return TranslateClipOffset(text,delta);
         if(clip.Rectangular)return SetRectangle(text,clip.Inverse,new(clip.Points[0].X+delta.X,clip.Points[0].Y+delta.Y),new(clip.Points[1].X+delta.X,clip.Points[1].Y+delta.Y));
         var numbers=DrawingNumbers(clip.Drawing);var factor=Math.Pow(2,clip.Scale-1);var output=new System.Text.StringBuilder();var cursor=0;
         for(var i=0;i<numbers.Count;i++){var number=numbers[i];output.Append(clip.Drawing[cursor..number.Start]);output.Append(Number(number.Value+(i%2==0?delta.X:delta.Y)*factor));cursor=number.Start+number.Length;}

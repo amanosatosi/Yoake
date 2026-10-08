@@ -27,7 +27,7 @@ public sealed class RotateZTool : OriginTool
 {
     public override void Render(VisualCanvas c)
     {
-        if(c.Context.Active is not {} l)return;Origin(c);var o=c.Screen(l.Origin);var radius=Math.Max(50,(c.Screen(l.Position)-o).Length);c.Ring(l.Origin,radius);
+        if(c.Context.Active is not {} l)return;Origin(c);var o=c.Screen(l.Origin);var radius=Math.Max(50,VisualToolContext.Distance(c.Screen(l.Position),o));c.Ring(l.Origin,radius);
         for(var angle=0;angle<360;angle+=30)
         {
             var a=angle*Math.PI/180;var direction=new Vector(Math.Cos(a),-Math.Sin(a));c.ScreenLine(o+direction*(radius-3),o+direction*(radius+6),Brushes.LightGray);

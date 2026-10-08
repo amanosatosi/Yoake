@@ -53,6 +53,9 @@ public sealed class VisualTypesettingTests
         var result=AssVisualTags.TranslateClip(source,new(5,7));
         Assert.Contains("\\iclip(3,m 0 0 l 400 0 400 400)",result);Assert.Contains("\\clippos(~+5,~-7)",result);
         Assert.Contains("\\t(0,1000,\\clippos(~+40,~-20))",result);
+        Assert.Equal(new AssPoint(45,27),AssVisualTags.ClipOffset(result,500,1000));
+        const string absolute="{\\clip(0,0,100,100)\\t(0,1000,\\clippos(40,20))}";
+        Assert.Equal(new AssPoint(25,17),AssVisualTags.ClipOffset(AssVisualTags.TranslateClip(absolute,new(5,7)),500,1000));
         var map=AssVisualTags.ClipTransform("{\\clip(100,80,300,240)\\clips125\\clippos(20,-10)}");
         Assert.Equal(new AssPoint(95,50),map.Map(new(100,80)));Assert.Equal(new AssPoint(100,80),map.Unmap(new(95,50)));
     }

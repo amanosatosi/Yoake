@@ -20,7 +20,8 @@ public sealed class VisualToolContext(MainWindowViewModel model,Rect video,IRead
     public VisualLine? Active=>Lines.FirstOrDefault(l=>l.Active);
     public Point Screen(AssPoint point)=>new(Video.X+point.X/Model.ScriptSize.Width*Video.Width,Video.Y+point.Y/Model.ScriptSize.Height*Video.Height);
     public AssPoint Script(Point point)=>new((point.X-Video.X)/Video.Width*Model.ScriptSize.Width,(point.Y-Video.Y)/Video.Height*Model.ScriptSize.Height);
-    public bool Near(AssPoint point,Point pointer,double radius=9)=>(Screen(point)-pointer).Length<=radius;
+    public bool Near(AssPoint point,Point pointer,double radius=9)=>Distance(Screen(point),pointer)<=radius;
+    public static double Distance(Point a,Point b)=>Math.Sqrt((a.X-b.X)*(a.X-b.X)+(a.Y-b.Y)*(a.Y-b.Y));
     public double ScriptDistance(double dip)=>dip*Model.ScriptSize.Width/Math.Max(1,Video.Width);
     public bool Begin(string name){if(Active is null)return false;Model.StopPlayback();return Model.BeginGesture(name);}
     public void Apply(Func<VisualLine,string> edit)=>Model.UpdateVisualGesture(edit);
@@ -78,7 +79,7 @@ public sealed class VisualCanvas(DrawingContext drawing,VisualToolContext contex
     }
     public void Arrow(AssPoint a,AssPoint b)
     {
-        Line(a,b);var start=Screen(a);var end=Screen(b);var d=end-start;if(d.Length<12)return;d/=d.Length;var perp=new Vector(-d.Y,d.X);
+        Line(a,b);var start=Screen(a);var end=Screen(b);var d=new Vector(end.X-start.X,end.Y-start.Y);if(d.Length<12)return;d/=d.Length;var perp=new Vector(-d.Y,d.X);
         ScreenLine(end,end-d*9+perp*4);ScreenLine(end,end-d*9-perp*4);
     }
     public void Label(string text,Point point)

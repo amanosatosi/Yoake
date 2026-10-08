@@ -128,9 +128,9 @@ public static partial class AssVisualTags
     }
     private static string TranslateClipOffset(string text,AssPoint delta)
     {
-        // Append an explicit relative offset after the existing static state.
+        // Append an explicit relative offset after the existing static and animated state.
         // Transform payloads remain byte-identical; geometry is never baked.
-        var tag=Scan(text).LastOrDefault(t=>t.Name=="clippos");
+        var tag=Scan(text).LastOrDefault(t=>t.Name is "clippos" or "clips" or "t" or "r");
         var addition="\\clippos(~"+(delta.X>=0?"+":"")+Number(delta.X)+",~"+(-delta.Y>=0?"+":"")+Number(-delta.Y)+")";
         return tag.Length==0?Splice(text,default,addition):text[..(tag.Start+tag.Length)]+addition+text[(tag.Start+tag.Length)..];
     }
