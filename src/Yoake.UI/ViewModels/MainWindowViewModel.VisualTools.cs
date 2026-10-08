@@ -31,14 +31,14 @@ public sealed partial class MainWindowViewModel
     public bool IsClipFamily=>IsClipTool||IsVectorClipTool;
     public string VisualHint=>ActiveVisualTool switch
     {
-        "Crosshair"=>"Double-click: shift visible selection ﾂｷ coordinates in script pixels",
-        "Position"=>"Square: start ﾂｷ circle: end ﾂｷ triangle: origin ﾂｷ Shift: one axis ﾂｷ endpoint time: current frame",
-        "RotateZ"=>"Drag ring: rotate ﾂｷ Ctrl: 30ﾂｰ snap ﾂｷ triangle: origin",
-        "RotateXY"=>"Drag: X/Y rotation ﾂｷ Shift: one axis ﾂｷ Ctrl: 30ﾂｰ snap ﾂｷ triangle: origin",
-        "Scale"=>"Drag: scale ﾂｷ Shift: one axis ﾂｷ Alt: aspect ﾂｷ Ctrl: 25% snap",
-        "Clip"=>"Drag: new rectangle ﾂｷ corners: resize ﾂｷ Shift+drag / inside: move clip",
-        "VectorClip"=>VectorMode+" ﾂｷ Ctrl: toggle points ﾂｷ empty drag: box select ﾂｷ Esc: cancel",
-        "Distort"=>"Drag corners: bilinear distortion ﾂｷ center: translate ﾂｷ eight normalized values",
+        "Crosshair"=>"Double-click: shift visible selection · coordinates in script pixels",
+        "Position"=>"Square: start · circle: end · triangle: origin · Shift: one axis · endpoint time: current frame",
+        "RotateZ"=>"Drag ring: rotate · Ctrl: 30° snap · triangle: origin",
+        "RotateXY"=>"Drag: X/Y rotation · Shift: one axis · Ctrl: 30° snap · triangle: origin",
+        "Scale"=>"Drag: scale · Shift: one axis · Alt: aspect · Ctrl: 25% snap",
+        "Clip"=>"Drag: new rectangle · corners: resize · Shift+drag / inside: move clip",
+        "VectorClip"=>VectorMode+" · Ctrl: toggle points · empty drag: box select · Esc: cancel",
+        "Distort"=>"Drag corners: bilinear distortion · center: translate · eight normalized values",
         _=>""
     };
     // Mangetsu's projection distance is 20000/64 layout pixels. The provider
