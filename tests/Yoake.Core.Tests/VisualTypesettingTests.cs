@@ -81,6 +81,26 @@ public sealed class VisualTypesettingTests
         Assert.StartsWith("{\\iclip(10,20,30,40)",result);Assert.Contains("\\t(0,500,\\clip(0,0,10,10))",result);
         Assert.Equal(result.Replace("\\iclip(10,20,30,40)","\\clip(10,20,30,40)"),AssVisualTags.InvertClip(result));
     }
+    [Fact] public void ScaledRectangleResizeKeepsTheOppositeDisplayedCornerFixed()
+    {
+        const string source=@"{\iclip(20,30,100,90)\clips200\clippos(5,7)\future(keep)}sign";
+        var before=AssVisualTags.ClipTransform(source);var clip=AssVisualTags.Clip(source)!;
+        var first=VisualGeometry.Add(before.Map(clip.Points[0]),new(12,-8));var opposite=before.Map(clip.Points[1]);
+        var edited=AssVisualTags.SetMappedRectangle(source,true,first,opposite);var after=AssVisualTags.ClipTransform(edited);var resized=AssVisualTags.Clip(edited)!;
+        Assert.Equal(first,after.Map(resized.Points[0]));Assert.Equal(opposite,after.Map(resized.Points[1]));
+        Assert.True(resized.Inverse);Assert.Contains(@"\clips200\clippos(5,7)\future(keep)",edited);
+    }
+    [Fact] public void ScaledVectorPointEditDoesNotDriftUntouchedPointsOrRewriteAnimation()
+    {
+        const string source=@"{\iclip(3,m 0 0 l 400 0 400 400)\clips200\clippos(5,7)\t(0,1000,\clippos(25,17))\future(keep)}sign";
+        var clip=AssVisualTags.Clip(source)!;var path=AssVectorPath.Parse(clip.Drawing,3)!;var original=path.Handles().ToArray();var before=AssVisualTags.ClipTransform(source,500,1000);
+        path.Translate(new HashSet<int>{0},new(-10,-20));
+        var edited=AssVisualTags.PreserveClipMapping(source,AssVisualTags.SetVector(source,true,3,path.Serialize(3)),500,1000);
+        var after=AssVisualTags.ClipTransform(edited,500,1000);var points=path.Handles().ToArray();
+        Assert.Equal(VisualGeometry.Add(before.Map(original[0].Point),new(-20,-40)),after.Map(points[0].Point));
+        for(var i=1;i<points.Length;i++)Assert.Equal(before.Map(original[i].Point),after.Map(points[i].Point));
+        Assert.Contains(@"\t(0,1000,\clippos(25,17))\future(keep)",edited);Assert.Equal(3,AssVisualTags.Clip(edited)!.Scale);
+    }
     [Fact] public void CubicSplitPreservesTheEntireCurve()
     {
         var path=AssVectorPath.Parse("m 0 0 b 0 100 100 100 100 0")!;var original=path.Curves().Single();path.Split(original,0.4);var curves=path.Curves().ToArray();

@@ -7,6 +7,22 @@ public readonly record struct AssClipTransform(AssPoint Offset,AssPoint Center,d
 }
 public static partial class AssVisualTags
 {
+    public static string SetMappedRectangle(string text,bool inverse,AssPoint first,AssPoint last,double time=0,double duration=0)
+    {
+        var mapping=ClipTransform(text,time,duration);
+        if(mapping.Scale<=0)throw new InvalidOperationException("Increase clips before resizing its geometry.");
+        var center=VisualGeometry.Subtract(VisualGeometry.Multiply(VisualGeometry.Add(first,last),.5),mapping.Offset);
+        var half=VisualGeometry.Multiply(VisualGeometry.Subtract(last,first),.5/mapping.Scale);
+        return SetRectangle(text,inverse,VisualGeometry.Subtract(center,half),VisualGeometry.Add(center,half));
+    }
+    // clips scales about the drawing's painted bounds. Editing its topology
+    // changes that center; compensate the offset so untouched points stay put.
+    public static string PreserveClipMapping(string original,string edited,double time=0,double duration=0)
+    {
+        var before=ClipTransform(original,time,duration);var after=ClipTransform(edited,time,duration);
+        var correction=VisualGeometry.Multiply(VisualGeometry.Subtract(after.Center,before.Center),before.Scale-1);
+        return Math.Abs(correction.X)+Math.Abs(correction.Y)<1e-9?edited:TranslateClipOffset(edited,correction);
+    }
     public static AssClipTransform ClipTransform(string text,double time=0,double duration=0)
     {
         var clip=Clip(text);var scale=100d;

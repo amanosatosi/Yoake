@@ -105,6 +105,13 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 var resized=AssVisualTags.Clip(_line.Text)!;
                 Require(resized.Inverse&&resized.Points[0]!=clip.Points[0]&&resized.Points[1]==clip.Points[1],"Corner resize must retain inverse and the opposite corner.");
                 Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"Rectangle undo must restore source.");
+                Fixture(_baseline.Replace("}",@"\clips150}",StringComparison.Ordinal));var scaledSource=_line.Text;
+                var scaledClip=AssVisualTags.Clip(scaledSource)!;var scaledMap=AssVisualTags.ClipTransform(scaledSource,400,1000);
+                var mappedCorner=scaledMap.Map(scaledClip.Points[0]);var mappedOpposite=scaledMap.Map(scaledClip.Points[1]);var targetCorner=Add(mappedCorner,Size.Width*.05,Size.Height*.05);
+                Press(mappedCorner);Move(targetCorner);Release(targetCorner);
+                var resizedScaled=AssVisualTags.Clip(_line.Text)!;var resizedMap=AssVisualTags.ClipTransform(_line.Text,400,1000);
+                Require(VisualGeometry.Distance(resizedMap.Map(resizedScaled.Points[0]),targetCorner)<.002&&VisualGeometry.Distance(resizedMap.Map(resizedScaled.Points[1]),mappedOpposite)<.002,"Scaled clip resize must follow the pointer while keeping the opposite displayed corner fixed.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==scaledSource,"Scaled corner resize must undo exactly.");Fixture(_baseline);
                 Fixture(_line!.Text.Replace("}",@"\clippos(5,-7)\t(0,1000,\clippos(20,10))}",StringComparison.Ordinal));
                 var shiftedSource=_line.Text;var beforeMask=AssVisualTags.Clip(shiftedSource)!;
                 var offset=AssVisualTags.ClipOffset(shiftedSource,400,1000);var center=Add(_position,offset.X,offset.Y);

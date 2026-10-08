@@ -108,7 +108,8 @@ public sealed class VectorClipTool : VisualTool
     private static string Save(VisualLine line,AssVectorPath path,bool inverse)
     {
         if(path.PointCount==0)return AssVisualTags.RemoveClip(line.Text);
-        var clip=AssVisualTags.Clip(line.Text);return AssVisualTags.SetVector(line.Text,clip?.Inverse??inverse,clip?.Scale??1,path.Serialize(clip?.Scale??1));
+        var clip=AssVisualTags.Clip(line.Text);var edited=AssVisualTags.SetVector(line.Text,clip?.Inverse??inverse,clip?.Scale??1,path.Serialize(clip?.Scale??1));
+        return clip is null?edited:AssVisualTags.PreserveClipMapping(line.Text,edited,line.RelativeTime,line.Duration);
     }
     public override void Move(VisualToolContext c,VisualPointer p)
     {

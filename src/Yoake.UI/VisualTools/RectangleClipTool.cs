@@ -49,16 +49,15 @@ public sealed class RectangleClipTool : VisualTool
             var clip=AssVisualTags.Clip(l.Text);if(clip is {Rectangular:false})return l.Text;
             if(translate)return clip is null?l.Text:AssVisualTags.TranslateClip(l.Text,delta);
             var mapping=AssVisualTags.ClipTransform(l.Text,l.RelativeTime,l.Duration);
-            var point=mapping.Unmap(p.Script);
             if(corner>=0&&clip is not null)
             {
-                point=VisualGeometry.Add(Corners(clip)[corner],VisualGeometry.Multiply(delta,1/mapping.Scale));
-                var a=clip.Points[0];var b=clip.Points[1];
+                var point=VisualGeometry.Add(mapping.Map(Corners(clip)[corner]),delta);
+                var a=mapping.Map(clip.Points[0]);var b=mapping.Map(clip.Points[1]);
                 if(corner is 0 or 3)a=a with{X=point.X};else b=b with{X=point.X};
                 if(corner is 0 or 1)a=a with{Y=point.Y};else b=b with{Y=point.Y};
-                return AssVisualTags.SetRectangle(l.Text,clip.Inverse,a,b);
+                return AssVisualTags.SetMappedRectangle(l.Text,clip.Inverse,a,b,l.RelativeTime,l.Duration);
             }
-            return AssVisualTags.SetRectangle(l.Text,clip?.Inverse??c.Model.InverseClip,mapping.Unmap(Anchor.Script),point);
+            return AssVisualTags.SetMappedRectangle(l.Text,clip?.Inverse??c.Model.InverseClip,Anchor.Script,p.Script,l.RelativeTime,l.Duration);
         });
     }
     public override StandardCursorType Cursor(VisualToolContext? c,VisualPointer p)

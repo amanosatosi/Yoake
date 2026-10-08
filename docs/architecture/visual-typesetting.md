@@ -34,6 +34,9 @@ Clip geometry uses an integer drawing scale plus a separate script-space mapping
 for `clippos` and `clips`. Static/relative offsets, animation and resets resolve
 for overlay display. Translating clips with these state tags appends an explicit
 relative clippos after the existing animated state; it does not bake vector points or rewrite animation payloads.
+Scaled rectangle resizing solves both raw corners from their desired displayed
+positions. Vector topology edits compensate for the changed painted-bounds scale
+center with a relative clip offset, keeping untouched points fixed at the current frame.
 Rectangular misses never convert vectors. Vector topology is m/n/l/b, with ASS
 s/p/c splines evaluated as cubics for editing. Point moves, line/cubic conversion,
 De Casteljau splitting, removal and sampled/freehand smoothing are deterministic.
