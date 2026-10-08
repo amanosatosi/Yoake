@@ -121,8 +121,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         set
         {
             if (ReferenceEquals(_selectedEvent,value)) return;
-            if (!CommitDraft()) { OnPropertyChanged(); return; }
             CancelGesture();
+            if (!CommitDraft()) { OnPropertyChanged(); return; }
             _selectedEvent?.ShowDraft(null);_selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft();
             // A programmatic jump outside the bulk selection must select its
             // destination. Moving the current row inside that selection keeps it.
@@ -159,6 +159,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         {
             var time=MediaDurationSeconds>0 ? Math.Clamp(value,0,MediaDurationSeconds) : Math.Max(0,value);
             if (!double.IsFinite(time) || Math.Abs(_currentTimeSeconds-time)<0.00001) return;
+            CancelGesture();
             _currentTimeSeconds=time; OnPropertyChanged(); OnPropertyChanged(nameof(TimeDisplay));OnPropertyChanged(nameof(FramePositionDisplay));OnPropertyChanged(nameof(RelativeTimingDisplay));
             _activeSubtitleDocument?.UpdateActiveTime((long)(time*1000));
             if (!_clockUpdateFromPlayback && _media?.HasVideo==true) _=RefreshVideoFrameAsync(time);
@@ -189,12 +190,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     private void CreateNewDocument()
     {
+        CancelGesture();
         if (!CommitDraft()) return;
         var session=_workspace.CreateUntitled(); Attach(session,AssDocument.CreateEmpty()); SynchronizeActiveDocument(); SubtitleStatus="New ASS document";
     }
     private void Attach(DocumentSession session, AssDocument document)
     {
-        var state=new DocumentState(new SubtitleEditor(document)); _documents[session.Id]=state;
+        var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds}; _documents[session.Id]=state;
         document.Changed+=(_,_)=> { session.IsDirty=true; if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision)); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
@@ -213,6 +215,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public bool OpenSubtitle(string path)
     {
+        CancelGesture();
         if (!CommitDraft()) return false;
         try
         {
@@ -268,7 +271,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         IsSynchronizingSelection=true;
         try
         {
-            CancelGesture(); StopPlayback(); Interlocked.Increment(ref _seekGeneration);
+            CancelGesture(); CancelVisualBounds(); StopPlayback(); Interlocked.Increment(ref _seekGeneration);
             if (_activeId is { } old && _documents.TryGetValue(old,out var previous)) { previous.Time=CurrentTimeSeconds; previous.Selected=SelectedEvent; }
             _activeId=id;
             var state=id is { } key && _documents.TryGetValue(key,out var found) ? found : null;
@@ -285,7 +288,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         if (_activeId is not { } id || !_documents.TryGetValue(id,out var state)) return false;
         StopPlayback(); state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
-        MediaStatus=$"FFMS2 indexing {Path.GetFileName(path)}…";
+        MediaStatus=$"FFMS2 indexing {Path.GetFileName(path)}窶ｦ";
         FfmsMediaSession? opened=null;
         try
         {
@@ -340,7 +343,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public void Dispose()
     {
-        if (_disposed) return; _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
+        if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
         foreach(var state in _documents.Values) { state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
         foreach(var tab in Tabs) tab.Dispose(); Tabs.Clear(); DisposeSubtitleRenderer(); VideoFrame=null;
     }

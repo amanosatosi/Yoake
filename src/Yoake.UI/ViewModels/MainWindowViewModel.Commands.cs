@@ -16,7 +16,7 @@ public sealed partial class MainWindowViewModel
     public ICommand PositionToolCommand => Actions[CommandIds.VideoToolPosition];
     public ICommand ClipToolCommand => Actions[CommandIds.VideoToolClip];
     public IReadOnlyList<double> GridColumnWidths=>_settings.CompactGridColumnWidths??new[]{_settings.GridColumnWidths[0],36,_settings.GridColumnWidths[3],_settings.GridColumnWidths[4],_settings.GridColumnWidths[5],_settings.GridColumnWidths[6],_settings.GridColumnWidths[7]};
-    public double AudioWindowSeconds { get; set; } = 20;
+    public double AudioWindowSeconds {get=>_settings.AudioWindowSeconds??20;set=>InvokeAudioSetting("audio/display/zoom",value);}
     public event EventHandler? AudioZoomChanged;
     private IUndoTransaction? _gesture;
     private SubtitleEditor? _gestureEditor;
@@ -47,6 +47,7 @@ public sealed partial class MainWindowViewModel
         CancelGesture(); if (!CommitDraft() || ActiveEditor is null || SelectedEvent is null) return false;
         _gestureEditor=ActiveEditor; _gestureLine=SelectedEvent; _gestureText=SelectedEvent.Text;
         _gestureStart=SelectedEvent.StartMilliseconds??0; _gestureEnd=SelectedEvent.EndMilliseconds??_gestureStart;
+        _visualBaseline=VisibleVisualLines().ToArray();
         _gesture=_gestureEditor.Undo.BeginTransaction(name); return true;
     }
     private void UpdateTimingGestureCore(int part, double deltaSeconds)
@@ -70,8 +71,8 @@ public sealed partial class MainWindowViewModel
         _gestureEditor.SetField(_gestureLine,"Text",text,"Edit subtitle clip");GestureChanged();
     }
     private void GestureChanged(){InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));}
-    private void EndGestureCore() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); ReloadDraft(); } }
-    private void CancelGestureCore() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); if(gesture is not null)ReloadDraft(); }
+    private void EndGestureCore() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); _visualBaseline=[]; ReloadDraft(); GestureEnded?.Invoke(this,EventArgs.Empty); } }
+    private void CancelGestureCore() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); _visualBaseline=[]; if(gesture is not null){ReloadDraft();GestureEnded?.Invoke(this,EventArgs.Empty);} }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
     private AssEvent[] Selection() => SelectedEvents.Where(Events.Contains).DefaultIfEmpty(SelectedEvent).OfType<AssEvent>().Distinct().ToArray();
     private void Select(AssEvent? line) { SetSelectedEvents(line is null?Array.Empty<AssEvent>():new[]{line}); SelectedEvent=line; }
@@ -115,7 +116,7 @@ public sealed partial class MainWindowViewModel
             return ValueTask.CompletedTask;
         });
         bool HasLine()=>HasSelectedEvent && _gesture is null;
-        foreach(var setting in new[]{"audio/volume","audio/mute","audio/display/height","audio/display/intensity"})
+        foreach(var setting in new[]{"audio/volume","audio/mute","audio/display/height","audio/display/intensity","audio/display/zoom","audio/volume/link"})
         {var id=setting;R(id,id,i=>{SaveAudioSetting(id,i.Parameter);return ValueTask.CompletedTask;});}
         S(CommandIds.FormatBold,"Bold  Ctrl+B",()=>ToggleFormat("b"),HasLine);
         S(CommandIds.FormatItalic,"Italic  Ctrl+I",()=>ToggleFormat("i"),HasLine);
@@ -132,6 +133,7 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.GestureTiming,"Drag subtitle timing",i=>{if(i.Parameter is TimingGestureUpdate p)GestureStep(()=>UpdateTimingGestureCore(p.Part,p.Delta));return ValueTask.CompletedTask;});
         R(CommandIds.GesturePosition,"Drag subtitle position",i=>{if(i.Parameter is PositionGestureUpdate p)GestureStep(()=>UpdatePositionGestureCore(p.X,p.Y));return ValueTask.CompletedTask;});
         R(CommandIds.GestureClip,"Drag subtitle clip",i=>{if(i.Parameter is ClipGestureUpdate p)GestureStep(()=>UpdateClipGestureCore(p.PointIndex,p.Point,p.Anchor));return ValueTask.CompletedTask;});
+        R("video/visual/update","Update visual typesetting gesture",i=>{if(i.Parameter is Func<VisualLine,string> edit)GestureStep(()=>UpdateVisualGestureCore(edit));return ValueTask.CompletedTask;});
         S(CommandIds.GestureCommit,"Commit editor gesture",EndGestureCore);
         S(CommandIds.GestureCancel,"Cancel editor gesture",CancelGestureCore);
         R(CommandIds.GridColumnWidths,"Resize subtitle columns",i=>
@@ -146,7 +148,7 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.SubtitleSaveAs,"Save As…  Ctrl+Shift+S",async _=>{await SaveAsync(true);});
         R(CommandIds.SubtitleClose,"Close tab  Ctrl+W",async i=>{if(i.Parameter is Guid id)await CloseDocumentAsync(id);else if(_activeId is {} active)await CloseDocumentAsync(active);});
         R(CommandIds.SubtitleRevert,"Reload from disk…",async _=>{if(!CommitDraft() || ActiveSubtitlePath is not {} path || Dialogs is null || !await Dialogs.ConfirmRevertAsync())return; var doc=AssDocument.Load(path); var session=_workspace.ActiveDocument!; var state=_documents[session.Id]; Attach(session,doc); var replacement=_documents[session.Id]; replacement.Media=state.Media; replacement.Waveform=state.Waveform; replacement.Time=state.Time; state.Loading?.Cancel(); _activeId=null; SynchronizeActiveDocument();},()=>ActiveSubtitlePath is not null);
-        R(CommandIds.WorkspaceActivateTab,"Activate tab",i=>{if(i.Parameter is Guid id && CommitDraft())_workspace.Activate(id);return ValueTask.CompletedTask;});
+        R(CommandIds.WorkspaceActivateTab,"Activate tab",i=>{CancelGesture();if(i.Parameter is Guid id && CommitDraft())_workspace.Activate(id);return ValueTask.CompletedTask;});
         S(CommandIds.EditUndo,"Undo  Ctrl+Z",()=>{var wasGesture=_gesture is not null;CancelGesture();if(wasGesture)return; if(Draft?.IsChanged==true){ReloadDraft();return;} ApplyHistory(false);},()=>Draft?.IsChanged==true || _undo.CanUndo || _gesture is not null);
         S(CommandIds.EditRedo,"Redo  Ctrl+Y",()=>{CancelGesture(); if(CommitDraft())ApplyHistory(true);},()=>_undo.CanRedo);
         S(CommandIds.EditCommit,"Commit line  Ctrl+Enter",()=>CommitDraft(),HasLine);
@@ -185,10 +187,12 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.StylesManage,"Styles Manager…",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} editor){await Dialogs.ShowStylesAsync(editor);OnPropertyChanged(nameof(StyleNames));ReloadDraft();}});
         R(CommandIds.ScriptInfoEdit,"Script Info…",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} editor)await Dialogs.ShowScriptInfoAsync(editor);});
         R(CommandIds.EditFind,"Find / Replace…  Ctrl+F",async _=>{if(CommitDraft()&&Dialogs is not null)await Dialogs.ShowFindAsync(this);});
-        S(CommandIds.AudioZoomIn,"Zoom audio in  +",()=>{AudioWindowSeconds=Math.Max(0.02,AudioWindowSeconds/2);AudioZoomChanged?.Invoke(this,EventArgs.Empty);});
-        S(CommandIds.AudioZoomOut,"Zoom audio out  -",()=>{AudioWindowSeconds=Math.Min(3600,AudioWindowSeconds*2);AudioZoomChanged?.Invoke(this,EventArgs.Empty);});
-        S(CommandIds.VideoToolPosition,"Position tool",()=>{CancelGesture();ActiveVisualTool="Position";});
-        S(CommandIds.VideoToolClip,"Clip tool",()=>{CancelGesture();ActiveVisualTool="Clip";});
+        S(CommandIds.AudioZoomIn,"Zoom audio in  +",()=>AudioWindowSeconds=Math.Max(0.02,AudioWindowSeconds/2));
+        S(CommandIds.AudioZoomOut,"Zoom audio out  -",()=>AudioWindowSeconds=Math.Min(3600,AudioWindowSeconds*2));
+        foreach(var name in VisualToolNames){var tool=name;S("video/tool/"+(tool=="Clip"?"clip":tool=="Position"?"position":tool.ToLowerInvariant()),tool+" tool",()=>SelectVisualTool(tool));}
+        foreach(var name in VectorModes){var mode=name;S("video/vector/"+mode.ToLowerInvariant(),"Vector clip: "+mode,()=>{CancelGesture();VectorMode=mode;});}
+        S("video/position/toggle-move","Toggle position / movement",ToggleVisualMove,HasLine);
+        S("video/clip/invert","Invert selected clips",InvertVisualClip,HasLine);
         S(CommandIds.ViewThemeCycle,"Cycle theme",()=>{_settings=_settings with{Theme=_theme.Next()};_settingsStore.Save(_settings);});
         void H(string id,string key,KeyModifiers modifiers=KeyModifiers.None,HotkeyContext context=HotkeyContext.Always)=>Hotkeys.Add(new(id,context,new(key,modifiers)));
         H(CommandIds.SubtitleNew,"N",KeyModifiers.Control);H(CommandIds.SubtitleOpen,"O",KeyModifiers.Control);H(CommandIds.SubtitleSave,"S",KeyModifiers.Control);H(CommandIds.SubtitleSaveAs,"S",KeyModifiers.Control|KeyModifiers.Shift);H(CommandIds.SubtitleClose,"W",KeyModifiers.Control);

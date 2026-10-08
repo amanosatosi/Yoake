@@ -6,32 +6,22 @@ public readonly record struct AssTagSpan(int Start, int Length, string Name, str
 public readonly record struct AssPoint(double X, double Y);
 public sealed record AssClip(bool Inverse, int Scale, string Drawing, IReadOnlyList<AssPoint> Points, bool Rectangular);
 
-public static class AssVisualTags
+public static partial class AssVisualTags
 {
     // Scan override blocks, tracking balanced parentheses. A tag inside \t is
     // never mistaken for the static tag being edited. Source ranges are spliced.
     public static IReadOnlyList<AssTagSpan> Scan(string text)
     {
         var tags = new List<AssTagSpan>();
-        for (var block = text.IndexOf('{'); block >= 0; block = text.IndexOf('{', block + 1))
+        foreach (var span in AssSyntax.Tags(text))
         {
-            var end = text.IndexOf('}', block + 1); if (end < 0) break;
-            for (var i = block + 1; i < end; i++)
+            var args = text[span.ValueStart..span.End].TrimEnd();
+            if (args.StartsWith('('))
             {
-                if (text[i] != '\\') continue;
-                var start = i; var nameStart = ++i;
-                while (i < end && char.IsAsciiLetterOrDigit(text[i])) i++;
-                var name = text[nameStart..i];
-                if (i < end && text[i] == '(')
-                {
-                    var args = ++i; var depth = 1;
-                    while (i < end && depth > 0) { if (text[i] == '(') depth++; else if (text[i] == ')') depth--; i++; }
-                    if (depth == 0) tags.Add(new(start, i - start, name, text[args..(i - 1)]));
-                }
-                else { while (i < end && text[i] != '\\') i++; }
-                i--;
+                if (!args.EndsWith(')')) continue;
+                args = args[1..^1];
             }
-            block = end;
+            tags.Add(new(span.Start, span.End-span.Start, span.Name, args));
         }
         return tags;
     }
@@ -112,6 +102,7 @@ public static class AssVisualTags
     public static string TranslateClip(string text, AssPoint delta)
     {
         var clip=Clip(text)??throw new InvalidOperationException("Unsupported clip syntax; edit the tag in the text panel.");
+        if(Scan(text).Any(t=>t.Name is "clippos" or "clips"))return TranslateClipOffset(text,delta);
         if(clip.Rectangular)return SetRectangle(text,clip.Inverse,new(clip.Points[0].X+delta.X,clip.Points[0].Y+delta.Y),new(clip.Points[1].X+delta.X,clip.Points[1].Y+delta.Y));
         var numbers=DrawingNumbers(clip.Drawing);var factor=Math.Pow(2,clip.Scale-1);var output=new System.Text.StringBuilder();var cursor=0;
         for(var i=0;i<numbers.Count;i++){var number=numbers[i];output.Append(clip.Drawing[cursor..number.Start]);output.Append(Number(number.Value+(i%2==0?delta.X:delta.Y)*factor));cursor=number.Start+number.Length;}

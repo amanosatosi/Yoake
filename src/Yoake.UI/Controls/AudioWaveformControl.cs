@@ -62,7 +62,15 @@ public sealed class AudioWaveformControl : Control
         if(e.PropertyName==nameof(MainWindowViewModel.CurrentTimeSeconds) && model.IsPlaying && (model.CurrentTimeSeconds<ViewportStart||model.CurrentTimeSeconds>ViewportStart+VisibleSeconds)){ViewportStart=Math.Max(0,model.CurrentTimeSeconds-VisibleSeconds/5);RequestSpectrum();}
         InvalidateVisual();
     }
-    private void ZoomChanged(object? sender,EventArgs e){if(Model is {} model){VisibleSeconds=model.AudioWindowSeconds;ViewportStart=Math.Max(0,model.CurrentTimeSeconds-VisibleSeconds/5);RequestSpectrum();InvalidateVisual();}}
+    private double? _zoomAnchor;
+    private void ZoomChanged(object? sender,EventArgs e)
+    {
+        if(Model is not {} model)return;
+        var oldSpan=VisibleSeconds;var oldStart=ViewportStart;
+        var anchor=_zoomAnchor??(model.CurrentTimeSeconds>=oldStart&&model.CurrentTimeSeconds<=oldStart+oldSpan?model.CurrentTimeSeconds:oldStart+oldSpan/2);
+        var span=model.AudioWindowSeconds;var start=AudioViewportMath.AnchoredStart(oldStart,oldSpan,span,anchor,model.MediaDurationSeconds);
+        VisibleSeconds=span;ViewportStart=start;RequestSpectrum();InvalidateVisual();
+    }
     private double X(double seconds)=>(seconds-ViewportStart)/VisibleSeconds*Bounds.Width;
     private double Time(double x)=>Math.Max(0,ViewportStart+x/Math.Max(1,Bounds.Width)*VisibleSeconds);
     public override void Render(DrawingContext context)
@@ -134,8 +142,13 @@ public sealed class AudioWaveformControl : Control
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);
-        if(e.KeyModifiers.HasFlag(KeyModifiers.Control)) { VisibleSeconds=Math.Clamp(VisibleSeconds*Math.Pow(1.25,-e.Delta.Y),0.02,3600); }
-        else ViewportStart=Math.Clamp(ViewportStart-(e.Delta.X+e.Delta.Y)*VisibleSeconds/10,0,Math.Max(0,(Model?.MediaDurationSeconds??0)-VisibleSeconds));
+        if(_drag){e.Handled=true;return;}
+        if(e.KeyModifiers.HasFlag(KeyModifiers.Shift)&&Model is {} amplitudeModel)amplitudeModel.AudioAmplitude+=e.Delta.Y*3;
+        else if(e.KeyModifiers.HasFlag(KeyModifiers.Control)&&Model is {} model)
+        {
+            _zoomAnchor=Time(e.GetPosition(this).X);try{model.AudioWindowSeconds=Math.Clamp(VisibleSeconds*Math.Pow(1.25,-e.Delta.Y),0.02,3600);}finally{_zoomAnchor=null;}
+        }
+        else ViewportStart=Math.Clamp(ViewportStart+(e.Delta.X-e.Delta.Y)*VisibleSeconds/10,0,Math.Max(0,(Model?.MediaDurationSeconds??0)-VisibleSeconds));
         RequestSpectrum();InvalidateVisual();e.Handled=true;
     }
     private async void RequestSpectrum()

@@ -33,3 +33,28 @@ Modifications: path coordinates scaled from 64 to 24 units, black fill replaced
 with semantic currentColor, Inkscape metadata removed, decorative two-unit
 black stroke deliberately removed for compact filled silhouettes. No unsupported
 stroke/transform is passed to the SVG generator. Application identity is independent.
+
+
+## Visual authoring artwork
+
+Yoake adapts functional SVG artwork from https://github.com/amanosatosi/Aegisub_Toshi-ban
+at `28b5156df94cb2538d373db503445d2b07466396`, BSD 3-Clause,
+Copyright (c) 2004-2012, Aegisub Project; the full license is retained at
+`third_party/licenses/Aegisub-BSD-3-Clause.txt` and packaged in `licenses/`.
+
+Exact source directory: `docs/art-sources/buttons/`. Source filenames:
+`visual_standard.svg`, `visual_move.svg`, `visual_rotatez.svg`,
+`visual_rotatexy.svg`, `visual_scale.svg`, `visual_clip.svg`,
+`visual_vector_clip.svg`, `visual_perspective.svg`, `visual_move_conv_move.svg`,
+`eyedropper_tool.svg`, `visual_vector_clip_drag.svg`,
+`visual_vector_clip_line.svg`, `visual_vector_clip_bicubic.svg`,
+`visual_vector_clip_convert.svg`, `visual_vector_clip_insert.svg`,
+`visual_vector_clip_remove.svg`, `visual_vector_clip_freehand.svg`,
+`visual_vector_clip_freehand_smooth.svg`.
+
+Adaptations: all coordinates and stroke widths scaled from 64 to 24 units;
+fill/stroke colors replaced with semantic currentColor; Inkscape metadata and
+unused defs removed. Curves, strokes, caps, joins and fill rules are retained.
+The quadrilateral icon is renamed Distort and denotes Mangetsu bilinear
+four-corner authoring; it does not introduce Aegisub tag semantics.
+No upstream application identity artwork is used.

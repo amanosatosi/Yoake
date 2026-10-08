@@ -97,6 +97,45 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.True(_model.BeginGesture("Position gesture"));_model.UpdatePositionGesture(100,200);Assert.Equal(new AssPoint(100,200),AssVisualTags.Position(_model.VisualText));Assert.Contains("\\pos(100,200)",_model.PreviewSource());_model.UpdatePositionGesture(300,400);_model.EndGesture();Assert.Equal(new AssPoint(300,400),AssVisualTags.Position(line.Text));
         Assert.Equal("Position gesture",_model.ActiveEditor!.Undo.NextUndoName);await Command(CommandIds.EditUndo);Assert.Equal("",line.Text);
     }
+    [Fact] public async Task VisualSelectionIsVisibleOnlyTransactionalAndUsesLiveGestureText()
+    {
+        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;
+        _model.ActiveEditor!.SetTiming(first,0,1000);_model.ActiveEditor.SetField(first,"Text","{\\pos(100,100)\\org(50,50)\\future(x)}first","Fixture");
+        await Command(CommandIds.GridDuplicate);var second=_model.SelectedEvent!;_model.ActiveEditor.SetField(second,"Text","{\\pos(200,150)}second","Fixture");
+        await Command(CommandIds.GridDuplicate);var comment=_model.SelectedEvent!;_model.ActiveEditor.ToggleComment([comment]);
+        await Command(CommandIds.GridDuplicate);var hidden=_model.SelectedEvent!;_model.ActiveEditor.ToggleComment([hidden]);_model.ActiveEditor.SetTiming(hidden,2000,3000);
+        _model.SelectedEvent=first;await Command(CommandIds.GridSelectAll);_model.CurrentTimeSeconds=0.5;
+        Assert.Equal(2,_model.VisibleVisualLines().Count);var originals=_model.Events.Select(l=>l.Text).ToArray();
+        Assert.True(_model.BeginGesture("Move two visible lines"));
+        foreach(var dx in new[]{10d,20d,30d})_model.UpdateVisualGesture(l=>AssVisualTags.ShiftPosition(l.Text,l.DefaultPosition,new(dx,5)));
+        Assert.Equal(new AssPoint(130,105),AssVisualTags.Position(first.Text));Assert.Equal(new AssPoint(230,155),AssVisualTags.Position(second.Text));
+        Assert.Contains("\\pos(130,105)",_model.PreviewSource());Assert.Equal(originals[2],comment.Text);Assert.Equal(originals[3],hidden.Text);
+        _model.EndGesture();Assert.Equal("Move two visible lines",_model.ActiveEditor.Undo.NextUndoName);await Command(CommandIds.EditUndo);
+        Assert.Equal(originals,_model.Events.Select(l=>l.Text).ToArray());
+    }
+    [Theory][InlineData("edit/cancel")][InlineData("video/tool/rotatez")][InlineData("video/tool/vectorclip")]
+    public async Task VisualCancellationAndToolSwitchRestoreTheBatch(string command)
+    {
+        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(line,0,1000);var source=line.Text;
+        Assert.True(_model.BeginGesture("Visual gesture"));_model.UpdateVisualGesture(l=>AssVisualTags.SetOrigin(l.Text,new(20,30)));Assert.NotEqual(source,line.Text);
+        await Command(command);Assert.Equal(source,line.Text);Assert.False(_model.HasGesture);Assert.DoesNotContain("\\org(20,30)",_model.PreviewSource());
+    }
+    [Fact] public async Task VisualExceptionAndSeekRollbackWithoutPartialEdits()
+    {
+        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(line,0,1000);
+        Assert.True(_model.BeginGesture("Visual gesture"));_model.UpdateVisualGesture(l=>AssVisualTags.SetOrigin(l.Text,new(20,30)));_model.CurrentTimeSeconds=.5;
+        Assert.Equal("",line.Text);Assert.False(_model.HasGesture);
+        Assert.True(_model.BeginGesture("Visual failure"));_model.UpdateVisualGesture(_=>throw new InvalidOperationException("deterministic failure"));
+        Assert.False(_model.HasGesture);Assert.Equal("",line.Text);
+    }
+    [Fact] public async Task AudioZoomAndLinkPersistAndUnlinkRestoresIndependentControls()
+    {
+        _model.AudioHorizontalZoom=75;_model.AudioAmplitude=75;_model.AudioVolumeLinked=true;
+        Assert.Equal(.75,_model.PlaybackVolume,8);Assert.False(_model.IsVolumeIndependent);
+        var settings=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.True(settings.AudioVolumeLinked);Assert.Equal(_model.AudioWindowSeconds,settings.AudioWindowSeconds);
+        _model.AudioVolumeLinked=false;_model.PlaybackVolume=.2;_model.AudioAmplitude=50;Assert.Equal(.2,_model.PlaybackVolume);
+        await Command("audio/display/height",230d);Assert.Equal(230,_model.AudioDisplayHeight);
+    }
     [Fact] public async Task MultiRowCommandsWorkAcrossUndo()
     {
         await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridDuplicate);Assert.Equal(4,_model.Events.Count);

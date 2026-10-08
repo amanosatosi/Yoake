@@ -100,6 +100,9 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
             case 9:
                 Require(_colors is not null,"Canonical color dialog must open.");
                 Require(Named<ColorSpectrum>(_colors!,"ColorSpectrum").Bounds.Width>=256&&Named<ColorSpectrum>(_colors!,"ColorSpectrum").Bounds.Height>=256,"Canonical picker must realize a full 2D spectrum.");
+                Require(Named<ColorStrip>(_colors!,"ColorHue").Bounds.Height>=256&&Named<ColorStrip>(_colors!,"ColorTransparency").Bounds.Height>=256,"Hue/alpha use dedicated thin-selector strips.");
+                Require(!_colors!.GetVisualDescendants().OfType<Slider>().Any(),"Color strips must not contain Fluent slider thumbs.");
+                Require(Named<ScreenColorDropper>(_colors!,"ScreenMagnifier").Bounds.Width>=56,"Desktop sampling must have a 7x7 live magnifier.");
                 Require(Named<StackPanel>(_colors!,"RecentColors").Bounds.Height>0,"Recent colors must have a separate visible area.");Capture(_colors!,"color-picker-dark",1);_colors!.RequestedThemeVariant=ThemeVariant.Light;return false;
             case 10:
                 Capture(_colors!,"color-picker-light",1);_colors!.Close();return false;
@@ -221,8 +224,12 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(window.GetVisualDescendants().OfType<AssColorButton>().Count(b=>b.Bounds.Width>=30&&b.Bounds.Height>=24&&b.Command is not null)==4,"All four command-backed color swatches must be realized.");
         var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
         Require(audio.TranslatePoint(default,window)!.Value.Y<editor.TranslatePoint(default,window)!.Value.Y,"Audio must remain above the edit panel.");
-        Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>20&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>20&&window.FindControl<Slider>("AudioSize")!.Bounds.Height>20,"Three independent audio controls must be realized.");
+        Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>20&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>20&&window.FindControl<Slider>("AudioHorizontalZoom")!.Bounds.Height>20,"Horizontal zoom, display amplitude and playback volume must be realized.");
+        Require(window.FindControl<Slider>("AudioSize") is null,"No vertical audio-height slider may remain.");
+        Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("AudioVolumeLink")!.Bounds.Width>=40,"Amplitude/volume link must be directly below the sliders.");
+        Require(window.FindControl<GridSplitter>("AudioSplitter")!.Bounds.Height>=4,"Audio height must have a real sash.");
         Require(window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!.Bounds.Width>200,"Audio must have an attached horizontal panner.");
+        foreach(var name in MainWindowViewModel.VisualToolNames)Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("VisualTool"+name) is {Bounds.Width:>20},"Baseline visual tool must realize: "+name);
         var video=window.FindControl<Grid>("VideoRegion")!;var tools=window.FindControl<Border>("VisualToolsBar")!;
         var videoBottom=video.TranslatePoint(new Point(0,video.Bounds.Height),window)!.Value.Y;var toolsTop=tools.TranslatePoint(default,window)!.Value.Y;
         Require(toolsTop-videoBottom<12,"Visual tools must immediately adjoin the video workspace.");

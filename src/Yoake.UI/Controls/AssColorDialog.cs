@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Interactivity;
+using Yoake.UI.Icons;
 using Avalonia.Media;
 using Yoake.Core.Commands;
 using Yoake.Core.Logging;
@@ -16,8 +18,8 @@ public sealed class AssColorDialog : Window
 {
     private AssColor _color;
     private readonly ColorSpectrum _spectrum=new(){Name="ColorSpectrum"};
-    private readonly Slider _hue=new(){Name="ColorHue",Minimum=0,Maximum=359.99,Orientation=Orientation.Vertical,IsDirectionReversed=true,Width=24};
-    private readonly Slider _alpha=new(){Name="ColorTransparency",Minimum=0,Maximum=255,Orientation=Orientation.Vertical,IsDirectionReversed=true,Width=24};
+    private readonly ColorStrip _hue=new(){Name="ColorHue",Maximum=359.99};
+    private readonly ColorStrip _alpha=new(){Name="ColorTransparency",Maximum=255};
     private readonly NumericUpDown[][] _channels=[new NumericUpDown[3],new NumericUpDown[3],new NumericUpDown[3]];
     private readonly NumericUpDown _alphaNumber=new(){Minimum=0,Maximum=255,Increment=1,Width=92,FormatString="0",Padding=new Thickness(3,1)};
     private readonly TextBox _exact=new(){Name="AssHex",Padding=new Thickness(4,1)};
@@ -27,7 +29,8 @@ public sealed class AssColorDialog : Window
     private readonly TextBlock _error=new(){TextWrapping=TextWrapping.Wrap,FontSize=11};
     private readonly RecentColorStore _recent;
     private readonly CommandRegistry _commands=new(new FileAppLog(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Yoake","authoring.log")));
-    private readonly List<Window> _droppers=[];
+    private readonly ScreenColorDropper _dropper=new();
+    private IPointer? _lastPointer;
     private bool _sync,_valid=true;
     public AssColor SelectedColor=>_color;
     public AssColorDialog(AssColor color,string? historyPath=null)
@@ -38,8 +41,7 @@ public sealed class AssColorDialog : Window
         var left=new StackPanel{Spacing=6};root.Children.Add(left);
         left.Children.Add(new TextBlock{Text="Color spectrum · HSV/H",FontWeight=FontWeight.SemiBold});
         var spectra=new Grid{ColumnDefinitions=new("*,24,24"),ColumnSpacing=4,Height=256};spectra.Children.Add(_spectrum);
-        // Fluent's slider template does not paint Slider.Background. Keep the
-        // component gradients as explicit visuals behind the native slider input.
+        // Paint gradients separately; dedicated input controls only draw thin markers.
         var hueStrip=new Grid{Name="HueStrip"};var hueGradient=new Border();hueStrip.Children.Add(hueGradient);hueStrip.Children.Add(_hue);Grid.SetColumn(hueStrip,1);spectra.Children.Add(hueStrip);
         var alphaStrip=new Grid();alphaStrip.Children.Add(new CheckerboardControl());alphaStrip.Children.Add(_transparencyGradient);alphaStrip.Children.Add(_alpha);Grid.SetColumn(alphaStrip,2);spectra.Children.Add(alphaStrip);left.Children.Add(spectra);
         var hueStops=new GradientStops();for(var h=0;h<=360;h+=60){var c=ColorSpace.FromHsv(h,1,1);hueStops.Add(new(Color.FromRgb(c.Red,c.Green,c.Blue),h/360d));}
@@ -63,8 +65,8 @@ public sealed class AssColorDialog : Window
         right.Children.Add(new TextBlock{Text="0 = opaque · 255 = transparent",FontSize=11});
         right.Children.Add(new TextBlock{Text="ASS &HAABBGGRR"});right.Children.Add(_exact);right.Children.Add(new TextBlock{Text="HTML #RRGGBB · alpha stays separate"});right.Children.Add(_html);
         _spectrum.ValueChanged+=(_,_)=>{if(!_sync){_color=_spectrum.Color(_color.Transparency);Refresh();}};
-        _hue.PropertyChanged+=(_,e)=>{if(e.Property==Slider.ValueProperty&&!_sync)_spectrum.SetHue(_hue.Value);};
-        _alpha.PropertyChanged+=(_,e)=>{if(e.Property==Slider.ValueProperty&&!_sync){_color=_color with{Transparency=(byte)Math.Round(_alpha.Value)};Refresh();}};
+        _hue.PropertyChanged+=(_,e)=>{if(e.Property==ColorStrip.ValueProperty&&!_sync)_spectrum.SetHue(_hue.Value);};
+        _alpha.PropertyChanged+=(_,e)=>{if(e.Property==ColorStrip.ValueProperty&&!_sync){_color=_color with{Transparency=(byte)Math.Round(_alpha.Value)};Refresh();}};
         _alphaNumber.ValueChanged+=(_,_)=>{if(!_sync&&_alphaNumber.Value is {} value){_color=_color with{Transparency=(byte)value};Refresh();}};
         _exact.PropertyChanged+=(_,e)=>{if(e.Property!=TextBox.TextProperty||_sync)return;if(AssColor.TryParse(_exact.Text,out var c)){_color=c;Refresh(false);}else Invalid("Enter a complete ASS hex or signed decimal color.");};
         _html.PropertyChanged+=(_,e)=>{if(e.Property!=TextBox.TextProperty||_sync)return;if(ColorSpace.TryHtml(_html.Text,_color.Transparency,out var c)){_color=c;Refresh(updateHtml:false);}else Invalid("Enter HTML #RRGGBB.");};
@@ -75,12 +77,21 @@ public sealed class AssColorDialog : Window
         var footer=new StackPanel{Spacing=5};Grid.SetRow(footer,2);Grid.SetColumnSpan(footer,2);root.Children.Add(footer);footer.Children.Add(_error);
         var bar=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Spacing=5};footer.Children.Add(bar);
         _commands.CommandFailed+=(_,e)=>_error.Text=e.Exception.Message;
-        ActionButton(bar,"color/eyedropper","Screen…",()=>{StartDropper();return Task.CompletedTask;},OperatingSystem.IsWindows());
+        _commands.Register(new AppCommand(new("color/eyedropper","Sample desktop","Sample desktop","Color"),(i,_)=>{if((i.Parameter as IPointer??_lastPointer) is {} pointer)_dropper.Begin(pointer);return ValueTask.CompletedTask;},_=>OperatingSystem.IsWindows()));
+        _commands.Register(new AppCommand(new("color/eyedropper/select","Choose sampled pixel","Choose sampled pixel","Color"),(i,_)=>{if(i.Parameter is AssColor sample){_color=sample with{Transparency=_color.Transparency};Refresh();}return ValueTask.CompletedTask;}));
+        var dropperRow=new StackPanel{Orientation=Orientation.Horizontal,Spacing=7};
+        var dropperButton=new Button{Name="Eyedropper",Content=new PathIcon{Data=IconGeometries.Eyedropper,Width=18,Height=18},Command=new RegistryCommand(_commands,"color/eyedropper",()=>new()),Padding=new Thickness(5)};
+        ToolTip.SetTip(dropperButton,"Sample desktop · drag or click to activate · Esc cancels");
+        dropperButton.AddHandler(PointerPressedEvent,(_,e)=>{if(!e.GetCurrentPoint(dropperButton).Properties.IsLeftButtonPressed)return;_lastPointer=e.Pointer;_commands.InvokeAsync("color/eyedropper",new(),e.Pointer).GetAwaiter().GetResult();e.Handled=true;},RoutingStrategies.Tunnel);
+        PointerMoved+=(_,e)=>_lastPointer=e.Pointer;
+        _dropper.ColorPicked+=sample=>_commands.InvokeAsync("color/eyedropper/select",new(),sample).GetAwaiter().GetResult();
+        _dropper.SamplingFailed+=e=>_commands.ReportFailure("color/eyedropper",e);
+        dropperRow.Children.Add(dropperButton);dropperRow.Children.Add(_dropper);dropperRow.Children.Add(new TextBlock{Text="Drag to sample pixels\nClick a magnified neighbor\nEsc cancels · alpha stays separate",FontSize=11,VerticalAlignment=VerticalAlignment.Center});left.Children.Add(dropperRow);
         ActionButton(bar,"color/copy","Copy exact",async()=>{if(Clipboard is null)return;var data=new DataTransfer();data.Add(DataTransferItem.CreateText(_color.StyleValue));await Clipboard.SetDataAsync(data);await Clipboard.FlushAsync();});
         ActionButton(bar,"color/paste","Paste",async()=>{if(Clipboard is null)return;using var data=await Clipboard.TryGetDataAsync();var text=data is null?null:await data.TryGetTextAsync();if(ColorSpace.TryHtml(text,_color.Transparency,out var c)||AssColor.TryParse(text,out c)){_color=c;Refresh();}else Invalid("Clipboard does not contain an ASS or HTML color.");});
         ActionButton(bar,"color/cancel","Cancel",()=>{Close();return Task.CompletedTask;},cancel:true);
         ActionButton(bar,"color/accept","OK",()=>{if(_valid){_recent.Remember(_color);Close((AssColor?)_color);}return Task.CompletedTask;},accept:true);
-        Closed+=(_,_)=>EndDropper();Refresh();
+        Closed+=(_,_)=>_dropper.Cancel();Refresh();
     }
     private void ActionButton(Panel bar,string id,string text,Func<Task> action,bool enabled=true,bool cancel=false,bool accept=false)
     {
@@ -103,24 +114,11 @@ public sealed class AssColorDialog : Window
     private void Invalid(string message){_valid=false;_error.Text=message;}
     private void Refresh(bool updateExact=true,bool updateHtml=true)
     {
-        _sync=true;_valid=true;_error.Text="";_spectrum.SetColor(_color);_hue.Value=_spectrum.Hue;_alpha.Value=_color.Transparency;_alphaNumber.Value=_color.Transparency;
+        _sync=true;_valid=true;_error.Text="";_dropper.Transparency=_color.Transparency;_spectrum.SetColor(_color);_hue.Value=_spectrum.Hue;_alpha.Value=_color.Transparency;_alphaNumber.Value=_color.Transparency;
         var hsv=ColorSpace.Hsv(_color);var hsl=ColorSpace.Hsl(_color);double[][] values=[[_color.Red,_color.Green,_color.Blue],[_spectrum.Hue,hsv.Saturation*100,hsv.Component*100],[_spectrum.Hue,hsl.Saturation*100,hsl.Component*100]];
         for(var s=0;s<3;s++)for(var i=0;i<3;i++)_channels[s][i].Value=(decimal)Math.Round(values[s][i],2);
         if(updateExact)_exact.Text=_color.StyleValue;if(updateHtml)_html.Text=ColorSpace.Html(_color);
         _preview.Background=new SolidColorBrush(Color.FromArgb(_color.Opacity,_color.Red,_color.Green,_color.Blue));
         _transparencyGradient.Background=new LinearGradientBrush{StartPoint=new(0,0,RelativeUnit.Relative),EndPoint=new(0,1,RelativeUnit.Relative),GradientStops=[new(Color.FromRgb(_color.Red,_color.Green,_color.Blue),0),new(Colors.Transparent,1)]};_sync=false;
     }
-    private void StartDropper()
-    {
-        if(!OperatingSystem.IsWindows()||_droppers.Count>0)return;
-        foreach(var screen in Screens.All)
-        {
-            var overlay=new Window{WindowDecorations=WindowDecorations.None,ShowInTaskbar=false,Topmost=true,CanResize=false,Background=new SolidColorBrush(Color.FromArgb(1,0,0,0)),WindowStartupLocation=WindowStartupLocation.Manual,TransparencyLevelHint=[WindowTransparencyLevel.Transparent],Position=screen.Bounds.Position,Width=screen.Bounds.Width/screen.Scaling,Height=screen.Bounds.Height/screen.Scaling,Cursor=new Cursor(StandardCursorType.Cross)};
-            overlay.KeyDown+=(_,e)=>{if(e.Key==Key.Escape){EndDropper();e.Handled=true;}};
-            overlay.PointerPressed+=(_,e)=>{if(!e.GetCurrentPoint(overlay).Properties.IsLeftButtonPressed){EndDropper();return;}try{EndDropper();_color=WindowsScreenColor.AtCursor(_color.Transparency);Refresh();}catch(Exception ex){EndDropper();_commands.ReportFailure("color/eyedropper",ex);}e.Handled=true;};
-            _droppers.Add(overlay);overlay.Show();
-        }
-        _error.Text="Click a screen pixel; Escape or right-click cancels. Alpha is unchanged.";
-    }
-    private void EndDropper(){foreach(var overlay in _droppers.ToArray())overlay.Close();_droppers.Clear();}
 }

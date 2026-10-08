@@ -8,6 +8,10 @@ public sealed partial class MainWindowViewModel
     public bool PlaybackMuted{get=>_settings.PlaybackMuted;set=>InvokeAudioSetting("audio/mute",value);}
     public double AudioDisplayHeight{get=>_settings.AudioDisplayHeight??160;set=>InvokeAudioSetting("audio/display/height",value);}
     public double AudioIntensity{get=>_settings.AudioIntensity??1;set=>InvokeAudioSetting("audio/display/intensity",value);}
+    public double AudioHorizontalZoom{get=>AudioViewportMath.Zoom(AudioWindowSeconds);set=>AudioWindowSeconds=AudioViewportMath.Span(value);}
+    public double AudioAmplitude{get=>AudioViewportMath.AmplitudePosition(AudioIntensity);set=>AudioIntensity=AudioViewportMath.Amplitude(value);}
+    public bool AudioVolumeLinked{get=>_settings.AudioVolumeLinked;set=>InvokeAudioSetting("audio/volume/link",value);}
+    public bool IsVolumeIndependent=>!AudioVolumeLinked;
     private void InvokeAudioSetting(string id,object value)
     {
         var result=_registry.InvokeAsync(id,CurrentContext(),value);
@@ -23,8 +27,13 @@ public sealed partial class MainWindowViewModel
             "audio/display/height" when value is double h=>_settings with{AudioDisplayHeight=h},
             "audio/display/intensity" when value is double a=>_settings with{AudioIntensity=a},_=>_settings
         };
-        _settings=_settings.Normalize();_audioPlayer?.SetVolume(PlaybackVolume,PlaybackMuted);
-        foreach(var name in new[]{nameof(PlaybackVolume),nameof(PlaybackMuted),nameof(AudioDisplayHeight),nameof(AudioIntensity)})OnPropertyChanged(name);
+        if(id=="audio/display/zoom"&&value is double span)_settings=_settings with{AudioWindowSeconds=span};
+        if(id=="audio/volume/link"&&value is bool linked)_settings=_settings with{AudioVolumeLinked=linked};
+        _settings=_settings.Normalize();
+        if(AudioVolumeLinked)_settings=_settings with{PlaybackVolume=AudioViewportMath.LinkedVolume(AudioIntensity)};
+        _audioPlayer?.SetVolume(PlaybackVolume,PlaybackMuted);
+        foreach(var name in new[]{nameof(PlaybackVolume),nameof(PlaybackMuted),nameof(AudioDisplayHeight),nameof(AudioIntensity),nameof(AudioHorizontalZoom),nameof(AudioAmplitude),nameof(AudioVolumeLinked),nameof(IsVolumeIndependent)})OnPropertyChanged(name);
+        if(id=="audio/display/zoom")AudioZoomChanged?.Invoke(this,EventArgs.Empty);
         _settingsStore.Save(_settings);
     }
     private readonly Dictionary<(object Media,double Start,double Span,int Width),WaveformData> _waveformCache=[];

@@ -3,84 +3,89 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
 using System.ComponentModel;
+using System.Collections.Specialized;
 using Yoake.Core.Subtitles;
 using Yoake.UI.ViewModels;
+using Yoake.UI.VisualTools;
 
 namespace Yoake.UI.Controls;
 
+// Input/capture and coordinate host. Tools own their features and interpretation.
 public sealed class VisualOverlayControl : Control
 {
     public static readonly StyledProperty<MainWindowViewModel?> ModelProperty=AvaloniaProperty.Register<VisualOverlayControl,MainWindowViewModel?>(nameof(Model));
     public MainWindowViewModel? Model {get=>GetValue(ModelProperty);set=>SetValue(ModelProperty,value);}
-    private bool _drag;private int _handle;private AssPoint _anchor;
+    private readonly Dictionary<string,IVisualTool> _tools=new()
+    {
+        ["Crosshair"]=new CrosshairTool(),["Position"]=new PositionTool(),["RotateZ"]=new RotateZTool(),["RotateXY"]=new RotateXYTool(),
+        ["Scale"]=new ScaleTool(),["Clip"]=new RectangleClipTool(),["VectorClip"]=new VectorClipTool(),["Distort"]=new DistortTool()
+    };
+    private IVisualTool? _tool;
+    private VisualToolContext? _context;
+    private VisualPointer _pointer;
+    private IPointer? _capture;
+    private bool _inside;
+    public int RenderedHandles {get;private set;}
+    public string? RenderedTool {get;private set;}
     public VisualOverlayControl(){Focusable=true;ClipToBounds=true;}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if(change.Property==ModelProperty){if(change.OldValue is MainWindowViewModel old)old.PropertyChanged-=Changed;if(Model is {} model)model.PropertyChanged+=Changed;}
-        InvalidateVisual();
+        if(change.Property==ModelProperty)
+        {
+            Cancel();if(change.OldValue is MainWindowViewModel old){old.PropertyChanged-=Changed;old.GestureEnded-=GestureEnded;if(old.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged-=SelectionChanged;}
+            if(Model is {} model){model.PropertyChanged+=Changed;model.GestureEnded+=GestureEnded;if(model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
+            Refresh();
+        }
+        if(change.Property==BoundsProperty)Refresh();
     }
-    private void Changed(object? sender,PropertyChangedEventArgs e)=>InvalidateVisual();
-    private Rect VideoRect()
+    private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e){Cancel();Refresh();}
+    private void GestureEnded(object? sender,EventArgs e){ReleaseCapture();_tool?.Cancel();Refresh();}
+    private void Changed(object? sender,PropertyChangedEventArgs e)
     {
-        if(Model?.VideoFrame is not {} frame)return default;
+        if(e.PropertyName is nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events))
+        {ReleaseCapture();_tool?.Cancel();}
+        if(e.PropertyName is nameof(MainWindowViewModel.PreviewRevision) or nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.CurrentTimeSeconds) or nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.EditorDraft) or nameof(MainWindowViewModel.VisualBounds))Refresh();
+    }
+    private void Refresh()
+    {
+        if(Model is not {} model||model.VideoFrame is not {} frame){_context=null;InvalidateVisual();return;}
         var scale=Math.Min(Bounds.Width/frame.PixelSize.Width,Bounds.Height/frame.PixelSize.Height);
-        var width=frame.PixelSize.Width*scale;var height=frame.PixelSize.Height*scale;return new((Bounds.Width-width)/2,(Bounds.Height-height)/2,width,height);
-    }
-    private Point Screen(AssPoint point){var rect=VideoRect();var size=Model!.ScriptSize;return new(rect.X+point.X/size.Width*rect.Width,rect.Y+point.Y/size.Height*rect.Height);}
-    private AssPoint Script(Point point){var rect=VideoRect();var size=Model!.ScriptSize;return new((point.X-rect.X)/rect.Width*size.Width,(point.Y-rect.Y)/rect.Height*size.Height);}
-    private AssPoint DefaultPosition()
-    {
-        var model=Model!;var line=model.SelectedEvent!;var size=model.ScriptSize;var style=model.ActiveEditor?.Document.Styles.FirstOrDefault(s=>s.Name==model.EditorDraft.Style);
-        var alignment=AssVisualTags.Alignment(model.VisualText,int.TryParse(style?.Get("Alignment"),out var a)?Math.Clamp(a,1,9):2);
-        double Margin(string name){var v=model.EditorDraft.Values.GetValueOrDefault(name,line.Get(name));return int.TryParse(v,out var m)&&m>0?m:int.TryParse(style?.Get(name),out m)?m:20;}
-        var col=(alignment-1)%3;var row=(alignment-1)/3;
-        return new(col==0?Margin("MarginL"):col==2?size.Width-Margin("MarginR"):(size.Width+Margin("MarginL")-Margin("MarginR"))/2,row==0?size.Height-Margin("MarginV"):row==2?Margin("MarginV"):size.Height/2);
+        var width=frame.PixelSize.Width*scale;var height=frame.PixelSize.Height*scale;
+        _context=new(model,new((Bounds.Width-width)/2,(Bounds.Height-height)/2,width,height),model.VisibleVisualLines());
+        _tools.TryGetValue(model.ActiveVisualTool,out _tool);model.RequestVisualBounds();InvalidateVisual();
     }
     public override void Render(DrawingContext context)
     {
-        base.Render(context);var model=Model;if(model?.SelectedEvent is not {} line||model.VideoFrame is null)return;
-        var pen=new Pen(Brushes.Cyan,1);
-        if(model.ActiveVisualTool=="Position")
-        {
-            var point=Screen(AssVisualTags.PositionAtTime(model.VisualText,(long)(model.CurrentTimeSeconds*1000)-(line.StartMilliseconds??0),(line.EndMilliseconds??0)-(line.StartMilliseconds??0))??DefaultPosition());context.DrawLine(pen,point-new Vector(10,0),point+new Vector(10,0));context.DrawLine(pen,point-new Vector(0,10),point+new Vector(0,10));context.DrawEllipse(null,pen,point,5,5);
-        }
-        else if(AssVisualTags.Clip(model.VisualText) is {} clip)
-        {
-            var points=clip.Points.Select(Screen).ToArray();
-            if(clip.Rectangular)context.DrawRectangle(null,pen,new Rect(points[0],points[1]));
-            else for(var i=1;i<points.Length;i++)context.DrawLine(pen,points[i-1],points[i]);
-            foreach(var point in points)context.DrawRectangle(Brushes.Black,pen,new Rect(point-new Vector(3,3),new Size(6,6)));
-        }
-        else
-        {
-            var ready=new FormattedText("Drag to create clip",System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,Typeface.Default,11,Brushes.Cyan);
-            context.DrawText(ready,VideoRect().TopLeft+new Vector(8,8));Cursor=new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Cross);
-        }
+        base.Render(context);RenderedHandles=0;RenderedTool=null;
+        if(_context is not {} state||_tool is null||state.Video.Width<=0||state.Video.Height<=0)return;
+        var canvas=new VisualCanvas(context,state,_pointer,_inside);using(context.PushClip(state.Video))_tool.Render(canvas);
+        RenderedHandles=canvas.HandleCount;RenderedTool=Model?.ActiveVisualTool;
     }
+    private VisualPointer Pointer(PointerEventArgs e)=>new(e.GetPosition(this),_context?.Script(e.GetPosition(this))??default,e.KeyModifiers,e is PointerPressedEventArgs press?press.ClickCount:0);
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
-        base.OnPointerPressed(e);Focus();var model=Model;var point=e.GetPosition(this);
-        if(model?.SelectedEvent is not {} line||!VideoRect().Contains(point)||!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;
-        _anchor=Script(point);_handle=-1;
-        if(model.ActiveVisualTool=="Clip"&&AssVisualTags.Clip(model.VisualText) is {} clip)
-        {
-            if(e.KeyModifiers.HasFlag(KeyModifiers.Shift))_handle=-2;
-            for(var i=0;_handle!=-2&&i<clip.Points.Count;i++)if(Math.Sqrt(Math.Pow(Screen(clip.Points[i]).X-point.X,2)+Math.Pow(Screen(clip.Points[i]).Y-point.Y,2))<=10){_handle=i;break;}
-            // Existing vector clips are edited through their handles, never
-            // silently converted to rectangular clips by a miss-click.
-            if(!clip.Rectangular&&_handle==-1)return;
-        }
-        if(model.BeginGesture(model.ActiveVisualTool=="Position"?"Position subtitle":"Edit subtitle clip")){_drag=true;model.StopPlayback();e.Pointer.Capture(this);Update(point);e.Handled=true;}
+        base.OnPointerPressed(e);Focus();_pointer=Pointer(e);_inside=true;
+        if(_context is not {} state||_tool is null||!state.Video.Contains(_pointer.Screen)||!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;
+        try{if(_tool.Press(state,_pointer)){_capture=e.Pointer;e.Pointer.Capture(this);e.Handled=true;}InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
-    private void Update(Point point)
+    protected override void OnPointerMoved(PointerEventArgs e)
     {
-        try{var p=Script(point);if(Model?.ActiveVisualTool=="Position")Model.UpdatePositionGesture(p.X,p.Y);else Model?.UpdateClipGesture(_handle,p,_anchor);InvalidateVisual();}
-        catch(Exception e){Model?.Registry.ReportFailure("video/visual-edit",e);Cancel();}
+        base.OnPointerMoved(e);_pointer=Pointer(e);_inside=_context?.Video.Contains(_pointer.Screen)==true;
+        try{if(_capture is not null&&_context is {} state)_tool?.Move(state,_pointer);Cursor=new Cursor(_tool?.Cursor(_context,_pointer)??StandardCursorType.Cross);InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
-    protected override void OnPointerMoved(PointerEventArgs e){base.OnPointerMoved(e);if(_drag)Update(e.GetPosition(this));}
-    protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(_drag){_drag=false;Model?.EndGesture();e.Pointer.Capture(null);e.Handled=true;}}
-    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);Cancel();}
-    private void Cancel(){if(_drag){_drag=false;Model?.CancelGesture();InvalidateVisual();}}
+    protected override void OnPointerExited(PointerEventArgs e){base.OnPointerExited(e);if(_capture is null)_inside=false;InvalidateVisual();}
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);if(_capture is null)return;
+        try{if(_context is {} state)_tool?.Release(state,Pointer(e));ReleaseCapture();if(Model?.HasGesture==true)Model.EndGesture();e.Handled=true;InvalidateVisual();}catch(Exception ex){Fail(ex);}
+    }
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);if(_capture is not null)Cancel();}
+    protected override void OnKeyDown(KeyEventArgs e){base.OnKeyDown(e);if(e.Key==Key.Escape){Cancel();e.Handled=true;}else Modifiers(e.KeyModifiers);}
+    protected override void OnKeyUp(KeyEventArgs e){base.OnKeyUp(e);Modifiers(e.KeyModifiers);}
+    private void Modifiers(KeyModifiers modifiers){_pointer=_pointer with{Modifiers=modifiers};try{if(_capture is not null&&_context is {} state)_tool?.Move(state,_pointer);InvalidateVisual();}catch(Exception ex){Fail(ex);}}
+    private void ReleaseCapture(){var pointer=_capture;_capture=null;pointer?.Capture(null);}
+    private void Cancel(){ReleaseCapture();_tool?.Cancel();Model?.CancelGesture();InvalidateVisual();}
+    private void Fail(Exception exception){Model?.Registry.ReportFailure("video/visual-edit",exception);Cancel();}
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e){Cancel();base.OnDetachedFromVisualTree(e);}
 }

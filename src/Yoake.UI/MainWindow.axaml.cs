@@ -37,7 +37,9 @@ public partial class MainWindow : Window, IEditorDialogs
         LayoutUpdated+=(_,_)=>UpdateChrome();
         ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(UpdateChrome);
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
-        TemporalTextColumn.SizeChanged+=(_,_)=>UpdateAudioBounds();
+        TemporalTextColumn.SizeChanged+=(_,_)=>ClampAudioBounds();
+        AudioSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;},RoutingStrategies.Tunnel);
+        AudioSplitter.KeyUp+=(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;};
         TitleTabStrip.SizeChanged+=(_,_)=>UpdateTabLimit();
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_model.TextCursor=SubtitleText.CaretIndex;_model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;}};
         Closing+=HandleClosing;
@@ -98,12 +100,15 @@ public partial class MainWindow : Window, IEditorDialogs
     private void UpdateAudioBounds()
     {
         if(_model is null)return;
-        var available=TemporalTextColumn.Bounds.Height;
-        var maximum=available>0?Math.Clamp(available-TemporalTextColumn.RowDefinitions[2].MinHeight-4,100,400):400;
-        AudioSize.Maximum=maximum;
-        var height=Math.Clamp(_model.AudioDisplayHeight,100,maximum);
+        TemporalTextColumn.RowDefinitions[0].Height=new GridLength(_model.AudioDisplayHeight);ClampAudioBounds();
+    }
+    private void ClampAudioBounds()
+    {
+        var available=TemporalTextColumn.Bounds.Height;if(available<=0)return;
+        var maximum=Math.Max(130,available-TemporalTextColumn.RowDefinitions[2].MinHeight-4);
         var row=TemporalTextColumn.RowDefinitions[0];
-        if(row.Height.Value!=height)row.Height=new GridLength(height);
+        var height=row.Height.IsAbsolute?row.Height.Value:row.ActualHeight;
+        var clamped=Math.Clamp(height,130,maximum);if(Math.Abs(height-clamped)>0.1)row.Height=new GridLength(clamped);
     }
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)

@@ -5,84 +5,188 @@ namespace Yoake.UI.Icons;
 
 public static class IconGeometries
 {
+    // Widen strokes once into recolorable PathIcon geometry. SVG caps,
+    // joins and fill rules survive normalization; no bitmap wrappers.
+    private static Geometry Build(params (string Path, bool Fill, double Stroke, PenLineCap Cap, PenLineJoin Join)[] layers)
+    {
+        Geometry? result = null;
+        void Add(Geometry part) => result = result is null ? part : new CombinedGeometry(GeometryCombineMode.Union, result, part);
+        foreach (var layer in layers)
+        {
+            var path = Geometry.Parse(layer.Path);
+            if (layer.Fill) Add(path);
+            if (layer.Stroke > 0) Add(path.GetWidenedGeometry(new Pen(Brushes.White, layer.Stroke, lineCap: layer.Cap, lineJoin: layer.Join)));
+        }
+        return result ?? new StreamGeometry();
+    }
     public static Geometry Clip => ClipHolder.Value;
     private static class ClipHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M3 3H10V5H5V10H3ZM14 3H21V10H19V5H14ZM3 14H5V19H10V21H3ZM19 14H21V21H14V19H19Z");
+        internal static readonly Geometry Value = Build(("F1 M3 3H10V5H5V10H3ZM14 3H21V10H19V5H14ZM3 14H5V19H10V21H3ZM19 14H21V21H14V19H19Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry Close => CloseHolder.Value;
     private static class CloseHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M5 3L12 10L19 3L21 5L14 12L21 19L19 21L12 14L5 21L3 19L10 12L3 5Z");
+        internal static readonly Geometry Value = Build(("F1 M5 3L12 10L19 3L21 5L14 12L21 19L19 21L12 14L5 21L3 19L10 12L3 5Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+    }
+    public static Geometry Eyedropper => EyedropperHolder.Value;
+    private static class EyedropperHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M2.4374301375 20.43756975C2.9999301375 19.87506975 4.12493025 21.00006975 3.5624301375000003 21.56256975", false, 0.375, PenLineCap.Round, PenLineJoin.Round), ("F1 M18.75 2.625C20.625 0.75 23.25 3.375 21.375 5.25L19.125 7.5L16.5 4.875L18.75 2.625Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round), ("F1 M20.0625 10.6875 18.5625 12.1875 11.8125 5.4375 13.3125 3.9375C16.3125 0.9375 23.0625 7.6875 20.0625 10.6875Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round), ("F1 M18.5625 12.1875C15.5625 15.1875 8.8125 8.4375 11.8125 5.4375C14.8125 2.4375 21.5625 9.1875 18.5625 12.1875Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round), ("F1 M13.3125 3.9375C10.3125 6.9375 17.0625 13.6875 20.0625 10.6875", false, 0.375, PenLineCap.Round, PenLineJoin.Round), ("F1 M14.62493025 7.12506975C15.74993025 6.00006975 17.99993025 8.25006975 16.87493025 9.37506975L7.12493025 19.12506975C6.74993025 19.50006975 5.24993025 19.87506975 3.5624301375000003 21.56256975C2.9999301375 22.12506975 1.8749301374999998 21.00006975 2.4374301375 20.43756975C4.12493025 18.75006975 4.49993025 17.25006975 4.87493025 16.87506975L14.62493025 7.12506975Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round));
     }
     public static Geometry New => NewHolder.Value;
     private static class NewHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M5 2H15L20 7V22H5ZM7 4V20H18V8H14V4ZM11 10H13V13H16V15H13V18H11V15H8V13H11Z");
+        internal static readonly Geometry Value = Build(("F1 M5 2H15L20 7V22H5ZM7 4V20H18V8H14V4ZM11 10H13V13H16V15H13V18H11V15H8V13H11Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry Open => OpenHolder.Value;
     private static class OpenHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M2 6H10L12 9H22L19 20H3ZM4 8L5 18H17L19.2 11H11L9 8Z");
+        internal static readonly Geometry Value = Build(("F1 M2 6H10L12 9H22L19 20H3ZM4 8L5 18H17L19.2 11H11L9 8Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry Position => PositionHolder.Value;
     private static class PositionHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M11 2H13V6.1A6 6 0 0 1 17.9 11H22V13H17.9A6 6 0 0 1 13 17.9V22H11V17.9A6 6 0 0 1 6.1 13H2V11H6.1A6 6 0 0 1 11 6.1ZM12 8A4 4 0 1 0 12 16A4 4 0 0 0 12 8Z");
+        internal static readonly Geometry Value = Build(("F1 M11 2H13V6.1A6 6 0 0 1 17.9 11H22V13H17.9A6 6 0 0 1 13 17.9V22H11V17.9A6 6 0 0 1 6.1 13H2V11H6.1A6 6 0 0 1 11 6.1ZM12 8A4 4 0 1 0 12 16A4 4 0 0 0 12 8Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry Redo => RedoHolder.Value;
     private static class RedoHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M14 5V10H9C5 10 2 13.5 2 19H4C4 15 6 13 9 13H14V17L21 11Z");
+        internal static readonly Geometry Value = Build(("F1 M14 5V10H9C5 10 2 13.5 2 19H4C4 15 6 13 9 13H14V17L21 11Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry Save => SaveHolder.Value;
     private static class SaveHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M3 3H18L21 6V21H3ZM5 5V19H19V7L17 5H16V10H7V5ZM9 5V8H14V5ZM7 13H17V18H7Z");
+        internal static readonly Geometry Value = Build(("F1 M3 3H18L21 6V21H3ZM5 5V19H19V7L17 5H16V10H7V5ZM9 5V8H14V5ZM7 13H17V18H7Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry StepDown => StepDownHolder.Value;
     private static class StepDownHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M6 10L12 16L18 10L16 8L12 12L8 8Z");
+        internal static readonly Geometry Value = Build(("F1 M6 10L12 16L18 10L16 8L12 12L8 8Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry StepUp => StepUpHolder.Value;
     private static class StepUpHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M6 14L12 8L18 14L16 16L12 12L8 16Z");
+        internal static readonly Geometry Value = Build(("F1 M6 14L12 8L18 14L16 16L12 12L8 16Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry StyleBottom => StyleBottomHolder.Value;
     private static class StyleBottomHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M 3.75,18.5625 L 3.75,17.0625 L 11.0625,17.0625 L 3.75,5.4375 L 20.25,5.4375 L 12.9375,17.0625 L 20.25,17.0625 L 20.25,18.5625 L 12,18.5625 L 3.75,18.5625 z");
+        internal static readonly Geometry Value = Build(("F1 M 3.75,18.5625 L 3.75,17.0625 L 11.0625,17.0625 L 3.75,5.4375 L 20.25,5.4375 L 12.9375,17.0625 L 20.25,17.0625 L 20.25,18.5625 L 12,18.5625 L 3.75,18.5625 z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry StyleDown => StyleDownHolder.Value;
     private static class StyleDownHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M 3.75,5.4375 L 20.25,5.4375 L 12,18.5625 L 3.75,5.4375 z");
+        internal static readonly Geometry Value = Build(("F1 M 3.75,5.4375 L 20.25,5.4375 L 12,18.5625 L 3.75,5.4375 z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry StyleSort => StyleSortHolder.Value;
     private static class StyleSortHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M 13.6875,4.875 C 16.6875,5.8125 19.125,8.25 19.125,11.625 C 19.125,14.0625 18,16.3125 16.125,17.625 L 15,15.75 L 12,20.8125 L 18,20.8125 L 17.0625,19.125 C 19.5,17.4375 21,14.8125 21,11.625 C 21,7.875 18.375,4.5 14.4375,3.1875 C 13.125,2.8125 12.5625,4.5 13.6875,4.875 z M 6,3 L 6.9375,4.6875 C 4.5,6.375 3,9 3,12.1875 C 3,15.9375 5.625,19.3125 9.5625,20.625 C 10.875,21 11.4375,19.3125 10.3125,18.9375 C 7.3125,18 4.875,15.5625 4.875,12.1875 C 4.875,9.75 6,7.5 7.875,6.1875 L 9,8.0625 L 12,3 L 6,3 z");
+        internal static readonly Geometry Value = Build(("F1 M 13.6875,4.875 C 16.6875,5.8125 19.125,8.25 19.125,11.625 C 19.125,14.0625 18,16.3125 16.125,17.625 L 15,15.75 L 12,20.8125 L 18,20.8125 L 17.0625,19.125 C 19.5,17.4375 21,14.8125 21,11.625 C 21,7.875 18.375,4.5 14.4375,3.1875 C 13.125,2.8125 12.5625,4.5 13.6875,4.875 z M 6,3 L 6.9375,4.6875 C 4.5,6.375 3,9 3,12.1875 C 3,15.9375 5.625,19.3125 9.5625,20.625 C 10.875,21 11.4375,19.3125 10.3125,18.9375 C 7.3125,18 4.875,15.5625 4.875,12.1875 C 4.875,9.75 6,7.5 7.875,6.1875 L 9,8.0625 L 12,3 L 6,3 z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry StyleTop => StyleTopHolder.Value;
     private static class StyleTopHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M 3.75,5.4375 L 3.75,6.9375 L 11.0625,6.9375 L 3.75,18.5625 L 20.25,18.5625 L 12.9375,6.9375 L 20.25,6.9375 L 20.25,5.4375 L 12,5.4375 L 3.75,5.4375 z");
+        internal static readonly Geometry Value = Build(("F1 M 3.75,5.4375 L 3.75,6.9375 L 11.0625,6.9375 L 3.75,18.5625 L 20.25,18.5625 L 12.9375,6.9375 L 20.25,6.9375 L 20.25,5.4375 L 12,5.4375 L 3.75,5.4375 z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry StyleUp => StyleUpHolder.Value;
     private static class StyleUpHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M 3.75,18.5625 L 20.25,18.5625 L 12,5.4375 L 3.75,18.5625 z");
+        internal static readonly Geometry Value = Build(("F1 M 3.75,18.5625 L 20.25,18.5625 L 12,5.4375 L 3.75,18.5625 z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry Theme => ThemeHolder.Value;
     private static class ThemeHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M12 2A10 10 0 1 0 12 22A8 8 0 0 1 12 2ZM12 4V20A8 8 0 0 0 12 4Z");
+        internal static readonly Geometry Value = Build(("F1 M12 2A10 10 0 1 0 12 22A8 8 0 0 1 12 2ZM12 4V20A8 8 0 0 0 12 4Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry Undo => UndoHolder.Value;
     private static class UndoHolder
     {
-        internal static readonly Geometry Value = Geometry.Parse("M10 5L3 11L10 17V13H15C18 13 20 15 20 19H22C22 13.5 19 10 15 10H10Z");
+        internal static readonly Geometry Value = Build(("F1 M10 5L3 11L10 17V13H15C18 13 20 15 20 19H22C22 13.5 19 10 15 10H10Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+    }
+    public static Geometry VectorBicubic => VectorBicubicHolder.Value;
+    private static class VectorBicubicHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M4.3125 3.75H18.375H4.3125ZM5.625 20.25H19.6875H5.625Z", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M5.625 20.25C29.625 20.25 -5.625 3.75 18.375 3.75", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M18.5625 2.0625V5.4375H21.9375V2.0625H18.5625ZM3.1875 3.1875V4.3125H4.3125V3.1875H3.1875ZM2.0625 18.5625V21.9375H5.4375V18.5625H2.0625ZM19.6875 19.6875V20.8125H20.8125V19.6875H19.6875Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VectorConvert => VectorConvertHolder.Value;
+    private static class VectorConvertHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M3.0 3.75V20.25M18.75 3.75C28.5 18.0 7.5 13.5 18.75 20.25", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M1.3125 2.0625V5.4375H4.6875V2.0625H1.3125ZM17.0625 2.0625V5.4375H20.4375V2.0625H17.0625ZM1.3125 18.5625V21.9375H4.6875V18.5625H1.3125ZM17.0625 18.5625V21.9375H20.4375V18.5625H17.0625Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M9.375 6.75 5.625 10.5 9.375 14.25V12.0H14.625V14.25L18.375 10.5L14.625 6.75V9.0H9.375V6.75Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VectorFreehand => VectorFreehandHolder.Value;
+    private static class VectorFreehandHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M21.0 16.5 16.5 21.0 7.5 12.0 3.0 16.5", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M18.0 12.0 15.75 14.25 21.0 16.5 18.0 12.0Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round), ("F1 M6.375 4.875C4.875 3.375 7.125 1.125 8.625 2.625L18.0 12.0L15.75 14.25L6.375 4.875Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VectorInsert => VectorInsertHolder.Value;
+    private static class VectorInsertHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M21.0 19.5C18.75 0.0 6.75 6.75 3.0 19.5", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M9.1875 4.125V5.25V4.125ZM5.625 4.875 6.375 5.625 5.625 4.875ZM12.75 4.875 12.0 5.625 12.75 4.875ZM4.875 8.4375H6.0H4.875ZM12.375 8.4375H13.5H12.375ZM6.375 11.25 5.625 12.0 6.375 11.25ZM9.1875 11.625V12.75V11.625ZM12.0 11.25 12.75 12.0 12.0 11.25Z", false, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M7.5 6.75V10.125H10.875V6.75H7.5ZM1.3125 17.8125V21.1875H4.6875V17.8125H1.3125ZM19.3125 17.8125V21.1875H22.6875V17.8125H19.3125Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VectorLine => VectorLineHolder.Value;
+    private static class VectorLineHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M18.75 5.25 5.25 18.75 18.75 5.25Z", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M18.5625 2.0625V5.4375H21.9375V2.0625H18.5625ZM2.0625 18.5625V21.9375H5.4375V18.5625H2.0625Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VectorRemove => VectorRemoveHolder.Value;
+    private static class VectorRemoveHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M20.25 20.25 8.25 9.0 20.25 3.75", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M5.8125 6.5625V11.4375H10.6875V6.5625H5.8125Z", false, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M2.25 15.0 5.25 18.0 2.25 21.0 3.75 22.5 6.75 19.5 9.75 22.5 11.25 21.0 8.25 18.0 11.25 15.0 9.75 13.5 6.75 16.5 3.75 13.5 2.25 15.0Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M18.5625 2.0625V5.4375H21.9375V2.0625H18.5625ZM18.5625 18.5625V21.9375H21.9375V18.5625H18.5625Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VectorSelect => VectorSelectHolder.Value;
+    private static class VectorSelectHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M1.5 22.5 22.5 1.5", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M7.125 13.5V10.5H4.5V8.25L0.75 12.0L4.5 15.75V13.5H7.125ZM10.5 7.125H13.5V4.5H15.75L12.0 0.75L8.25 4.5H10.5V7.125ZM16.875 10.5V13.5H19.5V15.75L23.25 12.0L19.5 8.25V10.5H16.875ZM13.5 16.875H10.5V19.5H8.25L12.0 23.25L15.75 19.5H13.5V16.875Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M10.3125 10.3125H13.6875V13.6875H10.3125V10.3125Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VectorSmooth => VectorSmoothHolder.Value;
+    private static class VectorSmoothHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M21.0 16.5C12.75 31.5 11.25 1.5 3.0 16.5", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M18.0 12.0 15.75 14.25 21.0 16.5 18.0 12.0Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round), ("F1 M6.375 4.875C4.875 3.375 7.125 1.125 8.625 2.625L18.0 12.0L15.75 14.25L6.375 4.875Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualCrosshair => VisualCrosshairHolder.Value;
+    private static class VisualCrosshairHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M3.5625 9.0 1.875 9.5625V10.5L3.0 10.125V16.5H4.125V9.0H3.5625ZM8.25 9.0C6.5625 9.0 6.0 11.0625 6.0 12.75C6.0 14.4375 6.5625 16.5 8.25 16.5C9.9375 16.5 10.5 14.4375 10.5 12.75C10.5 11.0625 9.9375 9.0 8.25 9.0ZM16.3125 9.0 14.625 9.5625V10.5L15.75 10.125V16.5H16.875V9.0H16.3125ZM8.25 10.125C9.0 10.125 9.375 11.625 9.375 12.75C9.375 13.875 9.0 15.375 8.25 15.375C7.5 15.375 7.125 13.875 7.125 12.75C7.125 11.625 7.5 10.125 8.25 10.125ZM12.0 15.0C11.587499999999999 15.0 11.25 15.337499999999999 11.25 15.75C11.25 16.125 11.625 16.4625 12.0 16.5C11.8875 16.725 11.55 16.875 11.25 16.875V17.625C12.0 17.625 12.600000000000001 17.137500000000003 12.75 16.5C12.787500000000001 16.387500000000003 12.787500000000001 16.125 12.75 15.75C12.674999999999999 15.299999999999999 12.412500000000001 15.0 12.0 15.0Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter), ("F1 M19.125 22.125V1.875V22.125ZM1.875 19.125H22.125H1.875Z", false, 1.125, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualDistort => VisualDistortHolder.Value;
+    private static class VisualDistortHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M8.0754765 2.305203525 19.430414625 5.376449625 22.086416625000002 20.1942405 1.9205853375000002 21.440886 8.0754765 2.305203525Z", false, 1.875, PenLineCap.Round, PenLineJoin.Round), ("F1 M9.9823035 7.3362405 16.697218499999998 8.509152 17.35436325 16.697315624999998 7.939591499999999 16.738449 9.9823035 7.3362405Z", true, 0.870131, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualMoveToggle => VisualMoveToggleHolder.Value;
+    private static class VisualMoveToggleHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M10.875 6.0V18.0H13.125V6.0H10.875ZM15.375 3.75V20.25L22.125 12.0L15.375 3.75ZM6.375 7.5V16.5H8.625V7.5H6.375ZM1.875 9.0V15.0H4.125V9.0H1.875Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualPosition => VisualPositionHolder.Value;
+    private static class VisualPositionHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M12.0 1.5 7.5 6.0H10.125V10.125H6.0V7.5L1.5 12.0L6.0 16.5V13.875H10.125V18.0H7.5L12.0 22.5L16.5 18.0H13.875V13.875H18.0V16.5L22.5 12.0L18.0 7.5V10.125H13.875V6.0H16.5L12.0 1.5Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualRectangle => VisualRectangleHolder.Value;
+    private static class VisualRectangleHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M4.5 4.5H19.5V19.5H4.5V4.5Z", true, 1.5, PenLineCap.Round, PenLineJoin.Round), ("F1 M21.1875 17.8125H17.8125V21.1875H21.1875V17.8125ZM2.8125 17.8125H6.1875V21.1875H2.8125V17.8125ZM2.8125 6.1875H6.1875V2.8125H2.8125V6.1875ZM17.8125 2.8125V6.1875H21.1875V2.8125H17.8125Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M15.1875 9.1875C15.375 9.65625 15.5625 10.21875 15.75 10.6875C16.5 9.75 18.0 9.1875 18.75 9.9375V8.25C17.4375 7.875 16.125 8.4375 15.1875 9.1875ZM18.75 10.6875C17.8125 10.875 17.0625 11.0625 16.125 11.625C14.25 12.75 14.8125 15.375 16.875 15.9375C17.625 16.125 18.0 15.9375 18.75 15.5625V13.5C18.375 14.0625 18.0 14.25 17.4375 14.4375C16.5 14.8125 15.5625 13.6875 16.875 12.9375C17.8125 12.356250000000001 18.375 12.375 18.75 12.5625V10.6875Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+    }
+    public static Geometry VisualRotateXy => VisualRotateXyHolder.Value;
+    private static class VisualRotateXyHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M10.125 10.125H13.875V13.875H10.125V10.125Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M1.21875 13.068750000000001 4.21875 15.768749999999999 7.21875 13.068750000000001H5.15625C5.15625 10.70625 8.34375 8.79375 12.28125 8.79375C16.21875 8.79375 19.40625 10.70625 19.40625 13.068750000000001C19.40625 13.96875 21.28125 13.96875 21.28125 13.068750000000001C21.28125 10.03125 17.34375 7.668749999999999 12.28125 7.668749999999999C7.21875 7.668749999999999 3.28125 10.03125 3.28125 13.068750000000001H1.21875Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round), ("F1 M12.149999999999999 0.9375 9.45 3.9375 12.149999999999999 6.9375V4.875C14.512500000000001 4.875 16.424999999999997 8.0625 16.424999999999997 12.0C16.424999999999997 15.9375 14.512500000000001 19.125 12.149999999999999 19.125C11.25 19.125 11.25 21.0 12.149999999999999 21.0C15.1875 21.0 17.549999999999997 17.0625 17.549999999999997 12.0C17.549999999999997 6.9375 15.1875 3.0 12.149999999999999 3.0V0.9375Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualRotateZ => VisualRotateZHolder.Value;
+    private static class VisualRotateZHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M10.125 10.125H13.875V13.875H10.125V10.125Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M12.0 0.9375 7.5 3.9375 12.0 6.9375V4.875C15.9375 4.875 19.125 8.0625 19.125 12.0C19.125 15.9375 15.9375 19.125 12.0 19.125C10.5 19.125 10.5 21.0 12.0 21.0C17.0625 21.0 21.0 17.0625 21.0 12.0C21.0 6.9375 17.0625 3.0 12.0 3.0V0.9375Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualScale => VisualScaleHolder.Value;
+    private static class VisualScaleHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M3.0 3.0H21.0V21.0H3.0V3.0Z", false, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M8.25 8.25H15.75V15.75H8.25V8.25Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualVector => VisualVectorHolder.Value;
+    private static class VisualVectorHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M4.5 19.5C7.5 21.75 17.25 23.25 19.5 19.5C24.0 12.0 17.25 3.75 9.375 4.5C3.0 5.25 1.5 15.0 4.5 19.5Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M9.75 16.875C9.75 17.625 10.125 18.375 10.875 18.75C10.125 19.125 9.5625 19.856250000000003 9.375 20.793750000000003C9.9375 21.0 10.3125 21.0 10.875 21.05625C11.25 19.106250000000003 14.0625 19.331249999999997 14.25 21.206249999999997C14.8125 21.206249999999997 15.0 21.1875 15.75 21.0375C15.5625 19.875 15.0 19.125 14.25 18.75C15.0 18.375 15.375 17.625 15.375 16.875C15.375 13.5 9.75 13.5 9.75 16.875ZM13.875 16.875C13.875 18.1875 11.25 18.1875 11.25 16.875C11.25 15.375 13.875 15.375 13.875 16.875Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter), ("F1 M2.625 4.875 19.875 2.25", false, 1.125, PenLineCap.Round, PenLineJoin.Round), ("F1 M19.3125 1.6875V2.8125H20.4375V1.6875H19.3125ZM7.6875 2.0625V5.4375H11.0625V2.0625H7.6875ZM2.0625 4.3125V5.4375H3.1875V4.3125H2.0625ZM2.0625 18.5625V21.9375H5.4375V18.5625H2.0625ZM18.5625 18.5625V21.9375H21.9375V18.5625H18.5625Z", true, 1.125, PenLineCap.Round, PenLineJoin.Round));
     }
 }
