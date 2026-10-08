@@ -251,7 +251,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(window.GetVisualDescendants().OfType<AssColorButton>().Count(b=>b.Bounds.Width>=30&&b.Bounds.Height>=24&&b.Command is not null)==4,"All four command-backed color swatches must be realized.");
         var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
         Require(audio.TranslatePoint(default,window)!.Value.Y<editor.TranslatePoint(default,window)!.Value.Y,"Audio must remain above the edit panel.");
-        Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>20&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>20&&window.FindControl<Slider>("AudioHorizontalZoom")!.Bounds.Height>20,"Horizontal zoom, display amplitude and playback volume must be realized.");
+        Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioHorizontalZoom")!.Bounds.Height>=55,"Horizontal zoom, display amplitude and playback volume need usable vertical travel at the default panel height.");
         Require(window.FindControl<Slider>("AudioSize") is null,"No vertical audio-height slider may remain.");
         Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("AudioVolumeLink")!.Bounds.Width>=40,"Amplitude/volume link must be directly below the sliders.");
         Require(window.FindControl<GridSplitter>("AudioSplitter")!.Bounds.Height>=4,"Audio height must have a real sash.");
