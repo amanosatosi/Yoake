@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
@@ -42,6 +43,10 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 var rows=list.GetVisualDescendants().OfType<ListBoxItem>().Where(r=>r.Bounds.Height>0&&r.IsVisible).ToArray();
                 Require(rows.Length>0&&list.SelectedItem as string==_font.FontName,"Installed current family must be selected and realized.");
                 capture(list,"subtitle-font-browser-visible",1);
+                var scrollbar=list.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>().First(s=>s.IsVisible);
+                var root=(Avalonia.Visual)list.GetVisualRoot()!;var scrollPointer=new Pointer(414,PointerType.Mouse,true);
+                scrollbar.RaiseEvent(new PointerReleasedEventArgs(scrollbar,scrollPointer,root,scrollbar.TranslatePoint(new(2,2),root)!.Value,0,new(RawInputModifiers.None,PointerUpdateKind.LeftButtonReleased),KeyModifiers.None,MouseButton.Left));
+                Require(_font.IsBrowserOpen,"Scrollbar release must not choose a font or close the browser.");
                 var choice=rows.First(r=>r.Content is string family&&family!=_font.FontName);
                 list.SelectedItem=choice.Content;
                 var pointer=new Pointer(413,PointerType.Mouse,true);
@@ -49,9 +54,11 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 Require(!_font.IsBrowserOpen&&_font.FontName==(string)choice.Content!,"Clicking an actual font row must choose its exact family.");
                 _font.OpenBrowser();return false;
             case 3:
-                _font!.BrowserList.SelectedItem=_font.InstalledFamilies.Last();
+                _font!.BrowserList.SelectedIndex=0;
+                _font.BrowserList.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=_font.BrowserList,Key=Key.Down});
+                Require(_font.BrowserList.SelectedIndex==1,"Font browser must support actual keyboard navigation.");
                 _font.BrowserList.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=_font.BrowserList,Key=Key.Enter});
-                Require(!_font.IsBrowserOpen&&_font.FontName==_font.InstalledFamilies.Last(),"Enter in font browser must choose.");
+                Require(!_font.IsBrowserOpen&&_font.FontName==_font.InstalledFamilies[1],"Enter in font browser must choose.");
                 _font.FontName="D F 円楷書 Std W5";_font.OpenBrowser();return false;
             case 4:
                 Require(_font!.FontName=="D F 円楷書 Std W5"&&_font.GetVisualDescendants().OfType<TextBlock>().Any(t=>t.IsVisible&&t.Text=="Unavailable family; exact name retained"),"Missing exact family must remain visible and explicitly unavailable.");
@@ -59,28 +66,28 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 Require(!_font.IsBrowserOpen,"Escape must close the visible font browser.");_dialog!.Close();
                 _line=model.SelectedEvent!;_original=_line.Text;return false;
             case 5:
-                Text.Focus();Text.SetCurrentValue(TextBox.TextProperty,"enter draft");Caret(3,3);Key(Key.Enter);
+                window.Activate();Require(Text.Focus()&&Text.IsKeyboardFocusWithin,"Shipping ASS editor must receive keyboard focus.");Text.SetCurrentValue(TextBox.TextProperty,"enter draft");Caret(3,3);PressKey(Key.Enter);
                 Require(_line!.Text=="enter draft"&&!ReferenceEquals(model.SelectedEvent,_line)&&!_line.Text.Contains('\n')&&!_line.Text.Contains('\r')&&!_line.Text.Contains(@"\N"),"Focused plain Enter must commit and advance without any newline.");
                 model.SelectedEvent=_line;return false;
             case 6:
-                Text.Focus();Text.SetCurrentValue(TextBox.TextProperty,"ctrl draft");Caret(3,3);Key(Key.Enter,KeyModifiers.Control);
+                Text.Focus();Text.SetCurrentValue(TextBox.TextProperty,"ctrl draft");Caret(3,3);PressKey(Key.Enter,KeyModifiers.Control);
                 Require(ReferenceEquals(model.SelectedEvent,_line)&&_line!.Text=="ctrl draft","Ctrl+Enter must commit and stay.");
-                Text.SetCurrentValue(TextBox.TextProperty,"abcdef");Caret(2,4);Key(Key.Enter,KeyModifiers.Shift);
+                Text.SetCurrentValue(TextBox.TextProperty,"abcdef");Caret(2,4);PressKey(Key.Enter,KeyModifiers.Shift);
                 _stable=@"ab\Nef";
                 Require(Text.Text==_stable&&Text.CaretIndex==4&&Text.SelectionStart==4&&Text.SelectionEnd==4,"Shift+Enter must replace selection immediately with literal ASS syntax and place the caret after it.");
                 _afterBurst=DateTime.UtcNow.AddMilliseconds(1150);return false;
             case 7:
                 if(DateTime.UtcNow<_afterBurst){_stage--;return false;}
                 Require(Text.Text==_stable&&_line!.Text==_stable,"Hard newline text must remain identical after the edit-burst timeout.");
-                Caret(2,2);Key(Key.Enter,KeyModifiers.Shift);Require(Text.Text==@"ab\N\Nef"&&Text.CaretIndex==4,"Shift+Enter at a caret must insert immediate literal syntax.");
+                Caret(2,2);PressKey(Key.Enter,KeyModifiers.Shift);Require(Text.Text==@"ab\N\Nef"&&Text.CaretIndex==4,"Shift+Enter at a caret must insert immediate literal syntax.");
                 var presenter=Text.GetVisualDescendants().OfType<TextPresenter>().Single();presenter.PreeditText="仮";
-                var selected=model.SelectedEvent;var source=model.SelectedEvent!.Text;Key(Key.Enter);
-                Require(ReferenceEquals(model.SelectedEvent,selected)&&model.SelectedEvent.Text==source&&presenter.PreeditText=="仮","Composition Enter must remain owned by IME without commit/navigation.");
+                var selected=model.SelectedEvent;var source=model.SelectedEvent!.Text;var draftBefore=Text.Text;PressKey(Key.Enter);
+                Require(ReferenceEquals(model.SelectedEvent,selected)&&model.SelectedEvent.Text==source&&Text.Text==draftBefore&&presenter.PreeditText=="仮","Composition Enter must remain owned by IME without commit/navigation.");
                 presenter.PreeditText=null;model.CommitDraft();model.ActiveEditor!.SetField(_line!,"Text",_original,"Restore input verification fixture");return true;
             default:return true;
         }
     }
     private void Caret(int start,int end){Text.CaretIndex=end;Text.SelectionStart=start;Text.SelectionEnd=end;}
-    private void Key(Key key,KeyModifiers modifiers=KeyModifiers.None)=>Text.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=Text,Key=key,KeyModifiers=modifiers});
+    private void PressKey(Key key,KeyModifiers modifiers=KeyModifiers.None)=>Text.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=Text,Key=key,KeyModifiers=modifiers});
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
 }

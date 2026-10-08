@@ -14,6 +14,8 @@ internal static class ColorInputVerification
         var pointer=new Pointer(411,PointerType.Mouse,true);
         var hue=Named<ColorStrip>(dialog,"ColorHue");var alpha=Named<ColorStrip>(dialog,"ColorTransparency");
         capture(dialog,"color-picker-before-input",1);
+        Require(ReferenceEquals(dialog.InputHitTest(hue.TranslatePoint(new(12,64),dialog)!.Value),hue),"Hue gradient must route real pointer hits to its selector away from the thin marker.");
+        Require(ReferenceEquals(dialog.InputHitTest(alpha.TranslatePoint(new(12,64),dialog)!.Value),alpha),"Alpha gradient must route real pointer hits to its selector away from the thin marker.");
         var original=hue.Value;
         Press(hue,new(12,64));Move(hue,new(12,192));
         Require(Math.Abs(hue.Value-hue.Maximum*.75)<.01,$"Hue strip drag must directly follow pointer position (value {hue.Value}, expected {hue.Maximum*.75}, bounds {hue.Bounds}).");

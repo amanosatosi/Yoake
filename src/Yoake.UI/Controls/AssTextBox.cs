@@ -16,6 +16,9 @@ public sealed class AssTextBox : TextBox
 {
     protected override void OnKeyDown(KeyEventArgs e)
     {
+        // An Enter still delivered during composition belongs to the IME;
+        // never let the multiline TextBox insert a physical newline for it.
+        if(e.Key==Key.Enter&&this.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
         if(!e.Handled&&MoveAtVisualBoundary(e.Key,e.KeyModifiers)){e.Handled=true;return;}
         base.OnKeyDown(e);
     }

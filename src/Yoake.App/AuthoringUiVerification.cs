@@ -166,8 +166,8 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 model.AudioVolumeLinked=false;var gain=model.PlaybackVolume;var intensity=model.AudioIntensity;
                 timeControl.Value+=5;Require(Math.Abs(audio.VisibleSeconds-model.AudioWindowSeconds)<.001&&model.PlaybackVolume==gain&&model.AudioIntensity==intensity,"Time slider must change horizontal span only.");
                 var span=audio.VisibleSeconds;amplitudeControl.Value=60;
-                Require(audio.VisibleSeconds==span&&model.PlaybackVolume==gain&&model.AudioAmplitude==60,"Amp slider must change visual amplitude only.");
-                volumeControl.Value=.35;Require(model.PlaybackVolume==.35&&audio.VisibleSeconds==span&&model.AudioAmplitude==60,"Vol slider must change playback gain only.");
+                Require(audio.VisibleSeconds==span&&model.PlaybackVolume==gain&&Math.Abs(model.AudioAmplitude-60)<.00001,"Amp slider must change visual amplitude only.");
+                volumeControl.Value=.35;Require(model.PlaybackVolume==.35&&audio.VisibleSeconds==span&&Math.Abs(model.AudioAmplitude-60)<.00001,"Vol slider must change playback gain only.");
                 Require(pane.RowDefinitions[0].ActualHeight==heightBefore,"Time/Amp/Vol must never resize the audio pane.");
                 var mode=window.FindControl<ComboBox>("AudioMode")!;mode.SelectedIndex=1;
                 Require(audio.Spectrogram,"Spectrogram selection must reach the visualizer.");

@@ -4,8 +4,11 @@
 letterbox/video/script mapping, and invalidation. `IVisualTool` implementations
 own rendering, hit testing, hover affordances, selected points and interpretation
 of a captured gesture. The registry chooses tools and vector subtools with stable
-`video/tool/*` and `video/vector/*` IDs. Toolbars are attached below video
-navigation/playback and collapse irrelevant options.
+`video/tool/*` and `video/vector/*` IDs. The primary selector is a compact vertical rail beside video. Contextual options
+collapse beneath navigation/playback; help is available on the canvas/options
+tooltips without a permanent helper row. The overlay paints a transparent input
+surface across the video, including the no-clip state. Packaged checks assert
+actual input hit targets before raising pointer events.
 
 `VisualToolContext` exposes selected visible dialogue lines and coordinate maps.
 Comments and lines outside the current frame are excluded. `VisualLine` contains
@@ -78,9 +81,17 @@ Workspace spacing follows semantic groups: 2–4 DIP within related controls,
 repeated VIDEO/AUDIO/EDIT headers and bordered cards do not consume workspace.
 Metadata groups Comment/Style/Edit Style separately from Actor, Effect and Layer.
 Timing/margins and B-I-U-S/font/colors/reset have distinct group gaps. Visual
-primary tools and contextual controls share rows when space permits, with a
-separate help row. Audio has labelled 32-DIP columns with 10-DIP gaps and a
-separator from the visualizer. Repeated grid rows retain their compact metrics.
+primary tools occupy the vertical rail; only contextual controls use a bottom
+row. Frame status shares playback horizontal space. Audio has labelled 32-DIP columns with 10-DIP gaps and a
+separator from the visualizer. Grid rows are fixed at 26 DIP, with shaped-text height and containment checks
+for Japanese, Burmese, Arabic, Latin, emoji and combining marks. The 20,000-row
+fixture verifies recycling and virtualization.
 CI configures a temporary 1920x1080 desktop to verify the actual default
 1440x900 window, in addition to narrower reflow and render-DPI captures. Default
 workspace assertions protect video, waveform, multiline text and grid space.
+
+Vector Line/Bicubic hover rendering appends to a copy of the parsed topology
+and renders its complete closed contour, replacing the old closing edge. It
+uses the same append/save and clip-mapping compensation as the eventual edit.
+Cubic handles and the prospective closing segment remain visible. Hover never
+mutates document text. Packaged captures assert preview/commit topology equality.

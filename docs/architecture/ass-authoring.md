@@ -25,3 +25,20 @@ Packaged authoring verification checks the native numeric text part bounds, time
 On constrained CI desktops the two requested main-window sizes may be clamped to the same work area. Verification also narrows the real video/editor splitter to the supported 480-DIP editor column and requires a measurable reduction, so responsive checks cannot silently run twice at the same editor width. The multilingual sample renders into a reused 640×300 Mangetsu surface before fitting the preview area, avoiding the default three-line sample clipping.
 
 Style and color text fields observe synchronous TextProperty notifications, not Avalonia’s deferred TextChanged event. This keeps a logical draft current before a command changes selection and prevents queued old-field text events from writing into the next style. Packaged verification changes exact color, numeric size and Unicode name, then switches immediately and checks both serialized values and event references.
+
+The window resolves edit hotkeys through visual ancestry and focused-editor
+state across control templates. Enter commits/advances; Ctrl+Enter commits/stays.
+`text/insert/hard-newline` replaces the current selection with literal ASS `\N`
+in the live draft, updates the caret immediately and joins the normal undoable
+edit burst. Active preedit owns Enter in both window routing and AssTextBox;
+the TextBox does not insert a physical newline while composition is active.
+Packaged verification sends routed keys to the focused shipping editor and
+checks text stability beyond 900 ms. Real Windows IME confirmation remains a
+manual check because synthetic preedit does not simulate an OS input method.
+
+FontPicker's custom Popup belongs to its logical/control tree. Its installed
+family ListBox has an actual popup visual root; loading shows the exact current
+family and refreshes an already open list when enumeration finishes. Missing
+exact names remain unchanged and explicitly unavailable. Packaged tests open
+the Subtitle Font dialog, inspect realized rows/dimensions, and choose by row
+release and keyboard rather than relying on IsOpen alone.

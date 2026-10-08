@@ -19,6 +19,7 @@ public sealed class ColorStrip : Control
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs e){base.OnPropertyChanged(e);InvalidateVisual();}
     public override void Render(DrawingContext context)
     {
+        context.FillRectangle(Brushes.Transparent,new Rect(Bounds.Size));
         var y=Math.Clamp(Value/Math.Max(1,Maximum)*Bounds.Height,1,Math.Max(1,Bounds.Height-1));
         context.DrawLine(new Pen(Brushes.Black,3),new(0,y),new(Bounds.Width,y));context.DrawLine(new Pen(Brushes.White,1),new(0,y),new(Bounds.Width,y));
         if(IsKeyboardFocusWithin)context.DrawRectangle(null,new Pen(Brushes.White,1,DashStyle.Dot),new Rect(1,1,Math.Max(0,Bounds.Width-2),Math.Max(0,Bounds.Height-2)));

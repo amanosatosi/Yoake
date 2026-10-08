@@ -42,7 +42,7 @@ public sealed class FontPicker : UserControl
             if(source is ListBoxItem||source.GetVisualAncestors().OfType<ListBoxItem>().Any())Choose();
         },Avalonia.Interactivity.RoutingStrategies.Bubble,handledEventsToo:true);
         ToolTip.SetTip(_entry,"Search installed families or type an exact font name. Missing families are preserved. ↓ opens suggestions.");
-        _entry.PropertyChanged+=(_,e)=>{if(e.Property==AutoCompleteBox.TextProperty&&!_sync){SetCurrentValue(FontNameProperty,_entry.Text??"");if(_popup.IsOpen)_list.ItemsSource=_fonts.Where(f=>f.Contains(FontName,StringComparison.CurrentCultureIgnoreCase)).ToArray();Refresh();ValueChanged?.Invoke(this,EventArgs.Empty);}};
+        _entry.PropertyChanged+=(_,e)=>{if(e.Property==AutoCompleteBox.TextProperty&&!_sync){SetCurrentValue(FontNameProperty,_entry.Text??"");if(_popup.IsOpen){if(_fonts.Length==0)PopulateBrowser();else _list.ItemsSource=_fonts.Where(f=>f.Contains(FontName,StringComparison.CurrentCultureIgnoreCase)).ToArray();}Refresh();ValueChanged?.Invoke(this,EventArgs.Empty);}};
         AttachedToVisualTree+=async (_,_)=>
         {
             try{_fonts=await Installed.Value;_entry.ItemsSource=_fonts;if(_popup.IsOpen)PopulateBrowser();Refresh();}

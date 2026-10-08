@@ -198,7 +198,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 capture(Overlay,"visual-outside-line-time",1);Require(Overlay.RenderedHandles==0,"Seeking outside selected line times must remove stale handles.");
                 model.SetSelectedEvents([_line!]);model.ActiveEditor!.SetTiming(_line!,0,1000);Tool("Crosshair");return false;
             case 15:
-                Fixture(Plain);Tool("Clip");WaitForPreview();return false;
+                Fixture(Plain);model.InverseClip=false;Tool("Clip");WaitForPreview();return false;
             case 16:
                 if(!Ready)return Retry();
                 capture(Overlay,"visual-rectangle-no-clip-input-surface",1);
