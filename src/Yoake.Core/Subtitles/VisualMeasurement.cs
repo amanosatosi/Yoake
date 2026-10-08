@@ -27,7 +27,8 @@ public static class VisualMeasurement
         const string neutral="\\frx0\\fry0\\frz0\\fax0\\fay0\\fscx100\\fscy100\\bord0\\shad0\\blur0\\be0\\alpha&H00&\\1c&HFFFFFF&";
         foreach(var tag in AssSyntax.Tags(text).Where(t=>t.Name=="r").Reverse())text=text[..tag.End]+neutral+text[tag.End..];
         target.Text="{\\pos("+x.ToString(System.Globalization.CultureInfo.InvariantCulture)+","+y.ToString(System.Globalization.CultureInfo.InvariantCulture)+")"+neutral+"}"+text;
-        target.Set("Start","0:00:00.00");target.Set("End","0:00:10.00");target.Set("Effect","");
+        target.Set("Start","0:00:00.00");target.Set("End","0:00:10.00");
+        if(target.FieldNames.Contains("Effect",StringComparer.OrdinalIgnoreCase))target.Set("Effect","");
         clone.Touch();return clone.Serialize();
     }
 }
