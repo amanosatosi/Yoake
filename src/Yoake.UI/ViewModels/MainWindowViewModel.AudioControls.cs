@@ -30,6 +30,7 @@ public sealed partial class MainWindowViewModel
         if(id=="audio/display/zoom"&&value is double span)_settings=_settings with{AudioWindowSeconds=span};
         if(id=="audio/volume/link"&&value is bool linked)_settings=_settings with{AudioVolumeLinked=linked};
         _settings=_settings.Normalize();
+        if(id=="audio/display/zoom"&&_activeId is {} active&&_documents.TryGetValue(active,out var state))state.AudioSpan=_settings.AudioWindowSeconds??20;
         if(AudioVolumeLinked)_settings=_settings with{PlaybackVolume=AudioViewportMath.LinkedVolume(AudioIntensity)};
         _audioPlayer?.SetVolume(PlaybackVolume,PlaybackMuted);
         foreach(var name in new[]{nameof(PlaybackVolume),nameof(PlaybackMuted),nameof(AudioDisplayHeight),nameof(AudioIntensity),nameof(AudioHorizontalZoom),nameof(AudioAmplitude),nameof(AudioVolumeLinked),nameof(IsVolumeIndependent)})OnPropertyChanged(name);

@@ -15,7 +15,7 @@ public sealed partial class MainWindowViewModel
     {
         if(_disposed||!IsDistortTool||HasGesture||ActiveEditor is not {} editor||VideoFrame is null)return;
         var lines=VisibleVisualLines();var size=ScriptSize;var width=(int)Math.Clamp(size.Width,1,4096);var height=(int)Math.Clamp(size.Height,1,2160);
-        var source=editor.Document.Revision+":"+string.Join(',',lines.Select(l=>l.Line.Number));if(source==_boundsSource)return;_boundsSource=source;
+        var source=PreviewRevision+":"+size+":"+VideoFrame.PixelSize+":"+string.Join(',',lines.Select(l=>l.Line.Number));if(source==_boundsSource)return;_boundsSource=source;
         var snapshots=lines.Select(l=>(l.Line,Track:VisualMeasurement.Track(editor.Document,l.Line,l.Text,size.Width/2,size.Height/2))).ToArray();
         var key=string.Join('\n',snapshots.Select(s=>s.Track));if(key==_boundsRequest)return;_boundsRequest=key;
         _boundsCancellation?.Cancel();_boundsCancellation?.Dispose();var cancellation=new CancellationTokenSource();_boundsCancellation=cancellation;

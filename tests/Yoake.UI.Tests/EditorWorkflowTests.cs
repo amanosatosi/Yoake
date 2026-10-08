@@ -146,6 +146,16 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.AudioVolumeLinked=false;_model.PlaybackVolume=.2;_model.AudioAmplitude=50;Assert.Equal(.2,_model.PlaybackVolume);
         await Command("audio/display/height",230d);Assert.Equal(230,_model.AudioDisplayHeight);
     }
+    [Fact] public async Task AudioZoomControlReflectsEachDocumentsIndependentViewport()
+    {
+        var first=_model.Tabs.Single(t=>t.IsActive).Id;_model.AudioWindowSeconds=1;_model.RememberAudioViewport(12,1);
+        await Command(CommandIds.SubtitleNew);var second=_model.Tabs.Single(t=>t.IsActive).Id;
+        _model.AudioWindowSeconds=8;_model.RememberAudioViewport(20,8);
+        await Command(CommandIds.WorkspaceActivateTab,first);
+        Assert.Equal((12d,1d),_model.AudioViewport);Assert.Equal(1,_model.AudioWindowSeconds);
+        await Command(CommandIds.WorkspaceActivateTab,second);
+        Assert.Equal((20d,8d),_model.AudioViewport);Assert.Equal(8,_model.AudioWindowSeconds);
+    }
     [Fact] public async Task MultiRowCommandsWorkAcrossUndo()
     {
         await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridDuplicate);Assert.Equal(4,_model.Events.Count);

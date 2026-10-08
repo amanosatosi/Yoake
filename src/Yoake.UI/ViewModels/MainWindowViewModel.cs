@@ -279,7 +279,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
             _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft(); VideoFrame=null; WaveformSamples=state?.Waveform; MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
             _currentTimeSeconds=state?.Time ?? 0;
-            foreach(var name in new[]{nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes)}) OnPropertyChanged(name);
+            foreach(var name in new[]{nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds)}) OnPropertyChanged(name);
             MediaStatus=_media?.SourcePath ?? "Open video/audio"; InvalidateSubtitlePreview(true); _registry.NotifyStateChanged();
         }
         finally{IsSynchronizingSelection=false;}
@@ -287,7 +287,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public async Task<bool> OpenMediaAsync(string path)
     {
         if (_activeId is not { } id || !_documents.TryGetValue(id,out var state)) return false;
-        StopPlayback(); state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
+        CancelGesture(); StopPlayback(); state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
         MediaStatus=$"FFMS2 indexing {Path.GetFileName(path)}窶ｦ";
         FfmsMediaSession? opened=null;
         try
@@ -295,6 +295,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>FfmsMediaSession.Open(path,ct),ct); },token); await job.Completion;
             token.ThrowIfCancellationRequested();
             if (_disposed || !_documents.ContainsKey(id)) { opened?.Dispose(); return false; }
+            if(_activeId==id){CancelGesture();CancelVisualBounds();}
             var old=state.Media; state.Media=opened; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
             if (_activeId==id) { _media=state.Media;if(!_media!.HasVideo)VideoFrame=null; MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
             var media=state.Media!; WaveformData? peaks=null;

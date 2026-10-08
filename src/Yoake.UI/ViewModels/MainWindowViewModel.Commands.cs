@@ -16,7 +16,7 @@ public sealed partial class MainWindowViewModel
     public ICommand PositionToolCommand => Actions[CommandIds.VideoToolPosition];
     public ICommand ClipToolCommand => Actions[CommandIds.VideoToolClip];
     public IReadOnlyList<double> GridColumnWidths=>_settings.CompactGridColumnWidths??new[]{_settings.GridColumnWidths[0],36,_settings.GridColumnWidths[3],_settings.GridColumnWidths[4],_settings.GridColumnWidths[5],_settings.GridColumnWidths[6],_settings.GridColumnWidths[7]};
-    public double AudioWindowSeconds {get=>_settings.AudioWindowSeconds??20;set=>InvokeAudioSetting("audio/display/zoom",value);}
+    public double AudioWindowSeconds {get=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?state.AudioSpan:_settings.AudioWindowSeconds??20;set=>InvokeAudioSetting("audio/display/zoom",value);}
     public event EventHandler? AudioZoomChanged;
     private IUndoTransaction? _gesture;
     private SubtitleEditor? _gestureEditor;
