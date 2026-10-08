@@ -142,6 +142,9 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is null||e.Handled)return;
         var control=e.Source as Control;var context=HotkeyContext.Default;
+        // The overlay owns cancellation of both edit gestures and non-mutating
+        // point/box selections. Do not consume its Escape as video Stop.
+        if(e.Key==Key.Escape&&control is VisualOverlayControl)return;
         for(var input=control;input is not null;input=input.Parent as Control)
         {
             if(input is TextBox textBox && textBox.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
@@ -165,6 +168,7 @@ public partial class MainWindow : Window, IEditorDialogs
         var binding=_model.Hotkeys.Resolve(new(e.Key.ToString(),modifiers),[HotkeyContext.Default,context]);
         if(binding is null)return;
         var commandId=binding.CommandId;
+        if(e.Key==Key.Escape&&_model.HasGesture)commandId=CommandIds.EditCancel;
         if(commandId==CommandIds.EditCommitNext && context==HotkeyContext.SubtitleEdit && !SubtitleText.IsKeyboardFocusWithin)commandId=CommandIds.EditCommit;
         _model.TextCursor=SubtitleText.CaretIndex;
         e.Handled=true;

@@ -99,7 +99,8 @@ public sealed class VisualTypesettingTests
         var after=AssVisualTags.ClipTransform(edited,500,1000);var points=path.Handles().ToArray();
         Assert.Equal(VisualGeometry.Add(before.Map(original[0].Point),new(-20,-40)),after.Map(points[0].Point));
         for(var i=1;i<points.Length;i++)Assert.Equal(before.Map(original[i].Point),after.Map(points[i].Point));
-        Assert.Contains(@"\t(0,1000,\clippos(25,17))\future(keep)",edited);Assert.Equal(3,AssVisualTags.Clip(edited)!.Scale);
+        Assert.Equal(@"{\iclip(3,m -40 -80 l 400 0 l 400 400)\clips200\clippos(5,7)\t(0,1000,\clippos(25,17))\clippos(~-5,~+10)\future(keep)}sign",edited);
+        Assert.Equal(3,AssVisualTags.Clip(edited)!.Scale);
     }
     [Fact] public void CubicSplitPreservesTheEntireCurve()
     {
