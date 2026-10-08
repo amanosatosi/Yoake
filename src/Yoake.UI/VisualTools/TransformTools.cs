@@ -50,13 +50,16 @@ public sealed class RotateXYTool : OriginTool
     {
         if(c.Context.Active is not {} l)return;
         var scale=c.Context.Model.VisualLayoutScale;
+        // Keep the matching grid useful at every script/video resolution.
+        // Convert its screen-space spacing before applying native projection.
+        var unit=c.Context.ScriptDistance(20);
         AssPoint Project(double x,double y)=>VisualGeometry.Project(new(x,y),l.Origin,l.Transform,scale);
         for(var i=-5;i<=5;i++)
         {
-            c.Line(Project(i*20,-100),Project(i*20,100),i==0?Brushes.Lime:Brushes.Gray);
-            c.Line(Project(-100,i*20),Project(100,i*20),i==0?Brushes.OrangeRed:Brushes.Gray);
+            c.Line(Project(i*unit,-5*unit),Project(i*unit,5*unit),i==0?Brushes.Lime:Brushes.Gray);
+            c.Line(Project(-5*unit,i*unit),Project(5*unit,i*unit),i==0?Brushes.OrangeRed:Brushes.Gray);
         }
-        c.Arrow(Project(0,0),Project(65,0));c.Arrow(Project(0,0),Project(0,65));Origin(c);
+        c.Arrow(Project(0,0),Project(3.25*unit,0));c.Arrow(Project(0,0),Project(0,3.25*unit));Origin(c);
         c.Label(FormattableString.Invariant($"X {l.Transform.X:0.#}°  Y {l.Transform.Y:0.#}°"),c.Screen(l.Origin)+new Vector(10,10));
     }
     public override bool Press(VisualToolContext c,VisualPointer p)=>BeginTransform(c,p,"Rotate subtitles X/Y");
