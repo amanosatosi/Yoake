@@ -81,6 +81,14 @@ public sealed class VisualTypesettingTests
         Assert.StartsWith("{\\iclip(10,20,30,40)",result);Assert.Contains("\\t(0,500,\\clip(0,0,10,10))",result);
         Assert.Equal(result.Replace("\\iclip(10,20,30,40)","\\clip(10,20,30,40)"),AssVisualTags.InvertClip(result));
     }
+    [Theory][InlineData(5d,0d)][InlineData(0d,5d)][InlineData(-5d,0d)][InlineData(0d,-5d)]
+    public void AxisOnlyClipTranslationSerializesValidRelativeZero(double x,double y)
+    {
+        const string source=@"{\clip(0,0,100,100)\clippos(5,-7)\t(0,1000,\clippos(20,10))}sign";
+        var before=AssVisualTags.ClipOffset(source,400,1000);var edited=AssVisualTags.TranslateClip(source,new(x,y));
+        Assert.Equal(VisualGeometry.Add(before,new(x,y)),AssVisualTags.ClipOffset(edited,400,1000));
+        Assert.DoesNotContain("+-",edited);Assert.Contains(@"\t(0,1000,\clippos(20,10))",edited);
+    }
     [Fact] public void ScaledRectangleResizeKeepsTheOppositeDisplayedCornerFixed()
     {
         const string source=@"{\iclip(20,30,100,90)\clips200\clippos(5,7)\future(keep)}sign";

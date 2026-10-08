@@ -25,7 +25,7 @@ public static partial class AssVisualTags
         }
         return tags;
     }
-    private static string Number(double n) => n.ToString("0.###", CultureInfo.InvariantCulture);
+    private static string Number(double n) => n==0?"0":n.ToString("0.###", CultureInfo.InvariantCulture);
     private static bool TryNumber(string text, out double n) => double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out n) && double.IsFinite(n);
     public static AssPoint? Position(string text)
     {
