@@ -166,9 +166,8 @@ public partial class MainWindow : Window, IEditorDialogs
         if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Meta))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Meta;
         // Enter in metadata commits, without advancing while a dropdown is open.
         var binding=_model.Hotkeys.Resolve(new(e.Key.ToString(),modifiers),[HotkeyContext.Default,context]);
-        if(binding is null)return;
-        var commandId=binding.CommandId;
-        if(e.Key==Key.Escape&&_model.HasGesture)commandId=CommandIds.EditCancel;
+        var commandId=e.Key==Key.Escape&&_model.HasGesture?CommandIds.EditCancel:binding?.CommandId;
+        if(commandId is null)return;
         if(commandId==CommandIds.EditCommitNext && context==HotkeyContext.SubtitleEdit && !SubtitleText.IsKeyboardFocusWithin)commandId=CommandIds.EditCommit;
         _model.TextCursor=SubtitleText.CaretIndex;
         e.Handled=true;

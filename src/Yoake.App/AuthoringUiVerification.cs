@@ -146,6 +146,10 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Require(model.VideoFrame is null&&model.FrameTimes.Count==0,"Replacing video with audio must clear the old video presentation.");
                 Require(model.WaveformSamples!.Envelopes.Min(p=>p.Minimum)<-0.1&&model.WaveformSamples.Envelopes.Max(p=>p.Maximum)>0.1,"Audio fixture must produce both signed extrema.");
                 var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;model.AudioWindowSeconds=2;audio.ViewportStart=0;
+                var originalStart=model.SelectedEvent!.Start;var originalEnd=model.SelectedEvent.End;
+                Require(model.BeginGesture("Audio Escape verification"),"Audio timing gesture must begin.");model.UpdateTimingGesture(2,.1);
+                audio.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=audio,Key=Key.Escape,KeyModifiers=KeyModifiers.Shift});
+                Require(!model.HasGesture&&model.SelectedEvent.Start==originalStart&&model.SelectedEvent.End==originalEnd,"Escape must cancel audio timing even while Shift is held.");
                 var volume=model.PlaybackVolume;model.AudioVolumeLinked=false;model.AudioAmplitude=60;
                 Require(model.PlaybackVolume==volume,"Unlinked display amplitude must not change playback volume.");
                 model.AudioVolumeLinked=true;model.AudioAmplitude=75;
