@@ -96,6 +96,36 @@ aegisub.register_macro("After", "", function(subs) return {2},2 end)
     }
 
     [Fact]
+    public async Task ScriptCancelRollsBackAllPointsAndOldUserdataCannotRevive()
+    {
+        using var script = await Load("""
+local old, append
+aegisub.register_macro('Cancel','',function(subs)
+  old=subs; append=subs.append
+  local count=0; for i,line in ipairs(subs) do count=count+1 end
+  assert(count==#subs)
+  local line=subs[2]; line.text='discard'; subs[2]=line
+  aegisub.set_undo_point('discard checkpoint')
+  aegisub.cancel()
+end)
+aegisub.register_macro('After','',function(subs)
+  assert(not pcall(function() return #old end))
+  assert(not pcall(function() return old[1] end))
+  assert(not pcall(function() return ipairs(old) end))
+  assert(not pcall(function() append(subs[2]) end))
+  assert(subs[2].text~='discard')
+end)
+""");
+        var document = Document(); var before = document.Serialize();
+        using var subs = new AutomationSubtitleDocument(document);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await script.RunAsync(1, Context(subs), CancellationToken.None));
+        Assert.Equal(before, document.Serialize());
+        using var after = new AutomationSubtitleDocument(document);
+        await script.RunAsync(2, Context(after), CancellationToken.None);
+        Assert.Equal(before, document.Serialize());
+    }
+
+    [Fact]
     public async Task StatesAreIsolatedAndBrokenLoadsCanRegisterNoExecutableFeatures()
     {
         using var first = await Load("global_fixture = 42; aegisub.register_macro('First','',function() end)", "first.lua");

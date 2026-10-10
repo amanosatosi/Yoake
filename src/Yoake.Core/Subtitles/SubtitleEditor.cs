@@ -255,6 +255,12 @@ public sealed class SubtitleEditor(AssDocument document)
         var changed=values.Where(p=>Document.GetScriptInfo(p.Key)!=p.Value).ToArray();if(changed.Length==0)return;
         Structure("Edit Script Info", () => { foreach (var pair in changed) Document.SetScriptInfo(pair.Key, pair.Value); });
     }
+    public void SetProjectProperties(IReadOnlyDictionary<string, string> values)
+    {
+        var changed = values.Where(p => Document.GetSectionValue("[Aegisub Project Garbage]", p.Key) != p.Value).ToArray();
+        if (changed.Length == 0) return;
+        Structure("Edit project properties", () => { foreach (var pair in changed) Document.SetSectionValue("[Aegisub Project Garbage]", pair.Key, pair.Value); });
+    }
 }
 
 public static class AssText

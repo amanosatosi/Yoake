@@ -198,7 +198,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private void Attach(DocumentSession session, AssDocument document)
     {
         var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds}; _documents[session.Id]=state;
-        document.Changed+=(_,_)=> { session.IsDirty=true; if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision)); } };
+        document.Changed+=(_,_)=> { session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
             session.IsDirty=state.Editor.IsDirty;
@@ -213,6 +213,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             }
         };
         state.Editor.MarkSaved();
+        ScheduleDocumentAutomationSync(session.Id);
     }
     public bool OpenSubtitle(string path)
     {

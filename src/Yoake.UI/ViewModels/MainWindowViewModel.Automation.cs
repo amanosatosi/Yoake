@@ -23,6 +23,7 @@ public sealed class AutomationScriptItem(string path, Guid? documentId)
     internal IAutomationScript? Script;
     internal CancellationTokenSource Lifetime = new();
     internal bool Loading;
+    internal string? StoredReference;
     public override string ToString() => $"{Name} — {Scope} — {Status}";
 }
 public sealed record AutomationMenuEntry(string Name, string Help, ICommand Command, bool Active);
@@ -59,9 +60,24 @@ public sealed partial class MainWindowViewModel
         {
             if (invocation.Context.DocumentId is not { } id || !_documents.ContainsKey(id)) return;
             var path = invocation.Parameter as string ?? (Dialogs is null ? null : await Dialogs.OpenAutomationScriptAsync());
-            if (path is not null) await LoadAutomationScriptAsync(path, id, token);
+            if (path is not null)
+            {
+                if (!CommitDraft()) return;
+                var session = _workspace.Documents.Single(s => s.Id == id);
+                var value = LocalAutomationReferences(_documents[id].Editor.Document);
+                var reference = AutomationScriptReference.Encode(path, session.Path, AutomationBaseDirectory);
+                var added = value.Length == 0 ? reference : value + "|" + reference;
+                _documents[id].Editor.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = added });
+                await SynchronizeDocumentAutomationAsync(id, token);
+            }
         }, context => context.DocumentId.HasValue);
-        Register(CommandIds.AutomationRemove, "Remove script", async (invocation, _) => { if (invocation.Parameter is AutomationScriptItem { DocumentId: not null } item) await RemoveAutomationScriptAsync(item); });
+        Register(CommandIds.AutomationRemove, "Remove script", async (invocation, token) =>
+        {
+            if (invocation.Parameter is not AutomationScriptItem { DocumentId: { } id } item || !_documents.TryGetValue(id, out var state) || !CommitDraft()) return;
+            var remaining = LocalAutomationReferences(state.Editor.Document).Split('|').Where(p => p.Trim() != item.StoredReference).ToArray();
+            state.Editor.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = string.Join('|', remaining) });
+            await SynchronizeDocumentAutomationAsync(id, token);
+        });
         Register(CommandIds.AutomationReload, "Reload script", async (invocation, token) => { if (invocation.Parameter is AutomationScriptItem item) await ReloadAutomationScriptAsync(item, token); });
         Register(CommandIds.AutomationRescan, "Rescan autoload", async (_, token) => await RescanAutomationAsync(token), _ => !_automationScanning);
     }
@@ -223,6 +239,7 @@ public sealed partial class MainWindowViewModel
 
     private void CloseAutomationDocument(Guid id)
     {
+        _automationReferenceState.Remove(id);
         if (_automationRuns.TryGetValue(id, out var run)) run.Cancel();
         _automationCatalog.RemoveDocument(id);
         foreach (var item in _automationEntries.Where(e => e.DocumentId == id).ToArray()) _ = RemoveAutomationScriptAsync(item);

@@ -125,6 +125,14 @@ before capture, stale/closed/replaced documents are rejected, and returned file
 indexes map to actual event identities after commit. Complete selection-history
 restoration and packaged UI evidence remain acceptance work.
 
+Local script references use the release's `$` (Automation base), `~` (subtitle
+directory), and `/` (absolute) markers. Project-property edits are ordinary
+document undo operations; the controller reconciles interpreter ownership after
+those edits and undo/redo. Missing and malformed references retain their source
+text and an inspectable Manager error. An explicitly empty project-property key
+overrides a legacy Script Info value, so removing the last script does not revive
+old metadata. Autoload rescans remain cancellable background discovery/loading.
+
 Karaoke parsing is a read-only structured scan that returns the 3.2.2 syllable
 table, including the empty index zero and unnormalized relative millisecond
 times. Other tags, comments and drawings remain in syllable text. No parser

@@ -119,16 +119,25 @@ public sealed class AssDocument
     }
     public string GetScriptInfo(string key) => GetSectionValue("[Script Info]", key);
     public string GetSectionValue(string section, string key)
+        => TryGetSectionValue(section, key, out var value) ? value : "";
+    public bool TryGetSectionValue(string section, string key, out string value)
     {
         var inside = false;
-        foreach (var line in Source) { var trim = line.Raw.Trim(); if (trim.StartsWith('[') && trim.EndsWith(']')) inside = trim.Equals(section, StringComparison.OrdinalIgnoreCase); else if (inside && line.Raw.IndexOf(':') is var colon && colon > 0 && line.Raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) return line.Raw[(colon + 1)..].Trim(); }
-        return "";
+        foreach (var line in Source) { var trim = line.Raw.Trim(); if (trim.StartsWith('[') && trim.EndsWith(']')) inside = trim.Equals(section, StringComparison.OrdinalIgnoreCase); else if (inside && line.Raw.IndexOf(':') is var colon && colon > 0 && line.Raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { value = line.Raw[(colon + 1)..].Trim(); return true; } }
+        value = ""; return false;
     }
     internal void SetScriptInfo(string key, string value)
+        => SetSectionValue("[Script Info]", key, value);
+    internal void SetSectionValue(string section, string key, string value)
     {
+        if (!section.StartsWith('[') || !section.EndsWith(']') || section.IndexOfAny(['\r', '\n']) >= 0) throw new ArgumentException("Invalid ASS section.");
         if (key.IndexOfAny([':', '\r', '\n']) >= 0 || value.IndexOfAny(['\r', '\n']) >= 0) throw new ArgumentException("Invalid Script Info value.");
-        var header = Source.FindIndex(l => l.Raw.Trim().Equals("[Script Info]", StringComparison.OrdinalIgnoreCase));
-        if (header < 0) { Source.Insert(0, new("[Script Info]", _newline)); header = 0; }
+        var header = Source.FindIndex(l => l.Raw.Trim().Equals(section, StringComparison.OrdinalIgnoreCase));
+        if (header < 0)
+        {
+            if (section.Equals("[Script Info]", StringComparison.OrdinalIgnoreCase)) { Source.Insert(0, new(section, _newline)); header = 0; }
+            else { Terminate(); Source.Add(new(section, _newline)); header = Source.Count - 1; }
+        }
         var index = header + 1;
         for (; index < Source.Count && !Source[index].Raw.TrimStart().StartsWith('['); index++) { var raw = Source[index].Raw; var colon = raw.IndexOf(':'); if (colon > 0 && raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { Source[index] = Source[index] with { Raw = raw[..(colon + 1)] + " " + value }; Touch(); return; } }
         Source.Insert(index, new(key + ": " + value, _newline)); Touch();

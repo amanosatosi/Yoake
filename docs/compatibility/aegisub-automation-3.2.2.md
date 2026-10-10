@@ -112,5 +112,6 @@ The frozen manual is checked alongside source, with these known discrepancies:
 * Interpreter/provider tests are not packaged application acceptance evidence.
   Manager, command/menu registration, dialogs, progress, snapshot media/path
   services and macro commit/selection now have application code awaiting CI.
-  Document-local persistence, export filters, complete module fixtures and the
+  Document-local persistence now has undo-aware project-property/reference code
+  and source regressions awaiting CI. Export filters, complete module fixtures and the
   real packaged macro/dialog/selection/undo scenario remain acceptance work.

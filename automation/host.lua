@@ -91,7 +91,13 @@ function aegisub.__init_clipboard()
   return {get=function() return host('clipboard_get') end, set=function(s) return host('clipboard_set',s) end}
 end
 
-local alive, provenance = false, setmetatable({}, {__mode='k'})
+local alive, generation, provenance = false, 0, setmetatable({}, {__mode='k'})
+local subtitle_views = setmetatable({}, {__mode='k'})
+local table_ipairs = ipairs
+function ipairs(value)
+  if subtitle_views[value] then return getmetatable(value).__ipairs() end
+  return table_ipairs(value)
+end
 -- AssEntry conversion ignores authoring helpers (kara, styleref, cyclic script
 -- data). Only transmit the documented fields, just as LuaToAssEntry reads them.
 local line_fields = {}
@@ -105,28 +111,31 @@ local function line_argument(line)
   return fields
 end
 aegisub.text_extents = function(style,text) return host('text_extents',line_argument(style),text) end
-local function check() if not alive then error('Subtitles object is no longer valid', 3) end end
-local function write(i,line)
-  check()
+local function check(current) if not alive or current ~= generation then error('Subtitles object is no longer valid', 3) end end
+local function write(i,line,current)
+  check(current)
   return host('subs_write',i,line_argument(line),line and provenance[line])
 end
 local function subtitles()
+  local current = generation
+  local function valid() check(current) end
   local subs = newproxy(true)
+  subtitle_views[subs] = true
   local mt = getmetatable(subs)
-  mt.__len = function() check(); return host('subs_count') end
+  mt.__len = function() valid(); return host('subs_count') end
   mt.__index = function(_,key)
-    check()
+    valid()
     if type(key)=='number' then
       local line, id = host('subs_read',key)
       provenance[line] = id
       return line
     end
     if key=='n' then return host('subs_count') end
-    if key=='delete' then return function(...) check(); return host('subs_delete',...) end end
-    if key=='deleterange' then return function(a,b) check(); return host('subs_deleterange',a,b) end end
+    if key=='delete' then return function(...) valid(); return host('subs_delete',...) end end
+    if key=='deleterange' then return function(a,b) valid(); return host('subs_deleterange',a,b) end end
     if key=='append' or key=='insert' then
       return function(...)
-        check()
+        valid()
         local values = {n=select('#',...),...}
         local ids = {}
         for i=1,values.n do
@@ -137,8 +146,9 @@ local function subtitles()
     end
     error('Invalid indexing in Subtitle File object: '..tostring(key),2)
   end
-  mt.__newindex = function(_,i,line) write(i,line) end
+  mt.__newindex = function(_,i,line) write(i,line,current) end
   mt.__ipairs = function()
+    valid()
     local function next_line(_,i)
       i=i+1
       if i > #subs then return nil end
@@ -157,17 +167,20 @@ local function log(...)
 end
 function __yoake_invoke(index, method)
   script_cancelled = false
+  generation = generation + 1
+  provenance = setmetatable({}, {__mode='k'})
   alive = true
-  aegisub.set_undo_point = function(name) return host('undo_point',name) end
-  aegisub.parse_karaoke_data = function(line) return host('karaoke',line_argument(line)) end
+  local current = generation
+  aegisub.set_undo_point = function(name) check(current); return host('undo_point',name) end
+  aegisub.parse_karaoke_data = function(line) check(current); return host('karaoke',line_argument(line)) end
   aegisub.progress = {
-    set=function(p) return host('progress',p) end,
-    task=function(t) return host('progress',nil,t) end,
-    title=function(t) return host('progress',nil,nil,t) end,
-    is_cancelled=function() return host('is_cancelled') end
+    set=function(p) check(current); return host('progress',p) end,
+    task=function(t) check(current); return host('progress',nil,t) end,
+    title=function(t) check(current); return host('progress',nil,nil,t) end,
+    is_cancelled=function() check(current); return host('is_cancelled') end
   }
   aegisub.log, aegisub.debug = log,{out=log}
-  aegisub.dialog = {display=function(...) return host('dialog',...) end}
+  aegisub.dialog = {display=function(...) check(current); return host('dialog',...) end}
   local selected, active = host('selection')
   local feature = assert(features[index], 'Unknown Automation feature')
   local fn = feature[method]
