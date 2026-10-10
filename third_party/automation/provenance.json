@@ -1,0 +1,242 @@
+{
+  "source": "Aegisub local tagged-release source archive",
+  "version": "3.2.2",
+  "revision": 8635,
+  "repository": "https://github.com/Aegisub/Aegisub",
+  "files": [
+    {
+      "sourcePath": "automation/include/cleantags.lua",
+      "yoakePath": "automation/include/cleantags.lua",
+      "sha256": "946efb4e9567aaa992f810b0a7301543a1d4d6aa628deebbd8d5732b0adf5b57",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/clipboard.lua",
+      "yoakePath": "automation/include/clipboard.lua",
+      "sha256": "59bd24863fe4285b013154d71b8544dcfb9f447e7ccb38ab378838601dda3f7e",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/karaskel-auto4.lua",
+      "yoakePath": "automation/include/karaskel-auto4.lua",
+      "sha256": "09a3f0c8b66887623b93a132d8c28307170b2232d271d2cb675e09e242f682a0",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/karaskel.lua",
+      "yoakePath": "automation/include/karaskel.lua",
+      "sha256": "3f33716ac18c253a1d075ce7bfa97d345e7823d15d92f57a2225b3a4fed976d1",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/moonscript.lua",
+      "yoakePath": "automation/include/moonscript.lua",
+      "sha256": "fa4977c7f56de4cb201e8c8c5a5264acc4ed36aac04f3e0e38fa2976b747e811",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/re.lua",
+      "yoakePath": "automation/include/re.lua",
+      "sha256": "3247ab741f394525c78b67dd69c30510ad1cf38d44ace5f03fd9a434872ea481",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/unicode.lua",
+      "yoakePath": "automation/include/unicode.lua",
+      "sha256": "78129cbb809a78f8ba2f4628e9fa7cbbe2dfb60471a78e5154519076baf1d4be",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/utils-auto4.lua",
+      "yoakePath": "automation/include/utils-auto4.lua",
+      "sha256": "52b8c6bf998a1457a4dd3da3c2de94ed0f5e7f6d10a2f91df916b6f222cd4ea7",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/utils.lua",
+      "yoakePath": "automation/include/utils.lua",
+      "sha256": "14070a80b7d5070a4b2cee82895f28187c706da2fb556fff60e5066e28e14582",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/clipboard.lua",
+      "yoakePath": "automation/include/aegisub/clipboard.lua",
+      "sha256": "30c8e4099cf69ab107d686957944781f4df4e1c76cd21b9fffb4e2150277cb2e",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/re.moon",
+      "yoakePath": "automation/include/aegisub/re.moon",
+      "sha256": "e0eefd9bf23961b0b5b14f1d35616173b8e8246fb8849922918befb3a10ca769",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/unicode.moon",
+      "yoakePath": "automation/include/aegisub/unicode.moon",
+      "sha256": "657bade5063a6b9db7ef4f195a22fcdaf945591cfcf71dd6339b61533e7dcadf",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/util.moon",
+      "yoakePath": "automation/include/aegisub/util.moon",
+      "sha256": "1a795c4be27a5f655ceb4b994f52ce8318b3da5ef577c05de17b85fa6d683255",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/cleantags-autoload.lua",
+      "yoakePath": "automation/autoload/cleantags-autoload.lua",
+      "sha256": "885a227f5be162011dab6be533dd89a49e2b62d4a006414e6a4402933d1ac643",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/kara-templater.lua",
+      "yoakePath": "automation/autoload/kara-templater.lua",
+      "sha256": "b521224072bff84d14a384ad1e6c2730543e20cd9988b0bdf651fbb914559c5f",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/karaoke-auto-leadin.lua",
+      "yoakePath": "automation/autoload/karaoke-auto-leadin.lua",
+      "sha256": "2c586053068bf91d7eed2354e0c705c7fc5ea3a3c4e508c47bd4f81319cf0377",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/macro-1-edgeblur.lua",
+      "yoakePath": "automation/autoload/macro-1-edgeblur.lua",
+      "sha256": "43599f0c24c008172fb810ac9bf67138beee661665cac0b36d96ba7a90b3773f",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/macro-2-mkfullwitdh.lua",
+      "yoakePath": "automation/autoload/macro-2-mkfullwitdh.lua",
+      "sha256": "5ec32eb7e449b5d184df1e633001de847091dd56159ba188e654b66560c5da63",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/select-overlaps.moon",
+      "yoakePath": "automation/autoload/select-overlaps.moon",
+      "sha256": "86c2501a3a24ac5938544594049facc786e8f48c19bbf06137e1554337ce8122",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/strip-tags.lua",
+      "yoakePath": "automation/autoload/strip-tags.lua",
+      "sha256": "aa7d8a8e4d8f26e7dcf3db18509f402c13e6e0cfd71d86ed3d3447344a98738c",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "libaegisub/lua/modules/lpeg.c",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/libaegisub/lua/modules/lpeg.c",
+      "sha256": "bcea9a4ba9fe2a82e99f04ce96f3c310a898bc16acfac901f7e3c7664cc79168",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "libaegisub/lua/modules/lpeg.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/libaegisub/lua/modules/lpeg.h",
+      "sha256": "7b4930365ba289d0d1a2d0c7d43fcf786fc286999654f86b5470ec1ebf99dc78",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "libaegisub/lua/modules/re.cpp",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/libaegisub/lua/modules/re.cpp",
+      "sha256": "a6f97d36747b6030bf81a63558a111a6da85243b3f8dacf3e672a1019c417e9f",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "libaegisub/lua/modules/unicode.cpp",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/libaegisub/lua/modules/unicode.cpp",
+      "sha256": "3ed729c159362fe67a06dd84d007f7d47d6a54499505118bb85d6889f158fed5",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/fwrite.c",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/fwrite.c",
+      "sha256": "97305a6bdbd1354e81c34346cb49e7d9433f9a720dfcfbe3b729599669105097",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/fwrite.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/fwrite.h",
+      "sha256": "917f49a59c328320adfa7a5f221befe05ae3c8295cb5f0f3d3d2eef015e02dc0",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/load.c",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/load.c",
+      "sha256": "f028861424fa3397a6ecbb72b9694ee75700d30bc7389c6d0487518d6ccfdff2",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/luabins.c",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/luabins.c",
+      "sha256": "4b75579a4a4c93fa5ce879a69cba6b21303891f31f27a22ab0b1cfc687b59e54",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/luabins.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/luabins.h",
+      "sha256": "c04d9db5a4802555f6374e406d290483661c8b67bd84f4cf8e24d74b80840758",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/luaheaders.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/luaheaders.h",
+      "sha256": "f347d2af91a01b047089dea3cd49cebe44fd32630e00cc19f8f24acd57ca16b7",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/luainternals.c",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/luainternals.c",
+      "sha256": "f68cd6679026237f1e6ae3f058792cb093353c778eec699b6a419f5add51bce5",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/luainternals.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/luainternals.h",
+      "sha256": "a3fe1e82259ffc96ed47c4180b1c824b95e36dedc1ad2da07eddd4d168a2aa0a",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/lualess.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/lualess.h",
+      "sha256": "8e092149f07d3658127755b1952cfc328703b58856cb6b969741f74756a5f627",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/save.c",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/save.c",
+      "sha256": "48e9be479a514bff80c5c913cfc02630ab834a210071beeada4d159767cc4494",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/savebuffer.c",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/savebuffer.c",
+      "sha256": "38d1e3f05efd52da8f6b8cd1de731eb52b0eadd19c311e4c09322d32d1bc0fee",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/savebuffer.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/savebuffer.h",
+      "sha256": "6d2c7aff265032968951f4926827c812ba3f7b75ab1a3989383d386ef93178b4",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/saveload.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/saveload.h",
+      "sha256": "1155e446aa805aa82c41464f164cfdbde2091e6a101b050c979bda9ed498939c",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/write.c",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/write.c",
+      "sha256": "43bd4954724244ef9e403111cec2683f6fb7f40a4e6cb8d02b0dccd620fc64cc",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "vendor/luabins/src/write.h",
+      "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/write.h",
+      "sha256": "c9081af9a76ee8864d97818c2eeefa9f3d4cbc1c39e3f34a8c0fb9011297108d",
+      "modifications": "none"
+    }
+  ]
+}

@@ -11,5 +11,6 @@
     </PackageReference>
     <ProjectReference Include="../../src/Yoake.Native/Yoake.Native.csproj" />
     <None Include="../../automation/host.lua" Link="host.lua" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../automation/include/**/*" Link="include/%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

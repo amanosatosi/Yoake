@@ -69,3 +69,27 @@ by `ci/build_dependencies.ps1`; its complete COPYRIGHT is packaged as
 code. Lua execution uses interpreter mode for reliable cancellation; the managed
 application remains NativeAOT. No upstream Automation library is copied by this
 runtime foundation milestone.
+
+## Aegisub 3.2.2 Automation sources
+
+The subsequently integrated include/autoload libraries and LPeg, luabins, regex
+and Unicode sources come from the user's read-only Aegisub 3.2.2 tagged-release
+archive, revision 8635, corresponding to https://github.com/Aegisub/Aegisub.
+`third_party/automation/provenance.json` records every exact original path,
+shipping/source destination, SHA-256 and modification status. Source files are
+unchanged; the native helper boundary and lfs implementation are original Yoake
+code. Original source license/copyright headers are retained.
+
+Aegisub library licenses vary by file: BSD 3-Clause and ISC, with authors including
+Niels Martin Hansen, Rodrigo Braz Monteiro and Thomas Goyne. MoonScript 0.2.5 is
+MIT, Copyright 2013 Leaf Corcoran (license verified against tag v0.2.5,
+`ea282f23d213a2ad8c784f4f04a907b5085443c0`, README.md). LPeg 0.10 is MIT,
+Copyright Lua.org, PUC-Rio; its license is retained from the official 0.10
+distribution's `lpeg.html`, alongside the original source copyright 2007.
+Luabins is MIT, Copyright 2009-2010 Luabins authors, from `src/luabins.h`.
+Full notices are in `third_party/licenses`, copied into the package's `licenses`.
+
+Native module dependencies Boost.Regex/Locale 1.91.0 (BSL-1.0) and ICU 78.3 port 1
+(ICU license and constituent data licenses) use the pinned vcpkg registry
+`f3419f137f1a1e79b33b880ae6845f873d87820b`. Every installed native port's complete
+copyright notice is included by the authoritative dependency builder.

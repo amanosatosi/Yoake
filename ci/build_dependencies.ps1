@@ -53,8 +53,15 @@ if ($Stage -in @('Automation', 'All')) {
   Checkout-Pinned $versions.luajit.repository $versions.luajit.commit $luaSource
   Push-Location (Join-Path $luaSource 'src')
   try { & .\msvcbuild.bat; Assert-LastExitCode 'LuaJIT build' } finally { Pop-Location }
+  $automationVcpkg = [IO.Path]::GetFullPath((Join-Path $workRoot 'vcpkg-automation'))
+  if (-not $automationVcpkg.StartsWith([IO.Path]::GetFullPath($workRoot) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Automation registry escaped native build root.' }
+  Checkout-Pinned 'https://github.com/microsoft/vcpkg.git' $versions.vcpkg.commit $automationVcpkg $true
+  & (Join-Path $automationVcpkg 'bootstrap-vcpkg.bat') -disableMetrics; Assert-LastExitCode 'Automation vcpkg bootstrap'
+  $env:VCPKG_DISABLE_METRICS = '1'
+  $env:VCPKG_BINARY_SOURCES = "clear;files,$binaryCache,readwrite"
+  Remove-Item Env:VCPKG_ROOT -ErrorAction SilentlyContinue
   $automationBuild = Join-Path $workRoot 'automation-bridge'
-  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $automationBuild -A x64 "-DLUAJIT_ROOT=$luaSource"
+  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $automationBuild -A x64 "-DLUAJIT_ROOT=$luaSource" "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $automationVcpkg 'scripts\buildsystems\vcpkg.cmake')" -DVCPKG_TARGET_TRIPLET=x64-windows-static
   Assert-LastExitCode 'Automation bridge configure'
   cmake --build $automationBuild --config Release
   Assert-LastExitCode 'Automation bridge build'
@@ -64,6 +71,13 @@ if ($Stage -in @('Automation', 'All')) {
   Copy-Item -LiteralPath (Join-Path $luaSource 'src\lua51.dll') -Destination $bin -Force
   Copy-Item -LiteralPath (Join-Path $automationBuild 'Release\yoake-automation.dll') -Destination $bin -Force
   Copy-Item -LiteralPath (Join-Path $luaSource 'COPYRIGHT') -Destination (Join-Path $licenses 'LuaJIT-MIT.txt') -Force
+  Get-ChildItem -LiteralPath (Join-Path $automationBuild 'vcpkg_installed\x64-windows-static\share') -Recurse -File -Filter copyright | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $licenses ($_.Directory.Name + '-copyright.txt')) -Force
+  }
+  foreach ($name in @('LPeg-0.10-MIT.txt','Luabins-MIT.txt','MoonScript-0.2.5-MIT.txt','Aegisub-Automation-ISC.txt')) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\licenses\$name") -Destination $licenses -Force
+  }
+  Get-ChildItem -LiteralPath $bin -File | Select-Object Name,Length | ConvertTo-Json | Set-Content (Join-Path $automationInstall 'binary-sizes.json') -Encoding utf8
   New-Item -ItemType File -Force -Path (Join-Path $automationInstall '.complete') | Out-Null
 }
 

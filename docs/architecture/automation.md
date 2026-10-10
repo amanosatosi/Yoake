@@ -107,6 +107,26 @@ does not dirty the open document or reuse Save as an implicit filter operation.
 
 ## Packaging, provenance and trust
 
+The standard modules use 3.2.2's unmodified LPeg 0.10 and luabins sources, its
+unmodified Boost regex/Unicode adapters, and a narrow Yoake implementation of
+the source-defined lfs surface using C++ standard filesystem. Shipped includes
+(including MoonScript 0.2.5) remain unmodified and are hash-recorded in
+`third_party/automation/provenance.json`. Their legacy versions are compatibility
+pins, not claims of modern maintenance; all are trusted-script code.
+
+Boost.Regex/Locale and ICU are additional **native**, statically linked
+dependencies acquired through the existing pinned vcpkg registry. Boost is
+BSL-1.0; ICU carries its ICU/data licenses at the selected registry revision. They implement
+3.2.2's actual Unicode-aware Boost Perl regex and full Unicode case folding.
+.NET Regex and simple case conversion have different regex syntax, captures,
+replacement and expansion semantics, so they are not adequate substitutes.
+Both projects remain maintained; the immutable registry pins the dependency
+graph. They add CI build time and substantial native code/data size (especially
+ICU); CI/package manifests provide measured output sizes and complete copyright
+notices. They have no managed trimming/reflection cost and no UI/native-state
+leak. Aegisub's old Boost/ICU versions are not copied; compatibility is judged
+against its 3.2.2 module fixtures. Full fixture parity remains an acceptance gate.
+
 Native acquisition/build extends only `ci/build_dependencies.ps1` and
 `third_party/*`. Build/cache trees remain outside shipping `native/win-x64`.
 Do not bump unrelated media dependencies. Copied includes, modules and fixtures

@@ -21,7 +21,7 @@ public sealed class LuaProviderTests : IDisposable
     private ValueTask<IAutomationScript> Load(string source, string name = "日本語 မြန်မာ.lua")
     {
         var path = Path.Combine(_root, name); File.WriteAllText(path, source);
-        return _provider.LoadAsync(path, new(path, []), CancellationToken.None);
+        return _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), CancellationToken.None);
     }
     private static AssDocument Document() => AssDocument.Parse("[Script Info]\nTitle: Preserve\n[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text,Future\nDialogue: 0,0:00:00.00,0:00:02.00,Default,,0,0,0,,{\\distort(1,2)\\1grd&HFFFFFF&}日本語 မြန်မာ,evidence\n");
     private static AutomationInvocation Context(AutomationSubtitleDocument subs) => new(subs, [2], 2, new Services());
@@ -122,6 +122,37 @@ aegisub.register_macro('Include passed','',function() end)
     }
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
+
+    [Fact]
+    public async Task ExactShippedModulesSupportLuaBinsMoonScriptRegexAndUnicode()
+    {
+        using var script = await Load("""
+local bins=require('luabins')
+local packed=assert(bins.save({name='日本語 မြန်မာ',number=42,nested={true,false}},'tail'))
+local ok,values,tail=bins.load(packed)
+assert(ok and values.name=='日本語 မြန်မာ' and values.nested[1]==true and tail=='tail')
+local lpeg=require('lpeg')
+assert(lpeg.match(lpeg.P('abc'), 'abcdef')==4)
+local unicode=require('aegisub.unicode')
+assert(unicode.len('日本語 မြန်မာ')==10)
+assert(unicode.len('á😀')==3)
+assert(unicode.to_upper_case('straße')=='STRASSE')
+local re=require('aegisub.re')
+local matches=re.find('☃☃','.')
+assert(#matches==2 and matches[1].first==1 and matches[1].last==3 and matches[2].first==4)
+assert(re.sub('aab','a','x')=='xxb')
+local fs=require('lfs')
+assert(type(fs.currentdir())=='string')
+assert(fs.attributes('this-file-does-not-exist','mode')==nil)
+include('utils.lua')
+include('karaskel.lua')
+assert(type(karaskel.collect_head)=='function' and type(karaskel.preproc_line)=='function')
+aegisub.register_macro('Modules loaded','',function() end)
+""", "modules.lua");
+        Assert.Equal("Modules loaded", Assert.Single(script.Macros).Name);
+        using var moon = await Load("aegisub.register_macro 'Moon macro', '', (subs, selected, active) ->\n  selected, active\n", "fixture.moon");
+        Assert.Equal("Moon macro", Assert.Single(moon.Macros).Name);
+    }
 
     private sealed class Services : IAutomationHostServices
     {

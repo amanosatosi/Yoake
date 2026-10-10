@@ -15,6 +15,7 @@
 #endif
 
 typedef char *(*host_callback)(void *, const char *, int);
+extern int ya_safe_preload_modules(lua_State *L);
 typedef struct runtime {
     lua_State *L;
     host_callback host;
@@ -83,6 +84,7 @@ static int traceback(lua_State *L) {
 static int initialize(lua_State *L) {
     runtime *r = (runtime *)lua_touserdata(L, 1);
     luaL_openlibs(L);
+    ya_safe_preload_modules(L);
     lua_pushlightuserdata(L, r);
     lua_setfield(L, LUA_REGISTRYINDEX, "yoake.runtime");
     lua_pushcfunction(L, dispatch);
