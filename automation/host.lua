@@ -92,10 +92,16 @@ function aegisub.register_filter(name, help, priority, run, config)
 end
 local script_cancelled = false
 function aegisub.cancel() script_cancelled = true; error('Automation execution cancelled', 0) end
+local function number_argument(value)
+  if type(value)=='string' then return tonumber(value) or value end
+  return value
+end
 for _,name in ipairs({'text_extents','frame_from_ms','ms_from_frame','video_size','keyframes',
   'decode_path','file_name','gettext','project_properties'}) do
   local operation = name
-  aegisub[operation] = function(...) return host(operation, ...) end
+  if operation=='frame_from_ms' or operation=='ms_from_frame' then
+    aegisub[operation] = function(value) return host(operation, number_argument(value)) end
+  else aegisub[operation] = function(...) return host(operation, ...) end end
 end
 function aegisub.__init_clipboard()
   return {get=function() return host('clipboard_get') end, set=function(s) return host('clipboard_set',s) end}
@@ -111,20 +117,26 @@ end
 -- AssEntry conversion ignores authoring helpers (kara, styleref, cyclic script
 -- data). Only transmit the documented fields, just as LuaToAssEntry reads them.
 local line_fields = {}
+local numeric_fields = {}
+for name in ('layer start_time end_time margin_l margin_r margin_t margin_b fontsize scale_x scale_y spacing angle borderstyle outline shadow align encoding relative_to'):gmatch('%S+') do
+  numeric_fields[name] = true
+end
 for name in ('class raw section key value comment layer start_time end_time style actor margin_l margin_r margin_t margin_b effect text extra name fontname fontsize color1 color2 color3 color4 bold italic underline strikeout scale_x scale_y spacing angle borderstyle outline shadow align encoding relative_to'):gmatch('%S+') do
   line_fields[name] = true
 end
 local function line_argument(line)
   if type(line) ~= 'table' then return line end
   local fields = {}
-  for key in pairs(line_fields) do fields[key] = line[key] end
+  for key in pairs(line_fields) do
+    fields[key] = numeric_fields[key] and number_argument(line[key]) or line[key]
+  end
   return fields
 end
 aegisub.text_extents = function(style,text) return host('text_extents',line_argument(style),text) end
 local function check(current) if not alive or current ~= generation then error('Subtitles object is no longer valid', 3) end end
 local function write(i,line,current)
   check(current)
-  return host('subs_write',i,line_argument(line),line and provenance[line])
+  return host('subs_write',number_argument(i),line_argument(line),line and provenance[line])
 end
 local function subtitles()
   local current = generation
@@ -141,12 +153,21 @@ local function subtitles()
       return line
     end
     if key=='n' then return host('subs_count') end
-    if key=='delete' then return function(...) valid(); return host('subs_delete',...) end end
-    if key=='deleterange' then return function(a,b) valid(); return host('subs_deleterange',a,b) end end
+    if key=='delete' then return function(...)
+      valid(); local values={n=select('#',...),...}
+      if type(values[1])=='table' then
+        local indexes={}; for k,v in pairs(values[1]) do indexes[k]=number_argument(v) end
+        return host('subs_delete',indexes)
+      end
+      for i=1,values.n do values[i]=number_argument(values[i]) end
+      return host('subs_delete',unpack(values,1,values.n))
+    end end
+    if key=='deleterange' then return function(a,b) valid(); return host('subs_deleterange',number_argument(a),number_argument(b)) end end
     if key=='append' or key=='insert' then
       return function(...)
         valid()
         local values = {n=select('#',...),...}
+        if key=='insert' then values[1]=number_argument(values[1]) end
         local ids = {}
         for i=1,values.n do
           if type(values[i])=='table' then ids[i]=provenance[values[i]]; values[i]=line_argument(values[i]) end
@@ -232,7 +253,7 @@ function __yoake_invoke(index, method, settings)
   aegisub.set_undo_point = not feature.filter and processing and function(name) check(current); return host('undo_point',name) end or nil
   aegisub.parse_karaoke_data = function(line) check(current); return host('karaoke',line_argument(line)) end
   aegisub.progress = processing and {
-    set=function(p) check(current); return host('progress',p) end,
+    set=function(p) check(current); return host('progress',tonumber(p) or 0) end,
     task=function(t) check(current); return host('progress',nil,t) end,
     title=function(t) check(current); return host('progress',nil,nil,t) end,
     is_cancelled=function() check(current); return host('is_cancelled') end

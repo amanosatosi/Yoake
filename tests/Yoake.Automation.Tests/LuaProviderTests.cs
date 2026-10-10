@@ -459,6 +459,29 @@ end)
     }
 
     [Fact]
+    public async Task NumericFieldsAndMutationArgumentsUseLuaCoercionIncludingHexStrings()
+    {
+        using var script = await Load("""
+aegisub.register_macro('Numeric strings','',function(subs)
+  assert(not pcall(function() return subs['2'] end)) -- read indexes use actual numbers
+  local line=subs[2]; line.layer='0x10'; line.start_time='0x64'; line.end_time='0xc8'
+  line.margin_l='0xa'; subs['0x2']=line
+  subs.insert('0x3',line); subs.delete({'0x3'})
+  subs.deleterange('0x3','0x3')
+  assert(subs[2].layer==16 and subs[2].margin_l==10 and #subs==2)
+  assert(aegisub.frame_from_ms('0x11')==nil and aegisub.ms_from_frame('0x11')==nil)
+  aegisub.progress.set('0x11')
+end)
+""");
+        var document = Document(); var editor = new SubtitleEditor(document); var before = document.Serialize();
+        using var subs = new AutomationSubtitleDocument(document);
+        await script.RunAsync(1, Context(subs), default); subs.Commit(editor, "Numeric strings");
+        Assert.Equal("16", document.Events[0].Layer); Assert.Equal("10", document.Events[0].MarginL);
+        Assert.Equal(100, document.Events[0].StartMilliseconds); Assert.Equal(200, document.Events[0].EndMilliseconds);
+        editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
+    }
+
+    [Fact]
     public async Task ReleaseRetimingFixtureGeneratesAllModesAndRestoresExactSource()
     {
         var path = Path.Combine(AppContext.BaseDirectory, "autoload", "kara-templater.lua");
