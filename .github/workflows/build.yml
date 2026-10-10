@@ -44,15 +44,28 @@ jobs:
 
   automation-provider-tests:
     runs-on: windows-latest
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "10.0.401"
       - uses: ilammy/msvc-dev-cmd@v1
+      - name: Restore Automation native dependency archives
+        id: automation-dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: .ci-cache/vcpkg-binaries
+          key: yoake-automation-dependencies-win-x64-v1-${{ hashFiles('third_party/automation/vcpkg.json', 'third_party/versions.json') }}
       - name: Build pinned LuaJIT and protected native bridge
         shell: pwsh
         run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Automation
+      - name: Save Automation native dependency archives
+        if: always() && steps.automation-dependencies.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .ci-cache/vcpkg-binaries
+          key: yoake-automation-dependencies-win-x64-v1-${{ hashFiles('third_party/automation/vcpkg.json', 'third_party/versions.json') }}
       - name: Test real native script execution and cancellation
         shell: pwsh
         run: |
@@ -62,6 +75,13 @@ jobs:
           Copy-Item .ci-cache/native/automation/bin/*.dll $dlls
           $env:YOAKE_AUTOMATION_TEST_RUNTIME = $layout
           dotnet test tests/Yoake.Automation.Tests/Yoake.Automation.Tests.csproj -c Release
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Automation-tested-native-runtime
+          path: .ci-cache/native/automation
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
 
   windows-nativeaot:
     runs-on: windows-latest
@@ -142,11 +162,14 @@ jobs:
         shell: pwsh
         run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Mangetsu
 
+      - name: Receive the native Automation runtime tested by this workflow
+        uses: actions/download-artifact@v8
+        with:
+          name: Automation-tested-native-runtime
+          path: .ci-cache/native/automation
       - name: Finalize dependency stack and license bundle
         shell: pwsh
-        run: |
-          .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Automation
-          .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Finalize
+        run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Finalize
 
       - name: Install deterministic app-icon renderer
         shell: pwsh

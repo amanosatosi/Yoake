@@ -12,6 +12,8 @@ add_library(yoake-automation SHARED yoake_lua.c modules.cpp lfs.cpp
   "${UPSTREAM}/libaegisub/lua/modules/unicode.cpp"
   ${LUABINS_SOURCES})
 target_include_directories(yoake-automation PRIVATE "${LUAJIT_ROOT}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
+# LPeg 0.10 / bundled luabins use the pre-5.1 spelling. Keep source bytes intact.
+target_compile_definitions(yoake-automation PRIVATE luaL_reg=luaL_Reg)
 find_package(Boost REQUIRED COMPONENTS regex locale)
 find_package(ICU REQUIRED COMPONENTS uc i18n data)
 target_link_libraries(yoake-automation PRIVATE Boost::regex Boost::locale ICU::uc ICU::i18n ICU::data)
