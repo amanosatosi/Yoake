@@ -6,6 +6,7 @@ public sealed record AutomationScriptMetadata(string Name, string Description, s
 public sealed record AutomationMacro(int Index, string Name, string Description, bool HasValidation, bool HasToggle);
 public sealed record AutomationExportFilter(int Index, string Name, string Description, int Priority, bool HasConfiguration);
 public sealed record AutomationMacroResult(IReadOnlyList<int>? Selection, int? ActiveLine);
+public sealed record AutomationSelectionState(IReadOnlyList<AssEvent> Selection, AssEvent? ActiveLine);
 public sealed record AutomationValidation(bool Enabled, string? Help, bool Active);
 public sealed record AutomationInvocation(AutomationSubtitleDocument Subtitles, IReadOnlyList<int> SelectedLines, int ActiveLine, IAutomationHostServices Services);
 public sealed record AutomationTextMetrics(double Width, double Height, double Descent, double ExternalLeading);

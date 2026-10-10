@@ -196,7 +196,8 @@ public sealed class AutomationSubtitleDocument : IDisposable
         events.Select(IndexOf).Where(i => i > 0).Distinct().Order().ToArray();
 
     // Must run on the host's document thread, only after successful script return.
-    public IReadOnlyDictionary<int, AssEvent> Commit(SubtitleEditor editor, string macroName)
+    public IReadOnlyDictionary<int, AssEvent> Commit(SubtitleEditor editor, string macroName,
+        AutomationSelectionState? initialSelection = null, AutomationMacroResult? result = null, Action<AutomationSelectionState>? restoreSelection = null)
     {
         RequireWritable();
         if (!ReferenceEquals(editor.Document, _document)) throw new InvalidOperationException("Automation editor ownership mismatch.");
@@ -205,17 +206,34 @@ public sealed class AutomationSubtitleDocument : IDisposable
         var checkpoints = _checkpoints.ToList();
         if (_changed) checkpoints.Add(new(macroName, _entries.ToArray()));
         var previous = _initial;
-        List<IUndoOperation> operations = [];
-        foreach (var point in checkpoints)
+        var publishing = true;
+        void Restore(Entry[] entries, bool final)
         {
+            if (publishing || initialSelection is null || restoreSelection is null) return;
+            var available = entries.Select(e => _records.GetValueOrDefault(e.Id)).OfType<AssEvent>().ToArray();
+            AssEvent? At(int index) => index > 0 && index <= entries.Length ? _records.GetValueOrDefault(entries[index - 1].Id) as AssEvent : null;
+            var selected = final && result?.Selection is { } returned
+                ? returned.Select(At).OfType<AssEvent>().Distinct().ToArray()
+                : initialSelection.Selection.Where(available.Contains).ToArray();
+            var active = final && result?.ActiveLine is { } activeIndex ? At(activeIndex) : null;
+            active ??= available.Contains(initialSelection.ActiveLine) ? initialSelection.ActiveLine : selected.FirstOrDefault() ?? available.FirstOrDefault();
+            restoreSelection(new(selected.Length == 0 && active is not null ? [active] : selected, active));
+        }
+        List<IUndoOperation> operations = [];
+        for (var pointIndex = 0; pointIndex < checkpoints.Count; pointIndex++)
+        {
+            var point = checkpoints[pointIndex];
             var before = previous; var after = point.Entries;
+            var final = pointIndex == checkpoints.Count - 1;
             // Materialize/validate source before touching the live model.
             var beforeSource = BuildSource(before); var afterSource = BuildSource(after);
             operations.Add(new DelegateUndoOperation(point.Name,
-                () => Apply(beforeSource), () => Apply(afterSource)));
+                () => { Apply(beforeSource); Restore(before, false); },
+                () => { Apply(afterSource); Restore(after, final); }));
             previous = after;
         }
         using (_document.BeginUpdate()) editor.Undo.ExecuteBatch(operations);
+        publishing = false;
         _expired = true;
         Dictionary<int, AssEvent> events = [];
         for (var i = 0; i < _entries.Count; i++)

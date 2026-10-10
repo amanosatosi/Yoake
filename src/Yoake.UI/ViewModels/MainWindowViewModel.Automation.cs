@@ -186,7 +186,8 @@ public sealed partial class MainWindowViewModel
             IsSynchronizingSelection = true;
             try
             {
-                var mapping = subs.Commit(state.Editor, binding.Macro.Name);
+                var mapping = subs.Commit(state.Editor, binding.Macro.Name, new(initialSelection, initialActive), result,
+                    restored => RestoreAutomationSelection(id, state, restored));
                 var selected = result.Selection is null ? initialSelection.Where(state.Editor.Document.Events.Contains).ToArray()
                     : result.Selection.Distinct().Where(mapping.ContainsKey).Select(index => mapping[index]).ToArray();
                 var active = result.ActiveLine is { } index && mapping.TryGetValue(index, out var returned) ? returned
@@ -213,6 +214,15 @@ public sealed partial class MainWindowViewModel
         if (_disposed || _activeId is not { } id || !_documents.TryGetValue(id, out var state) || _automationCatalog.IsBusy(id) || _automationCatalog.Macros(id).Count == 0) return;
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_automationLifetime.Token); _automationValidation = cancellation;
         _ = ValidateAutomationAsync(id, state, cancellation.Token);
+    }
+
+    private void RestoreAutomationSelection(Guid id, DocumentState state, AutomationSelectionState restored)
+    {
+        state.Selected = restored.ActiveLine;
+        if (_activeId != id || !_documents.TryGetValue(id, out var current) || !ReferenceEquals(current, state)) return;
+        _selectedEvent?.ShowDraft(null); _selectedEvent = restored.ActiveLine;
+        state.Editor.Document.UpdateCurrentEvent(restored.ActiveLine); SetSelectedEvents(restored.Selection);
+        ReloadDraft(); OnPropertyChanged(nameof(Events)); OnPropertyChanged(nameof(SelectedEvent)); OnPropertyChanged(nameof(HasSelectedEvent));
     }
     private async Task ValidateAutomationAsync(Guid id, DocumentState state, CancellationToken token)
     {

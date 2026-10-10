@@ -194,7 +194,7 @@ aegisub.register_macro('Modules loaded','',function() end)
         template.Effect = "template syl"; template.Text = "{\\pos($scenter,$smiddle)\\k$sdur}";
         var song = editor.Insert(template, after: true); song.Text = "{\\k20}日{\\kf30}本語";
         song.Start = "0:00:01.00"; song.End = "0:00:03.00";
-        editor.ToggleComments([template]); editor.MarkSaved();
+        editor.ToggleComment([template]); editor.MarkSaved();
         var before = document.Serialize();
         var macro = Assert.Single(script.Macros);
         using (var validation = new AutomationSubtitleDocument(document, writable: false))
