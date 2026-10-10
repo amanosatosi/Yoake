@@ -49,3 +49,5 @@ Avalonia navigation uses the focused container; changing SelectedIndex and sendi
 a key while the requested row is still virtualized does not exercise that path.
 The packaged probe waits for realization, requires row focus and routes Down/Enter
 from that row. Loading placeholders cannot be accepted as installed families.
+The picker owns Enter/Escape in the list tunnel before Avalonia's row selection
+handler consumes Enter. Directional navigation remains native to ListBox.

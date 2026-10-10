@@ -36,7 +36,9 @@ public sealed class FontPicker : UserControl
         browser.Bind(Border.BackgroundProperty,this.GetResourceObservable("AppBackgroundBrush"));
         _browse.Click+=(_,_)=>{if(_popup.IsOpen)CloseBrowser();else OpenBrowser();};ToolTip.SetTip(_browse,"Browse all installed font families (Alt+Down)");
         _entry.KeyDown+=(_,e)=>{if(e.Key==Key.Down&&(e.KeyModifiers is KeyModifiers.None or KeyModifiers.Alt)){OpenBrowser();_list.Focus();e.Handled=true;}else if(e.Key==Key.Escape)_popup.IsOpen=false;};
-        _list.KeyDown+=(_,e)=>{if(e.Key==Key.Enter){Choose();e.Handled=true;}else if(e.Key==Key.Escape){_popup.IsOpen=false;_entry.Focus();e.Handled=true;}};
+        // Avalonia's ListBoxItem consumes Enter for selection during bubbling.
+        // Accept the family first; leave directional navigation with ListBox.
+        _list.AddHandler(KeyDownEvent,(_,e)=>{if(e.Key==Key.Enter){Choose();e.Handled=true;}else if(e.Key==Key.Escape){CloseBrowser();_entry.Focus();e.Handled=true;}},Avalonia.Interactivity.RoutingStrategies.Tunnel);
         _list.LayoutUpdated+=(_,_)=>
         {
             // ListBox navigation starts from a realized, focused row. Opening
