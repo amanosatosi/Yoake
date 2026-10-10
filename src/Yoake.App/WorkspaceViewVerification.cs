@@ -82,7 +82,8 @@ internal sealed class WorkspaceViewVerification
         Require(mode.Video?workspace.ColumnDefinitions[0].ActualWidth>=340:workspace.ColumnDefinitions[0].ActualWidth==0,"Video column must restore or fully collapse.");
         Require(mode.Audio?pane.RowDefinitions[0].ActualHeight>=160:pane.RowDefinitions[0].ActualHeight==0,"Audio row must restore or fully collapse.");
         var text=Named<TextBox>("SubtitleText"); var rows=Named<ListBox>("SubtitleRows");
-        Require(text.IsEffectivelyVisible&&text.Bounds.Width>=300&&text.Bounds.Height>=64&&rows.Bounds.Height>=140,"All modes must retain usable subtitle authoring space.");
+        Require(text.IsEffectivelyVisible&&text.Bounds.Width>=300&&text.Bounds.Height>=64&&rows.Bounds.Height>=140,
+            $"All modes must retain usable subtitle authoring space ({mode.Mode}, loaded={_loaded}, text={text.Bounds}, rows={rows.Bounds}).");
         foreach(var control in new Control[]{Named<Grid>("EventEditorRegion"),Named<Border>("SubtitleGridRegion")})
         {
             var origin=control.TranslatePoint(default,_window)!.Value;
