@@ -110,6 +110,10 @@ The frozen manual is checked alongside source, with these known discrepancies:
   remain preserved. Full typed extradata projection is pending.
 * Negative deleterange endpoints are rejected instead of reproducing unsigned
   conversion/wraparound. Header/raw class writes are rejected, as in 3.2.2.
+* Returned selection values use Lua numeric-string coercion and ignore nonnumeric
+  helpers; invalid/non-dialogue indexes log an error and stop readback as in the
+  release. An explicit empty selection clears Yoake's active row as well; the
+  release can retain a focused active row outside its empty selected set.
 * Lua table-copy helpers lose weak identity; the native bridge now recovers schema
   provenance from exact class/raw fields. Copy/unknown-column and cyclic authoring-helper regressions pass native CI.
 * Nonzero GDI spacing uses whole-string shaping plus one space increment per

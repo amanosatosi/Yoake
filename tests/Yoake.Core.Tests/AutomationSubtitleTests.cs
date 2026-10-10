@@ -218,4 +218,16 @@ public sealed class AutomationSubtitleTests
         Assert.Equal(0, value); Assert.False(history.CanUndo); Assert.True(history.CanRedo);
         history.Redo(); Assert.Equal(1, value);
     }
+
+    [Fact]
+    public void ExplicitEmptySelectionClearsActiveOnRedoAndRestoresOriginalOnUndo()
+    {
+        var document = AssDocument.Parse(Source); var editor = new SubtitleEditor(document);
+        var original = document.Events[0]; AutomationSelectionState? restored = null;
+        using var subs = new AutomationSubtitleDocument(document);
+        var line = subs.Read(3); line["text"] = "changed"; subs.Write(3, line);
+        subs.Commit(editor, "Clear selection", new([original], original), new([], null), state => restored = state);
+        editor.Undo.Undo(); Assert.Equal(Source, document.Serialize()); Assert.Same(original, restored!.ActiveLine); Assert.Same(original, Assert.Single(restored.Selection));
+        editor.Undo.Redo(); Assert.Equal("changed", document.Events[0].Text); Assert.Null(restored!.ActiveLine); Assert.Empty(restored.Selection);
+    }
 }

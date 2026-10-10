@@ -217,7 +217,9 @@ public sealed class AutomationSubtitleDocument : IDisposable
                 : initialSelection.Selection.Where(available.Contains).ToArray();
             var active = final && result?.ActiveLine is { } activeIndex ? At(activeIndex) : null;
             active ??= available.Contains(initialSelection.ActiveLine) ? initialSelection.ActiveLine : selected.FirstOrDefault() ?? available.FirstOrDefault();
-            restoreSelection(new(selected.Length == 0 && active is not null ? [active] : selected, active));
+            var explicitSelection = final && result?.Selection is not null;
+            if (explicitSelection && (active is null || !selected.Contains(active))) active = selected.FirstOrDefault();
+            restoreSelection(new(!explicitSelection && selected.Length == 0 && active is not null ? [active] : selected, active));
         }
         List<IUndoOperation> operations = [];
         for (var pointIndex = 0; pointIndex < checkpoints.Count; pointIndex++)

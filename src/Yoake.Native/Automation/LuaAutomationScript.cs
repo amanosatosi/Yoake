@@ -64,6 +64,30 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         if (json.RootElement.TryGetProperty("first", out var first) && first.ValueKind == JsonValueKind.Object)
             selection = first.EnumerateObject().Where(p => p.Value.ValueKind == JsonValueKind.Number).Select(p => Integer(p.Value)).ToArray();
         if (json.RootElement.TryGetProperty("second", out var second) && second.ValueKind == JsonValueKind.Number) active = Integer(second);
+        if (active is < 0 || active > invocation.Subtitles.Count)
+        {
+            invocation.Services.Log($"Active row {active} is out of bounds; retaining the original active row.\n", 1);
+            active = invocation.ActiveLine;
+        }
+        if (selection is not null)
+        {
+            List<int> valid = [];
+            foreach (var index in selection)
+            {
+                if (index < 1 || index > invocation.Subtitles.Count || !Equals(invocation.Subtitles.Read(index)["class"], "dialogue"))
+                {
+                    invocation.Services.Log($"Selected row {index} is out of bounds or not a dialogue line; stopping selection readback.\n", 1);
+                    break;
+                }
+                if (!valid.Contains(index)) valid.Add(index);
+            }
+            selection = valid;
+            if (valid.Count > 0)
+            {
+                var preferred = active is > 0 ? active.Value : invocation.ActiveLine;
+                active = valid.Contains(preferred) ? preferred : valid[0];
+            }
+        }
         return new(selection, active);
     }
 

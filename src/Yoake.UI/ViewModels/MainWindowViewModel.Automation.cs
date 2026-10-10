@@ -206,11 +206,12 @@ public sealed partial class MainWindowViewModel
                     : result.Selection.Distinct().Where(mapping.ContainsKey).Select(index => mapping[index]).ToArray();
                 var active = result.ActiveLine is { } index && mapping.TryGetValue(index, out var returned) ? returned
                     : initialActive is not null && state.Editor.Document.Events.Contains(initialActive) ? initialActive : selected.FirstOrDefault() ?? state.Editor.Document.Events.FirstOrDefault();
+                if (result.Selection is not null && (active is null || !selected.Contains(active))) active = selected.FirstOrDefault();
                 state.Selected = active;
                 if (_activeId == id)
                 {
                     _selectedEvent = active; state.Editor.Document.UpdateCurrentEvent(active);
-                    SetSelectedEvents(selected.Length == 0 && active is not null ? [active] : selected);
+                    SetSelectedEvents(result.Selection is null && selected.Length == 0 && active is not null ? [active] : selected);
                     ReloadDraft(); OnPropertyChanged(nameof(Events)); OnPropertyChanged(nameof(SelectedEvent)); OnPropertyChanged(nameof(HasSelectedEvent)); OnPropertyChanged(nameof(ActorNames));
                 }
             }

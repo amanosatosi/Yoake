@@ -249,6 +249,17 @@ function __yoake_invoke(index, method, settings)
   aegisub.progress, aegisub.debug, aegisub.dialog = nil,nil,nil
   if script_cancelled then return json({cancelled=true}) end
   if not ok then error(a,0) end
+  if processing and not feature.filter then
+    if type(a)=='table' then
+      local selected={}
+      for _,value in pairs(a) do
+        local number=(type(value)=='string' or type(value)=='number') and tonumber(value)
+        if number then selected[#selected+1]=number end
+      end
+      a=selected
+    else a=nil end
+    b=(type(b)=='string' or type(b)=='number') and tonumber(b) or nil
+  end
   return json({first=a,second=b})
 end
 function __yoake_metadata()

@@ -96,6 +96,30 @@ aegisub.register_macro("After", "", function(subs) return {2},2 end)
     }
 
     [Fact]
+    public async Task ReturnedSelectionUsesLuaNumericCoercionAndStopsAtInvalidRows()
+    {
+        using var script = await Load("""
+aegisub.register_macro('Coerce','',function(subs)
+  local line=subs[2]; line.text='generated'; subs.append(line)
+  local cycle={}; cycle.self=cycle
+  return {'0x3',true,cycle,'ignored'},'3.9'
+end)
+aegisub.register_macro('Invalid','',function() return {2,999,3},999 end)
+aegisub.register_macro('Non-dialogue','',function() return {1,2} end)
+""");
+        using var subs = new AutomationSubtitleDocument(Document()); var services = new Services();
+        var context = new AutomationInvocation(subs, [2], 2, services);
+        var coerced = await script.RunAsync(1, context, default);
+        Assert.Equal(new[] { 3 }, coerced.Selection); Assert.Equal(3, coerced.ActiveLine);
+        var invalid = await script.RunAsync(2, context, default);
+        Assert.Equal(new[] { 2 }, invalid.Selection); Assert.Equal(2, invalid.ActiveLine);
+        Assert.Contains(services.Logs, message => message.Contains("Active row 999", StringComparison.Ordinal));
+        Assert.Contains(services.Logs, message => message.Contains("Selected row 999", StringComparison.Ordinal));
+        var nonDialogue = await script.RunAsync(3, context, default);
+        Assert.Empty(nonDialogue.Selection!); Assert.Contains(services.Logs, message => message.Contains("Selected row 1", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ScriptCancelRollsBackAllPointsAndOldUserdataCannotRevive()
     {
         using var script = await Load("""
@@ -569,6 +593,7 @@ end)
     private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null, bool clipboardAvailable = false) : IAutomationHostServices
     {
         private string? _clipboard;
+        public List<string> Logs { get; } = [];
         public string? FileName => null;
         public IReadOnlyDictionary<string, object?> ProjectProperties => new Dictionary<string, object?>();
         public int? FrameFromMilliseconds(int milliseconds) => null;
@@ -582,6 +607,6 @@ end)
         public AutomationDialogResult DisplayDialog(AutomationDialogRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
         public IReadOnlyList<string>? PickFiles(AutomationFileDialogRequest request, CancellationToken token) => pick?.Invoke(request);
         public void ReportProgress(double? percent = null, string? task = null, string? title = null) { }
-        public void Log(string message, int level) { }
+        public void Log(string message, int level) => Logs.Add(message);
     }
 }
