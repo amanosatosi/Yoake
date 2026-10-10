@@ -16,7 +16,7 @@ for pattern in ('*.csproj', '*.axaml'):
         except Exception as exc: fail(f"invalid XML {path.relative_to(ROOT)}: {exc}")
 
 versions=json.loads((ROOT/'third_party/versions.json').read_text())
-for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit']):
+for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit'], versions['luajit']['commit']):
     if not re.fullmatch(r'[0-9a-f]{40}', pin): fail(f"native dependency ref is not immutable: {pin}")
 if versions.get('mangetsu', {}).get('branch') != 'mangetsu':
     fail("Mangetsu must follow the live 'mangetsu' branch")
@@ -112,7 +112,7 @@ for marker in ('ass_render_frame_rgba', 'ass_composite_images_bgra', 'mangetsu.d
     if marker not in renderer: fail(f'Mangetsu preview marker missing: {marker}')
 for marker in ('waveOutOpen', 'waveOutWrite', 'waveOutGetPosition'):
     if marker not in audio_output: fail(f'audio output marker missing: {marker}')
-for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll')"):
+for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll')"):
     if marker not in package: fail(f'Mangetsu portable staging marker missing: {marker}')
 
 result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--check'])

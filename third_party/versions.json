@@ -14,6 +14,14 @@
     "commit": "25cef14386fcaaa58ee547065deee8f6e82c56a2",
     "linkage": "dynamic"
   },
+  "luajit": {
+    "version": "2.1",
+    "commit": "c6ffc141a8762b41703f9287d63d93622a13dd8f",
+    "repository": "https://github.com/LuaJIT/LuaJIT.git",
+    "license": "MIT",
+    "linkage": "dynamic; lua51.dll",
+    "mode": "interpreter with instruction cancellation hooks"
+  },
   "mangetsu": {
     "branch": "mangetsu",
     "linkage": "shared with static third-party dependencies",

@@ -18,7 +18,8 @@ New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
 $searchDirectories = @(
   (Join-Path $NativeRoot 'ffms2\bin'),
   (Join-Path $NativeRoot 'ffmpeg\x64-windows\bin'),
-  (Join-Path $NativeRoot 'mangetsu\bin')
+  (Join-Path $NativeRoot 'mangetsu\bin'),
+  (Join-Path $NativeRoot 'automation\bin')
 )
 foreach ($directory in @($searchDirectories)) {
   if (-not (Test-Path -LiteralPath $directory)) { throw "Missing native runtime source directory: $directory" }
@@ -114,7 +115,8 @@ function Get-ImportedDllNames([string]$BinaryPath) {
 
 $entryDlls = @(
   (Join-Path $NativeRoot 'ffms2\bin\ffms2.dll'),
-  (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll')
+  (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll'),
+  (Join-Path $NativeRoot 'automation\bin\yoake-automation.dll')
 )
 foreach ($entryDll in $entryDlls) {
   if (-not (Test-Path -LiteralPath $entryDll)) { throw "Missing native runtime entry DLL: $entryDll" }
@@ -150,7 +152,7 @@ foreach ($key in ($selected.Keys | Sort-Object)) {
 
 $manifest = [ordered]@{
   architecture = 'win-x64'
-  entrypoints = @('ffms2.dll', 'mangetsu.dll')
+  entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll')
   files = @(
     Get-ChildItem -LiteralPath $runtimeRoot -Filter '*.dll' -File | Sort-Object Name | ForEach-Object {
       [ordered]@{
@@ -174,6 +176,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Avalonia-MIT.t
 Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Aegisub-BSD-3-Clause.txt') -Destination $licenseTarget -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $portable 'LICENSE') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $portable 'THIRD_PARTY_NOTICES.md') -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'automation') -Destination $portable -Recurse -Force
 
 $zip = Join-Path $OutputRoot 'Yoake-Windows-x64-portable.zip'
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }

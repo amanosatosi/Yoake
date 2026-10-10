@@ -8,10 +8,13 @@ not merely a runtime or a Manager window. See the
 ## Runtime decision
 
 Use a native LuaJIT provider with Lua 5.1 semantics. The reference release bundles
-LuaJIT 2.0.3. The final acquisition pin must be recorded in `third_party/versions.json`
-before a runtime is integrated. Evaluate a maintained LuaJIT 2.1 revision against
-the 3.2.2 fixtures before adopting it; do not enable incompatible language behavior
-merely because a newer runtime supports it.
+LuaJIT 2.0.3. Yoake pins the maintained LuaJIT 2.1 branch at
+`c6ffc141a8762b41703f9287d63d93622a13dd8f` in `third_party/versions.json`.
+The native-provider CI job exercises its real interpreter, isolation, Unicode
+loaders, mutation, validation/toggle and tight-loop cancellation. Full 3.2.2 module
+parity still needs integration evidence. No Lua 5.2 compatibility build flag is
+enabled. The interpreter runs with JIT disabled, and `jit.on` cannot re-enable it,
+so count hooks can interrupt otherwise non-cooperative scripts.
 
 LuaJIT is MIT licensed, implements the Lua 5.1 API/ABI, supports Windows x64,
 and has Linux/macOS implementations. Its native DLL and modules add package size,
@@ -27,8 +30,13 @@ References: [LuaJIT compatibility](https://luajit.org/extensions.html),
 Native state and C ABI calls belong in `Yoake.Native`. Core contracts and UI never
 receive Lua state pointers, registry references or native handles. A native shim
 must catch Lua errors/longjmp on the native side; a Lua error must never unwind
-through a managed callback. Reverse callbacks must catch managed exceptions and
-return an error payload to that shim. NativeAOT uses static interop, no generated
+through a managed callback. `third_party/automation/yoake_lua.c` protects runtime
+initialization/execution with `lua_cpcall` and calls managed code only with a UTF-8
+data request. Reverse callbacks catch managed exceptions and return byte-escaped
+data-only Lua literals; they never call the Lua C API. The shim releases response
+buffers after returning them or after any protected failure. This transport is a
+correctness-first implementation; its encoding/allocation cost must be measured
+against real KFX before acceptance. NativeAOT uses static interop, no generated
 managed assemblies, reflection-based marshalling, managed plugin loading or
 reflection-heavy serializers. Use the existing safe native search layout.
 

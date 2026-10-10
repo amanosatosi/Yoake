@@ -42,10 +42,31 @@ jobs:
       - name: Test core
         run: dotnet test tests/Yoake.Core.Tests/Yoake.Core.Tests.csproj -c Release --no-build
 
+  automation-provider-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.401"
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build pinned LuaJIT and protected native bridge
+        shell: pwsh
+        run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Automation
+      - name: Test real native script execution and cancellation
+        shell: pwsh
+        run: |
+          $layout = Join-Path $env:RUNNER_TEMP 'yoake-automation-test-runtime'
+          $dlls = Join-Path $layout 'native\win-x64'
+          New-Item -ItemType Directory -Force -Path $dlls | Out-Null
+          Copy-Item .ci-cache/native/automation/bin/*.dll $dlls
+          $env:YOAKE_AUTOMATION_TEST_RUNTIME = $layout
+          dotnet test tests/Yoake.Automation.Tests/Yoake.Automation.Tests.csproj -c Release
+
   windows-nativeaot:
     runs-on: windows-latest
     timeout-minutes: 180
-    needs: [source-policy, managed-tests]
+    needs: [source-policy, managed-tests, automation-provider-tests]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -123,7 +144,9 @@ jobs:
 
       - name: Finalize dependency stack and license bundle
         shell: pwsh
-        run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Finalize
+        run: |
+          .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Automation
+          .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Finalize
 
       - name: Install deterministic app-icon renderer
         shell: pwsh

@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)][string]$OutputRoot,
-  [ValidateSet('FFmpeg', 'FFMS2', 'Mangetsu', 'Finalize', 'All')][string]$Stage = 'All'
+  [ValidateSet('FFmpeg', 'FFMS2', 'Mangetsu', 'Automation', 'Finalize', 'All')][string]$Stage = 'All'
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -45,6 +45,27 @@ $ffmpegInstall = Join-Path $OutputRoot 'ffmpeg'
 $ffmpegPrefix = Join-Path $ffmpegInstall 'x64-windows'
 $ffmsInstall = Join-Path $OutputRoot 'ffms2'
 $mangetsuInstall = Join-Path $OutputRoot 'mangetsu'
+$automationInstall = Join-Path $OutputRoot 'automation'
+
+if ($Stage -in @('Automation', 'All')) {
+  $luaSource = [IO.Path]::GetFullPath((Join-Path $workRoot 'luajit'))
+  if (-not $luaSource.StartsWith([IO.Path]::GetFullPath($workRoot) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Lua checkout escaped native build root.' }
+  Checkout-Pinned $versions.luajit.repository $versions.luajit.commit $luaSource
+  Push-Location (Join-Path $luaSource 'src')
+  try { & .\msvcbuild.bat; Assert-LastExitCode 'LuaJIT build' } finally { Pop-Location }
+  $automationBuild = Join-Path $workRoot 'automation-bridge'
+  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $automationBuild -A x64 "-DLUAJIT_ROOT=$luaSource"
+  Assert-LastExitCode 'Automation bridge configure'
+  cmake --build $automationBuild --config Release
+  Assert-LastExitCode 'Automation bridge build'
+  $bin = Join-Path $automationInstall 'bin'
+  $licenses = Join-Path $automationInstall 'licenses'
+  New-Item -ItemType Directory -Force -Path $bin, $licenses | Out-Null
+  Copy-Item -LiteralPath (Join-Path $luaSource 'src\lua51.dll') -Destination $bin -Force
+  Copy-Item -LiteralPath (Join-Path $automationBuild 'Release\yoake-automation.dll') -Destination $bin -Force
+  Copy-Item -LiteralPath (Join-Path $luaSource 'COPYRIGHT') -Destination (Join-Path $licenses 'LuaJIT-MIT.txt') -Force
+  New-Item -ItemType File -Force -Path (Join-Path $automationInstall '.complete') | Out-Null
+}
 
 if ($Stage -in @('FFmpeg', 'All')) {
   Write-Host "Building pinned FFmpeg $($versions.ffmpeg.version) via vcpkg $($versions.vcpkg.commit)"
@@ -157,13 +178,13 @@ if ($Stage -in @('Mangetsu', 'All')) {
 }
 
 if ($Stage -in @('Finalize', 'All')) {
-  foreach ($component in @('ffmpeg','ffms2','mangetsu')) {
+  foreach ($component in @('ffmpeg','ffms2','mangetsu','automation')) {
     if (-not (Test-Path -LiteralPath (Join-Path $OutputRoot "$component\.complete"))) { throw "Native dependency stage is incomplete: $component" }
   }
   $licenseRoot = Join-Path $OutputRoot 'licenses'
   if (Test-Path $licenseRoot) { Remove-Item $licenseRoot -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $licenseRoot | Out-Null
-  foreach ($component in @($ffmpegInstall,$ffmsInstall,$mangetsuInstall)) {
+  foreach ($component in @($ffmpegInstall,$ffmsInstall,$mangetsuInstall,$automationInstall)) {
     Get-ChildItem (Join-Path $component 'licenses') -File | ForEach-Object { Copy-Item $_.FullName $licenseRoot }
   }
   Copy-Item (Join-Path $repoRoot 'third_party\versions.json') (Join-Path $OutputRoot 'versions.json')

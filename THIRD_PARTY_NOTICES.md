@@ -58,3 +58,14 @@ unused defs removed. Curves, strokes, caps, joins and fill rules are retained.
 The quadrilateral icon is renamed Distort and denotes Mangetsu bilinear
 four-corner authoring; it does not introduce Aegisub tag semantics.
 No upstream application identity artwork is used.
+
+## Automation Lua runtime
+
+LuaJIT 2.1, https://github.com/LuaJIT/LuaJIT,
+commit `c6ffc141a8762b41703f9287d63d93622a13dd8f`.
+Copyright Mike Pall and contributors; MIT. Acquired without source modifications
+by `ci/build_dependencies.ps1`; its complete COPYRIGHT is packaged as
+`licenses/LuaJIT-MIT.txt`. The Yoake bridge and host adapter are original Yoake
+code. Lua execution uses interpreter mode for reliable cancellation; the managed
+application remains NativeAOT. No upstream Automation library is copied by this
+runtime foundation milestone.
