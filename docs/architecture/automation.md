@@ -235,6 +235,10 @@ Provider initialization may receive explicit platform services for clipboard
 access during master/module loading. This does not install a subtitle or media
 context; those APIs continue returning nil until a document invocation. The
 desktop platform service marshals clipboard operations to Avalonia's dispatcher.
+Frame conversion normalizes captured central timestamps and uses the release's
+integer START rules and average-rate VFR extrapolation, as its FFMS2 provider
+does. Single-frame media uses nominal FPS. Wide integer intermediates avoid
+overflow at supported timestamp limits; this view creates no playback clock.
 
 GitHub Actions builds/tests the managed host, native stack, NativeAOT package,
 module fixtures and real-window macro/dialog/selection/undo scenario. Do not

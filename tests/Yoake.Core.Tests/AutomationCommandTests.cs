@@ -58,7 +58,29 @@ public sealed class AutomationCommandTests
         Assert.Equal(0, view.FrameFromMilliseconds(0)); Assert.Equal(1, view.FrameFromMilliseconds(1));
         Assert.Equal(1, view.FrameFromMilliseconds(50)); Assert.Equal(2, view.FrameFromMilliseconds(51));
         Assert.Equal(25, view.MillisecondsFromFrame(1)); Assert.Equal(75, view.MillisecondsFromFrame(2));
-        Assert.Equal(135, view.MillisecondsFromFrame(3)); Assert.Equal(-20, view.MillisecondsFromFrame(0));
+        Assert.Equal(135, view.MillisecondsFromFrame(3)); Assert.Equal(-28, view.MillisecondsFromFrame(0));
+        Assert.Equal(199, view.MillisecondsFromFrame(4)); Assert.Equal(255, view.MillisecondsFromFrame(5));
+        Assert.Equal(4, view.FrameFromMilliseconds(171)); Assert.Equal(4, view.FrameFromMilliseconds(227));
+        Assert.Equal(5, view.FrameFromMilliseconds(228)); Assert.Equal(-1, view.FrameFromMilliseconds(-57));
+        var normalized = new AutomationTimecodeView([1, 1.05, 1.1, 1.17], 25);
+        Assert.Equal(view.MillisecondsFromFrame(4), normalized.MillisecondsFromFrame(4));
+        Assert.Equal(view.FrameFromMilliseconds(228), normalized.FrameFromMilliseconds(228));
+    }
+    [Fact]
+    public void CfrAndSingleFrameStartConversionsMatchReleaseIntegerRounding()
+    {
+        var cfr = new AutomationTimecodeView([0, .04, .08], 25);
+        Assert.Equal(-20, cfr.MillisecondsFromFrame(0)); Assert.Equal(20, cfr.MillisecondsFromFrame(1));
+        Assert.Equal(100, cfr.MillisecondsFromFrame(3)); Assert.Equal(140, cfr.MillisecondsFromFrame(4));
+        Assert.Equal(3, cfr.FrameFromMilliseconds(120)); Assert.Equal(4, cfr.FrameFromMilliseconds(121));
+        Assert.Equal(-1, cfr.FrameFromMilliseconds(-40));
+        var single = new AutomationTimecodeView([0], 30000d / 1001);
+        Assert.Equal(17, single.MillisecondsFromFrame(1)); Assert.Equal(50, single.MillisecondsFromFrame(2));
+        // CFR extrapolation retains fractional rate before rounding, unlike
+        // a stored integer timestamp at 33 ms.
+        Assert.Equal(1, single.FrameFromMilliseconds(33)); Assert.Equal(1, single.FrameFromMilliseconds(34));
+        Assert.Equal(2, single.FrameFromMilliseconds(35));
+        Assert.Throws<ArgumentException>(() => new AutomationTimecodeView([0, 0], 25));
     }
     private sealed class Script(string path, bool validation = false) : IAutomationScript
     {
