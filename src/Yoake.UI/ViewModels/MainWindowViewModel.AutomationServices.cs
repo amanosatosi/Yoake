@@ -13,7 +13,7 @@ public sealed partial class MainWindowViewModel
     {
         var state = _documents[id]; var document = state.Editor.Document;
         var session = _workspace.Documents.Single(s => s.Id == id); var media = state.Media;
-        string Property(string key) => document.GetSectionValue("[Aegisub Project Garbage]", key) is { Length: > 0 } value ? value : document.GetScriptInfo(key);
+        string Property(string key) => document.TryGetSectionValue("[Aegisub Project Garbage]", key, out var value) ? value : document.GetScriptInfo(key);
         int IntProperty(string key) => int.TryParse(Property(key), out var n) ? n : 0;
         double NumberProperty(string key, double fallback) => double.TryParse(Property(key), NumberStyles.Float, CultureInfo.InvariantCulture, out var n) && double.IsFinite(n) ? n : fallback;
         var scriptDirectory = session.Path is { } path ? Path.GetDirectoryName(path)! : AppContext.BaseDirectory;

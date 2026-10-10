@@ -70,7 +70,8 @@ local function feature(name, help, run, validate, active, filter, priority)
   if type(name) ~= 'string' and type(name) ~= 'number' then error('Feature name must be a string', 3) end
   if type(run) ~= 'function' then error('The processing function must be a function', 3) end
   local i = #features+1
-  features[i] = {run=run, validate=validate, isactive=active}
+  features[i] = {run=run, validate=not filter and validate or nil,
+    config=filter and validate or nil, isactive=active, filter=filter}
   host(filter and 'register_filter' or 'register_macro', i, tostring(name), tostring(help or ''),
     type(validate)=='function', type(active)=='function', priority or 0)
 end
@@ -165,26 +166,30 @@ local function log(...)
   local text = #args>1 and string.format(unpack(args)) or tostring(args[1] or '')
   return host('log',text,level)
 end
-function __yoake_invoke(index, method)
+function __yoake_invoke(index, method, settings)
   script_cancelled = false
   generation = generation + 1
   provenance = setmetatable({}, {__mode='k'})
   alive = true
   local current = generation
-  aegisub.set_undo_point = function(name) check(current); return host('undo_point',name) end
+  local feature = assert(features[index], 'Unknown Automation feature')
+  local processing = method=='run'
+  aegisub.set_undo_point = not feature.filter and processing and function(name) check(current); return host('undo_point',name) end or nil
   aegisub.parse_karaoke_data = function(line) check(current); return host('karaoke',line_argument(line)) end
-  aegisub.progress = {
+  aegisub.progress = processing and {
     set=function(p) check(current); return host('progress',p) end,
     task=function(t) check(current); return host('progress',nil,t) end,
     title=function(t) check(current); return host('progress',nil,nil,t) end,
     is_cancelled=function() check(current); return host('is_cancelled') end
-  }
-  aegisub.log, aegisub.debug = log,{out=log}
-  aegisub.dialog = {display=function(...) check(current); return host('dialog',...) end}
+  } or nil
+  aegisub.log, aegisub.debug = log,processing and {out=log} or nil
+  aegisub.dialog = processing and not feature.filter and {display=function(...) check(current); return host('dialog',...) end} or nil
   local selected, active = host('selection')
-  local feature = assert(features[index], 'Unknown Automation feature')
   local fn = feature[method]
-  local ok,a,b = xpcall(function() return fn(subtitles(),selected,active) end,debug.traceback)
+  local ok,a,b = xpcall(function()
+    if feature.filter then return fn(subtitles(),settings or {}) end
+    return fn(subtitles(),selected,active)
+  end,debug.traceback)
   alive=false
   aegisub.progress, aegisub.debug, aegisub.dialog = nil,nil,nil
   if script_cancelled then return json({cancelled=true}) end

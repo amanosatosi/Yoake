@@ -12,6 +12,8 @@ public sealed record AutomationTextMetrics(double Width, double Height, double D
 public sealed record AutomationVideoSize(int Width, int Height, double AspectRatio, int AspectRatioMode);
 public sealed record AutomationDialogRequest(IReadOnlyList<AutomationLine> Controls, IReadOnlyList<string>? Buttons, IReadOnlyDictionary<string, string>? ButtonIds);
 public sealed record AutomationDialogResult(object Button, IReadOnlyDictionary<string, object?> Values);
+public sealed record AutomationFilterBinding(IAutomationScript Script, AutomationExportFilter Filter, string Name);
+public sealed record AutomationFilterSettings(AutomationFilterBinding Binding, IReadOnlyDictionary<string, object?> Values);
 
 // Host services are document/session values, never raw Lua state or UI objects.
 // Implementations marshal platform/UI operations; the provider calls on workers.
@@ -41,6 +43,10 @@ public interface IAutomationScript : IDisposable
     IReadOnlyList<AutomationExportFilter> Filters { get; }
     ValueTask<AutomationMacroResult> RunAsync(int macroIndex, AutomationInvocation invocation, CancellationToken cancellationToken);
     ValueTask<AutomationValidation> ValidateAsync(int macroIndex, AutomationInvocation invocation, CancellationToken cancellationToken);
+    ValueTask<IReadOnlyList<AutomationLine>> ConfigureFilterAsync(int filterIndex, AutomationInvocation invocation, CancellationToken cancellationToken)
+        => throw new NotSupportedException("Export configuration is unavailable in this provider.");
+    ValueTask RunFilterAsync(int filterIndex, AutomationInvocation invocation, IReadOnlyDictionary<string, object?> settings, CancellationToken cancellationToken)
+        => throw new NotSupportedException("Export filters are unavailable in this provider.");
 }
 
 public interface IAutomationRuntimeProvider

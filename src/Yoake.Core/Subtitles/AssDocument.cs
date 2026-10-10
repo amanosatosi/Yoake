@@ -112,9 +112,12 @@ public sealed class AssDocument
         catch (DecoderFallbackException e) { throw new InvalidDataException("Unsupported legacy encoding. Convert the file to UTF-8 before opening; the original file has not been changed.", e); }
     }
     public void Save(string path)
+        => Save(path, _encoding, _bom);
+    public void Save(string path, Encoding encoding, bool bom, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var full = Path.GetFullPath(path); var temp = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try { using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { if (_bom) stream.Write(_encoding.GetPreamble()); stream.Write(_encoding.GetBytes(Serialize())); stream.Flush(true); } File.Move(temp, full, true); }
+        try { using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { if (bom) stream.Write(encoding.GetPreamble()); stream.Write(encoding.GetBytes(Serialize())); stream.Flush(true); } cancellationToken.ThrowIfCancellationRequested(); File.Move(temp, full, true); }
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
     public string GetScriptInfo(string key) => GetSectionValue("[Script Info]", key);

@@ -179,6 +179,23 @@ not a strong sandbox. Managed provider boundaries and transactional documents
 protect host architecture and subtitle integrity, not against malicious native
 code. Future process isolation must be possible through the Core service boundary.
 
+Export is a separate command and pipeline. The session captures serialized ASS
+and immutable services; `AutomationExportPipeline` parses a private copy and
+applies selected filters in the chosen order. Default ordering is stable,
+descending priority, with 3.2.2 duplicate-name suffixes. Configuration calls use
+read-only subtitles and an empty old-settings table (the exact release's TODO
+never populated it). Processing receives `(subs, settings)`, progress/logging,
+and no undo-point or custom-dialog API. The native provider enforces these modes
+independently of the caller's working-view permissions.
+
+The export window embeds the same typed control panel used by macro dialogs;
+checking filters reveals their settings, and Move up/down changes chain order.
+Dialog preferences stay in the document session, leaving the live document,
+dirty flag, and undo/redo unchanged. Existing project export preferences seed the
+dialog. Output is ASS with explicit Unicode encoding and atomic replacement;
+cancellation is checked before replacement. Legacy encodings and non-ASS writers
+are outside this initial subtitle-filter workflow.
+
 GitHub Actions builds/tests the managed host, native stack, NativeAOT package,
 module fixtures and real-window macro/dialog/selection/undo scenario. Do not
 compile or rebuild either Yoake or Aegisub locally during ordinary development.

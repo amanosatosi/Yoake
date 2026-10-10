@@ -189,13 +189,12 @@ aegisub.register_macro('Modules loaded','',function() end)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "autoload", "kara-templater.lua");
         using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), CancellationToken.None);
-        var document = AssDocument.CreateEmpty();
-        var template = document.NewEvent();
+        var document = AssDocument.CreateEmpty(); var editor = new SubtitleEditor(document);
+        var template = editor.Insert(null, after: true);
         template.Effect = "template syl"; template.Text = "{\\pos($scenter,$smiddle)\\k$sdur}";
-        var song = document.NewEvent(); song.Text = "{\\k20}日{\\kf30}本語";
+        var song = editor.Insert(template, after: true); song.Text = "{\\k20}日{\\kf30}本語";
         song.Start = "0:00:01.00"; song.End = "0:00:03.00";
-        document.Events.Add(template); document.Events.Add(song);
-        var editor = new SubtitleEditor(document); editor.ToggleComments([template]); editor.MarkSaved();
+        editor.ToggleComments([template]); editor.MarkSaved();
         var before = document.Serialize();
         var macro = Assert.Single(script.Macros);
         using (var validation = new AutomationSubtitleDocument(document, writable: false))
@@ -233,6 +232,69 @@ end)
         subs.Commit(editor, "Copy");
         Assert.Equal("generated", document.Events[1].Text);
         Assert.Equal("evidence", document.Events[1].Get("Future"));
+    }
+
+    [Fact]
+    public async Task FilterConfigurationIsReadOnlyAndProcessingGetsOnlySettingsOnACopy()
+    {
+        using var script = await Load("""
+aegisub.register_filter('Configured','',17,function(subs,settings)
+  assert(aegisub.set_undo_point==nil and aegisub.dialog==nil)
+  assert(type(aegisub.progress.set)=='function')
+  local line=subs[2]; line.text=settings.text; subs[2]=line
+end,function(subs,old)
+  assert(next(old)==nil and aegisub.progress==nil and aegisub.dialog==nil)
+  local line=subs[2]
+  assert(not pcall(function() subs[2]=line end))
+  return {{class='edit',name='text',text='日本語 မြန်မာ',x=0,y=0},
+    {class='dropdown',name='mode',items={'One','Two'},value='Two',x=0,y=1}}
+end)
+""");
+        var document = Document(); var before = document.Serialize();
+        // The provider enforces readonly configuration even for a writable view.
+        using var subs = new AutomationSubtitleDocument(document);
+        var filter = Assert.Single(script.Filters); Assert.Equal(17, filter.Priority);
+        var controls = await script.ConfigureFilterAsync(filter.Index, Context(subs), default);
+        Assert.Equal(2, controls.Count); Assert.Equal("日本語 မြန်မာ", controls[0]["text"]);
+        var output = await AutomationExportPipeline.RunAsync(before,
+            [new(AutomationExportPipeline.Filters([script])[0], new Dictionary<string, object?> { ["text"] = "exported" })], new Services(), default);
+        Assert.Equal("exported", output.Events[0].Text); Assert.Equal("evidence", output.Events[0].Get("Future"));
+        Assert.Equal(before, document.Serialize());
+    }
+
+    [Fact]
+    public async Task UnmodifiedCleanTagsFilterRunsThroughIsolatedExportChain()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "autoload", "cleantags-autoload.lua");
+        using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), default);
+        var document = Document(); var editor = new SubtitleEditor(document);
+        editor.SetField(document.Events[0], "Text", "{\\b1}{\\i1}日本語", "Fixture"); editor.MarkSaved();
+        var before = document.Serialize(); var revision = document.Revision;
+        var filter = Assert.Single(AutomationExportPipeline.Filters([script]));
+        var output = await AutomationExportPipeline.RunAsync(before, [new(filter, new Dictionary<string, object?>())], new Services(), default);
+        Assert.Equal("{\\b1\\i1}日本語", output.Events[0].Text);
+        Assert.Equal("evidence", output.Events[0].Get("Future"));
+        Assert.Equal(before, document.Serialize()); Assert.Equal(revision, document.Revision); Assert.False(editor.IsDirty);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FailedOrCancelledNativeFilterDiscardsAllChanges(bool cancel)
+    {
+        using var script = await Load("""
+aegisub.register_filter('Failure','',0,function(subs,settings)
+  local line=subs[2]; line.text='partial'; subs[2]=line
+  if settings.cancel then aegisub.cancel() else error('filter fixture failure') end
+end)
+""");
+        var document = Document(); var before = document.Serialize();
+        var binding = AutomationExportPipeline.Filters([script])[0];
+        var error = await Record.ExceptionAsync(async () => await AutomationExportPipeline.RunAsync(before,
+            [new(binding, new Dictionary<string, object?> { ["cancel"] = cancel })], new Services(), default));
+        if (cancel) Assert.IsType<OperationCanceledException>(error);
+        else { Assert.IsType<InvalidOperationException>(error); Assert.Contains("filter fixture failure", error.Message); }
+        Assert.Equal(before, document.Serialize());
     }
 
     [Fact]

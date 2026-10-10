@@ -9,6 +9,7 @@ public interface IEditorDialogs
     Task ShowAutomationManagerAsync(Yoake.UI.ViewModels.MainWindowViewModel model) => Task.CompletedTask;
     Task<Yoake.Core.Automation.AutomationDialogResult> ShowAutomationDialogAsync(Yoake.Core.Automation.AutomationDialogRequest request, CancellationToken cancellationToken) => throw new NotSupportedException("Automation dialogs are unavailable.");
     IAutomationProgressSession? BeginAutomationProgress(string title) => null;
+    Task<AutomationExportChoice?> ShowAutomationExportAsync(IReadOnlyList<AutomationExportOption> options, IReadOnlyList<string> selected, string encoding, CancellationToken token) => throw new NotSupportedException("Automation export is unavailable.");
     Task<FontChoice?> ChooseFontAsync(string family,string size)=>Task.FromResult<FontChoice?>(null);
     Task<AssColor?> ChooseColorAsync(AssColor color)=>Task.FromResult<AssColor?>(null);
     Task<string?> OpenSubtitleAsync();

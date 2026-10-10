@@ -19,6 +19,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     private GCHandle _owner;
     private IntPtr _runtime;
     private AutomationInvocation? _invocation;
+    private string? _mode;
     private CancellationToken _cancellation;
     private bool _disposed;
     private int _nextRead;
@@ -84,20 +85,36 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         return new(enabled, help, active);
     }
 
-    private async ValueTask<string> InvokeAsync(int index, string method, AutomationInvocation invocation, CancellationToken cancellationToken)
+    public async ValueTask<IReadOnlyList<AutomationLine>> ConfigureFilterAsync(int filterIndex, AutomationInvocation invocation, CancellationToken cancellationToken)
+    {
+        if (!_filters.Single(f => f.Index == filterIndex).HasConfiguration) return [];
+        using var json = JsonDocument.Parse(await InvokeAsync(filterIndex, "config", invocation, cancellationToken).ConfigureAwait(false));
+        if (!json.RootElement.TryGetProperty("first", out var controls) || controls.ValueKind != JsonValueKind.Object)
+            throw new ArgumentException("Cannot create export configuration from a non-table value.");
+        return Values(controls).Select(v => Line(v, default)).ToArray();
+    }
+
+    public async ValueTask RunFilterAsync(int filterIndex, AutomationInvocation invocation, IReadOnlyDictionary<string, object?> settings, CancellationToken cancellationToken)
+    {
+        _ = _filters.Single(f => f.Index == filterIndex);
+        await InvokeAsync(filterIndex, "run", invocation, cancellationToken, settings).ConfigureAwait(false);
+    }
+
+    private async ValueTask<string> InvokeAsync(int index, string method, AutomationInvocation invocation, CancellationToken cancellationToken, IReadOnlyDictionary<string, object?>? settings = null)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
+            _mode = method == "run" && _filters.Any(f => f.Index == index) ? "filter" : method;
             _invocation = invocation; _cancellation = cancellationToken; _reads.Clear(); _templates.Clear(); _nextRead = 0;
-            var result = await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
+            var result = await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)},{Literal(settings)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
             using var json = JsonDocument.Parse(result);
             if (json.RootElement.TryGetProperty("cancelled", out var cancelled) && cancelled.ValueKind == JsonValueKind.True)
                 throw new OperationCanceledException("Automation script cancelled execution.");
             return result;
         }
-        finally { _invocation = null; _reads.Clear(); _templates.Clear(); _gate.Release(); }
+        finally { _invocation = null; _mode = null; _reads.Clear(); _templates.Clear(); _gate.Release(); }
     }
 
     private string? Run(string source, string name, CancellationToken cancellationToken)
@@ -139,6 +156,10 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         var services = _invocation?.Services;
         if (op.StartsWith("subs_", StringComparison.Ordinal) || op == "undo_point")
             if (subs is null) throw new InvalidOperationException("No active Automation subtitle context.");
+        if (op is "subs_write" or "subs_delete" or "subs_deleterange" or "subs_append" or "subs_insert" or "undo_point")
+            if (_mode is not ("run" or "filter")) throw new InvalidOperationException("Subtitles are read-only during validation and export configuration.");
+        if (op == "undo_point" && _mode == "filter") throw new InvalidOperationException("Export filters cannot set undo points.");
+        if (op == "dialog" && _mode != "run") throw new InvalidOperationException("This Automation invocation cannot open a dialog.");
         switch (op)
         {
             case "read_file": return [File.ReadAllText(Text(1), new UTF8Encoding(false, true)).TrimStart('\uFEFF')];

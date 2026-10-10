@@ -24,7 +24,9 @@ public partial class MainWindow
     }
     public Task ShowAutomationManagerAsync(MainWindowViewModel model) => new AutomationManagerWindow(model).ShowDialog(this);
     public Task<AutomationDialogResult> ShowAutomationDialogAsync(AutomationDialogRequest request, CancellationToken cancellationToken) =>
-        new AutomationDialog(request).DisplayAsync(_automationProgress is { IsVisible: true } progress ? progress : this, cancellationToken);
+        new AutomationDialog(request, e => _model?.Registry.ReportFailure("automation/dialog", e)).DisplayAsync(_automationProgress is { IsVisible: true } progress ? progress : this, cancellationToken);
+    public Task<AutomationExportChoice?> ShowAutomationExportAsync(IReadOnlyList<AutomationExportOption> options, IReadOnlyList<string> selected, string encoding, CancellationToken token) =>
+        new AutomationExportWindow(options, selected, encoding, e => _model?.Registry.ReportFailure("automation/export/config", e)).DisplayAsync(this, token);
     public IAutomationProgressSession BeginAutomationProgress(string title)
     {
         var progress = new AutomationProgressWindow(title); _automationProgress = progress;

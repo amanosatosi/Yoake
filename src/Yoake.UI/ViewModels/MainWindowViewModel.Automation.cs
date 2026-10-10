@@ -80,6 +80,7 @@ public sealed partial class MainWindowViewModel
         });
         Register(CommandIds.AutomationReload, "Reload script", async (invocation, token) => { if (invocation.Parameter is AutomationScriptItem item) await ReloadAutomationScriptAsync(item, token); });
         Register(CommandIds.AutomationRescan, "Rescan autoload", async (_, token) => await RescanAutomationAsync(token), _ => !_automationScanning);
+        Register(CommandIds.AutomationExport, "Export subtitles…", ExportAutomationAsync, context => context.DocumentId is { } id && !_automationRuns.ContainsKey(id));
     }
 
     public async Task<AutomationScriptItem> LoadAutomationScriptAsync(string path, Guid? documentId, CancellationToken token = default)
@@ -239,6 +240,7 @@ public sealed partial class MainWindowViewModel
 
     private void CloseAutomationDocument(Guid id)
     {
+        _automationExportChoices.Remove(id);
         _automationReferenceState.Remove(id);
         if (_automationRuns.TryGetValue(id, out var run)) run.Cancel();
         _automationCatalog.RemoveDocument(id);

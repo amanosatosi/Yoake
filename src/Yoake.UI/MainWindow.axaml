@@ -57,6 +57,7 @@
 <MenuItem Header="Open…" Command="{Binding Actions[subtitle/open]}" />
 <MenuItem Header="Save" Command="{Binding Actions[subtitle/save]}" />
 <MenuItem Header="Save As…" Command="{Binding Actions[subtitle/save-as]}" />
+<MenuItem Header="Export subtitles…" Command="{Binding Actions[automation/export]}" />
 <MenuItem Header="Reload from disk…" Command="{Binding Actions[subtitle/revert]}" />
 <MenuItem Header="Close tab" Command="{Binding Actions[subtitle/close]}" />
 </MenuItem>
