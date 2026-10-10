@@ -15,7 +15,7 @@ public sealed class AutomationScriptItem(string path, Guid? documentId)
     public string Path { get; } = path;
     public Guid? DocumentId { get; } = documentId;
     public string Scope => DocumentId is null ? "Autoload" : "This document";
-    public string Name => Script?.Metadata.Name ?? System.IO.Path.GetFileName(Path);
+    public string Name => Script?.Metadata.Name ?? StoredReference ?? System.IO.Path.GetFileName(Path);
     public string Description => Error ?? Script?.Metadata.Description ?? "Loading…";
     public string Author => Script?.Metadata.Author ?? "";
     public string Version => Script?.Metadata.Version ?? "";
@@ -121,7 +121,7 @@ public sealed partial class MainWindowViewModel
             if (old is not null) await Task.Run(old.Dispose);
             var resolver = new AutomationPathResolver(item.Path, AutomationIncludeDirectories, AutomationTokens(item.DocumentId));
             var loaded = await AutomationRuntimeProvider.LoadAsync(item.Path, resolver, cancellation.Token);
-            if (cancellation.IsCancellationRequested || !_automationEntries.Contains(item)) { await Task.Run(loaded.Dispose); return; }
+            if (_disposed || cancellation.IsCancellationRequested || !_automationEntries.Contains(item)) { await Task.Run(loaded.Dispose); return; }
             item.Script = loaded;
             _automationCatalog.SetScript(item.DocumentId, item.Path, loaded);
         }
@@ -133,7 +133,8 @@ public sealed partial class MainWindowViewModel
     private async Task RemoveAutomationScriptAsync(AutomationScriptItem item)
     {
         if (!_automationEntries.Remove(item)) return;
-        item.Lifetime.Cancel(); _automationCatalog.SetScript(item.DocumentId, item.Path, null);
+        item.Lifetime.Cancel();
+        if (!_disposed) _automationCatalog.SetScript(item.DocumentId, item.Path, null);
         var script = item.Script; item.Script = null;
         OnPropertyChanged(nameof(AutomationScripts));
         if (script is not null) await Task.Run(script.Dispose);

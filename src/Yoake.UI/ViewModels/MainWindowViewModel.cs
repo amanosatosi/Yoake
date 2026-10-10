@@ -236,8 +236,26 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         CancelGesture();
         if (!CommitDraft() || ActiveEditor is null || _workspace.ActiveDocument is not { } session) return false;
-        try { var full=Path.GetFullPath(path); if (_workspace.Documents.Any(s=>s.Id!=session.Id && string.Equals(s.Path,full,StringComparison.OrdinalIgnoreCase))) throw new InvalidOperationException("This path is already open in another tab."); ActiveEditor.Document.Save(full); session.Path=full; session.Title=Path.GetFileName(full); ActiveEditor.MarkSaved(); Remember(full); SubtitleStatus=$"Saved {session.Title}"; OnPropertyChanged(nameof(ActiveSubtitlePath)); return true; }
+        _automationReferenceSaves.Add(session.Id);
+        try
+        {
+            var full = Path.GetFullPath(path);
+            if (_workspace.Documents.Any(s => s.Id != session.Id && string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("This path is already open in another tab.");
+            var references = RebaseLocalAutomationReferences(session.Id, full);
+            using (var transaction = ActiveEditor.Undo.BeginTransaction("Update Automation references for Save As"))
+            {
+                if (references != LocalAutomationReferences(ActiveEditor.Document))
+                    ActiveEditor.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = references });
+                ActiveEditor.Document.Save(full);
+                session.Path = full; session.Title = Path.GetFileName(full);
+                transaction.Commit();
+            }
+            ActiveEditor.MarkSaved(); Remember(full); SubtitleStatus = $"Saved {session.Title}";
+            OnPropertyChanged(nameof(ActiveSubtitlePath)); return true;
+        }
         catch(Exception e) { SubtitleStatus=$"Save failed: {e.Message}"; return false; }
+        finally { _automationReferenceSaves.Remove(session.Id); ScheduleDocumentAutomationSync(session.Id); }
     }
     private async Task<bool> SaveAsync(bool saveAs=false)
     {

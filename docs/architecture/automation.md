@@ -218,6 +218,11 @@ keep installed and portable layouts relocatable; an explicit empty autoload
 list disables discovery. Manager's search-path command persists the ordered
 lists, rescans globals and reloads locals so per-interpreter module caches use
 the new resolver. Master directories remain the first include location.
+Save As re-encodes resolvable document references against the destination while
+retaining missing references, unknown markers and separators. Metadata changes
+share an undo transaction that rolls back if the atomic save fails. Interpreter
+synchronization is suspended until the path and transaction have settled, then
+reconciles against the final document path.
 
 MoonScript chunks retain original UTF-8 source text alongside the bundled
 compiler's line tables. Runtime tracebacks use full chunk paths and translate

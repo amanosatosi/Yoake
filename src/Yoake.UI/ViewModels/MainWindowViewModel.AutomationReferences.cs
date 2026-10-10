@@ -9,13 +9,33 @@ public sealed partial class MainWindowViewModel
 {
     private readonly Dictionary<Guid, SemaphoreSlim> _automationReferenceGates = [];
     private readonly Dictionary<Guid, (string? Path, string References)> _automationReferenceState = [];
+    private readonly HashSet<Guid> _automationReferenceSaves = [];
     private static string LocalAutomationReferences(AssDocument document) =>
         document.TryGetSectionValue("[Aegisub Project Garbage]", "Automation Scripts", out var value) ? value : document.GetScriptInfo("Automation Scripts");
 
-    private void ScheduleDocumentAutomationSync(Guid id) => _ = SynchronizeDocumentAutomationAsync(id, _automationLifetime.Token);
+    private void ScheduleDocumentAutomationSync(Guid id)
+    {
+        if (!_automationReferenceSaves.Contains(id)) _ = SynchronizeDocumentAutomationAsync(id, _automationLifetime.Token);
+    }
+    private string RebaseLocalAutomationReferences(Guid id, string subtitlePath)
+    {
+        var references = LocalAutomationReferences(_documents[id].Editor.Document);
+        var session = _workspace.Documents.Single(s => s.Id == id);
+        var resolved = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var reference in references.Split('|').Select(p => p.Trim()).Where(p => p.Length > 0))
+        {
+            try
+            {
+                var path = AutomationScriptReference.Resolve(reference, session.Path, AutomationBaseDirectory);
+                if (File.Exists(path)) resolved[reference] = path;
+            }
+            catch (Exception e) when (e is ArgumentException or NotSupportedException or IOException) { }
+        }
+        return AutomationScriptReference.RebaseForSaveAs(references, subtitlePath, AutomationBaseDirectory, resolved);
+    }
     private async Task SynchronizeDocumentAutomationAsync(Guid id, CancellationToken token)
     {
-        if (_disposed || !_documents.ContainsKey(id)) return;
+        if (_disposed || _automationReferenceSaves.Contains(id) || !_documents.ContainsKey(id)) return;
         if (!_automationReferenceGates.TryGetValue(id, out var gate)) _automationReferenceGates[id] = gate = new(1, 1);
         var entered = false;
         try

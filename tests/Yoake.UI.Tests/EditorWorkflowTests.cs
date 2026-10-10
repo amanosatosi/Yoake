@@ -60,6 +60,25 @@ public sealed class EditorWorkflowTests : IDisposable
         await Command(CommandIds.EditUndo);Assert.False(_workspace.ActiveDocument.IsDirty);
         Assert.Equal("saved",AssDocument.Load(path).Events[0].Text);
     }
+    [Fact] public void SaveAsKeepsExistingAutomationScriptLocationAndRollsBackFailedSave()
+    {
+        _model.AutomationRuntimeProvider = new UnavailableAutomationProvider();
+        var script = Path.Combine(_root, "日本語.lua"); File.WriteAllText(script, "script_name='Fixture'");
+        var original = Path.Combine(_root, "original.ass"); Assert.True(_model.SaveActiveSubtitle(original));
+        _model.ActiveEditor!.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = "~日本語.lua|~missing.lua|!future.lua" });
+        var before = _model.ActiveEditor.Document.Serialize();
+        var dirty = _model.ActiveEditor.IsDirty; var undo = _model.ActiveEditor.Undo.NextUndoName;
+        var destination = Path.Combine(_root, "moved"); Directory.CreateDirectory(destination);
+        Assert.False(_model.SaveActiveSubtitle(destination));
+        Assert.Equal(original, _workspace.ActiveDocument!.Path); Assert.Equal(before, _model.ActiveEditor.Document.Serialize());
+        Assert.Equal(dirty, _model.ActiveEditor.IsDirty); Assert.Equal(undo, _model.ActiveEditor.Undo.NextUndoName);
+        var saved = Path.Combine(destination, "new.ass"); Assert.True(_model.SaveActiveSubtitle(saved));
+        var references = AssDocument.Load(saved).GetSectionValue("[Aegisub Project Garbage]", "Automation Scripts");
+        Assert.EndsWith("|~missing.lua|!future.lua", references);
+        Assert.Equal(script, Yoake.Core.Automation.AutomationScriptReference.Resolve(references.Split('|')[0], saved, _model.AutomationBaseDirectory));
+        Assert.False(_model.ActiveEditor.IsDirty);
+        _model.ActiveEditor.Undo.Undo(); Assert.Equal(before, _model.ActiveEditor.Document.Serialize());
+    }
     [Fact] public async Task CancelUnsavedCloseRetainsDocumentAndDiscardClosesIt()
     {
         await Command(CommandIds.GridInsertAfter);var id=_workspace.ActiveDocumentId!.Value;
@@ -261,6 +280,11 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.Equal(CommandIds.TextHardNewline,_model.Hotkeys.Resolve(new(name,Yoake.Core.Hotkeys.KeyModifiers.Shift),contexts)!.CommandId);
     }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
+    private sealed class UnavailableAutomationProvider : Yoake.Core.Automation.IAutomationRuntimeProvider
+    {
+        public ValueTask<Yoake.Core.Automation.IAutomationScript> LoadAsync(string path, Yoake.Core.Automation.AutomationPathResolver paths, CancellationToken token)
+            => ValueTask.FromException<Yoake.Core.Automation.IAutomationScript>(new InvalidOperationException("No interpreter in this persistence test."));
+    }
     private sealed class TestDialogs : IEditorDialogs
     {
         public UnsavedChoice Choice=UnsavedChoice.Cancel;

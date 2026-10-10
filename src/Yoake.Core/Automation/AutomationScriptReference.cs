@@ -2,6 +2,20 @@ namespace Yoake.Core.Automation;
 
 public static class AutomationScriptReference
 {
+    // Only references with a known script location are rewritten. Missing or
+    // future reference syntax and separators survive Save As byte-for-byte.
+    public static string RebaseForSaveAs(string references, string subtitlePath, string automationBase,
+        IReadOnlyDictionary<string, string> resolvedScripts)
+    {
+        return string.Join('|', references.Split('|').Select(part =>
+        {
+            var reference = part.Trim();
+            if (reference.Length == 0 || !resolvedScripts.TryGetValue(reference, out var path)) return part;
+            var start = part.IndexOf(reference, StringComparison.Ordinal);
+            return part[..start] + Encode(path, subtitlePath, automationBase) + part[(start + reference.Length)..];
+        }));
+    }
+
     public static string Resolve(string reference, string? subtitlePath, string automationBase)
     {
         reference = reference.Trim();
