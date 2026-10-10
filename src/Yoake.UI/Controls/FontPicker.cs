@@ -19,6 +19,7 @@ public sealed class FontPicker : UserControl
     private readonly TextBlock _status=new(){FontSize=10,Opacity=0.8,IsVisible=false};
     private string[] _fonts=[];
     private bool _sync;
+    private bool _browserFocusPending;
     private readonly Button _browse=new(){Name="BrowseFonts",Width=26,Padding=new Thickness(2),MinHeight=26};
     private readonly ListBox _list=new(){Name="InstalledFonts",MaxHeight=300,MinWidth=260};
     private readonly Popup _popup=new(){Placement=PlacementMode.Bottom,IsLightDismissEnabled=true};
@@ -36,6 +37,12 @@ public sealed class FontPicker : UserControl
         _browse.Click+=(_,_)=>{if(_popup.IsOpen)CloseBrowser();else OpenBrowser();};ToolTip.SetTip(_browse,"Browse all installed font families (Alt+Down)");
         _entry.KeyDown+=(_,e)=>{if(e.Key==Key.Down&&(e.KeyModifiers is KeyModifiers.None or KeyModifiers.Alt)){OpenBrowser();_list.Focus();e.Handled=true;}else if(e.Key==Key.Escape)_popup.IsOpen=false;};
         _list.KeyDown+=(_,e)=>{if(e.Key==Key.Enter){Choose();e.Handled=true;}else if(e.Key==Key.Escape){_popup.IsOpen=false;_entry.Focus();e.Handled=true;}};
+        _list.LayoutUpdated+=(_,_)=>
+        {
+            // ListBox navigation starts from a realized, focused row. Opening
+            // at an off-screen family needs a layout pass after ScrollIntoView.
+            FocusBrowserRow();
+        };
         _list.AddHandler(PointerReleasedEvent,(_,e)=>
         {
             if(e.InitialPressMouseButton!=MouseButton.Left||e.Source is not Control source)return;
@@ -59,8 +66,13 @@ public sealed class FontPicker : UserControl
         if(_list.SelectedItem is {} selected)_list.ScrollIntoView(selected);
     }
     public ListBox BrowserList=>_list;
-    public void OpenBrowser(){_entry.IsDropDownOpen=false;PopulateBrowser();_popup.IsOpen=true;Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(_popup.IsOpen){_list.Focus();if(_list.SelectedItem is {} selected)_list.ScrollIntoView(selected);}});}
-    public void CloseBrowser()=>_popup.IsOpen=false;
+    private void FocusBrowserRow()
+    {
+        if(!_browserFocusPending||!_popup.IsOpen)return;
+        if(_list.ContainerFromIndex(Math.Max(0,_list.SelectedIndex)) is ListBoxItem row&&row.Focus())_browserFocusPending=false;
+    }
+    public void OpenBrowser(){_entry.IsDropDownOpen=false;PopulateBrowser();_browserFocusPending=true;_popup.IsOpen=true;Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(_popup.IsOpen){_browserFocusPending=true;_list.Focus();if(_list.SelectedItem is {} selected)_list.ScrollIntoView(selected);FocusBrowserRow();}});}
+    public void CloseBrowser(){_browserFocusPending=false;_popup.IsOpen=false;}
     private void Choose(){if(_list.SelectedItem is not string family)return;SetCurrentValue(FontNameProperty,family);ValueChanged?.Invoke(this,EventArgs.Empty);_popup.IsOpen=false;_entry.Focus();}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {

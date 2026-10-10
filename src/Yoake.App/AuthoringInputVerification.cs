@@ -52,12 +52,12 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 var pointer=new Pointer(413,PointerType.Mouse,true);
                 choice.RaiseEvent(new PointerReleasedEventArgs(choice,pointer,(Avalonia.Visual)TopLevel.GetTopLevel(list)!,choice.TranslatePoint(new(4,4),(Avalonia.Visual)TopLevel.GetTopLevel(list)!)!.Value,0,new(RawInputModifiers.None,PointerUpdateKind.LeftButtonReleased),KeyModifiers.None,MouseButton.Left));
                 Require(!_font.IsBrowserOpen&&_font.FontName==(string)choice.Content!,"Clicking an actual font row must choose its exact family.");
-                _font.OpenBrowser();return false;
+                _font.FontName=_font.InstalledFamilies[0];_font.OpenBrowser();return false;
             case 3:
-                _font!.BrowserList.SelectedIndex=0;
-                _font.BrowserList.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=_font.BrowserList,Key=Key.Down});
+                Require(_font!.BrowserList.SelectedIndex==0,"Reopened browser must select the exact current family.");
+                PressBrowserKey(Key.Down);
                 Require(_font.BrowserList.SelectedIndex==1,"Font browser must support actual keyboard navigation.");
-                _font.BrowserList.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=_font.BrowserList,Key=Key.Enter});
+                PressBrowserKey(Key.Enter);
                 Require(!_font.IsBrowserOpen&&_font.FontName==_font.InstalledFamilies[1],"Enter in font browser must choose.");
                 _font.FontName="D F 円楷書 Std W5";_font.OpenBrowser();return false;
             case 4:
@@ -88,6 +88,12 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
         }
     }
     private void Caret(int start,int end){Text.CaretIndex=end;Text.SelectionStart=start;Text.SelectionEnd=end;}
+    private void PressBrowserKey(Key key)
+    {
+        var row=_font!.BrowserList.ContainerFromIndex(_font.BrowserList.SelectedIndex) as ListBoxItem;
+        Require(row is {IsKeyboardFocusWithin:true,Bounds.Height:>0},"The visible selected font row must own keyboard focus before input.");
+        row!.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=row,Key=key});
+    }
     private void PressKey(Key key,KeyModifiers modifiers=KeyModifiers.None)=>Text.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=Text,Key=key,KeyModifiers=modifiers});
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
 }
