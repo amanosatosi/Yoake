@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import json, re, subprocess, sys, xml.etree.ElementTree as ET
+import hashlib, json, re, subprocess, sys, xml.etree.ElementTree as ET
 ROOT=Path(__file__).resolve().parents[1]
 
 def fail(msg):
@@ -16,6 +16,11 @@ for pattern in ('*.csproj', '*.axaml'):
         except Exception as exc: fail(f"invalid XML {path.relative_to(ROOT)}: {exc}")
 
 versions=json.loads((ROOT/'third_party/versions.json').read_text())
+provenance=json.loads((ROOT/'third_party/automation/provenance.json').read_text(encoding='utf-8'))
+for entry in provenance['files']:
+    path=ROOT/entry['yoakePath']
+    if hashlib.sha256(path.read_bytes()).hexdigest()!=entry['sha256']:
+        fail(f"copied Aegisub 3.2.2 source differs from recorded provenance: {entry['yoakePath']}")
 for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit'], versions['luajit']['commit']):
     if not re.fullmatch(r'[0-9a-f]{40}', pin): fail(f"native dependency ref is not immutable: {pin}")
 if versions.get('mangetsu', {}).get('branch') != 'mangetsu':

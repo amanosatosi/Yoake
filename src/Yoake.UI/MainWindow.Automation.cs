@@ -26,7 +26,7 @@ public partial class MainWindow
     public Task ShowAutomationManagerAsync(MainWindowViewModel model) => new AutomationManagerWindow(model).ShowDialog(this);
     public Task<IReadOnlyList<string>?> ShowAutomationFileDialogAsync(AutomationFileDialogRequest request, CancellationToken token)
     {
-        var owner = _automationProgress is { IsVisible: true } progress ? progress : this;
+        Window owner = _automationProgress is { IsVisible: true } progress ? progress : this;
         return Task.FromResult(WindowsAutomationFilePicker.Pick(request, owner.TryGetPlatformHandle()?.Handle ?? 0, token));
     }
     public Task<AutomationDialogResult> ShowAutomationDialogAsync(AutomationDialogRequest request, CancellationToken cancellationToken) =>

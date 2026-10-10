@@ -235,6 +235,59 @@ end)
     }
 
     [Fact]
+    public async Task UnmodifiedReleaseRegexAndUnicodeModuleSuitesPassAllAssertions()
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "Fixtures");
+        var fixtures = new[] { Path.Combine(directory, "modules", "re.moon"), Path.Combine(directory, "modules", "unicode.moon") };
+        var expected = fixtures.Sum(path => File.ReadLines(path).Count(line => line.TrimStart().StartsWith("it '", StringComparison.Ordinal)));
+        Assert.True(expected > 50);
+        string Include(string path) => "include([[" + path + "]])\n";
+        using var script = await Load(Include(Path.Combine(directory, "module-runner.lua")) + string.Concat(fixtures.Select(Include)) +
+            $"finish_module_tests({expected})\naegisub.register_macro('All upstream assertions','',function() end)");
+        Assert.Single(script.Macros);
+    }
+
+    [Fact]
+    public async Task UnmodifiedReleaseExportAndNameClashScriptsRunOnCopies()
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "Fixtures", "automation");
+        var path = Path.Combine(directory, "basic-export-test.lua");
+        using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), default);
+        var document = AssDocument.CreateEmpty(); var editor = new SubtitleEditor(document);
+        var song = editor.Insert(null, false); song.Text = "{\\k20}日{\\kf30}本語";
+        var before = document.Serialize();
+        var filter = AutomationExportPipeline.Filters([script]).Single(f => f.Name == "Stupid karaoke");
+        var output = await AutomationExportPipeline.RunAsync(before, [new(filter, new Dictionary<string, object?>())], new Services(), default);
+        Assert.Equal(2, output.Events.Count); Assert.All(output.Events, line => Assert.Contains("\\t(", line.Text));
+        Assert.Contains(output.Events, line => line.Text.EndsWith("日", StringComparison.Ordinal));
+        Assert.Contains(output.Events, line => line.Text.EndsWith("本語", StringComparison.Ordinal));
+        Assert.Equal(before, document.Serialize());
+        path = Path.Combine(directory, "test-filter-name-clash.lua");
+        using var clash = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), default);
+        var filters = AutomationExportPipeline.Filters([clash]);
+        Assert.Equal(new[] { "Export breaker", "Export breaker (1)" }, filters.Select(f => f.Name));
+        var unchanged = await AutomationExportPipeline.RunAsync(before, filters.Select(f => new AutomationFilterSettings(f, new Dictionary<string, object?>())).ToArray(), new Services(), default);
+        Assert.Equal(before, unchanged.Serialize());
+    }
+
+    [Fact]
+    public async Task UnmodifiedReleaseFuriganaLayoutUsesRealKaraskelAndGdi()
+    {
+        var directory = Path.Combine(AppContext.BaseDirectory, "Fixtures", "automation");
+        var path = Path.Combine(directory, "test-furi.lua");
+        using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), default);
+        var document = AssDocument.Load(Path.Combine(directory, "furi-test.ass")); var editor = new SubtitleEditor(document);
+        var before = document.Serialize(); var count = document.Events.Count;
+        using var subs = new AutomationSubtitleDocument(document);
+        var macro = script.Macros.Single(m => m.Name == "Test furi layout");
+        await script.RunAsync(macro.Index, new(subs, [], 0, new Services()), default);
+        subs.Commit(editor, macro.Name);
+        Assert.True(document.Events.Count > count); Assert.Contains(document.Styles, style => style.Name.EndsWith("-furigana", StringComparison.Ordinal));
+        Assert.Contains(document.Events.Skip(count), line => line.Style.EndsWith("-furigana", StringComparison.Ordinal) && line.Text.Contains("\\pos(", StringComparison.Ordinal));
+        editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
+    }
+
+    [Fact]
     public async Task FileDialogTransportUsesReleaseArgumentOrderTruthinessAndUnicodeReturnTypes()
     {
         using var script = await Load("""

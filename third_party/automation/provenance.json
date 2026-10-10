@@ -237,6 +237,54 @@
       "yoakePath": "third_party/automation/aegisub-3.2.2/vendor/luabins/src/write.h",
       "sha256": "c9081af9a76ee8864d97818c2eeefa9f3d4cbc1c39e3f34a8c0fb9011297108d",
       "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/tests/modules/re.moon",
+      "yoakePath": "tests/Yoake.Automation.Tests/Fixtures/modules/re.moon",
+      "sha256": "0c8d26226a17f14c8c2287ac5669f09259624c0bcddc84716855e891532e933a",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/tests/modules/unicode.moon",
+      "yoakePath": "tests/Yoake.Automation.Tests/Fixtures/modules/unicode.moon",
+      "sha256": "3db547526a6032e95da8107c747a9e4acc3f180da7c0e78c5c8cf4dd332e070b",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/tests/automation/test-furi.lua",
+      "yoakePath": "tests/Yoake.Automation.Tests/Fixtures/automation/test-furi.lua",
+      "sha256": "7e2fe08ce4fd497a7a7630473a5b635b4ce38d835ff60ea4dc2030c68757f31f",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/tests/automation/furi-test.ass",
+      "yoakePath": "tests/Yoake.Automation.Tests/Fixtures/automation/furi-test.ass",
+      "sha256": "11cb06e12f96b7a3c04e1693692dceca9dd4c397b3f3307c0bf9891236a0ff46",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/tests/automation/kara-templater-retime.ass",
+      "yoakePath": "tests/Yoake.Automation.Tests/Fixtures/automation/kara-templater-retime.ass",
+      "sha256": "ef406a40f09ac78d0b93eabe2e5f251895bbeb19785cf2d5f42d08dfbd0feefe",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/tests/automation/basic-export-test.lua",
+      "yoakePath": "tests/Yoake.Automation.Tests/Fixtures/automation/basic-export-test.lua",
+      "sha256": "af025af8f7807f2ed8eb8359208e247eb70bbe5d05b989ed238b6f83812f32aa",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/tests/automation/test-filter-name-clash.lua",
+      "yoakePath": "tests/Yoake.Automation.Tests/Fixtures/automation/test-filter-name-clash.lua",
+      "sha256": "b0a8f0e442dfeaadd73bc40d42224b327262b19dd9dd23223b2ab7da22180c10",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/tests/automation/config-dialog-test.lua",
+      "yoakePath": "tests/Yoake.Automation.Tests/Fixtures/automation/config-dialog-test.lua",
+      "sha256": "a6dab1f47256d900dbc2df6ad97d0252e19900b6e0e4f93d056a178d2086e1d2",
+      "modifications": "none"
     }
   ]
 }
