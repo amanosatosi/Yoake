@@ -184,14 +184,16 @@ aegisub.register_macro('Modules loaded','',function() end)
         Assert.Equal("Moon macro", Assert.Single(moon.Macros).Name);
     }
 
-    [Fact]
-    public async Task UnmodifiedKaraokeTemplaterGeneratesRealEffectsAndUndoesLosslessly()
+    [Theory]
+    [InlineData(false, 3)]
+    [InlineData(true, 2)]
+    public async Task UnmodifiedKaraokeTemplaterGeneratesRealEffectsAndUndoesLosslessly(bool noBlank, int expected)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "autoload", "kara-templater.lua");
         using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), CancellationToken.None);
         var document = AssDocument.CreateEmpty(); var editor = new SubtitleEditor(document);
         var template = editor.Insert(null, after: true);
-        template.Effect = "template syl"; template.Text = "{\\pos($scenter,$smiddle)\\k$sdur}";
+        template.Effect = noBlank ? "template syl noblank" : "template syl"; template.Text = "{\\pos($scenter,$smiddle)\\k$sdur}";
         var song = editor.Insert(template, after: true); song.Effect = ""; song.Text = "{\\k20}日{\\kf30}本語";
         song.Start = "0:00:01.00"; song.End = "0:00:03.00";
         editor.ToggleComment([template]); editor.MarkSaved();
@@ -204,14 +206,16 @@ aegisub.register_macro('Modules loaded','',function() end)
         Assert.Equal(before, document.Serialize());
         subs.Commit(editor, macro.Name);
         var generated = document.Events.Where(line => line.Effect == "fx").ToArray();
-        Assert.Equal(2, generated.Length);
+        // 3.2.2 applies syllable templates to index zero unless noblank is set.
+        Assert.Equal(expected, generated.Length);
+        Assert.Equal(noBlank ? 0 : 1, generated.Count(line => line.Text.EndsWith("\\k0}", StringComparison.Ordinal)));
         Assert.All(generated, line => { Assert.Contains("\\pos(", line.Text); Assert.False(line.IsComment); });
         Assert.Contains(generated, line => line.Text.EndsWith("日", StringComparison.Ordinal));
         Assert.Contains(generated, line => line.Text.EndsWith("本語", StringComparison.Ordinal));
         Assert.True(song.IsComment);
         Assert.Contains(document.Styles, style => style.Name == "Default-furigana");
         editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
-        editor.Undo.Redo(); Assert.Equal(2, document.Events.Count(line => line.Effect == "fx"));
+        editor.Undo.Redo(); Assert.Equal(expected, document.Events.Count(line => line.Effect == "fx"));
     }
 
     [Fact]
