@@ -27,6 +27,12 @@ internal sealed class AutomationUiVerification(MainWindow window, MainWindowView
     private string? _undoName, _redoName;
     private bool _dirty;
     private bool _reuseStarted;
+    private Task<bool>? _managerTask;
+    private AutomationManagerWindow? _manager;
+    private Guid _originalDocument;
+    private string _templateBefore = "", _templateAfter = "", _templateCommand = "", _templatePath = "";
+    private AssEvent? _templateSong;
+    private byte[]? _templatePixels;
     private int _count, _responsiveTicks;
     private long _preview;
     private Guid _document;
@@ -236,8 +242,91 @@ end)
                 RequireUnchanged();
                 var exported = AssDocument.Load(_exportPath);
                 Require(exported.Events.Count == _count && exported.Events.All(e => e.Text.EndsWith(" export 日本語 မြန်မာ", StringComparison.Ordinal)), "Actual selected filter must process the isolated output copy.");
+                _managerTask = model.Registry.InvokeAsync(CommandIds.AutomationManager, new(_document)).AsTask(); _stage++; return false;
+            case 18:
+                _manager = Windows(window).OfType<AutomationManagerWindow>().FirstOrDefault(w => w.IsVisible);
+                if (_manager is null) return false;
+                var scripts = _manager.GetVisualDescendants().OfType<ListBox>().Single(c => c.Name == "AutomationScriptList"); scripts.SelectedItem = _script;
+                var details = _manager.GetVisualDescendants().OfType<TextBox>().Single(c => c.Name == "AutomationScriptDetails").Text ?? "";
+                Require(details.Contains(_path, StringComparison.Ordinal) && details.Contains("4 macros, 1 filters", StringComparison.Ordinal), "Actual Manager must show loaded metadata and Unicode master path.");
+                File.WriteAllText(_path, "script_name='Reloaded packaged fixture'; aegisub.register_macro('Verification/Reloaded','',function() end)");
+                _running = model.Registry.InvokeAsync(CommandIds.AutomationReload, new(_document), _script).AsTask(); _stage++; return false;
+            case 19:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult() && _script!.Error is null, "Manager reload must replace the interpreter safely.");
+                Require(!model.Registry.TryGet(_command, out _) && model.AutomationMacros.Count(m => m.Name == "Verification/Reloaded") == 1, "Reload must remove old commands and register the replacement once.");
+                _running = model.Registry.InvokeAsync(CommandIds.AutomationReload, new(_document), _script).AsTask(); _stage++; return false;
+            case 20:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult() && model.AutomationMacros.Count(m => m.Name == "Verification/Reloaded") == 1, "Repeated Manager reload must retain one stable command.");
+                _manager!.Close(); _stage++; return false;
+            case 21:
+                if (!_managerTask!.IsCompleted) return false;
+                Require(_managerTask.GetAwaiter().GetResult(), "Manager must close through its stable command."); RequireUnchanged();
+                var templateDocument = AssDocument.CreateEmpty(); var templateEditor = new SubtitleEditor(templateDocument);
+                var template = templateEditor.Insert(null, after: true); template.Effect = "template syl noblank";
+                template.Text = "{\\pos($scenter,$smiddle)\\bord5\\frz12\\distort(0,0,1,1)\\k$sdur}";
+                var song = templateEditor.Insert(template, after: true); song.Effect = ""; song.Text = "{\\k20}日{\\kf30}本語"; song.Start = "0:00:00.00"; song.End = "0:01:00.00";
+                templateEditor.ToggleComment([template]);
+                _templatePath = Path.Combine(Path.GetDirectoryName(_path)!, "templater-日本語.ass");
+                File.WriteAllText(_templatePath, templateDocument.Serialize() + "[Future Section]\nMystery: preserve\n");
+                _originalDocument = _document;
+                Require(model.OpenSubtitle(_templatePath), "Actual application must open the karaoke fixture: " + model.SubtitleStatus);
+                _document = model.Tabs.Single(t => t.IsActive).Id;
+                _templateSong = model.Events.Single(e => !e.IsComment); model.SelectedEvent = _templateSong; model.SetSelectedEvents([_templateSong]);
+                _running = model.Registry.InvokeAsync(CommandIds.AutomationLoad, new(_document), _path).AsTask(); _stage++; return false;
+            case 22:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult(), "Document-local script Add must persist its project reference.");
+                var movedDirectory = Path.Combine(Path.GetDirectoryName(_templatePath)!, "moved"); Directory.CreateDirectory(movedDirectory);
+                _templatePath = Path.Combine(movedDirectory, "saved-日本語.ass");
+                Require(model.SaveActiveSubtitle(_templatePath), "Actual Save As must succeed for the document-local script fixture.");
+                var reference = AssDocument.Load(_templatePath).GetSectionValue("[Aegisub Project Garbage]", "Automation Scripts");
+                Require(AutomationScriptReference.Resolve(reference, _templatePath, model.AutomationBaseDirectory) == _path, "Actual Save As must retain the original script location.");
+                _templateBefore = model.ActiveEditor!.Document.Serialize();
+                _mediaLoading = model.OpenMediaAsync(Path.Combine(mediaFixtures, "av.avi")); _stage++; return false;
+            case 23:
+                if (!_mediaLoading!.IsCompleted) return false;
+                Require(_mediaLoading.GetAwaiter().GetResult(), "Karaoke preview must use this tab's actual independent media session.");
+                if (model.VideoFrame is null || model.DisplayedPreviewRevision < model.PreviewRevision) return false;
+                var templater = model.AutomationScripts.FirstOrDefault(s => s.DocumentId is null && s.Path.EndsWith("kara-templater.lua", StringComparison.OrdinalIgnoreCase));
+                if (templater is null || templater.Status == "Loading") return false;
+                Require(templater.Error is null, "Shipped unmodified Karaoke Templater must autoload: " + templater.Error);
+                _templateCommand = AutomationCommandCatalog.CommandId(templater.Path, "Apply karaoke template");
+                if (!model.Registry.CanExecute(_templateCommand, new(_document))) return false;
+                _templatePixels = Pixels(); _running = model.Registry.InvokeAsync(_templateCommand, new(_document)).AsTask(); _stage++; return false;
+            case 24:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult(), "Unmodified packaged Karaoke Templater must generate actual effects: " + model.SubtitleStatus);
+                var effects = model.Events.Where(e => e.Effect == "fx").ToArray();
+                Require(effects.Length == 2 && effects.All(e => !e.IsComment && e.Text.Contains("\\pos(", StringComparison.Ordinal) && e.Text.Contains("\\distort(0,0,1,1)", StringComparison.Ordinal)), "Actual templater must generate syllable effects while preserving Mangetsu syntax.");
+                Require(_templateSong!.IsComment && model.ActiveEditor!.Document.Styles.Any(s => s.Name == "Default-furigana"), "Real karaskel must preprocess the song and produce furigana style data.");
+                _templateAfter = model.ActiveEditor!.Document.Serialize(); _preview = model.PreviewRevision; CloseProgress(); _stage++; return false;
+            case 25:
+                if (model.DisplayedPreviewRevision < _preview) return false;
+                Require(!_templatePixels!.SequenceEqual(Pixels()), "Actual Karaoke Templater effects must change this tab's Mangetsu video pixels.");
+                Invoke(CommandIds.EditUndo); Require(model.ActiveEditor!.Document.Serialize() == _templateBefore, "Karaoke Templater undo must restore exact source, project references and unknown sections.");
+                Invoke(CommandIds.EditRedo); Require(model.ActiveEditor.Document.Serialize() == _templateAfter, "Karaoke Templater redo must restore exact generated source.");
+                Invoke(CommandIds.EditUndo);
+                _running = model.CloseDocumentAsync(_document); _stage++; return false;
+            case 26:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult(), "Saved karaoke fixture must close without an unsaved prompt after undo.");
+                Require(model.OpenSubtitle(_templatePath), "Document-local script fixture must reopen from disk.");
+                _document = model.Tabs.Single(t => t.IsActive).Id; _stage++; return false;
+            case 27:
+                var reopened = model.AutomationScripts.FirstOrDefault(s => s.DocumentId == _document && s.Path == _path);
+                if (reopened is null || reopened.Status == "Loading") return false;
+                Require(reopened.Error is null && model.AutomationMacros.Count(m => m.Name == "Verification/Reloaded") == 1, "Reopened Save As document must discover its original local script and register one replacement command.");
+                _running = model.CloseDocumentAsync(_document); _stage++; return false;
+            case 28:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult(), "Reopened document must close cleanly.");
+                _document = _originalDocument; Invoke(CommandIds.WorkspaceActivateTab, _document);
+                RequireUnchanged();
                 File.AppendAllText(report + ".automation.txt", "PASS: packaged Lua runtime, Unicode master path, live validation/isactive, all ten dialog classes, custom/default buttons, responsive dispatcher, real mutation/insertion, lossless source, grid/draft refresh, actual Mangetsu pixel change, selection undo/redo.\n");
                 File.AppendAllText(report + ".automation.txt", "PASS: actual Unicode clipboard round trip, default empty-label OK result, signed integer limits, negative float, empty dropdown, multiline text, checkbox edit, forced loop cancellation and checkpoint rollback, log-level filtering, full failure traceback, interpreter reuse, embedded export settings and isolated Unicode ASS output with unchanged live history.\n");
+                File.AppendAllText(report + ".automation.txt", "PASS: actual Manager metadata and repeated reload command cleanup, document-local Add and Save As persistence/reopen, shipped unmodified Karaoke Templater with real karaskel/furigana, generated syllables/Mangetsu syntax and changed video pixels, exact source undo/redo, independent tab media and clean disposal.\n");
                 _stage++; return true;
             default: return true;
         }
@@ -271,9 +360,9 @@ end)
     }
     private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-    private void Invoke(string id)
+    private void Invoke(string id, object? parameter = null)
     {
-        var invocation = model.Registry.InvokeAsync(id, new(_document));
+        var invocation = model.Registry.InvokeAsync(id, new(_document), parameter);
         Require(invocation.IsCompletedSuccessfully && invocation.Result, "Automation verification history command failed: " + id);
     }
     private byte[] Pixels()
