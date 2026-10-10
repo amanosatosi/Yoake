@@ -107,6 +107,20 @@ does not dirty the open document or reuse Save as an implicit filter operation.
 
 ## Packaging, provenance and trust
 
+Karaoke parsing is a read-only structured scan that returns the 3.2.2 syllable
+table, including the empty index zero and unnormalized relative millisecond
+times. Other tags, comments and drawings remain in syllable text. No parser
+operation edits ASS source. The native provider retains schema provenance
+through exact raw/class fields when unmodified `table.copy` loses weak identity;
+script-only derived fields are ignored during AssEntry conversion.
+
+Windows text metrics use GDI at the source's 64x font size, with style scaling
+applied to results. GDI objects never escape `Yoake.Native` and are released on
+every error path. One deliberate Unicode deviation: nonzero spacing uses
+whole-string shaping plus spacing per grapheme; 3.2.2 measures UTF-16 code units
+individually, splitting surrogate pairs/combining sequences. This difference
+must remain visible in the compatibility ledger and complex-script fixtures.
+
 The standard modules use 3.2.2's unmodified LPeg 0.10 and luabins sources, its
 unmodified Boost regex/Unicode adapters, and a narrow Yoake implementation of
 the source-defined lfs surface using C++ standard filesystem. Shipped includes

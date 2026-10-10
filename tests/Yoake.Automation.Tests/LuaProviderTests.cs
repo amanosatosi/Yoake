@@ -154,6 +154,74 @@ aegisub.register_macro('Modules loaded','',function() end)
         Assert.Equal("Moon macro", Assert.Single(moon.Macros).Name);
     }
 
+    [Fact]
+    public async Task UnmodifiedKaraokeTemplaterGeneratesRealEffectsAndUndoesLosslessly()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "autoload", "kara-templater.lua");
+        using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), CancellationToken.None);
+        var document = AssDocument.CreateEmpty();
+        var template = document.NewEvent();
+        template.Effect = "template syl"; template.Text = "{\\pos($scenter,$smiddle)\\k$sdur}";
+        var song = document.NewEvent(); song.Text = "{\\k20}日{\\kf30}本語";
+        song.Start = "0:00:01.00"; song.End = "0:00:03.00";
+        document.Events.Add(template); document.Events.Add(song);
+        var editor = new SubtitleEditor(document); editor.ToggleComments([template]); editor.MarkSaved();
+        var before = document.Serialize();
+        var macro = Assert.Single(script.Macros);
+        using (var validation = new AutomationSubtitleDocument(document, writable: false))
+            Assert.True((await script.ValidateAsync(macro.Index, Context(validation), CancellationToken.None)).Enabled);
+        using var subs = new AutomationSubtitleDocument(document);
+        await script.RunAsync(macro.Index, Context(subs), CancellationToken.None);
+        Assert.Equal(before, document.Serialize());
+        subs.Commit(editor, macro.Name);
+        var generated = document.Events.Where(line => line.Effect == "fx").ToArray();
+        Assert.Equal(2, generated.Length);
+        Assert.All(generated, line => { Assert.Contains("\\pos(", line.Text); Assert.False(line.IsComment); });
+        Assert.Contains(generated, line => line.Text.EndsWith("日", StringComparison.Ordinal));
+        Assert.Contains(generated, line => line.Text.EndsWith("本語", StringComparison.Ordinal));
+        Assert.True(song.IsComment);
+        Assert.Contains(document.Styles, style => style.Name == "Default-furigana");
+        editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
+        editor.Undo.Redo(); Assert.Equal(2, document.Events.Count(line => line.Effect == "fx"));
+    }
+
+    [Fact]
+    public async Task UnmodifiedTableCopyPreservesUnknownColumnsAndIgnoresCyclicHelpers()
+    {
+        using var script = await Load("""
+include('utils.lua')
+aegisub.register_macro('Copy','',function(subs)
+  local line=table.copy(subs[2])
+  line.text='generated'
+  line.script_data={}; line.script_data.self=line.script_data
+  subs.append(line)
+end)
+""");
+        var document = Document(); var editor = new SubtitleEditor(document);
+        using var subs = new AutomationSubtitleDocument(document);
+        await script.RunAsync(1, Context(subs), CancellationToken.None);
+        subs.Commit(editor, "Copy");
+        Assert.Equal("generated", document.Events[1].Text);
+        Assert.Equal("evidence", document.Events[1].Get("Future"));
+    }
+
+    [Fact]
+    public void GdiMetricsApplyScalingAndSpacingWithoutSplittingGraphemes()
+    {
+        using var subs = new AutomationSubtitleDocument(AssDocument.CreateEmpty());
+        var style = Enumerable.Range(1, subs.Count).Select(subs.Read).Single(line => Equals(line["class"], "style"));
+        var original = WindowsAutomationTextMeasurer.Measure(style, "á😀日本語");
+        Assert.True(original.Width > 0); Assert.True(original.Height > 0);
+        Assert.True(original.Descent >= 0); Assert.True(original.ExternalLeading >= 0);
+        style["spacing"] = 3;
+        var spaced = WindowsAutomationTextMeasurer.Measure(style, "á😀日本語");
+        Assert.Equal(original.Width + 15, spaced.Width, precision: 8);
+        style["scale_x"] = 150; style["scale_y"] = 200;
+        var scaled = WindowsAutomationTextMeasurer.Measure(style, "á😀日本語");
+        Assert.Equal(spaced.Width * 1.5, scaled.Width, precision: 8);
+        Assert.Equal(spaced.Height * 2, scaled.Height, precision: 8);
+    }
+
     private sealed class Services : IAutomationHostServices
     {
         public string? FileName => null;
@@ -162,7 +230,7 @@ aegisub.register_macro('Modules loaded','',function() end)
         public int? MillisecondsFromFrame(int frame) => null;
         public AutomationVideoSize? VideoSize => null;
         public IReadOnlyList<int> Keyframes => [];
-        public AutomationTextMetrics MeasureText(AutomationLine style, string text) => throw new NotSupportedException();
+        public AutomationTextMetrics MeasureText(AutomationLine style, string text) => WindowsAutomationTextMeasurer.Measure(style, text);
         public string Translate(string text) => text;
         public string? ClipboardGet() => null;
         public bool ClipboardSet(string text) => false;

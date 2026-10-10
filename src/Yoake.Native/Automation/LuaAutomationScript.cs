@@ -14,6 +14,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     private readonly List<AutomationMacro> _macros = [];
     private readonly List<AutomationExportFilter> _filters = [];
     private readonly Dictionary<int, AutomationLine> _reads = [];
+    private readonly Dictionary<(string Class, string Raw), AutomationLine> _templates = [];
     private readonly HashSet<string> _names = new(StringComparer.Ordinal);
     private GCHandle _owner;
     private IntPtr _runtime;
@@ -89,10 +90,10 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         try
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            _invocation = invocation; _cancellation = cancellationToken; _reads.Clear(); _nextRead = 0;
+            _invocation = invocation; _cancellation = cancellationToken; _reads.Clear(); _templates.Clear(); _nextRead = 0;
             return await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
         }
-        finally { _invocation = null; _reads.Clear(); _gate.Release(); }
+        finally { _invocation = null; _reads.Clear(); _templates.Clear(); _gate.Release(); }
     }
 
     private string? Run(string source, string name, CancellationToken cancellationToken)
@@ -150,6 +151,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             case "subs_count": return [subs!.Count];
             case "subs_read":
                 var line = subs!.Read(Index(1)); var id = ++_nextRead; _reads[id] = line;
+                if (line["class"] is string kind && line["raw"] is string raw) _templates.TryAdd((kind, raw), line);
                 return [line.Fields, id];
             case "subs_write":
                 subs!.Write(Index(1), Arg(2).ValueKind is JsonValueKind.Null or JsonValueKind.Undefined ? null : Line(Arg(2), Arg(3))); return [];
@@ -170,6 +172,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
                 else subs!.Append(lines.ToArray());
                 return [];
             case "undo_point": subs!.SetUndoPoint(Text(1)); return [];
+            case "karaoke": return [AutomationKaraokeParser.Parse(Line(Arg(1), default))];
             case "is_cancelled": return [_cancellation.IsCancellationRequested];
             case "progress": services!.ReportProgress(NullableNumber(Arg(1)), NullableText(Arg(2)), NullableText(Arg(3))); return [];
             case "log": services!.Log(Text(1), Index(2)); return [];
@@ -199,7 +202,15 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     private AutomationLine Line(JsonElement table, JsonElement token)
     {
         if (table.ValueKind != JsonValueKind.Object) throw new ArgumentException("Can't convert a non-table value to AssEntry.");
-        var line = token.ValueKind == JsonValueKind.Number && _reads.TryGetValue(Integer(token), out var template) ? template.Copy() : new AutomationLine();
+        AutomationLine? template = null;
+        if (token.ValueKind == JsonValueKind.Number) _reads.TryGetValue(Integer(token), out template);
+        // Unmodified utils.table.copy does not copy a weak-table identity. The
+        // exact raw source field survives it and carries the source schema and
+        // unknown fields into generated copies without leaking private fields.
+        if (template is null && table.TryGetProperty("class", out var kind) && kind.ValueKind == JsonValueKind.String &&
+            table.TryGetProperty("raw", out var raw) && raw.ValueKind == JsonValueKind.String)
+            _templates.TryGetValue((kind.GetString()!, raw.GetString()!), out template);
+        var line = template?.Copy() ?? new AutomationLine();
         line.Fields.Clear();
         foreach (var pair in table.EnumerateObject())
             line[pair.Name] = pair.Value.ValueKind switch
@@ -256,7 +267,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             if (_disposed) return;
             _disposed = true; Destroy(_runtime); _runtime = IntPtr.Zero;
             if (_owner.IsAllocated) _owner.Free();
-            _reads.Clear(); _macros.Clear(); _filters.Clear();
+            _reads.Clear(); _templates.Clear(); _macros.Clear(); _filters.Clear();
         }
         finally { _gate.Release(); }
     }

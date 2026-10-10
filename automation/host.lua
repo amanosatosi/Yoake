@@ -91,10 +91,23 @@ function aegisub.__init_clipboard()
 end
 
 local alive, provenance = false, setmetatable({}, {__mode='k'})
+-- AssEntry conversion ignores authoring helpers (kara, styleref, cyclic script
+-- data). Only transmit the documented fields, just as LuaToAssEntry reads them.
+local line_fields = {}
+for name in ('class raw section key value comment layer start_time end_time style actor margin_l margin_r margin_t margin_b effect text extra name fontname fontsize color1 color2 color3 color4 bold italic underline strikeout scale_x scale_y spacing angle borderstyle outline shadow align encoding relative_to'):gmatch('%S+') do
+  line_fields[name] = true
+end
+local function line_argument(line)
+  if type(line) ~= 'table' then return line end
+  local fields = {}
+  for key in pairs(line_fields) do fields[key] = line[key] end
+  return fields
+end
+aegisub.text_extents = function(style,text) return host('text_extents',line_argument(style),text) end
 local function check() if not alive then error('Subtitles object is no longer valid', 3) end end
 local function write(i,line)
   check()
-  return host('subs_write',i,line,line and provenance[line])
+  return host('subs_write',i,line_argument(line),line and provenance[line])
 end
 local function subtitles()
   local subs = newproxy(true)
@@ -115,7 +128,9 @@ local function subtitles()
         check()
         local values = {n=select('#',...),...}
         local ids = {}
-        for i=1,values.n do if type(values[i])=='table' then ids[i]=provenance[values[i]] end end
+        for i=1,values.n do
+          if type(values[i])=='table' then ids[i]=provenance[values[i]]; values[i]=line_argument(values[i]) end
+        end
         return host('subs_'..key,values,ids)
       end
     end
@@ -142,7 +157,7 @@ end
 function __yoake_invoke(index, method)
   alive = true
   aegisub.set_undo_point = function(name) return host('undo_point',name) end
-  aegisub.parse_karaoke_data = function(line) return host('karaoke',line) end
+  aegisub.parse_karaoke_data = function(line) return host('karaoke',line_argument(line)) end
   aegisub.progress = {
     set=function(p) return host('progress',p) end,
     task=function(t) return host('progress',nil,t) end,

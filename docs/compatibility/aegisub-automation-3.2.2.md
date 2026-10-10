@@ -32,8 +32,8 @@ Paths below refer to that exact local source tree, not current Aegisub.
 | delete variadic/table, duplicates, deleterange clamp, ipairs | Not implemented yet | `src/auto4_lua_assfile.cpp:ObjectDelete/ObjectDeleteRange/ObjectIPairs` |
 | Lossless unknown fields/Mangetsu text; efficient bulk generation | Partially supported | Core 50,000-event test and actual Lua read/modify/write tests pass. Lua copies losing table provenance need further duplication tests. Yoake stronger guarantee; `AssDocument`, `AssRecord` |
 | set_undo_point, implicit final point, multiple points, rollback | Partially supported | Core checkpoint/rollback/history tests and native macro test pass; editor selection/packaged undo pending. `src/auto4_lua_assfile.cpp:LuaSetUndoPoint/ProcessingComplete/Cancel`. Points are queued; failed runs discard **all** pending commits, including earlier points. Successful uncheckpointed tail uses macro display name. |
-| parse_karaoke_data, empty syllable zero, tags/text/times | Not implemented yet | `src/auto4_lua_assfile.cpp:LuaParseKaraokeData`, `src/ass_karaoke.cpp:ParseSyllables`, `automation/tests/automation/karaoke-parse-test.lua` |
-| text_extents width/height/descent/external-leading | Not implemented yet | `src/auto4_base.cpp:CalculateTextExtents`; Windows GDI at 64x size, scale applied afterwards; two text-extents fixtures |
+| parse_karaoke_data, empty syllable zero, tags/text/times | Partially supported | Structured Core/parser/native bridge implemented; new timing/comment/drawing/transform/Unicode regressions await CI. `src/auto4_lua_assfile.cpp:LuaParseKaraokeData`, `src/ass_karaoke.cpp:ParseSyllables` |
+| text_extents width/height/descent/external-leading | Partially supported | Windows GDI provider at 64x size, scale applied afterwards; grapheme spacing deviation below. Native regression awaits CI. `src/auto4_base.cpp:CalculateTextExtents` |
 | frame_from_ms/ms_from_frame/video_size/keyframes | Not implemented yet | `src/auto4_lua.cpp`; START timecode rounding, video_size returns four values; bind existing timeline |
 | file_name/project_properties/decode_path/gettext | Not implemented yet | `src/auto4_lua.cpp`; file_name returns basename or nil; properties contains fourteen fields |
 | Clipboard get/set + compatibility wrappers | Not implemented yet | `src/auto4_lua.cpp:clipboard_*`, `automation/include/aegisub/clipboard.lua`; empty clipboard returns nil |
@@ -83,9 +83,12 @@ Paths below refer to that exact local source tree, not current Aegisub.
   remain preserved. Full typed extradata projection is pending.
 * Negative deleterange endpoints are rejected instead of reproducing unsigned
   conversion/wraparound. Header/raw class writes are rejected, as in 3.2.2.
-* Lua table-copy helpers can lose the weak-table provenance used for unknown field
-  retention on insertion. Same-slot edits preserve target columns; duplication of
-  custom-format data needs further hardening before acceptance.
+* Lua table-copy helpers lose weak identity; the native bridge now recovers schema
+  provenance from exact class/raw fields. Copy/unknown-column regression awaits CI.
+* Nonzero GDI spacing uses whole-string shaping plus one space increment per
+  grapheme. 3.2.2 instead measures UTF-16 units individually; Yoake preserves
+  surrogate pairs, combining sequences and complex-script shaping. Zero-spacing
+  uses the same whole-string GDI path as the reference.
 * Interpreter/provider tests are not packaged application acceptance evidence.
   Manager, menu/commands, dialogs, progress UI, export, media services, karaoke
   parser/metrics, real karaskel and Templater workflows remain integration work.
