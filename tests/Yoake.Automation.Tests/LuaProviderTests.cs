@@ -235,6 +235,17 @@ end)
     }
 
     [Fact]
+    public async Task MoonScriptFailuresReportOriginalSourceLineAndFullUnicodePath()
+    {
+        const string name = "日本語-trace.moon";
+        using var script = await Load("aegisub.register_macro 'Moon error', '', ->\n  value = 1\n  error 'moon fixture failure'\n", name);
+        using var subs = new AutomationSubtitleDocument(Document());
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await script.RunAsync(1, Context(subs), default));
+        Assert.Contains("moon fixture failure", error.Message); Assert.Contains("stack traceback:", error.Message);
+        Assert.Contains(Path.Combine(_root, name) + ":3:", error.Message);
+    }
+
+    [Fact]
     public async Task NativeKaraokeArrayIncludesNumericZeroAndContiguousSyllables()
     {
         using var script = await Load("""

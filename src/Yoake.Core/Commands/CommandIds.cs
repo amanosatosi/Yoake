@@ -8,6 +8,7 @@ public static class CommandIds
     public const string AutomationReload = "automation/reload";
     public const string AutomationRescan = "automation/rescan";
     public const string AutomationExport = "automation/export";
+    public const string AutomationPaths = "automation/paths";
     public const string FormatBold="text/format/bold", FormatItalic="text/format/italic", FormatUnderline="text/format/underline", FormatStrikeout="text/format/strikeout";
     public const string FormatFont="text/format/font", FormatPrimary="text/format/primary", FormatSecondary="text/format/secondary", FormatOutline="text/format/outline", FormatShadow="text/format/shadow", FormatReset="text/format/reset";
     public const string TextHardNewline="text/insert/hard-newline";

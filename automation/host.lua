@@ -1,6 +1,7 @@
 -- Yoake's private native-host adapter. The public surface targets Aegisub 3.2.2.
 -- The managed host never evaluates or marshals raw Lua tables or Lua pointers.
 local transport, compile = __yoake_transport, loadstring
+local moon_sources = {}
 __yoake_transport = nil
 local function quote(s)
   return '"' .. s:gsub('[%z\1-\31\\"]', function(c)
@@ -45,6 +46,7 @@ if jit then jit.on = function() end end -- retain cancellable interpreter hooks
 local function load_source(path)
   local text = host('read_file', path)
   if path:lower():sub(-5) == '.moon' then
+    moon_sources['@'..path] = text
     return require('moonscript').loadstring(text, '@'..path)
   end
   return compile(text, '@'..path)
@@ -166,6 +168,27 @@ local function log(...)
   local text = #args>1 and string.format(unpack(args)) or tostring(args[1] or '')
   return host('log',text,level)
 end
+local function script_traceback(message)
+  local lines = {tostring(message), 'stack traceback:'}
+  local tables = package.loaded['moonscript.line_tables'] or {}
+  for level=2,200 do
+    local info=debug.getinfo(level,'Sln')
+    if not info then break end
+    if info.what=='C' then
+      lines[#lines+1]='\t[C]: '..(info.name and "in function '"..info.name.."'" or 'native call')
+    else
+      local line=info.currentline
+      local source=info.source
+      local original=moon_sources[source]
+      local position=tables[source] and tables[source][line]
+      if original and position then
+        local _,count=original:sub(1,position):gsub('\n','\n'); line=count+1
+      end
+      lines[#lines+1]='\t'..source:gsub('^@','')..':'..line..': '..(info.name and "in function '"..info.name.."'" or 'in script')
+    end
+  end
+  return table.concat(lines,'\n')
+end
 function __yoake_invoke(index, method, settings)
   script_cancelled = false
   generation = generation + 1
@@ -193,7 +216,7 @@ function __yoake_invoke(index, method, settings)
   local ok,a,b = xpcall(function()
     if feature.filter then return fn(subtitles(),settings or {}) end
     return fn(subtitles(),selected,active)
-  end,debug.traceback)
+  end,script_traceback)
   alive=false
   aegisub.progress, aegisub.debug, aegisub.dialog = nil,nil,nil
   if script_cancelled then return json({cancelled=true}) end

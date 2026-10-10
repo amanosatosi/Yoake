@@ -23,7 +23,8 @@ public sealed class AutomationManagerWindow : Window
         var reload = new Button { Content = "Reload", Command = model.Actions[CommandIds.AutomationReload] };
         var remove = new Button { Content = "Remove", Command = model.Actions[CommandIds.AutomationRemove] };
         var rescan = new Button { Content = "Rescan autoload", Command = model.Actions[CommandIds.AutomationRescan] };
-        actions.Children.Add(add); actions.Children.Add(reload); actions.Children.Add(remove); actions.Children.Add(rescan);
+        var paths = new Button { Content = "Search paths…", Command = model.Actions[CommandIds.AutomationPaths] };
+        actions.Children.Add(add); actions.Children.Add(reload); actions.Children.Add(remove); actions.Children.Add(rescan); actions.Children.Add(paths);
         Grid.SetRow(actions, 2); grid.Children.Add(actions);
         var details = new TextBox { Name = "AutomationScriptDetails", IsReadOnly = true, AcceptsReturn = true, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
         Grid.SetRow(details, 3); grid.Children.Add(details);

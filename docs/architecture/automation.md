@@ -212,6 +212,17 @@ working directory. A cancellation closes the native modal dialog; no callback
 exception crosses its window procedure. Returned paths are Unicode strings,
 a Lua array for multiple selection, or nil on dismissal.
 
+Autoload and include directories are application preferences serialized through
+the existing NativeAOT source-generated settings context. Default token paths
+keep installed and portable layouts relocatable; an explicit empty autoload
+list disables discovery. Manager's search-path command persists the ordered
+lists, rescans globals and reloads locals so per-interpreter module caches use
+the new resolver. Master directories remain the first include location.
+
+MoonScript chunks retain original UTF-8 source text alongside the bundled
+compiler's line tables. Runtime tracebacks use full chunk paths and translate
+generated line offsets to original source lines without Lua's ANSI file I/O.
+
 GitHub Actions builds/tests the managed host, native stack, NativeAOT package,
 module fixtures and real-window macro/dialog/selection/undo scenario. Do not
 compile or rebuild either Yoake or Aegisub locally during ordinary development.

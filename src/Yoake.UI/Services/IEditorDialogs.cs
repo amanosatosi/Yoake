@@ -7,6 +7,7 @@ public interface IEditorDialogs
 {
     Task<string?> OpenAutomationScriptAsync() => Task.FromResult<string?>(null);
     Task ShowAutomationManagerAsync(Yoake.UI.ViewModels.MainWindowViewModel model) => Task.CompletedTask;
+    Task<AutomationSearchPaths?> EditAutomationPathsAsync(IReadOnlyList<string> autoload, IReadOnlyList<string> includes) => Task.FromResult<AutomationSearchPaths?>(null);
     Task<Yoake.Core.Automation.AutomationDialogResult> ShowAutomationDialogAsync(Yoake.Core.Automation.AutomationDialogRequest request, CancellationToken cancellationToken) => throw new NotSupportedException("Automation dialogs are unavailable.");
     IAutomationProgressSession? BeginAutomationProgress(string title) => null;
     Task<IReadOnlyList<string>?> ShowAutomationFileDialogAsync(Yoake.Core.Automation.AutomationFileDialogRequest request, CancellationToken token) => throw new NotSupportedException("Automation file dialogs are unavailable.");

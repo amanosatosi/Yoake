@@ -6,6 +6,7 @@ using Yoake.Core.Logging;
 using Yoake.Core.Subtitles;
 using Yoake.Native.Automation;
 using Yoake.UI.Commands;
+using Yoake.UI.Services;
 
 namespace Yoake.UI.ViewModels;
 
@@ -40,6 +41,8 @@ public sealed partial class MainWindowViewModel
     public IAutomationRuntimeProvider AutomationRuntimeProvider { get; set; } = new LuaAutomationProvider(Path.Combine(AppContext.BaseDirectory, "automation", "host.lua"));
     public string AutomationBaseDirectory => Path.Combine(AppContext.BaseDirectory, "automation");
     public string AutomationUserDirectory => Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!, "automation");
+    public IReadOnlyList<string> AutomationAutoloadDirectories => _settings.AutomationAutoloadDirectories ?? ["?data/automation/autoload", "?user/automation/autoload"];
+    public IReadOnlyList<string> AutomationIncludeDirectories => _settings.AutomationIncludeDirectories ?? ["?user/automation/include", "?data/automation/include"];
     public IReadOnlyList<AutomationScriptItem> AutomationScripts => _automationEntries.Where(e => e.DocumentId is null || e.DocumentId == _activeId).ToArray();
     public IReadOnlyList<AutomationMenuEntry> AutomationMacros => _activeId is { } id
         ? _automationCatalog.Macros(id).Select(b => new AutomationMenuEntry(b.Macro.Name, b.Validation.Help ?? b.Macro.Description,
@@ -81,6 +84,16 @@ public sealed partial class MainWindowViewModel
         Register(CommandIds.AutomationReload, "Reload script", async (invocation, token) => { if (invocation.Parameter is AutomationScriptItem item) await ReloadAutomationScriptAsync(item, token); });
         Register(CommandIds.AutomationRescan, "Rescan autoload", async (_, token) => await RescanAutomationAsync(token), _ => !_automationScanning);
         Register(CommandIds.AutomationExport, "Export subtitles…", ExportAutomationAsync, context => context.DocumentId is { } id && !_automationRuns.ContainsKey(id));
+        Register(CommandIds.AutomationPaths, "Search paths…", async (invocation, token) =>
+        {
+            var paths = invocation.Parameter as AutomationSearchPaths ?? (Dialogs is null ? null : await Dialogs.EditAutomationPathsAsync(AutomationAutoloadDirectories, AutomationIncludeDirectories));
+            if (paths is null) return;
+            // Preferences own search paths; changing them reloads interpreters so
+            // cached modules cannot retain the previous resolution environment.
+            _settings = (_settings with { AutomationAutoloadDirectories = paths.Autoload, AutomationIncludeDirectories = paths.Includes }).Normalize(); _settingsStore.Save(_settings);
+            await RescanAutomationAsync(token);
+            foreach (var item in _automationEntries.Where(e => e.DocumentId is not null).ToArray()) await ReloadAutomationScriptAsync(item, token);
+        }, _ => !_automationScanning);
     }
 
     public async Task<AutomationScriptItem> LoadAutomationScriptAsync(string path, Guid? documentId, CancellationToken token = default)
@@ -106,8 +119,7 @@ public sealed partial class MainWindowViewModel
         try
         {
             if (old is not null) await Task.Run(old.Dispose);
-            var resolver = new AutomationPathResolver(item.Path,
-                [Path.Combine(AutomationUserDirectory, "include"), Path.Combine(AutomationBaseDirectory, "include")], AutomationTokens(item.DocumentId));
+            var resolver = new AutomationPathResolver(item.Path, AutomationIncludeDirectories, AutomationTokens(item.DocumentId));
             var loaded = await AutomationRuntimeProvider.LoadAsync(item.Path, resolver, cancellation.Token);
             if (cancellation.IsCancellationRequested || !_automationEntries.Contains(item)) { await Task.Run(loaded.Dispose); return; }
             item.Script = loaded;
@@ -136,8 +148,9 @@ public sealed partial class MainWindowViewModel
         {
             foreach (var item in _automationEntries.Where(e => e.DocumentId is null).ToArray()) await RemoveAutomationScriptAsync(item);
             using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, _automationLifetime.Token);
-            var files = await Task.Run(() => AutomationPathResolver.Discover(
-                [Path.Combine(AutomationBaseDirectory, "autoload"), Path.Combine(AutomationUserDirectory, "autoload")], cancellation.Token), cancellation.Token);
+            var paths = new AutomationPathResolver(Path.Combine(AppContext.BaseDirectory, "context.lua"), [], AutomationTokens(null));
+            var directories = AutomationAutoloadDirectories.Select(paths.DecodePath).ToArray();
+            var files = await Task.Run(() => AutomationPathResolver.Discover(directories, cancellation.Token), cancellation.Token);
             foreach (var path in files) { cancellation.Token.ThrowIfCancellationRequested(); await LoadAutomationScriptAsync(path, null, cancellation.Token); }
         }
         finally { _automationScanning = false; _registry.NotifyStateChanged(); }

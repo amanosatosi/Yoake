@@ -26,6 +26,8 @@ public sealed record AppSettings
     public double? AudioWindowSeconds {get;init;}
     public bool AudioVolumeLinked {get;init;}
     public double[]? StyleSplitWeights {get;init;}
+    public string[]? AutomationAutoloadDirectories { get; init; }
+    public string[]? AutomationIncludeDirectories { get; init; }
 
     [JsonExtensionData]
     public Dictionary<string, JsonElement>? FutureSettings { get; set; }
@@ -52,6 +54,7 @@ public sealed record AppSettings
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
         return this with { GridColumnWidths = widths, RecentFiles = recent, Theme = theme,
+            AutomationAutoloadDirectories=NormalizePaths(AutomationAutoloadDirectories), AutomationIncludeDirectories=NormalizePaths(AutomationIncludeDirectories),
             CompactGridColumnWidths=CompactGridColumnWidths is {Length:7} compact&&compact.All(w=>double.IsFinite(w)&&w>=24&&w<=600)?compact:null,
             StyleSplitWeights=StyleSplitWeights is {Length:3} split&&split.All(w=>double.IsFinite(w)&&w>0)?split.Select(w=>Math.Clamp(w,0.1,10)).ToArray():null,
             PlaybackVolume=PlaybackVolume is {} volume&&double.IsFinite(volume)?Math.Clamp(volume,0,1):0.8,
@@ -60,6 +63,7 @@ public sealed record AppSettings
             AudioWindowSeconds=AudioWindowSeconds is {} audioSpan&&double.IsFinite(audioSpan)?Math.Clamp(audioSpan,0.02,3600):20,
             MainSplitRatio = ratio, GridHeight = height, SchemaVersion = SchemaVersion > 0 ? SchemaVersion : defaults.SchemaVersion };
     }
+    private static string[]? NormalizePaths(string[]? paths) => paths?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

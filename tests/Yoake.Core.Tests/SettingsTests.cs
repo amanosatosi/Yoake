@@ -5,6 +5,22 @@ namespace Yoake.Core.Tests;
 public sealed class SettingsTests
 {
     [Fact]
+    public void AutomationSearchPathsRoundTripAndEmptyAutoloadRemainsDistinctFromDefaults()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "yoake-automation-settings-" + Guid.NewGuid().ToString("N"));
+        var store = new SettingsStore(Path.Combine(root, "settings.json"));
+        try
+        {
+            Assert.Null(store.Load().AutomationAutoloadDirectories);
+            store.Save(new AppSettings { AutomationAutoloadDirectories = [], AutomationIncludeDirectories = [" ?user/日本語 ", "?data/automation/include", "?user/日本語"] });
+            var loaded = store.Load();
+            Assert.NotNull(loaded.AutomationAutoloadDirectories); Assert.Empty(loaded.AutomationAutoloadDirectories);
+            Assert.Equal(new[] { "?user/日本語", "?data/automation/include" }, loaded.AutomationIncludeDirectories);
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
+    [Fact]
     public void NormalModeUsesRoamingDirectory()
     {
         var root = System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid().ToString("N"));

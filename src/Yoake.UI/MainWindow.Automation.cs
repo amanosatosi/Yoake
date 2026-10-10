@@ -24,6 +24,7 @@ public partial class MainWindow
         return files.FirstOrDefault()?.TryGetLocalPath();
     }
     public Task ShowAutomationManagerAsync(MainWindowViewModel model) => new AutomationManagerWindow(model).ShowDialog(this);
+    public Task<AutomationSearchPaths?> EditAutomationPathsAsync(IReadOnlyList<string> autoload, IReadOnlyList<string> includes) => new AutomationPathsWindow(autoload, includes).ShowDialog<AutomationSearchPaths?>(this);
     public Task<IReadOnlyList<string>?> ShowAutomationFileDialogAsync(AutomationFileDialogRequest request, CancellationToken token)
     {
         Window owner = _automationProgress is { IsVisible: true } progress ? progress : this;
