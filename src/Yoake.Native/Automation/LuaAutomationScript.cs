@@ -10,6 +10,7 @@ namespace Yoake.Native.Automation;
 internal sealed partial class LuaAutomationScript : IAutomationScript
 {
     private readonly AutomationPathResolver _paths;
+    private readonly IAutomationHostServices? _platformServices;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly List<AutomationMacro> _macros = [];
     private readonly List<AutomationExportFilter> _filters = [];
@@ -28,9 +29,9 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     public IReadOnlyList<AutomationMacro> Macros => _macros;
     public IReadOnlyList<AutomationExportFilter> Filters => _filters;
 
-    public unsafe LuaAutomationScript(string path, AutomationPathResolver paths)
+    public unsafe LuaAutomationScript(string path, AutomationPathResolver paths, IAutomationHostServices? platformServices = null)
     {
-        Path = path; _paths = paths;
+        Path = path; _paths = paths; _platformServices = platformServices;
         Metadata = new(System.IO.Path.GetFileName(path), "", "", "");
         _owner = GCHandle.Alloc(this);
         try
@@ -214,8 +215,8 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
                 var measuredStyle = Line(Arg(1), default); AutomationSubtitleDocument.ValidateStyle(measuredStyle);
                 var metrics = services?.MeasureText(measuredStyle, Text(2)) ?? WindowsAutomationTextMeasurer.Measure(measuredStyle, Text(2));
                 return [metrics.Width, metrics.Height, metrics.Descent, metrics.ExternalLeading];
-            case "clipboard_get": return [services!.ClipboardGet()];
-            case "clipboard_set": return [services!.ClipboardSet(Text(1))];
+            case "clipboard_get": return [(services ?? _platformServices)?.ClipboardGet()];
+            case "clipboard_set": return [(services ?? _platformServices)?.ClipboardSet(Text(1)) ?? false];
             case "file_dialog_open": case "file_dialog_save":
                 static bool Truth(JsonElement v) => v.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined or JsonValueKind.False);
                 var save = op == "file_dialog_save";

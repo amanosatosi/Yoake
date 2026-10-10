@@ -57,4 +57,8 @@ public interface IAutomationScript : IDisposable
 public interface IAutomationRuntimeProvider
 {
     ValueTask<IAutomationScript> LoadAsync(string path, AutomationPathResolver paths, CancellationToken cancellationToken);
+    // Initialization has no subtitle/media context. Platform services such as
+    // clipboard remain available to require() and master-script top-level code.
+    ValueTask<IAutomationScript> LoadAsync(string path, AutomationPathResolver paths, IAutomationHostServices? platformServices, CancellationToken cancellationToken)
+        => LoadAsync(path, paths, cancellationToken);
 }

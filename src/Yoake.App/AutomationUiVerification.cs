@@ -62,6 +62,14 @@ internal sealed class AutomationUiVerification(MainWindow window, MainWindowView
 script_name='Packaged authoring verification'
 include('utils.lua')
 aegisub.register_macro('Verification/Authoring','Real dialog and mutation',function(subs,selected,active)
+  local width,height,aspect,mode=aegisub.video_size()
+  assert(width>0 and height>0 and aspect>0 and type(mode)=='number')
+  assert(aegisub.frame_from_ms(aegisub.ms_from_frame(1))==1)
+  local keyframes=aegisub.keyframes(); assert(type(keyframes)=='table' and #keyframes>0)
+  local properties=aegisub.project_properties(); local fields=0
+  for key,value in pairs(properties) do fields=fields+1 end
+  assert(fields==14 and properties.video_file:match('av%.avi$'))
+  assert(type(aegisub.decode_path('?temp'))=='string' and aegisub.gettext('日本語')=='日本語')
   local button,values=aegisub.dialog.display({
     {class='label',label='Subtitle authoring',x=0,y=0,width=2},
     {class='edit',name='text',text='initial',x=0,y=1,width=2},

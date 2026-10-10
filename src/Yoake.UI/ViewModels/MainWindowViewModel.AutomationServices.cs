@@ -9,6 +9,8 @@ namespace Yoake.UI.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    private IAutomationHostServices CreateAutomationPlatformServices(AutomationPathResolver paths)
+        => new EditorAutomationServices(null, new Dictionary<string, object?>(), null, null, [], paths, Dialogs, null, _automationLog, interactive: true);
     private IAutomationHostServices CreateAutomationServices(Guid id, IAutomationProgressSession? progress, bool interactive)
     {
         var state = _documents[id]; var document = state.Editor.Document;
@@ -26,7 +28,7 @@ public sealed partial class MainWindowViewModel
             ["ar_value"] = NumberProperty("Video AR Value", media?.HasVideo == true ? (double)media.Info.Width / media.Info.Height : 1),
             ["ar_mode"] = IntProperty("Video AR Mode"), ["scroll_position"] = IntProperty("Scroll Position"),
             ["active_row"] = id == _activeId && SelectedEvent is { } selected ? document.Events.ToList().IndexOf(selected) : IntProperty("Active Line"),
-            ["video_position"] = IntProperty("Video Position"),
+            ["video_position"] = id == _activeId && media?.HasVideo == true ? CurrentFrame : IntProperty("Video Position"),
             ["audio_file"] = media?.HasAudio == true ? media.SourcePath : AbsoluteProperty("Audio File"),
             ["video_file"] = media?.HasVideo == true ? media.SourcePath : AbsoluteProperty("Video File"),
             ["timecodes_file"] = AbsoluteProperty("Timecodes File"), ["keyframes_file"] = AbsoluteProperty("Keyframes File")

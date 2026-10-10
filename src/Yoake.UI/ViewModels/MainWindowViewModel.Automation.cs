@@ -120,7 +120,7 @@ public sealed partial class MainWindowViewModel
         {
             if (old is not null) await Task.Run(old.Dispose);
             var resolver = new AutomationPathResolver(item.Path, AutomationIncludeDirectories, AutomationTokens(item.DocumentId));
-            var loaded = await AutomationRuntimeProvider.LoadAsync(item.Path, resolver, cancellation.Token);
+            var loaded = await AutomationRuntimeProvider.LoadAsync(item.Path, resolver, CreateAutomationPlatformServices(resolver), cancellation.Token);
             if (_disposed || cancellation.IsCancellationRequested || !_automationEntries.Contains(item)) { await Task.Run(loaded.Dispose); return; }
             item.Script = loaded;
             _automationCatalog.SetScript(item.DocumentId, item.Path, loaded);

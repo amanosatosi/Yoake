@@ -365,6 +365,31 @@ aegisub.register_macro('Initialized metrics','',function() end)
     }
 
     [Fact]
+    public async Task InitializationClipboardHasPlatformServicesWithoutInstallingDocumentContext()
+    {
+        const string source = """
+local clipboard=require('aegisub.clipboard')
+assert(clipboard.get()==nil)
+assert(clipboard.set('日本語 မြန်မာ é 😀'))
+assert(clipboard.get()=='日本語 မြန်မာ é 😀')
+assert(aegisub.file_name()==nil and aegisub.project_properties()==nil)
+assert(aegisub.video_size()==nil and aegisub.keyframes()==nil)
+assert(aegisub.frame_from_ms(100)==nil and aegisub.ms_from_frame(1)==nil)
+aegisub.register_macro('No video','',function()
+  assert(aegisub.video_size()==nil and aegisub.frame_from_ms(100)==nil and aegisub.ms_from_frame(1)==nil)
+  assert(type(aegisub.keyframes())=='table' and #aegisub.keyframes()==0)
+  assert(type(aegisub.project_properties())=='table' and aegisub.file_name()==nil)
+end)
+""";
+        var path = Path.Combine(_root, "platform.lua"); File.WriteAllText(path, source);
+        var services = new Services(clipboardAvailable: true);
+        using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), services, default);
+        using var subs = new AutomationSubtitleDocument(Document());
+        await script.RunAsync(1, new(subs, [], 0, services), default);
+        using var unavailable = await Load("local c=require('aegisub.clipboard'); assert(c.get()==nil and c.set('x')==false)", "no-platform.lua");
+    }
+
+    [Fact]
     public async Task NativeKaraokeArrayIncludesNumericZeroAndContiguousSyllables()
     {
         using var script = await Load("""
@@ -541,8 +566,9 @@ end)
         Assert.Equal(spaced.Height * 2, scaled.Height, precision: 8);
     }
 
-    private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null) : IAutomationHostServices
+    private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null, bool clipboardAvailable = false) : IAutomationHostServices
     {
+        private string? _clipboard;
         public string? FileName => null;
         public IReadOnlyDictionary<string, object?> ProjectProperties => new Dictionary<string, object?>();
         public int? FrameFromMilliseconds(int milliseconds) => null;
@@ -551,8 +577,8 @@ end)
         public IReadOnlyList<int> Keyframes => [];
         public AutomationTextMetrics MeasureText(AutomationLine style, string text) => WindowsAutomationTextMeasurer.Measure(style, text);
         public string Translate(string text) => text;
-        public string? ClipboardGet() => null;
-        public bool ClipboardSet(string text) => false;
+        public string? ClipboardGet() => _clipboard;
+        public bool ClipboardSet(string text) { if (!clipboardAvailable) return false; _clipboard = text; return true; }
         public AutomationDialogResult DisplayDialog(AutomationDialogRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
         public IReadOnlyList<string>? PickFiles(AutomationFileDialogRequest request, CancellationToken token) => pick?.Invoke(request);
         public void ReportProgress(double? percent = null, string? task = null, string? title = null) { }

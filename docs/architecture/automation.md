@@ -231,6 +231,10 @@ For MoonScript interpreters, the native cancellation hook also records executed
 MoonScript locations. This preserves the call site when LuaJIT elides a tail call
 into `error`; it shares the count hook rather than replacing cancellation with
 a Lua debug hook. Source buffers remain owned and freed by the native runtime.
+Provider initialization may receive explicit platform services for clipboard
+access during master/module loading. This does not install a subtitle or media
+context; those APIs continue returning nil until a document invocation. The
+desktop platform service marshals clipboard operations to Avalonia's dispatcher.
 
 GitHub Actions builds/tests the managed host, native stack, NativeAOT package,
 module fixtures and real-window macro/dialog/selection/undo scenario. Do not
