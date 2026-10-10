@@ -287,7 +287,7 @@ aegisub.register_macro('Initialized metrics','',function() end)
         using var subs = new AutomationSubtitleDocument(Document());
         var error = await Assert.ThrowsAsync<InvalidOperationException>(async () => await script.RunAsync(1, Context(subs), default));
         Assert.Contains("moon fixture failure", error.Message); Assert.Contains("stack traceback:", error.Message);
-        Assert.Contains(Path.Combine(_root, name) + ":3:", error.Message);
+        Assert.True(error.Message.Contains(Path.Combine(_root, name) + ":3:", StringComparison.Ordinal), error.Message);
     }
 
     [Fact]

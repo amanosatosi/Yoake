@@ -180,7 +180,15 @@ local function script_traceback(message)
       local line=info.currentline
       local source=info.source
       local original=moon_sources[source]
-      local position=tables[source] and tables[source][line]
+      local positions=tables[source]
+      local position=positions and positions[line]
+      -- Compiler bookkeeping lines can have no direct entry. The bundled
+      -- MoonScript error mapper searches backward to the owning statement.
+      if original and positions and not position then
+        for generated=line-1,0,-1 do
+          if positions[generated] then position=positions[generated]; break end
+        end
+      end
       if original and position then
         local _,count=original:sub(1,position):gsub('\n','\n'); line=count+1
       end
