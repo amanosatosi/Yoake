@@ -10,6 +10,7 @@ public static partial class WindowsAutomationTextMeasurer
 {
     public static unsafe AutomationTextMetrics Measure(AutomationLine style, string text)
     {
+        AutomationSubtitleDocument.ValidateStyle(style);
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Automation GDI text metrics require Windows.");
         var fontSize = style.Number("fontsize") * 64;
         if (fontSize <= 0 || fontSize > int.MaxValue) throw new ArgumentException("Font size is out of range.");

@@ -239,6 +239,47 @@ end)
     }
 
     [Fact]
+    public async Task ReleaseRetimingFixtureGeneratesAllModesAndRestoresExactSource()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "autoload", "kara-templater.lua");
+        using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), default);
+        var document = AssDocument.Load(Path.Combine(AppContext.BaseDirectory, "Fixtures", "automation", "kara-templater-retime.ass"));
+        var editor = new SubtitleEditor(document); var before = document.Serialize();
+        using var subs = new AutomationSubtitleDocument(document);
+        await script.RunAsync(script.Macros.Single().Index, new(subs, [], 0, new Services()), default);
+        subs.Commit(editor, "Retiming fixture");
+        var generated = document.Events.Where(e => e.Effect == "fx").ToArray();
+        Assert.Equal(27, generated.Length); // Nine noblank templates × three syllables.
+        Assert.Equal(3, generated.Count(e => e.StartMilliseconds == 1000 && e.EndMilliseconds == 2000));
+        Assert.Contains(generated, e => e.StartMilliseconds == 10000 && e.EndMilliseconds == 10300 && e.Text.EndsWith("ha", StringComparison.Ordinal));
+        Assert.Contains(generated, e => e.StartMilliseconds == 10300 && e.EndMilliseconds == 10500 && e.Text.EndsWith("hi", StringComparison.Ordinal));
+        Assert.Contains(generated, e => e.StartMilliseconds == 10500 && e.EndMilliseconds == 11000 && e.Text.EndsWith("ho", StringComparison.Ordinal));
+        Assert.All(generated, e => { Assert.False(e.IsComment); Assert.Contains("\\pos(", e.Text); });
+        editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
+        editor.Undo.Redo(); Assert.Equal(27, document.Events.Count(e => e.Effect == "fx"));
+    }
+
+    [Fact]
+    public async Task TextExtentsAtInitializationRequiresACompleteStyleAndNoDocumentContext()
+    {
+        using var script = await Load("""
+local style={class='style',name='Default',fontname='Arial',fontsize=30,
+ color1='&H00FFFFFF&',color2='&H00FFFFFF&',color3='&H00000000&',color4='&H00000000&',
+ bold=false,italic=false,underline=false,strikeout=false,scale_x=100,scale_y=100,
+ spacing=0,angle=0,borderstyle=1,outline=1,shadow=0,align=2,encoding=1,
+ margin_l=0,margin_r=0,margin_t=0}
+local w,h,d,e=aegisub.text_extents(style,'日本語')
+assert(w>0 and h>0 and d>=0 and e>=0)
+style.outline=nil
+assert(not pcall(aegisub.text_extents,style,'missing field'))
+style.class='dialogue'
+assert(not pcall(aegisub.text_extents,style,'wrong class'))
+aegisub.register_macro('Initialized metrics','',function() end)
+""");
+        Assert.Single(script.Macros);
+    }
+
+    [Fact]
     public async Task MoonScriptFailuresReportOriginalSourceLineAndFullUnicodePath()
     {
         const string name = "日本語-trace.moon";

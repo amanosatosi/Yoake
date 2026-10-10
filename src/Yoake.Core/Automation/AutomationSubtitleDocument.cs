@@ -375,4 +375,14 @@ public sealed class AutomationSubtitleDocument : IDisposable
     private static readonly (string Lua, string Ass)[] StyleIntegers = [("borderstyle", "BorderStyle"), ("align", "Alignment"), ("margin_l", "MarginL"), ("margin_r", "MarginR"), ("margin_t", "MarginV"), ("encoding", "Encoding")];
     private static readonly (string Lua, string Ass)[] StyleBooleans = [("bold", "Bold"), ("italic", "Italic"), ("underline", "Underline"), ("strikeout", "StrikeOut")];
     private static readonly (string Lua, string Ass)[] StyleColors = [("color1", "PrimaryColour"), ("color2", "SecondaryColour"), ("color3", "OutlineColour"), ("color4", "BackColour")];
+    public static void ValidateStyle(AutomationLine style)
+    {
+        if (!style.String("class").Equals("style", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Not a style entry.");
+        foreach (var (field, _) in StyleStrings) _ = style.String(field);
+        foreach (var (field, _) in StyleNumbers) _ = style.Number(field);
+        foreach (var (field, _) in StyleIntegers) _ = style.Integer(field);
+        foreach (var (field, _) in StyleBooleans) _ = style.Boolean(field);
+        foreach (var (field, _) in StyleColors)
+            if (!AssColor.TryParse(style.String(field), out _)) throw new ArgumentException($"Invalid style color {field}.");
+    }
 }

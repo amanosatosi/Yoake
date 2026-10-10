@@ -211,7 +211,8 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             case "video_size":
                 return services?.VideoSize is { } size ? [size.Width, size.Height, size.AspectRatio, size.AspectRatioMode] : [null];
             case "text_extents":
-                var metrics = services!.MeasureText(Line(Arg(1), default), Text(2));
+                var measuredStyle = Line(Arg(1), default); AutomationSubtitleDocument.ValidateStyle(measuredStyle);
+                var metrics = services?.MeasureText(measuredStyle, Text(2)) ?? WindowsAutomationTextMeasurer.Measure(measuredStyle, Text(2));
                 return [metrics.Width, metrics.Height, metrics.Descent, metrics.ExternalLeading];
             case "clipboard_get": return [services!.ClipboardGet()];
             case "clipboard_set": return [services!.ClipboardSet(Text(1))];
