@@ -184,6 +184,70 @@ aegisub.register_macro('Modules loaded','',function() end)
         Assert.Equal("Moon macro", Assert.Single(moon.Macros).Name);
     }
 
+    [Fact]
+    public async Task NativeModulesPreserveBinaryStringsAndReportDefinedInvalidInputs()
+    {
+        using var script = await Load("""
+local bins=require('luabins')
+local binary=string.char(0,255,128,1)..'日本語'
+local ok,value=bins.load(assert(bins.save(binary)))
+assert(ok and value==binary)
+local bad,message=bins.load('not a luabins stream')
+assert(not bad and type(message)=='string')
+assert(not bins.save(function() end))
+local lpeg=require('lpeg')
+assert(lpeg.match(lpeg.P(binary),binary)==#binary+1)
+local re=require('aegisub.re')
+assert(not pcall(re.compile,'['))
+assert(not pcall(re.compile,string.char(255)))
+local unicode=require('aegisub.unicode')
+-- The release's Lua character iterator assumes valid UTF-8; retain its
+-- defined truncated-input behavior rather than inventing strict decoding.
+assert(unicode.len(string.char(255))==1)
+assert(not pcall(unicode.codepoint,string.char(255)))
+assert(unicode.codepoint('😀')==0x1f600)
+aegisub.register_macro('Binary modules','',function() end)
+""");
+        Assert.Single(script.Macros);
+    }
+
+    [Fact]
+    public async Task WindowsFilesystemFixtureCoversUnicodeErrorsTimestampsAndIteratorClose()
+    {
+        var path = Path.Combine(_root, "filesystem-日本語 မြန်မာ").Replace('\\', '/').Replace("'", "\\'");
+        using var script = await Load($$"""
+local fs=require('lfs')
+local root='{{path}}'
+local original=assert(fs.currentdir())
+local ok,problem=pcall(function()
+  assert(fs.mkdir(root..'/nested'))
+  assert(fs.attributes(root,'mode')=='directory')
+  assert(fs.touch(root..'/日本語.txt'))
+  local attributes=assert(fs.attributes(root..'/日本語.txt'))
+  assert(attributes.mode=='file' and attributes.size==0)
+  assert(math.abs(attributes.modification-os.time())<=2)
+  assert(not pcall(fs.attributes,root,'unsupported'))
+  local absent,message=fs.chdir(root..'/missing')
+  assert(absent==nil and type(message)=='string' and #message>0)
+  assert(fs.chdir(root))
+  assert(fs.currentdir():gsub('\\','/')==root)
+  local next_entry,iterator=fs.dir(root)
+  local names={}
+  for entry in next_entry,iterator do names[entry]=true end
+  assert(names['日本語.txt'] and names.nested)
+  assert(next_entry(iterator)==nil)
+  iterator:close(); iterator:close(); assert(iterator:next()==nil)
+  assert(not pcall(fs.dir,root..'/missing'))
+  assert(fs.rmdir(root..'/nested'))
+  assert(fs.attributes(root..'/nested','mode')==nil)
+end)
+assert(fs.chdir(original))
+assert(ok,problem)
+aegisub.register_macro('Filesystem fixture','',function() end)
+""");
+        Assert.Single(script.Macros);
+    }
+
     [Theory]
     [InlineData(false, 3)]
     [InlineData(true, 2)]
