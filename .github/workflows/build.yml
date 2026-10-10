@@ -9,6 +9,12 @@ on:
 permissions:
   contents: read
 
+# A newer commit supersedes the same branch/PR's expensive native packaging.
+# Every check still runs on the replacement commit.
+concurrency:
+  group: yoake-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   source-policy:
     runs-on: ubuntu-latest

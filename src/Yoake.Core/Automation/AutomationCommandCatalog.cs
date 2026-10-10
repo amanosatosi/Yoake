@@ -10,7 +10,7 @@ public sealed record AutomationMacroBinding(string CommandId, IAutomationScript 
 // caller's application dispatcher; Lua execution remains behind the provider.
 public sealed class AutomationCommandCatalog : IDisposable
 {
-    private sealed record Registration(Guid? DocumentId, string Path, IAutomationScript Script);
+    private sealed record Registration(Guid? DocumentId, string Path, IAutomationScript Script, IReadOnlyDictionary<string, AutomationMacro> Macros);
     private readonly CommandRegistry _registry;
     private readonly Func<AutomationMacroBinding, CommandInvocation, CancellationToken, ValueTask> _execute;
     private readonly Dictionary<(Guid? Scope, string Path), Registration> _scripts = [];
@@ -43,13 +43,13 @@ public sealed class AutomationCommandCatalog : IDisposable
         var normalized = Normalize(path);
         if (script is not null)
         {
-            foreach (var macro in script.Macros)
+            var macros = script.Macros.ToDictionary(m => CommandId(path, m.Name), StringComparer.Ordinal);
+            foreach (var id in macros.Keys)
             {
-                var id = CommandId(path, macro.Name);
                 if (_registry.TryGet(id, out var existing) && !_commands.ContainsKey(id))
                     throw new InvalidOperationException($"Automation command ID '{id}' is owned by another controller.");
             }
-            _scripts[(documentId, normalized)] = new(documentId, normalized, script);
+            _scripts[(documentId, normalized)] = new(documentId, normalized, script, macros);
         }
         else _scripts.Remove((documentId, normalized));
         foreach (var key in _validation.Keys.Where(k => k.Document == documentId || documentId is null).ToArray())
@@ -66,7 +66,7 @@ public sealed class AutomationCommandCatalog : IDisposable
 
     public IReadOnlyList<AutomationMacroBinding> Macros(Guid documentId) => _scripts.Values
         .Where(r => r.DocumentId is null || r.DocumentId == documentId)
-        .SelectMany(r => r.Script.Macros.Select(m => CommandId(r.Path, m.Name)))
+        .SelectMany(r => r.Macros.Keys)
         .Distinct(StringComparer.Ordinal).Select(id => Resolve(documentId, id)!).Where(b => b is not null)
         .OrderBy(b => b.Script.Metadata.Name, StringComparer.CurrentCulture).ThenBy(b => b.Macro.Name, StringComparer.CurrentCulture).ToArray();
 
@@ -82,8 +82,7 @@ public sealed class AutomationCommandCatalog : IDisposable
     {
         foreach (var registration in _scripts.Values.Where(r => r.DocumentId is null || r.DocumentId == documentId)
                      .OrderByDescending(r => r.DocumentId.HasValue))
-            foreach (var macro in registration.Script.Macros)
-                if (CommandId(registration.Path, macro.Name) == id)
+                if (registration.Macros.TryGetValue(id, out var macro))
                 {
                     var state = _validation.TryGetValue((documentId, id), out var cached) && ReferenceEquals(cached.Script, registration.Script)
                         ? cached.State : new AutomationValidation(!macro.HasValidation, null, false);
@@ -94,7 +93,7 @@ public sealed class AutomationCommandCatalog : IDisposable
 
     private void Rebuild()
     {
-        var desired = _scripts.Values.SelectMany(r => r.Script.Macros.Select(m => (Id: CommandId(r.Path, m.Name), Macro: m)))
+        var desired = _scripts.Values.SelectMany(r => r.Macros.Select(m => (Id: m.Key, Macro: m.Value)))
             .GroupBy(p => p.Id, StringComparer.Ordinal).ToDictionary(g => g.Key, g => g.First().Macro, StringComparer.Ordinal);
         foreach (var id in _commands.Keys.Where(id => !desired.ContainsKey(id)).ToArray())
         {
