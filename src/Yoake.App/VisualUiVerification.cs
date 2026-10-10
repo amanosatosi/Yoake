@@ -203,7 +203,9 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
             case 16:
                 if(!Ready)return Retry();
                 capture(Overlay,"visual-rectangle-no-clip-input-surface",1);
-                var a=new AssPoint(Size.Width*.4,Size.Height*.4);var b=new AssPoint(Size.Width*.6,Size.Height*.6);
+                // Cut through the centered glyphs: a 20%-wide box can contain
+                // all of VISUAL at PlayResX=1920 and leave identical pixels.
+                var a=new AssPoint(Size.Width*.48,Size.Height*.48);var b=new AssPoint(Size.Width*.52,Size.Height*.52);
                 Require(ReferenceEquals(window.InputHitTest(Root(a)),Overlay),"Empty rectangle canvas must receive real pointer hits away from its hint/handles.");
                 // Include a pending text draft, as in the real typing -> tool workflow.
                 model.Draft!.Text=Plain.Replace(@"\future(keep)",@"\future(pending)",StringComparison.Ordinal);_baseline=model.Draft.Text;_baselinePixels=pixels();
@@ -212,7 +214,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 if(!Ready)return Retry();
                 Require(!_baselinePixels!.AsSpan().SequenceEqual(pixels()),"No-clip creation must update actual Mangetsu pixels before release.");
                 capture(window,"visual-rectangle-create-live",1);Require(Overlay.RenderedHandles==4,"New rectangle must have four visible corner handles before release.");
-                var low=new AssPoint(Size.Width*.4,Size.Height*.4);var high=new AssPoint(Size.Width*.6,Size.Height*.6);
+                var low=new AssPoint(Size.Width*.48,Size.Height*.48);var high=new AssPoint(Size.Width*.52,Size.Height*.52);
                 Release(low);var created=AssVisualTags.Clip(_line!.Text)!;
                 Require(!model.HasGesture&&!created.Inverse&&VisualGeometry.Distance(created.Points[0],low)<.001&&VisualGeometry.Distance(created.Points[1],high)<.001,"Release must commit normalized rectangle coordinates.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"One undo must remove the whole new clip and retain the committed preceding draft.");

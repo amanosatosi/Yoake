@@ -53,6 +53,11 @@ providers and real-window verification. Source-only policy/generator checks and
 CI run and downloaded screenshots actually reviewed; passing properties alone
 does not establish visible workflow acceptance.
 
+The no-clip pixel fixture uses a rectangle spanning 48–52% of script dimensions,
+which cuts through its centered glyphs. The previous 40–60% rectangle could
+contain the entire word at 1920×1080, producing identical pixels even when the
+renderer applied the clip correctly. The live pixel-change assertion is retained.
+
 Real Japanese/Burmese IME confirmation, Windows monitor-DPI transitions,
 multi-monitor/HDR eyedropper behavior, caption/snap behavior and audio-device
 latency remain manual QA. Routed key/preedit probes and scaled raster captures
