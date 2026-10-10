@@ -27,7 +27,7 @@ public sealed class AutomationScriptItem(string path, Guid? documentId)
     internal string? StoredReference;
     public override string ToString() => $"{Name} — {Scope} — {Status}";
 }
-public sealed record AutomationMenuEntry(string Name, string Help, ICommand Command, bool Active);
+public sealed record AutomationMenuEntry(string CommandId, string Name, string Help, ICommand Command, bool Toggle, bool Active);
 
 public sealed partial class MainWindowViewModel
 {
@@ -45,8 +45,8 @@ public sealed partial class MainWindowViewModel
     public IReadOnlyList<string> AutomationIncludeDirectories => _settings.AutomationIncludeDirectories ?? ["?user/automation/include", "?data/automation/include"];
     public IReadOnlyList<AutomationScriptItem> AutomationScripts => _automationEntries.Where(e => e.DocumentId is null || e.DocumentId == _activeId).ToArray();
     public IReadOnlyList<AutomationMenuEntry> AutomationMacros => _activeId is { } id
-        ? _automationCatalog.Macros(id).Select(b => new AutomationMenuEntry(b.Macro.Name, b.Validation.Help ?? b.Macro.Description,
-            new RegistryCommand(_registry, b.CommandId, CurrentContext), b.Validation.Active)).ToArray() : [];
+        ? _automationCatalog.Macros(id).Select(b => new AutomationMenuEntry(b.CommandId, b.Macro.Name, b.Validation.Help ?? b.Macro.Description,
+            new RegistryCommand(_registry, b.CommandId, CurrentContext), b.Macro.HasToggle, b.Validation.Active)).ToArray() : [];
 
     private void InitializeAutomationCommands()
     {

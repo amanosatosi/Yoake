@@ -8,6 +8,8 @@ public sealed class AutomationLine
 {
     public Dictionary<string, object?> Fields { get; } = new(StringComparer.Ordinal);
     internal AssRecord? Template { get; init; }
+    // Source schema accompanies detached data; it is never a Lua-visible field.
+    public IReadOnlyList<string> SourceFieldNames => Template?.FieldNames ?? [];
     public object? this[string field] { get => Fields.GetValueOrDefault(field); set => Fields[field] = value; }
 
     public AutomationLine Copy()

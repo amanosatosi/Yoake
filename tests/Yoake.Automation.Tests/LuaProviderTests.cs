@@ -213,6 +213,36 @@ aegisub.register_macro('Include passed','',function() end)
         Assert.Equal("Include passed", Assert.Single(script.Macros).Name);
     }
 
+    [Fact]
+    public async Task Lua51AndJitExtensionsWorkWithEditedUnicodeModuleSearchPaths()
+    {
+        var modules = Path.Combine(_root, "modules-日本語"); Directory.CreateDirectory(modules);
+        File.WriteAllText(Path.Combine(modules, "preferred.lua"), "error('MoonScript must take precedence')");
+        File.WriteAllText(Path.Combine(modules, "preferred.moon"), "return {value: 'မြန်မာ'}\n");
+        var init = Path.Combine(modules, "nested"); Directory.CreateDirectory(init);
+        File.WriteAllText(Path.Combine(init, "init.lua"), "module(...,package.seeall); value=42");
+        using var script = await Load("""
+assert(_VERSION=='Lua 5.1' and unpack({12,34})==12)
+local proxy=newproxy(true); getmetatable(proxy).__len=function() return 17 end
+assert(#proxy==17 and type(getfenv(1))=='table')
+local fn=assert(loadstring('return answer')); setfenv(fn,{answer=42}); assert(fn()==42)
+local co=coroutine.create(function() coroutine.yield('ready'); return 'done' end)
+local ok,value=coroutine.resume(co); assert(ok and value=='ready')
+ok,value=coroutine.resume(co); assert(ok and value=='done')
+assert(math.mod(9,4)==1 and type(io.open)=='function' and type(os.clock)=='function')
+local bit=require('bit'); assert(bit.bxor(0xff,0x0f)==0xf0)
+local ffi=require('ffi'); local integers=ffi.new('int32_t[2]',{42,-17})
+assert(tonumber(integers[0])==42 and tonumber(integers[1])==-17)
+assert(not jit.status()); jit.on(); assert(not jit.status())
+package.path='modules-日本語/?.lua;modules-日本語/?/init.lua;'..package.path
+assert(require('preferred').value=='မြန်မာ')
+assert(require('nested').value==42)
+assert(require('nested')==package.loaded.nested)
+aegisub.register_macro('Language and modules','',function() end)
+""");
+        Assert.Single(script.Macros);
+    }
+
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
     [Fact]
@@ -362,6 +392,68 @@ end)
         subs.Commit(editor, "Copy");
         Assert.Equal("generated", document.Events[1].Text);
         Assert.Equal("evidence", document.Events[1].Get("Future"));
+    }
+
+    [Fact]
+    public async Task AmbiguousCopiedRawLinesCannotSilentlyRenameUnknownColumns()
+    {
+        using var script = await Load("""
+include('utils.lua')
+aegisub.register_macro('Safe copy','',function(subs)
+  local first,second=subs[2],subs[3]
+  assert(first.raw==second.raw)
+  local copied=table.copy(second); copied.text='generated'
+  local ok,message=pcall(subs.append,copied)
+  assert(not ok and message:match('ambiguous ASS Format provenance'))
+  -- Original detached tables still carry exact identities across schemas.
+  second.text='generated'; subs.append(second)
+end)
+""");
+        const string fields = "Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text,";
+        const string raw = "Dialogue: 0,0:00:00.00,0:00:02.00,Default,,0,0,0,,same,evidence\n";
+        var document = AssDocument.Parse("[Script Info]\nTitle: Preserve\n[Events]\nFormat: " + fields + "FirstSecret\n" + raw +
+            "Format: " + fields + "SecondSecret\n" + raw);
+        var editor = new SubtitleEditor(document); var before = document.Serialize();
+        using var subs = new AutomationSubtitleDocument(document);
+        await script.RunAsync(1, Context(subs), default);
+        subs.Commit(editor, "Safe copy");
+        Assert.Equal(3, document.Events.Count);
+        Assert.Equal("generated", document.Events[2].Text);
+        Assert.Equal("evidence", document.Events[2].Get("SecondSecret"));
+        Assert.Equal("", document.Events[2].Get("FirstSecret"));
+        editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
+    }
+
+    [Fact]
+    public async Task RealLuaGeneratesFiveThousandEffectsInOneUndoTransaction()
+    {
+        using var script = await Load("""
+aegisub.register_macro('Bulk effects','',function(subs,selected,active)
+  local line=subs[active]
+  line.effect='fx'
+  for i=1,5000 do
+    line.text='{\\pos('..i..',100)\\distort(0,0,1,1)}日本語 မြန်မာ'
+    line.start_time=i*10; line.end_time=i*10+1000
+    subs.append(line)
+  end
+  aegisub.set_undo_point('Bulk effects')
+  return {#subs},#subs
+end)
+""");
+        var document = Document(); var editor = new SubtitleEditor(document); var before = document.Serialize();
+        var original = document.Events[0];
+        using var subs = new AutomationSubtitleDocument(document);
+        var result = await script.RunAsync(1, Context(subs), default);
+        Assert.Equal(5002, result.ActiveLine);
+        Assert.Single(document.Events); // Worker generation never streams partial live edits.
+        subs.Commit(editor, "Bulk effects");
+        Assert.Equal(5001, document.Events.Count);
+        Assert.All(document.Events.Skip(1), line => { Assert.Equal("fx", line.Effect); Assert.Equal("evidence", line.Get("Future")); });
+        Assert.Contains("\\pos(5000,100)", document.Events[^1].Text);
+        Assert.Equal(50000, document.Events[^1].StartMilliseconds);
+        Assert.Equal("Bulk effects", editor.Undo.NextUndoName);
+        editor.Undo.Undo(); Assert.Equal(before, document.Serialize()); Assert.Same(original, Assert.Single(document.Events));
+        editor.Undo.Redo(); Assert.Equal(5001, document.Events.Count);
     }
 
     [Fact]

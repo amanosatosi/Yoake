@@ -14,6 +14,8 @@ public partial class MainWindow
 {
     private AutomationProgressWindow? _automationProgress;
     private bool _automationStarted;
+    private (string Id, string Name)[] _automationMenuStructure = [];
+    private readonly Dictionary<string, MenuItem> _automationMenuItems = [];
     public async Task<string?> OpenAutomationScriptAsync()
     {
         var files = await StorageProvider.OpenFilePickerAsync(new()
@@ -42,19 +44,34 @@ public partial class MainWindow
     }
     private void RefreshAutomationMenu()
     {
-        AutomationMacroMenu.Items.Clear();
-        if (_model is null) return;
-        foreach (var entry in _model.AutomationMacros)
+        var entries = _model?.AutomationMacros ?? [];
+        var structure = entries.Select(entry => (entry.CommandId, entry.Name)).ToArray();
+        // Validation updates must not replace the open submenu or keyboard focus.
+        // Rebuild only when discovery/reload changes the command hierarchy.
+        var rebuild = !_automationMenuStructure.SequenceEqual(structure);
+        if (rebuild)
         {
-            var parent = AutomationMacroMenu; var parts = entry.Name.Split('/');
-            foreach (var name in parts[..^1])
+            AutomationMacroMenu.Items.Clear(); _automationMenuItems.Clear();
+            _automationMenuStructure = structure;
+        }
+        foreach (var entry in entries)
+        {
+            if (rebuild)
             {
-                var group = parent.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, name) && item.Command is null);
-                if (group is null) { group = new MenuItem { Header = name }; parent.Items.Add(group); }
-                parent = group;
+                var parent = AutomationMacroMenu; var parts = entry.Name.Split('/');
+                foreach (var name in parts[..^1])
+                {
+                    var group = parent.Items.OfType<MenuItem>().FirstOrDefault(item => Equals(item.Header, name) && item.Command is null);
+                    if (group is null) { group = new MenuItem { Header = name }; parent.Items.Add(group); }
+                    parent = group;
+                }
+                var created = new MenuItem { Header = parts[^1], Command = entry.Command };
+                parent.Items.Add(created); _automationMenuItems.Add(entry.CommandId, created);
             }
-            var item = new MenuItem { Header = entry.Active ? "✓ " + parts[^1] : parts[^1], Command = entry.Command };
-            ToolTip.SetTip(item, entry.Help); parent.Items.Add(item);
+            var item = _automationMenuItems[entry.CommandId];
+            item.ToggleType = entry.Toggle ? MenuItemToggleType.CheckBox : MenuItemToggleType.None;
+            item.IsChecked = entry.Active;
+            ToolTip.SetTip(item, entry.Help);
         }
         AutomationMacroMenu.IsEnabled = AutomationMacroMenu.Items.Count > 0;
     }

@@ -1,6 +1,7 @@
 # Automation 4 implementation contract
 
-Status: design and implementation in progress on `automation-4-layer`.
+Status: implemented on `automation-4-layer`, with explicit compatibility gaps.
+The final submission requires green CI on its exact revision.
 Acceptance is meaningful old 3.2.2 macro/KFX work in the packaged NativeAOT app,
 not merely a runtime or a Manager window. See the
 [compatibility ledger](../compatibility/aegisub-automation-3.2.2.md).
@@ -13,8 +14,8 @@ Use a native LuaJIT provider with Lua 5.1 semantics. The reference release bundl
 LuaJIT 2.0.3. Yoake pins the maintained LuaJIT 2.1 branch at
 `c6ffc141a8762b41703f9287d63d93622a13dd8f` in `third_party/versions.json`.
 The native-provider CI job exercises its real interpreter, isolation, Unicode
-loaders, mutation, validation/toggle and tight-loop cancellation. Full 3.2.2 module
-parity still needs integration evidence. No Lua 5.2 compatibility build flag is
+loaders, mutation, validation/toggle and tight-loop cancellation. Unmodified release regex/Unicode suites, luabins, MoonScript, karaskel and
+Karaoke Templater fixtures provide native integration evidence. No Lua 5.2 compatibility build flag is
 enabled. The interpreter runs with JIT disabled, and `jit.on` cannot re-enable it,
 so count hooks can interrupt otherwise non-cooperative scripts.
 
@@ -78,6 +79,10 @@ line endings and unknown Mangetsu text. Never simplify the entire ASS file and
 reparse it. The working state is independent of live record objects; reads are
 copies, writes validate before replacing an entry. Append locates the end of a
 class; large event loops must have amortized constant append cost.
+Detached tables retain their schema identity privately. A table.copy fallback
+uses exact class/raw provenance; if identical raw lines were read under distinct
+Format schemas, copied-table mutations are rejected rather than choosing the
+wrong unknown columns. Original detached tables remain writable in that case.
 
 `set_undo_point` saves an immutable checkpoint in the private working state.
 Earlier points are **not** persistent when a later error/cancellation occurs.
@@ -124,14 +129,17 @@ local script or the autoload fallback; validation/toggle caches belong to that
 document and exact interpreter instance. Reload/unload removes old commands
 before disposal, and native disposal waits only on background workers. The
 registry can remove only an owner's exact registration.
+Macro menus use native checkable MenuItem state for isactive callbacks. Cached
+validation changes update help/check state in place; only command hierarchy
+changes rebuild submenus, preserving open-menu keyboard navigation.
 
 The UI snapshots media timestamps, keyframes, project properties and path roots
 before invocation. UI/dialog/clipboard work is dispatched from the worker. Macro
 success alone permits a guarded document-thread batch commit; failure and both
 script/user cancellation discard the working view. Input drafts are finalized
 before capture, stale/closed/replaced documents are rejected, and returned file
-indexes map to actual event identities after commit. Complete selection-history
-restoration and packaged UI evidence remain acceptance work.
+indexes map to actual event identities after commit. Selection-history restoration and the expanded packaged UI workflows passed
+workflow `38083691966`; the final revision retains and extends those assertions.
 
 Local script references use the release's `$` (Automation base), `~` (subtitle
 directory), and `/` (absolute) markers. Project-property edits are ordinary

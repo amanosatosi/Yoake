@@ -15,7 +15,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     private readonly List<AutomationMacro> _macros = [];
     private readonly List<AutomationExportFilter> _filters = [];
     private readonly Dictionary<int, AutomationLine> _reads = [];
-    private readonly Dictionary<(string Class, string Raw), AutomationLine> _templates = [];
+    private readonly Dictionary<(string Class, string Raw), AutomationLine?> _templates = [];
     private readonly HashSet<string> _names = new(StringComparer.Ordinal);
     private GCHandle _owner;
     private IntPtr _runtime;
@@ -211,10 +211,18 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             case "subs_count": return [subs!.Count];
             case "subs_read":
                 var line = subs!.Read(Index(1)); var id = ++_nextRead; _reads[id] = line;
-                if (line["class"] is string kind && line["raw"] is string raw) _templates.TryAdd((kind, raw), line);
+                if (line["class"] is string kind && line["raw"] is string raw)
+                {
+                    var key = (kind, raw);
+                    if (_templates.TryGetValue(key, out var previous))
+                    {
+                        if (previous is not null && !previous.SourceFieldNames.SequenceEqual(line.SourceFieldNames)) _templates[key] = null;
+                    }
+                    else _templates.Add(key, line);
+                }
                 return [line.Fields, id];
             case "subs_write":
-                subs!.Write(Index(1), Arg(2).ValueKind is JsonValueKind.Null or JsonValueKind.Undefined ? null : Line(Arg(2), Arg(3))); return [];
+                subs!.Write(Index(1), Arg(2).ValueKind is JsonValueKind.Null or JsonValueKind.Undefined ? null : Line(Arg(2), Arg(3), writing: true)); return [];
             case "subs_delete":
                 var indexes = Arg(1).ValueKind == JsonValueKind.Object ? Values(Arg(1)).Select(Integer) : Values(args).Select(Integer);
                 subs!.Delete(indexes.ToArray()); return [];
@@ -226,7 +234,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
                 for (var i = offset; i <= count; i++)
                 {
                     var key = i.ToString(CultureInfo.InvariantCulture);
-                    lines.Add(Line(table.GetProperty(key), provenance.TryGetProperty(key, out var token) ? token : default));
+                    lines.Add(Line(table.GetProperty(key), provenance.TryGetProperty(key, out var token) ? token : default, writing: true));
                 }
                 if (op == "subs_insert") subs!.Insert(Integer(table.GetProperty("1")), lines.ToArray());
                 else subs!.Append(lines.ToArray());
@@ -268,7 +276,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         }
     }
 
-    private AutomationLine Line(JsonElement table, JsonElement token)
+    private AutomationLine Line(JsonElement table, JsonElement token, bool writing = false)
     {
         if (table.ValueKind != JsonValueKind.Object) throw new ArgumentException("Can't convert a non-table value to AssEntry.");
         AutomationLine? template = null;
@@ -278,7 +286,10 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         // unknown fields into generated copies without leaking private fields.
         if (template is null && table.TryGetProperty("class", out var kind) && kind.ValueKind == JsonValueKind.String &&
             table.TryGetProperty("raw", out var raw) && raw.ValueKind == JsonValueKind.String)
-            _templates.TryGetValue((kind.GetString()!, raw.GetString()!), out template);
+        {
+            if (_templates.TryGetValue((kind.GetString()!, raw.GetString()!), out template) && template is null && writing)
+                throw new ArgumentException("Copied subtitle line has ambiguous ASS Format provenance. Use the original detached line table to preserve unknown fields.");
+        }
         var line = template?.Copy() ?? new AutomationLine();
         line.Fields.Clear();
         foreach (var pair in table.EnumerateObject())

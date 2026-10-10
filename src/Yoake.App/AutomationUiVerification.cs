@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.VisualTree;
 using Yoake.Core.Automation;
 using Yoake.Core.Commands;
@@ -37,6 +38,7 @@ internal sealed class AutomationUiVerification(MainWindow window, MainWindowView
     private long _preview;
     private Guid _document;
     private bool _checked;
+    private MenuItem? _macroMenuItem;
     private const string EditedText = "日本語 မြန်မာ é 👩‍👩‍👧‍👦";
 
     public bool Tick()
@@ -113,6 +115,15 @@ aegisub.register_macro('Verification/Defaults','Default buttons and clipboard',f
   assert(button=='' and v.maximum==2147483647 and v.minimum==-2147483648)
   assert(v.fraction==-.125 and v.empty=='' and v.check==false)
   assert(v.notes=='日本語\nမြန်မာ')
+  button,v=aegisub.dialog.display({
+    {class='edit',name='cancel_text',text='initial'},
+    {class='floatedit',name='cancel_number',value=2.5,y=1}
+  },{'Apply','Dismiss'},{ok='Apply',cancel='Dismiss'})
+  assert(button==false and v.cancel_text=='日本語 cancel' and v.cancel_number==2.5)
+  button,v=aegisub.dialog.display({{class='edit',name='escape_text',text='initial'}})
+  assert(button==false and v.escape_text=='မြန်မာ escape')
+  button,v=aegisub.dialog.display({{class='edit',name='close_text',text='initial'}})
+  assert(button==false and v.close_text=='日本語 close')
 end)
 aegisub.register_macro('Verification/Cancel','Forced loop cancellation',function(subs,selected,active)
   local line=subs[active]; line.text='temporary cancelled edit'; subs[active]=line
@@ -143,6 +154,11 @@ end)
                 _command = AutomationCommandCatalog.CommandId(_path, "Verification/Authoring");
                 if (!model.Registry.CanExecute(_command, new(_document))) return false;
                 Require(model.Registry.GetRequired(_command).IsChecked(new(_document)), "Actual Lua isactive must reach the command state.");
+                var macroMenu = window.FindControl<MenuItem>("AutomationMacroMenu")!;
+                _macroMenuItem = macroMenu.Items.OfType<MenuItem>().Single(c => Equals(c.Header, "Verification"))
+                    .Items.OfType<MenuItem>().Single(c => Equals(c.Header, "Authoring"));
+                Require(_macroMenuItem.ToggleType == MenuItemToggleType.CheckBox && _macroMenuItem.IsChecked &&
+                    Equals(ToolTip.GetTip(_macroMenuItem), "Validated packaged macro"), "Lua toggle and validation help must reach the actual menu control.");
                 _checked = true;
                 _running = model.Registry.InvokeAsync(_command, new(_document)).AsTask(); _stage++; return false;
             case 2:
@@ -169,6 +185,8 @@ end)
                 if (!_running!.IsCompleted) return false;
                 Require(_running.GetAwaiter().GetResult(), "Packaged macro command failed: " + model.SubtitleStatus);
                 Require(_checked && _responsiveTicks >= 2, "Actual Lua validation and responsive modal dispatcher must execute.");
+                Require(window.FindControl<MenuItem>("AutomationMacroMenu")!.Items.OfType<MenuItem>().Single(c => Equals(c.Header, "Verification"))
+                    .Items.Contains(_macroMenuItem), "Validation updates must retain the actual menu item and keyboard navigation state.");
                 Require(model.Events.Count == _count + 1 && model.SelectedEvent?.Effect == "automation-ui-generated", "Returned file indexes must select the generated grid row.");
                 Require(model.SelectedEvents.Count == 1 && ReferenceEquals(model.SelectedEvents[0], model.SelectedEvent), "Returned active/selection must agree.");
                 Require(_original!.Text.EndsWith(EditedText, StringComparison.Ordinal) && _original.Text.Contains("\\distort(0,0,1,1)", StringComparison.Ordinal), "Dialog text and unknown Mangetsu syntax must survive Lua writeback.");
@@ -200,7 +218,7 @@ end)
                 if (!AcceptDefaults()) return false;
                 _stage++; return false;
             case 9:
-                if (!_running!.IsCompleted) return false;
+                if (!_running!.IsCompleted) { DismissDefaults(); return false; }
                 Require(_running.GetAwaiter().GetResult(), "Default dialog or real clipboard round trip failed: " + model.SubtitleStatus);
                 RequireUnchanged();
                 if (!StartMacro("Cancel")) return false;
@@ -233,7 +251,7 @@ end)
                 if (!AcceptDefaults()) return false;
                 _stage++; return false;
             case 14:
-                if (!_running!.IsCompleted) return false;
+                if (!_running!.IsCompleted) { DismissDefaults(); return false; }
                 Require(_running.GetAwaiter().GetResult(), "Interpreter must remain usable after cancellation and failure."); RequireUnchanged();
                 _exportPath = Path.Combine(Path.GetDirectoryName(_path)!, "export-日本語.ass");
                 _running = model.Registry.InvokeAsync(CommandIds.AutomationExport, new(_document), _exportPath).AsTask(); _stage++; return false;
@@ -359,6 +377,29 @@ end)
         dialog.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Name == "AutomationControl_check").IsChecked = false;
         var accept = dialog.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "AutomationButton_0");
         Require(accept.IsDefault && Equals(accept.Content, "OK"), "Default buttons must present the actual OK action."); Click(accept); return true;
+    }
+    private void DismissDefaults()
+    {
+        var dialog = Windows(window).OfType<AutomationDialog>().FirstOrDefault(w => w.IsVisible);
+        if (dialog is null) return;
+        var texts = dialog.GetVisualDescendants().OfType<TextBox>().ToArray();
+        if (texts.FirstOrDefault(c => c.Name == "AutomationControl_cancel_text") is { } cancelled)
+        {
+            cancelled.Text = "日本語 cancel";
+            texts.Single(c => c.Name == "AutomationControl_cancel_number").Text = "NaN";
+            var button = dialog.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "AutomationButton_1");
+            Require(button.IsCancel && Equals(button.Content, "Dismiss"), "Custom cancel-ID mapping must reach the actual dismissal button.");
+            Click(button);
+        }
+        else if (texts.FirstOrDefault(c => c.Name == "AutomationControl_escape_text") is { } escaped)
+        {
+            escaped.Text = "မြန်မာ escape";
+            dialog.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Source = dialog, Key = Key.Escape });
+        }
+        else if (texts.FirstOrDefault(c => c.Name == "AutomationControl_close_text") is { } closed)
+        {
+            closed.Text = "日本語 close"; dialog.Close();
+        }
     }
     private void RequireUnchanged()
     {
