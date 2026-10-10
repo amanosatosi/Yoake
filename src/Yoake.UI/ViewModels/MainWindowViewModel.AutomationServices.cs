@@ -61,7 +61,9 @@ public sealed partial class MainWindowViewModel
         }
         public bool ClipboardSet(string text)
         {
-            RequireInteractive(); if (dialogs is null) return false;
+            // v3.2.2 clipboard_set has no document/progress-context restriction.
+            // DisplayDialog and PickFiles retain their separate context guards.
+            if (dialogs is null) return false;
             Dispatcher.UIThread.InvokeAsync(() => dialogs.WriteClipboardAsync(text)).GetAwaiter().GetResult(); return true;
         }
         public AutomationDialogResult DisplayDialog(AutomationDialogRequest request, CancellationToken token)

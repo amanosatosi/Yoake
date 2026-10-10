@@ -174,7 +174,7 @@ public sealed partial class MainWindowViewModel
 
     private async ValueTask ExecuteAutomationMacroAsync(AutomationMacroBinding binding, CommandInvocation command, CancellationToken token)
     {
-        if (command.Context.DocumentId is not { } id || !_documents.TryGetValue(id, out var state) || id != _activeId || !CommitDraft()) return;
+        if (command.Context.DocumentId is not { } id || !_documents.TryGetValue(id, out var state) || id != _activeId || _automationRuns.ContainsKey(id) || !CommitDraft()) return;
         CancelGesture(); StopPlayback();
         CancelAutomationValidation();
         var item = _automationEntries.First(e => ReferenceEquals(e.Script, binding.Script));

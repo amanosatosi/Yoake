@@ -158,6 +158,11 @@ end)
                 entry.SetCurrentValue(TextBox.TextProperty, EditedText);
                 var accept = dialog.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "AutomationButton_0");
                 Require(accept.IsDefault, "Third argument must map Apply to the default action.");
+                var numeric = dialog.GetVisualDescendants().OfType<Control>().Single(c => c.Name == "AutomationControl_number")
+                    .GetVisualDescendants().OfType<TextBox>().Single();
+                numeric.Text = "NaN"; Click(accept);
+                Require(dialog.IsVisible && !_running!.IsCompleted && dialog.GetVisualDescendants().OfType<TextBlock>().Any(c => c.Text?.Contains("finite number", StringComparison.Ordinal) == true), "Invalid float input must keep the actual authoring dialog open with validation feedback.");
+                numeric.Text = "1.25";
                 accept.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); _stage++; return false;
             case 3:
                 _responsiveTicks++;

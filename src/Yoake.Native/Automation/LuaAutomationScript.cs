@@ -97,15 +97,25 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         bool enabled = true, active = false; string? help = null;
         if (macro.HasValidation)
         {
-            using var json = JsonDocument.Parse(await InvokeAsync(macroIndex, "validate", invocation, cancellationToken).ConfigureAwait(false));
-            enabled = json.RootElement.TryGetProperty("first", out var first) && first.ValueKind is not JsonValueKind.Null and not JsonValueKind.False;
-            if (json.RootElement.TryGetProperty("second", out var second) && second.ValueKind is JsonValueKind.String or JsonValueKind.Number)
-                help = second.ToString();
+            try
+            {
+                using var json = JsonDocument.Parse(await InvokeAsync(macroIndex, "validate", invocation, cancellationToken).ConfigureAwait(false));
+                enabled = json.RootElement.TryGetProperty("first", out var first) && first.ValueKind is not JsonValueKind.Null and not JsonValueKind.False;
+                if (json.RootElement.TryGetProperty("second", out var second) && second.ValueKind is JsonValueKind.String or JsonValueKind.Number)
+                    help = second.ToString();
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception e) { enabled = false; invocation.Services.Log($"Macro validation failed: {e}\n", 1); }
         }
         if (macro.HasToggle)
         {
-            using var json = JsonDocument.Parse(await InvokeAsync(macroIndex, "isactive", invocation, cancellationToken).ConfigureAwait(false));
-            active = json.RootElement.TryGetProperty("first", out var first) && first.ValueKind is not JsonValueKind.Null and not JsonValueKind.False;
+            try
+            {
+                using var json = JsonDocument.Parse(await InvokeAsync(macroIndex, "isactive", invocation, cancellationToken).ConfigureAwait(false));
+                active = json.RootElement.TryGetProperty("first", out var first) && first.ValueKind is not JsonValueKind.Null and not JsonValueKind.False;
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception e) { invocation.Services.Log($"Macro toggle callback failed: {e}\n", 1); }
         }
         return new(enabled, help, active);
     }

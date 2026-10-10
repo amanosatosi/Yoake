@@ -257,7 +257,7 @@ public sealed class SubtitleEditor(AssDocument document)
     }
     public void SetProjectProperties(IReadOnlyDictionary<string, string> values)
     {
-        var changed = values.Where(p => Document.GetSectionValue("[Aegisub Project Garbage]", p.Key) != p.Value).ToArray();
+        var changed = values.Where(p => !Document.TryGetSectionValue("[Aegisub Project Garbage]", p.Key, out var current) || current != p.Value).ToArray();
         if (changed.Length == 0) return;
         Structure("Edit project properties", () => { foreach (var pair in changed) Document.SetSectionValue("[Aegisub Project Garbage]", pair.Key, pair.Value); });
     }

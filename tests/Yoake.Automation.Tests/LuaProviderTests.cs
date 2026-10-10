@@ -120,6 +120,44 @@ aegisub.register_macro('Non-dialogue','',function() return {1,2} end)
     }
 
     [Fact]
+    public async Task CallbackErrorsPreserveIndependentValidationToggleAndCancellationBehavior()
+    {
+        using var script = await Load("""
+aegisub.register_macro('Toggle fails','',function() end,function() return true,'Dynamic help' end,
+  function() error('toggle fixture failure') end)
+aegisub.register_macro('Validation fails','',function() end,function(subs)
+  local line=subs[2]; line.text='readonly edit'; subs[2]=line
+end,function() return true end)
+aegisub.register_macro('Cancelled validation','',function() end,function() while true do end end)
+""");
+        var document = Document(); var before = document.Serialize(); var services = new Services();
+        using var subs = new AutomationSubtitleDocument(document, writable: false);
+        var invocation = new AutomationInvocation(subs, [2], 2, services);
+        Assert.Equal(new AutomationValidation(true, "Dynamic help", false), await script.ValidateAsync(1, invocation, default));
+        Assert.Contains(services.Logs, text => text.Contains("toggle fixture failure", StringComparison.Ordinal) && text.Contains("stack traceback:", StringComparison.Ordinal));
+        Assert.Equal(new AutomationValidation(false, null, true), await script.ValidateAsync(2, invocation, default));
+        Assert.Contains(services.Logs, text => text.Contains("read-only", StringComparison.Ordinal));
+        Assert.Equal(before, document.Serialize());
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await script.ValidateAsync(3, invocation, cancellation.Token));
+        Assert.True((await script.ValidateAsync(1, invocation, default)).Enabled);
+    }
+
+    [Fact]
+    public async Task BrokenIncludesModulesAndAutomationThreeCannotPublishFeatures()
+    {
+        File.WriteAllText(Path.Combine(_root, "recursive.lua"), "include('recursive.lua')");
+        foreach (var source in new[] { "include('missing.lua')", "require('missing_fixture_module')", "include('recursive.lua')", "version=3" })
+        {
+            var failure = await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                await Load("aegisub.register_macro('Staged','',function() end); " + source, "broken-context.lua"));
+            Assert.Contains(Path.Combine(_root, "broken-context.lua"), failure.Message);
+        }
+        using var healthy = await Load("aegisub.register_macro('Healthy after failures','',function() end)");
+        Assert.Equal("Healthy after failures", Assert.Single(healthy.Macros).Name);
+    }
+
+    [Fact]
     public async Task ScriptCancelRollsBackAllPointsAndOldUserdataCannotRevive()
     {
         using var script = await Load("""

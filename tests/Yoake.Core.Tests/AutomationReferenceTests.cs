@@ -6,6 +6,18 @@ namespace Yoake.Core.Tests;
 public sealed class AutomationReferenceTests
 {
     [Fact]
+    public void RemovingLastLegacyReferenceCreatesAnExplicitEmptyOverrideAndUndoesLosslessly()
+    {
+        const string before = "[Script Info]\nAutomation Scripts: ~legacy.lua\n[Future]\nMystery: untouched\n";
+        var document = AssDocument.Parse(before); var editor = new SubtitleEditor(document);
+        editor.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = "" });
+        Assert.True(document.TryGetSectionValue("[Aegisub Project Garbage]", "Automation Scripts", out var value));
+        Assert.Equal("", value); Assert.Equal("~legacy.lua", document.GetScriptInfo("Automation Scripts"));
+        Assert.Contains("[Future]\nMystery: untouched\n", document.Serialize());
+        Assert.True(editor.Undo.Undo()); Assert.Equal(before, document.Serialize());
+        Assert.True(editor.Undo.Redo()); Assert.True(document.TryGetSectionValue("[Aegisub Project Garbage]", "Automation Scripts", out value)); Assert.Equal("", value);
+    }
+    [Fact]
     public void SaveAsRebasesKnownLocationsAndPreservesMissingAndUnknownReferences()
     {
         var root = Path.Combine(Path.GetTempPath(), "yoake-references");

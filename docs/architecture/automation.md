@@ -29,6 +29,14 @@ References: [LuaJIT compatibility](https://luajit.org/extensions.html),
 [Windows DLL naming/installation](https://luajit.org/install.html),
 [license](https://luajit.org/luajit.html).
 
+The verified native-runtime artifact from workflow `38081459480` measured
+`lua51.dll` at 558,592 bytes and `yoake-automation.dll` at 36,952,576 bytes
+(37,511,168 bytes combined; 15,531,620-byte compressed artifact). The bridge
+includes the static Boost/ICU regex and Unicode implementations required by the
+unchanged release wrappers. Artifact SHA-256 was independently checked as
+`72770e891a6774f5e847d920810e2d3a2ce989ae8f8226c0385183926dd3ed6d`.
+This is native-runtime size evidence, not a passing packaged application claim.
+
 Native state and C ABI calls belong in `Yoake.Native`. Core contracts and UI never
 receive Lua state pointers, registry references or native handles. A native shim
 must catch Lua errors/longjmp on the native side; a Lua error must never unwind
