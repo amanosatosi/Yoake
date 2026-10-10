@@ -13,9 +13,9 @@ public sealed class AssDocument
     private string? _cached;
     private readonly Dictionary<AssEvent,(int Start,int Length)> _eventSpans=[];
     private int _updateDepth;
-    private bool _pendingSync, _pendingChange;
-    private readonly ObservableCollection<AssEvent> _events = [];
-    private readonly ObservableCollection<AssStyle> _styles = [];
+    private bool _pendingSync, _pendingChange, _pendingReset;
+    private readonly RecordCollection<AssEvent> _events = [];
+    private readonly RecordCollection<AssStyle> _styles = [];
     public ReadOnlyObservableCollection<AssEvent> Events { get; }
     public ReadOnlyObservableCollection<AssStyle> Styles { get; }
     public event EventHandler? Changed;
@@ -143,15 +143,26 @@ public sealed class AssDocument
     private void Terminate() { if (Source.Count > 0 && Source[^1].Ending.Length == 0) Source[^1] = Source[^1] with { Ending = _newline }; }
     internal void Remove(AssRecord record) { Source.RemoveAll(l => ReferenceEquals(l.Record, record)); Synchronize(); Touch(); }
     internal void Swap(AssRecord a, AssRecord b) { var x = Source.FindIndex(l => ReferenceEquals(l.Record, a)); var y = Source.FindIndex(l => ReferenceEquals(l.Record, b)); if (x < 0 || y < 0) return; Source[x] = Source[x] with { Record = b }; Source[y] = Source[y] with { Record = a }; Synchronize(); Touch(); }
-    internal void Restore(IReadOnlyList<SourceLine> source) { Source = [.. source]; Synchronize(); Touch(); }
-    private void Synchronize()
+    internal void Restore(IReadOnlyList<SourceLine> source, bool resetCollections = false) { Source = [.. source]; Synchronize(resetCollections); Touch(); }
+    private void Synchronize(bool resetCollections = false)
     {
-        if(_updateDepth>0){_pendingSync=true;return;}
+        if(_updateDepth>0){_pendingSync=true;_pendingReset|=resetCollections;return;}
         var events = Source.Select(l => l.Record).OfType<AssEvent>().ToArray(); var styles = Source.Select(l => l.Record).OfType<AssStyle>().ToArray();
         foreach (var record in _events.Cast<AssRecord>().Concat(_styles)) record.PropertyChanged -= RecordChanged;
-        Sync(_events, events); Sync(_styles, styles);
+        if (resetCollections) { _events.ReplaceAll(events); _styles.ReplaceAll(styles); }
+        else { Sync(_events, events); Sync(_styles, styles); }
         for (var i = 0; i < events.Length; i++) events[i].Renumber(i + 1);
         foreach (var record in events.Cast<AssRecord>().Concat(styles)) record.PropertyChanged += RecordChanged;
+    }
+    private sealed class RecordCollection<T> : ObservableCollection<T>
+    {
+        public void ReplaceAll(T[] items)
+        {
+            if (this.SequenceEqual(items)) return;
+            Items.Clear(); foreach (var item in items) Items.Add(item);
+            OnPropertyChanged(new("Count")); OnPropertyChanged(new("Item[]"));
+            OnCollectionChanged(new(System.Collections.Specialized.NotifyCollectionChangedAction.Reset));
+        }
     }
     private static void Sync<T>(ObservableCollection<T> target, T[] items)
     {
@@ -178,7 +189,7 @@ public sealed class AssDocument
         public void Dispose()
         {
             if(--owner._updateDepth>0)return;
-            if(owner._pendingSync){owner._pendingSync=false;owner.Synchronize();}
+            if(owner._pendingSync){owner._pendingSync=false;var reset=owner._pendingReset;owner._pendingReset=false;owner.Synchronize(reset);}
             if(owner._pendingChange){owner._pendingChange=false;owner.Touch();}
         }
     }
