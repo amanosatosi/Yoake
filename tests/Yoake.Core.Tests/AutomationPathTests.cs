@@ -7,7 +7,7 @@ public sealed class AutomationPathTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "yoake-automation-paths-" + Guid.NewGuid().ToString("N"));
     private string Write(string relative, string text = "return true")
     {
-        var path = Path.Combine(_root, relative); Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllText(path, text); return path;
+        var path = Path.GetFullPath(Path.Combine(_root, relative)); Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllText(path, text); return path;
     }
 
     [Fact]
