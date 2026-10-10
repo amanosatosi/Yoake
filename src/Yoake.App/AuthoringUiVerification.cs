@@ -1,0 +1,406 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.Media.TextFormatting;
+using Avalonia.Styling;
+using Avalonia.VisualTree;
+using Yoake.Core.Commands;
+using Yoake.Core.Subtitles;
+using Yoake.UI;
+using Yoake.UI.Controls;
+using Yoake.UI.ViewModels;
+
+namespace Yoake.App;
+
+// Runs against the shipping controls after they are opened. DIP geometry is
+// checked at two window widths; 96/120/144/192-DPI captures aid visual review.
+// Raster captures do not simulate Windows monitor-DPI transitions or real IME.
+internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewModel model, StylesWindow styles, string report, string? mediaFixtures)
+{
+    private int _stage;
+    private VisualUiVerification? _visual;
+    private AuthoringInputVerification? _input;
+    private long _previewRevision;
+    private double _normalEditorWidth;
+    private double _audioHeight;
+    private AssStyle? _first, _second;
+    private AssColorDialog? _colors;
+    private Task<bool>? _mediaLoading;
+    private long _draftRevision;
+    private byte[]? _beforeDraft;
+    private string? _committedText;
+    private Guid _originalTab;
+    private const string Sample = @"{\fad(200,200)\bord3\1c&HFFFFFF&\3c&H000000&}<仮|かり>の糸\N{\k20}こ{\k15}れ{\k30}は{\1grd(0,&HFF0000&,&H0000FF&)}テスト
+{\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text မြန်မာ é 👩‍👩‍👧‍👦
+{\fnArial\future(opaque)\p1}m 0 0 l 20 0 20 20{\p0}";
+
+    public bool Tick()
+    {
+        var text=window.FindControl<AssTextBox>("SubtitleText")!;
+        switch(_stage++)
+        {
+            case 0:
+                foreach(var gridSample in new[]{"日本語", "မြန်မာ", "Latin é", "العربية", "👩‍👩‍👧‍👦"})
+                {var line=model.ActiveEditor!.Insert(null,false);model.ActiveEditor.SetField(line,"Text",gridSample,"Mixed-script UI fixture");}
+                model.ActiveEditor!.ToggleComment([model.Events.Last()]);
+                window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Dark;
+                text.SetCurrentValue(TextBox.TextProperty,Sample);
+                Invoke(model.Registry,CommandIds.EditCommit);
+                text.CaretIndex=text.SelectionStart=text.SelectionEnd=Sample.Length;
+                return false;
+            case 1:
+                CheckGrid();CheckNavigation(text);CheckStandardStyleVisibility();CheckChrome();
+                Capture(window,"editor-default-1440x900",1);
+                CheckDefaultWorkspace();
+                foreach(var scale in new[]{1d,1.25,1.5,2})Capture(window,$"editor-dark-{scale*100:0}",scale);
+                Capture(styles,"styles-dark-normal",1);
+                CheckMainFields();CheckSyntax(text);
+                var font=Named<FontPicker>(styles,"StyleFont");Require(font.InstalledFamilies.Count>0,"Installed font browser must load actual families.");font.OpenBrowser();Require(font.IsBrowserOpen,"Font dropdown must open immediately without requiring a typed search.");
+                _normalEditorWidth=window.FindControl<Grid>("EventEditorRegion")!.Bounds.Width;
+                window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Light;
+                return false;
+            case 2:
+                _input??=new(window,model,Capture);if(!_input.Tick()){_stage--;return false;}
+                Named<FontPicker>(styles,"StyleFont").CloseBrowser();
+                Capture(window,"editor-light-normal",1);Capture(styles,"styles-light-normal",1);CheckSyntax(text);
+                window.Width=1040;window.Height=760;styles.Width=940;styles.Height=650;
+                // Hosted Windows may constrain both requested window sizes to
+                // its work area. Also narrow the real splitter pane so reflow
+                // is exercised even on that desktop, without a fake window.
+                var workspace=window.FindControl<Grid>("UpperWorkspace")!;
+                workspace.ColumnDefinitions[0].Width=new GridLength(1,GridUnitType.Star);
+                workspace.ColumnDefinitions[2].Width=new GridLength(480);
+                return false;
+            case 3:
+                Capture(window,"editor-light-narrow",1);Capture(styles,"styles-light-narrow",1);CheckMainFields();CheckStyleFields();
+                Require(window.FindControl<Grid>("EventEditorRegion")!.Bounds.Width<_normalEditorWidth-50,"Responsive verification must exercise a genuinely narrower editor pane.");
+                window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Dark;
+                return false;
+            case 4:
+                CheckMainFields();Capture(window,"editor-dark-narrow",1);
+                PrepareStyleSwitching();
+                return false; // Newly selected library controls need a real layout pass.
+            case 5:
+                Named<FontPicker>(styles,"StyleFont").GetVisualDescendants().OfType<AutoCompleteBox>().Single().SetCurrentValue(AutoCompleteBox.TextProperty,"Missing 日本 字体");
+                FocusSelectedStyle("ScriptStyles");
+                return false;
+            case 6:
+                Require(Named<FontPicker>(styles,"StyleFont").FontName==_first!.Get("Fontname"),"Returning to the already selected script row must activate its inline draft.");
+                FocusSelectedStyle("LibraryStyles");
+                return false;
+            case 7:
+                Require(Named<FontPicker>(styles,"StyleFont").FontName=="Missing 日本 字体","Returning to the already selected library row must retain its committed draft.");
+                FinishStyleSwitching();
+                var sample=Named<TextBox>(styles,"PreviewSample");
+                sample.SetCurrentValue(TextBox.TextProperty,"obsolete preview");
+                styles.Preview.Clear();
+                Require(!styles.Preview.HasFrame&&!styles.Preview.HasCurrentFrame,"Clearing a style selection must remove its old preview.");
+                sample.SetCurrentValue(TextBox.TextProperty,@"Yoake 0123\N日本語 テスト\Nမြန်မာ");
+                _previewRevision=styles.Preview.RequestedRevision;
+                return false;
+            case 8:
+                Require(window.FindControl<ComboBox>("LineStyle")!.SelectedItem as string==model.Draft!.Style,"Style rename must refresh and select the current style in the main editor.");
+                _colors=new AssColorDialog(new AssColor(255,128,192,128),Path.Combine(Path.GetDirectoryName(report)!,"recent-colors.txt")){RequestedThemeVariant=ThemeVariant.Dark};_colors.Show(window);return false;
+            case 9:
+                Require(_colors is not null,"Canonical color dialog must open.");
+                Require(Named<ColorSpectrum>(_colors!,"ColorSpectrum").Bounds.Width>=256&&Named<ColorSpectrum>(_colors!,"ColorSpectrum").Bounds.Height>=256,"Canonical picker must realize a full 2D spectrum.");
+                Require(Named<ColorStrip>(_colors!,"ColorHue").Bounds.Height>=256&&Named<ColorStrip>(_colors!,"ColorTransparency").Bounds.Height>=256,"Hue/alpha use dedicated thin-selector strips.");
+                Require(!_colors!.GetVisualDescendants().OfType<Slider>().Any(),"Color strips must not contain Fluent slider thumbs.");
+                Require(Named<ScreenColorDropper>(_colors!,"ScreenMagnifier").Bounds.Width>=56,"Desktop sampling must have a 7x7 live magnifier.");
+                ColorInputVerification.Run(_colors!,Capture);
+                Require(Named<StackPanel>(_colors!,"RecentColors").Bounds.Height>0,"Recent colors must have a separate visible area.");Capture(_colors!,"color-picker-dark",1);_colors!.RequestedThemeVariant=ThemeVariant.Light;return false;
+            case 10:
+                Capture(_colors!,"color-picker-light",1);_colors!.Close();return false;
+            case 11:
+                Require(mediaFixtures is not null,"Packaged authoring verification requires deterministic media fixtures.");
+                _mediaLoading=model.OpenMediaAsync(Path.Combine(mediaFixtures!,"av.avi"));return false;
+            case 12:
+                if(!_mediaLoading!.IsCompleted){_stage--;return false;}
+                Require(_mediaLoading.Result&&model.VideoFrame is not null,"Real video must load into MainWindow.");
+                if(model.WaveformSamples is not {Count:>100}){_stage--;return false;}
+                model.AudioWindowSeconds=2;
+                window.FindControl<AudioWaveformControl>("AudioDisplay")!.ViewportStart=0;
+                Require(model.FrameTimes.Count==10&&model.Keyframes.Count>0,"FFMS2 must supply actual frame/keyframe metadata.");
+                var slider=window.FindControl<VideoFrameSlider>("VideoSeekBar")!;
+                Capture(slider,"video-keyframe-ruler",2);
+                Require(slider.RenderedKeyframeMarks>0,"Keyframe metadata must reach actual ruler drawing.");
+                var snap=slider.FrameAt(slider.Bounds.Width*0.55,true);
+                Require(model.Keyframes.Contains(snap),"Shift-click coordinates must snap to an actual FFMS2 keyframe.");
+                _committedText=model.SelectedEvent!.Text;_beforeDraft=FramePixels();
+                foreach(var value in new[]{"L","Live","{\\an5}Live draft 日本語"})text.SetCurrentValue(TextBox.TextProperty,value);
+                _draftRevision=model.PreviewRevision;
+                Require(model.SelectedEvent.Text==_committedText&&model.Draft!.IsChanged,"Typing must leave permanent text unchanged before idle commit.");return false;
+            case 13:
+                if(model.DisplayedPreviewRevision<_draftRevision){_stage--;return false;}
+                Require(model.DisplayedPreviewRevision==model.PreviewRevision,"Displayed preview must reflect the latest draft revision.");
+                Require(model.Draft!.IsChanged&&model.SelectedEvent!.Text==_committedText,"Mangetsu must show the draft before idle commit.");
+                Require(!_beforeDraft!.AsSpan().SequenceEqual(FramePixels()),"Live draft must change actual composited video pixels.");
+                Capture(window,"editor-live-draft",1);Invoke(model.Registry,CommandIds.EditCancel);
+                Require(model.SelectedEvent!.Text==_committedText&&!model.Draft!.IsChanged,"Escape must revert the entire pending edit burst.");
+                window.Width=1440;window.Height=900;
+                var defaultWorkspace=window.FindControl<Grid>("UpperWorkspace")!;
+                defaultWorkspace.ColumnDefinitions[0].Width=new GridLength(6,GridUnitType.Star);
+                defaultWorkspace.ColumnDefinitions[2].Width=new GridLength(7,GridUnitType.Star);
+                _visual=new(window,model,Capture,FramePixels);return false;
+            case 14:
+                if(!_visual!.Tick()){_stage--;return false;}
+                // Give the real sash room beyond its minimum in the narrow window.
+                var workspaceRoot=(Grid)window.FindControl<Grid>("UpperWorkspace")!.Parent!;
+                workspaceRoot.RowDefinitions[2].Height=new GridLength(4,GridUnitType.Star);
+                workspaceRoot.RowDefinitions[4].Height=new GridLength(1,GridUnitType.Star);
+                _mediaLoading=model.OpenMediaAsync(Path.Combine(mediaFixtures!,"audio.wav"));return false;
+            case 15:
+                if(!_mediaLoading!.IsCompleted){_stage--;return false;}
+                Require(_mediaLoading.Result&&model.WaveformSamples is {Count:>100},"Real audio must generate the signed waveform.");
+                Require(model.VideoFrame is null&&model.FrameTimes.Count==0,"Replacing video with audio must clear the old video presentation.");
+                Require(model.WaveformSamples!.Envelopes.Min(p=>p.Minimum)<-0.1&&model.WaveformSamples.Envelopes.Max(p=>p.Maximum)>0.1,"Audio fixture must produce both signed extrema.");
+                var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;model.AudioWindowSeconds=2;audio.ViewportStart=0;
+                var originalStart=model.SelectedEvent!.Start;var originalEnd=model.SelectedEvent.End;
+                Require(model.BeginGesture("Audio Escape verification"),"Audio timing gesture must begin.");model.UpdateTimingGesture(2,.1);
+                audio.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=audio,Key=Key.Escape,KeyModifiers=KeyModifiers.Shift});
+                Require(!model.HasGesture&&model.SelectedEvent.Start==originalStart&&model.SelectedEvent.End==originalEnd,"Escape must cancel audio timing even while Shift is held.");
+                var pane=window.FindControl<Grid>("TemporalTextColumn")!;var heightBefore=pane.RowDefinitions[0].ActualHeight;
+                var timeControl=window.FindControl<Slider>("AudioHorizontalZoom")!;var amplitudeControl=window.FindControl<Slider>("AudioIntensity")!;var volumeControl=window.FindControl<Slider>("AudioVolume")!;
+                model.AudioVolumeLinked=false;var gain=model.PlaybackVolume;var intensity=model.AudioIntensity;
+                timeControl.Value+=5;Require(Math.Abs(audio.VisibleSeconds-model.AudioWindowSeconds)<.001&&model.PlaybackVolume==gain&&model.AudioIntensity==intensity,"Time slider must change horizontal span only.");
+                var span=audio.VisibleSeconds;amplitudeControl.Value=60;
+                Require(audio.VisibleSeconds==span&&model.PlaybackVolume==gain&&Math.Abs(model.AudioAmplitude-60)<.00001,"Amp slider must change visual amplitude only.");
+                volumeControl.Value=.35;Require(model.PlaybackVolume==.35&&audio.VisibleSeconds==span&&Math.Abs(model.AudioAmplitude-60)<.00001,"Vol slider must change playback gain only.");
+                Require(pane.RowDefinitions[0].ActualHeight==heightBefore,"Time/Amp/Vol must never resize the audio pane.");
+                var mode=window.FindControl<ComboBox>("AudioMode")!;mode.SelectedIndex=1;
+                Require(audio.Spectrogram,"Spectrogram selection must reach the visualizer.");
+                var spectralSpan=audio.VisibleSeconds;var pannerMode=window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!;
+                model.AudioWindowSeconds=1;pannerMode.Value=.25;
+                Require(Math.Abs(audio.ViewportStart-.25)<.001&&pannerMode.ViewportSize==audio.VisibleSeconds,"Spectrogram panner page must reflect its viewport and pan independently.");mode.SelectedIndex=0;
+                Require(!audio.Spectrogram,"Waveform selection must restore the same shared viewport.");
+                var volume=model.PlaybackVolume;model.AudioVolumeLinked=false;model.AudioAmplitude=60;
+                Require(model.PlaybackVolume==volume,"Unlinked display amplitude must not change playback volume.");
+                model.AudioVolumeLinked=true;model.AudioAmplitude=75;
+                Require(Math.Abs(model.PlaybackVolume-.75)<.0001&&!window.FindControl<Slider>("AudioVolume")!.IsEnabled,"Linked amplitude must update volume and disable its slider.");
+                model.AudioVolumeLinked=false;model.AudioWindowSeconds=1;
+                Require(Math.Abs(audio.VisibleSeconds-1)<.001,"Continuous zoom must update the real waveform viewport.");
+                var panner=window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!;panner.Value=.5;
+                Require(Math.Abs(audio.ViewportStart-.5)<.001&&Math.Abs(audio.VisibleSeconds-1)<.001,"Panner must change only viewport start.");
+                var sash=window.FindControl<GridSplitter>("AudioSplitter")!;_audioHeight=window.FindControl<Grid>("TemporalTextColumn")!.RowDefinitions[0].ActualHeight;
+                sash.Focus();sash.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=sash,Key=Key.Down});
+                return false;
+            case 16:
+                var splitter=window.FindControl<GridSplitter>("AudioSplitter")!;
+                splitter.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyUpEvent,Source=splitter,Key=Key.Down});
+                Require(model.AudioDisplayHeight>_audioHeight,"The real audio sash must resize and persist panel height.");
+                AudioInputVerification.Run(window,model);
+                Capture(window,"editor-signed-waveform",1);
+                _originalTab=model.Tabs.Single(t=>t.IsActive).Id;
+                Require(model.OpenSubtitle(Path.Combine(mediaFixtures!,"large.ass")),"Large multilingual ASS fixture must open.");return false;
+            case 17:
+                CheckVirtualizedGrid();model.SelectedEvent=model.Events[^1];return false;
+            case 18:
+                CheckVirtualizedGrid();Require(window.FindControl<ListBox>("SubtitleRows")!.GetVisualDescendants().OfType<ListBoxItem>().Any(r=>ReferenceEquals(r.DataContext,model.Events[^1])),"Scrolling to the last of 20,000 rows must realize that row.");
+                model.SelectedEvent=model.Events[10000];return false;
+            case 19:
+                CheckVirtualizedGrid();Capture(window,"editor-large-mixed-script",1);
+                var activate=model.Registry.InvokeAsync(CommandIds.WorkspaceActivateTab,new(),_originalTab);Require(activate.IsCompletedSuccessfully&&activate.Result,"Return to original editing tab after virtualization probe.");return false;
+            default:
+                Require(styles.Preview.LastError is null,"Latest style preview failed: "+styles.Preview.LastError);
+                if(!styles.Preview.HasCurrentFrame||styles.Preview.DisplayedRevision<_previewRevision)return false;
+                CheckStyleFields();Capture(styles,"styles-dark-narrow",1);
+                return true;
+        }
+    }
+    private void CheckVirtualizedGrid()
+    {
+        Require(model.Events.Count==20000,"Large-file verification must use all 20,000 events.");
+        var realized=window.FindControl<ListBox>("SubtitleRows")!.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+        Require(realized.Length>0&&realized.Length<100,"Grid must virtualize the large file instead of realizing every event.");
+        Require(realized.All(r=>Math.Abs(r.Bounds.Height-26)<0.1),"Recycled mixed-script containers must retain the fixed row height.");
+    }
+    private byte[] FramePixels()
+    {
+        using var buffer=model.VideoFrame!.Lock();var pixels=new byte[buffer.RowBytes*buffer.Size.Height];
+        System.Runtime.InteropServices.Marshal.Copy(buffer.Address,pixels,0,pixels.Length);return pixels;
+    }
+    private void CheckChrome()
+    {
+        if(!OperatingSystem.IsWindows())return;
+        Require(window.RedundantCaptionHidden,"The framework caption text must be suppressed above the first tab.");
+        var strip=window.FindControl<Border>("TitleTabStrip")!;
+        var tabs=window.FindControl<ScrollViewer>("TabScroll")!;
+        Require(strip.Padding.Right>0,"Caption buttons must reserve their measured area.");
+        var right=tabs.TranslatePoint(new Point(tabs.Bounds.Width,0),window)!.Value.X;
+        Require(right<=window.ClientSize.Width-strip.Padding.Right,"Tabs must end before caption buttons.");
+    }
+    private void CheckStandardStyleVisibility()
+    {
+        var scroll=Named<ScrollViewer>(styles,"StyleProperties");
+        Require(scroll.Extent.Height<=scroll.Viewport.Height+1,"All standard style fields must fit without scrolling at ordinary desktop size.");
+        foreach(var name in new[]{"StyleFontsize","StyleScaleX","StyleScaleY","StyleSpacing","StyleAngle","StyleMarginL","StyleMarginR","StyleMarginV","StyleEncoding","StyleAlignment"})
+        {
+            var field=styles.GetVisualDescendants().OfType<Control>().Single(c=>c.Name==name);
+            var y=field.TranslatePoint(default,scroll)!.Value.Y;
+            Require(y>=0&&y+field.Bounds.Height<=scroll.Bounds.Height+1,name+" must remain visible with the preview.");
+        }
+        Require(styles.Preview.Bounds.Height>=150,"Preview must remain visible while standard fields are edited.");
+    }
+    private void CheckGrid()
+    {
+        var rows=window.FindControl<ListBox>("SubtitleRows")!;
+        var containers=rows.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+        Require(containers.Length>=6,"Mixed-script grid fixture must realize all ordinary scripts.");
+        Require(containers.All(r=>Math.Abs(r.Bounds.Height-26)<0.1),"Japanese/Burmese/Arabic/Latin/emoji/comment/selected rows must all be exactly 26 DIP.");
+        foreach(var label in containers.SelectMany(r=>r.GetVisualDescendants().OfType<TextBlock>()))
+        {
+            Require(label.TextLayout.Height<=26,$"Grid shaped text must fit 26 DIP: {label.Text}, height {label.TextLayout.Height}.");
+            var row=label.GetVisualAncestors().OfType<ListBoxItem>().First();var top=label.TranslatePoint(default,row)!.Value.Y;
+            Require(top>=-.1&&top+label.Bounds.Height<=26.1,"Mixed-script marks must fit inside their centered fixed row.");
+        }
+        var header=window.FindControl<Grid>("ColumnHeader")!;var labels=header.Children.OfType<TextBlock>().Select(t=>t.Text).ToArray();
+        Require(labels.SequenceEqual(new[]{"#","L","Start","End","Style","Actor","Effect","Text"}),"Compact grid must omit Type and label layer L.");
+        Require(!window.FindControl<Border>("SubtitleGridRegion")!.GetVisualDescendants().OfType<Button>().Any(),"Grid must not have a permanent button toolbar.");
+        Require(rows.GetVisualDescendants().OfType<Grid>().Any(g=>g.Classes.Contains("comment")),"Comment state must reach the theme-aware row class.");
+    }
+    private static void CheckNavigation(AssTextBox text)
+    {
+        text.CaretIndex=text.SelectionStart=text.SelectionEnd=1;
+        Require(text.MoveAtVisualBoundary(Key.Up,KeyModifiers.None)&&text.CaretIndex==0,"Up on first visual line must reach text start.");
+        text.CaretIndex=text.SelectionStart=text.SelectionEnd=1;
+        Require(text.MoveAtVisualBoundary(Key.Up,KeyModifiers.Shift)&&text.SelectionStart==1&&text.SelectionEnd==0,"Shift+Up must preserve selection anchor.");
+        var end=text.Text!.Length;text.CaretIndex=text.SelectionStart=text.SelectionEnd=end-1;
+        Require(text.MoveAtVisualBoundary(Key.Down,KeyModifiers.None)&&text.CaretIndex==end,"Down on final visual line must reach text end.");
+        text.CaretIndex=text.SelectionStart=text.SelectionEnd=end-1;
+        Require(text.MoveAtVisualBoundary(Key.Down,KeyModifiers.Shift)&&text.SelectionStart==end-1&&text.SelectionEnd==end,"Shift+Down must extend selection to end.");
+    }
+
+    private void CheckMainFields()
+    {
+        foreach(var name in new[]{"LineLayer","MarginLeft","MarginRight","MarginVertical"})
+            CheckNumber(window.FindControl<NumericUpDown>(name)!);
+        foreach(var name in new[]{"LineStart","LineEnd"})
+            Require(window.FindControl<TextBox>(name)!.Bounds.Width>=90,$"{name} must retain its time value width.");
+        var text=window.FindControl<AssTextBox>("SubtitleText")!;
+        Require(text.Bounds.Width>=300&&text.Bounds.Height>=64,"ASS editor must retain useful text space after timing groups reflow.");
+        Require(window.GetVisualDescendants().OfType<AssColorButton>().Count(b=>b.Bounds.Width>=30&&b.Bounds.Height>=24&&b.Command is not null)==4,"All four command-backed color swatches must be realized.");
+        var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
+        Require(audio.TranslatePoint(default,window)!.Value.Y<editor.TranslatePoint(default,window)!.Value.Y,"Audio must remain above the edit panel.");
+        Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioHorizontalZoom")!.Bounds.Height>=55,"Horizontal zoom, display amplitude and playback volume need usable vertical travel at the default panel height.");
+        Require(window.FindControl<Slider>("AudioSize") is null,"No vertical audio-height slider may remain.");
+        Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("AudioVolumeLink")!.Bounds.Width>=40,"Amplitude/volume link must be directly below the sliders.");
+        Require(window.FindControl<GridSplitter>("AudioSplitter")!.Bounds.Height>=4,"Audio height must have a real sash.");
+        Require(window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!.Bounds.Width>200,"Audio must have an attached horizontal panner.");
+        foreach(var name in MainWindowViewModel.VisualToolNames)Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("VisualTool"+name) is {Bounds.Width:>20},"Baseline visual tool must realize: "+name);
+        var video=window.FindControl<Grid>("VideoRegion")!;var tools=window.FindControl<Border>("VisualToolsBar")!;
+        var videoBottom=video.TranslatePoint(new Point(0,video.Bounds.Height),window)!.Value.Y;var toolsTop=tools.TranslatePoint(default,window)!.Value.Y;
+        Require(toolsTop-videoBottom<12,"Contextual options must immediately adjoin the video workspace.");
+        var primary=window.FindControl<StackPanel>("VisualPrimaryTools")!;
+        Require(primary.Orientation==Avalonia.Layout.Orientation.Vertical&&primary.Bounds.Width<40,"Primary tools must use a compact vertical rail.");
+        Require(window.FindControl<TextBlock>("VisualToolHelp") is null,"Visual help belongs in tooltips, without a permanent workspace row.");
+    }
+
+    private void CheckDefaultWorkspace()
+    {
+        var video=window.FindControl<VisualOverlayControl>("VisualOverlay")!;
+        var audio=window.FindControl<AudioWaveformControl>("AudioDisplay")!;
+        var text=window.FindControl<AssTextBox>("SubtitleText")!;
+        var rows=window.FindControl<ListBox>("SubtitleRows")!;
+        File.WriteAllText(Path.Combine(Path.GetDirectoryName(report)!,"workspace-layout.txt"),$"Window: {window.ClientSize}\nVideo: {video.Bounds}\nAudio: {audio.Bounds}\nText: {text.Bounds}\nGrid: {rows.Bounds}\n");
+        Require(window.ClientSize.Width>=1438&&window.ClientSize.Height>=898,"Default workspace must be verified in a real 1440x900 window, without desktop clamping.");
+        Require(video.Bounds.Width>=600&&video.Bounds.Height>=300,"Default video workspace must retain useful typesetting area.");
+        Require(audio.Bounds.Width>=600&&audio.Bounds.Height>=120,"Default audio must retain a useful timing area.");
+        Require(window.FindControl<Grid>("AudioRegion")!.RowDefinitions.Count==3,"Audio status must share the playback row rather than consume waveform space.");
+        Require(text.Bounds.Width>=600&&text.Bounds.Height>=140,"Default ASS editor must retain room for tag-heavy multiline editing.");
+        Require(rows.Bounds.Height>=270,"Default subtitle grid must retain at least nine dense rows of space.");
+        var fields=window.FindControl<Grid>("MetadataOtherFields")!;
+        Require(fields.ColumnSpacing>=10,"Actor, Effect and Layer require distinct group gaps.");
+    }
+
+    private void FocusSelectedStyle(string name)
+    {
+        // Avalonia keyboard focus belongs to ListBoxItem, not the ListBox
+        // container. Exercise the same retained row a user tabs/clicks into.
+        var row=Named<ListBox>(styles,name).GetVisualDescendants().OfType<ListBoxItem>().Single(i=>i.IsSelected);
+        Require(row.Focus(),$"{name}: the selected style row must accept keyboard focus.");
+    }
+
+    private static void CheckNumber(NumericUpDown input)
+    {
+        var entry=input.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Name=="PART_TextBox");
+        Require(entry.Bounds.Width>=48&&entry.Bounds.Height>=20,$"{input.Name}: editable numeric area collapsed to {entry.Bounds}.");
+        Require(input.Bounds.Width>=86,$"{input.Name}: numeric field width must be usable.");
+        Require(input.Bounds.Height<=30,$"{input.Name}: compact numeric field must not retain a tall inner Fluent control (field {input.Bounds}, entry {entry.Bounds}).");
+    }
+
+    private void CheckStyleFields()
+    {
+        foreach(var input in styles.GetVisualDescendants().OfType<NumericUpDown>())CheckNumber(input);
+        Require(styles.GetVisualDescendants().OfType<FontPicker>().Any(p=>p.Bounds.Width>=120),"Font picker must retain a usable field.");
+        Require(styles.GetVisualDescendants().OfType<AssColorField>().Count(p=>p.Bounds.Width>=140)==4,"Four exact-value color fields must fit the inline editor.");
+        Require(styles.GetVisualDescendants().OfType<AssAlignmentPicker>().Any(p=>p.Bounds.Width>=110&&p.Bounds.Height>=80),"Alignment grid must be realized.");
+        Require(styles.Preview.Bounds.Width>=400&&styles.Preview.Bounds.Height>=150,"Real Mangetsu preview must have useful bounds.");
+    }
+
+    private static void CheckSyntax(AssTextBox text)
+    {
+        var presenter=text.GetVisualDescendants().OfType<AssTextPresenter>().Single();
+        var categories=AssSyntax.Tokenize(text.Text!).Select(t=>t.Kind).ToHashSet();
+        var painted=presenter.TextLayout.TextLines.SelectMany(l=>l.TextRuns).OfType<ShapedTextRun>()
+            .Select(r=>(r.Properties.ForegroundBrush as ISolidColorBrush)?.Color).ToHashSet();
+        foreach(var kind in Enum.GetValues<AssSyntaxKind>())
+        {
+            Require(categories.Contains(kind),$"Complex syntax fixture must exercise {kind}.");
+            Require(presenter.SyntaxBrush(kind) is ISolidColorBrush brush&&painted.Contains(brush.Color),$"{kind} must reach actual shaped text runs in {text.ActualThemeVariant}.");
+        }
+        var colors=Enum.GetValues<AssSyntaxKind>().Select(k=>(presenter.SyntaxBrush(k) as ISolidColorBrush)?.Color).ToArray();
+        Require(colors.Distinct().Count()==colors.Length,"Syntax categories must have distinct semantic brushes.");
+    }
+
+    private void PrepareStyleSwitching()
+    {
+        _first=model.ActiveEditor!.Document.Styles[0];
+        Named<NumericUpDown>(styles,"StyleFontsize").Value=72;
+        var color=Named<AssColorField>(styles,"StylePrimaryColour");
+        color.GetVisualDescendants().OfType<TextBox>().Single().SetCurrentValue(TextBox.TextProperty,"&H80402010");
+        Named<TextBox>(styles,"StyleName").SetCurrentValue(TextBox.TextProperty,_first.Name+" 日本");
+        Invoke(styles.Registry,"script/style/new");
+        Require(_first.Get("Fontsize")=="72"&&_first.Get("PrimaryColour")=="&H80402010",$"Style selection switch must commit the numeric/color draft exactly (size {_first.Get("Fontsize")}, color {_first.Get("PrimaryColour")}).");
+        Require(_first.Name.EndsWith(" 日本",StringComparison.Ordinal)&&model.SelectedEvent!.Style==_first.Name,"The same draft must commit its Unicode rename and update event references before switching.");
+        _second=model.ActiveEditor.Document.Styles.Last();
+        var scriptList=Named<ListBox>(styles,"ScriptStyles");
+        Require(scriptList.SelectedItems?.Count==1&&scriptList.SelectedItem as string==_second.Name,"New style must replace the previous selection with only the created style.");
+        SelectOne(scriptList,_first.Name);
+        Invoke(styles.Registry,"styles/to-library");
+        Require(Named<ListBox>(styles,"LibraryStyles").SelectedItems?.Count==1,"Copying one script style must select only its new library preset.");
+    }
+    private void FinishStyleSwitching()
+    {
+        var picker=Named<FontPicker>(styles,"StyleFont");
+        picker.GetVisualDescendants().OfType<AutoCompleteBox>().Single().SetCurrentValue(AutoCompleteBox.TextProperty,"Missing 日本 字体");
+        SelectOne(Named<ListBox>(styles,"ScriptStyles"),_second!.Name);
+        var stored=new StyleLibraryStore(model.StyleLibraryPath);
+        Require(stored.Editor(stored.Collections[0]).Document.Styles.Any(s=>s.Get("Fontname")=="Missing 日本 字体"),"Library-to-script switching must save the exact missing-font draft.");
+        Invoke(styles.Registry,"script/style/delete");
+        Require(!model.ActiveEditor!.Document.Styles.Contains(_second)&&model.SelectedEvent!.Style==_first!.Name,"Unused style deletion must succeed without changing event references.");
+    }
+
+    private static void SelectOne(ListBox list,string name)
+    {
+        // Model an ordinary click replacing a multiple selection, without Ctrl.
+        list.SelectedItems!.Clear();list.SelectedItem=name;
+        Require(list.SelectedItems.Count==1&&list.SelectedItem as string==name,"Style row selection must replace the previous row exactly.");
+    }
+
+    private void Capture(Control control,string name,double scale)
+    {
+        var size=control.Bounds.Size;
+        using var bitmap=new RenderTargetBitmap(new PixelSize((int)Math.Ceiling(size.Width*scale),(int)Math.Ceiling(size.Height*scale)),new Vector(96*scale,96*scale));
+        bitmap.Render(control);
+        var folder=Path.Combine(Path.GetDirectoryName(report)!,"authoring-visuals");Directory.CreateDirectory(folder);
+        bitmap.Save(Path.Combine(folder,name+".png"),PngBitmapEncoderOptions.Default);
+    }
+    private static T Named<T>(Control root,string name) where T:Control=>root.GetVisualDescendants().OfType<T>().Single(c=>c.Name==name);
+    private static void Invoke(CommandRegistry registry,string id)
+    {
+        var result=registry.InvokeAsync(id,new());Require(result.IsCompletedSuccessfully&&result.Result,"Authoring command failed: "+id);
+    }
+    private static void Require(bool valid,string message){if(!valid)throw new InvalidOperationException(message);}
+}

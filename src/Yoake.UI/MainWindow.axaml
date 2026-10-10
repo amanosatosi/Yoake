@@ -8,12 +8,20 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Yoake"
         Width="1440" Height="900"
-        MinWidth="1040" MinHeight="680"
+        MinWidth="1040" MinHeight="690"
+        FontSize="12"
         Background="{DynamicResource AppBackgroundBrush}">
-  <Grid RowDefinitions="36,38,*,4,330">
+  <Window.Styles>
+    <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
+    <Style Selector="TextBox"><Setter Property="MinHeight" Value="26" /></Style>
+    <Style Selector="ComboBox"><Setter Property="MinHeight" Value="26" /></Style>
+    <Style Selector="CheckBox"><Setter Property="MinHeight" Value="24" /></Style>
+  </Window.Styles>
+  <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="54" /><RowDefinition Height="3*" MinHeight="444" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="140" /></Grid.RowDefinitions>
     <Border Grid.Row="0" Name="TitleTabStrip" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,*,Auto">
-        <ScrollViewer Grid.Column="0" MaxWidth="980" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <ScrollViewer Name="TabScroll" Grid.Column="0" MaxWidth="980" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
           <ItemsControl ItemsSource="{Binding Tabs}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
@@ -26,7 +34,7 @@
                     <Button Grid.Column="1" Padding="4,2" HorizontalContentAlignment="Left" Command="{Binding ActivateCommand}">
                       <TextBlock Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
                     </Button>
-                    <Button Grid.Column="2" Width="28" Padding="6" Click="CloseTabClick" ToolTip.Tip="Close tab">
+                    <Button Grid.Column="2" Width="28" Padding="6" Command="{Binding CloseCommand}" ToolTip.Tip="Close tab">
                       <PathIcon Width="11" Height="11" Data="{x:Static icons:IconGeometries.Close}" Foreground="{DynamicResource IconForegroundBrush}" />
                     </Button>
                   </Grid>
@@ -42,138 +50,217 @@
       </Grid>
     </Border>
 
-    <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
-      <DockPanel Margin="6,3">
-        <TextBlock DockPanel.Dock="Right" MaxWidth="520" VerticalAlignment="Center" Opacity="0.72" Text="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" Margin="12,0,4,0" />
-        <StackPanel Orientation="Horizontal" Spacing="4">
-          <Button Command="{Binding NewDocumentCommand}" ToolTip.Tip="New" Padding="7,3">
-            <PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
-          </Button>
-          <Button Click="OpenSubtitleClick" Content="Open ASS" Padding="8,3" />
-          <Button Click="SaveSubtitleClick" Content="Save" Padding="8,3" />
-          <Button Click="OpenMediaClick" Content="Open Video" Padding="8,3" />
-          <Border Width="1" Margin="4,2" Background="{DynamicResource DividerBrush}" />
-          <Button Command="{Binding UndoCommand}" ToolTip.Tip="Undo" Padding="7,3">
-            <PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Undo}" Foreground="{DynamicResource IconForegroundBrush}" />
-          </Button>
-          <Button Command="{Binding RedoCommand}" ToolTip.Tip="Redo" Padding="7,3">
-            <PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Redo}" Foreground="{DynamicResource IconForegroundBrush}" />
-          </Button>
-          <Button Command="{Binding ThemeCycleCommand}" ToolTip.Tip="Cycle theme" Padding="7,3">
-            <PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Theme}" Foreground="{DynamicResource IconForegroundBrush}" />
-          </Button>
-        </StackPanel>
-      </DockPanel>
+    <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}"><Grid RowDefinitions="24,*"><Menu>
+<MenuItem Header="File">
+<MenuItem Header="Recent files" ItemsSource="{Binding RecentFiles}"><MenuItem.ItemTemplate><DataTemplate x:DataType="x:String"><Button Content="{Binding}" Click="RecentFileClick" /></DataTemplate></MenuItem.ItemTemplate></MenuItem>
+<MenuItem Header="New" Command="{Binding Actions[subtitle/new]}" />
+<MenuItem Header="Open…" Command="{Binding Actions[subtitle/open]}" />
+<MenuItem Header="Save" Command="{Binding Actions[subtitle/save]}" />
+<MenuItem Header="Save As…" Command="{Binding Actions[subtitle/save-as]}" />
+<MenuItem Header="Reload from disk…" Command="{Binding Actions[subtitle/revert]}" />
+<MenuItem Header="Close tab" Command="{Binding Actions[subtitle/close]}" />
+</MenuItem>
+<MenuItem Header="Edit">
+<MenuItem Header="Undo" Command="{Binding Actions[edit/undo]}" />
+<MenuItem Header="Redo" Command="{Binding Actions[edit/redo]}" />
+<MenuItem Header="Copy lines" Command="{Binding Actions[grid/copy]}" />
+<MenuItem Header="Cut lines" Command="{Binding Actions[grid/cut]}" />
+<MenuItem Header="Paste lines" Command="{Binding Actions[grid/paste]}" />
+<MenuItem Header="Select all lines" Command="{Binding Actions[grid/select-all]}" />
+<MenuItem Header="Find / Replace…" Command="{Binding Actions[edit/find]}" />
+</MenuItem>
+<MenuItem Header="Subtitle">
+<MenuItem Header="Insert before" Command="{Binding Actions[grid/insert/before]}" />
+<MenuItem Header="Insert after" Command="{Binding Actions[grid/insert/after]}" />
+<MenuItem Header="Duplicate" Command="{Binding Actions[grid/duplicate]}" />
+<MenuItem Header="Delete selected" Command="{Binding Actions[grid/delete]}" />
+<MenuItem Header="Dialogue / Comment" Command="{Binding Actions[grid/toggle-comment]}" />
+<MenuItem Header="Split at text cursor" Command="{Binding Actions[grid/split]}" />
+<MenuItem Header="Join selected" Command="{Binding Actions[grid/join]}" />
+<MenuItem Header="Move up" Command="{Binding Actions[grid/move/up]}" />
+<MenuItem Header="Move down" Command="{Binding Actions[grid/move/down]}" />
+<MenuItem Header="Styles Manager…" Command="{Binding Actions[styles/manage]}" />
+<MenuItem Header="Script Info…" Command="{Binding Actions[script-info/edit]}" />
+</MenuItem>
+<MenuItem Header="Timing">
+<MenuItem Header="Set start to current time" Command="{Binding Actions[timing/set-start]}" />
+<MenuItem Header="Set end to current time" Command="{Binding Actions[timing/set-end]}" />
+<MenuItem Header="Jump to line start" Command="{Binding Actions[timing/jump-start]}" />
+<MenuItem Header="Jump to line end" Command="{Binding Actions[timing/jump-end]}" />
+<MenuItem Header="Previous subtitle" Command="{Binding Actions[grid/line/previous]}" />
+<MenuItem Header="Next subtitle" Command="{Binding Actions[grid/line/next]}" />
+</MenuItem>
+<MenuItem Header="Video">
+<MenuItem Header="Open video/audio…" Command="{Binding Actions[media/open]}" />
+<MenuItem Header="Play / Pause" Command="{Binding Actions[video/play]}" />
+<MenuItem Header="Stop" Command="{Binding Actions[video/stop]}" />
+<MenuItem Header="Previous frame" Command="{Binding Actions[video/frame/previous]}" />
+<MenuItem Header="Next frame" Command="{Binding Actions[video/frame/next]}" />
+<MenuItem Header="Position tool" Command="{Binding Actions[video/tool/position]}" />
+<MenuItem Header="Clip tool" Command="{Binding Actions[video/tool/clip]}" />
+</MenuItem>
+<MenuItem Header="Audio">
+<MenuItem Header="Play current line" Command="{Binding Actions[audio/play/selection]}" />
+<MenuItem Header="Play from cursor" Command="{Binding Actions[audio/play/cursor]}" />
+<MenuItem Header="Zoom in" Command="{Binding Actions[audio/zoom/in]}" />
+<MenuItem Header="Zoom out" Command="{Binding Actions[audio/zoom/out]}" />
+</MenuItem>
+<MenuItem Header="View">
+<MenuItem Header="Cycle theme" Command="{Binding Actions[view/theme/cycle]}" />
+</MenuItem>
+</Menu><Grid Grid.Row="1" Margin="6,2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><TextBlock Grid.Column="2" MaxWidth="360" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Name="VisualToolStatus" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="10" VerticalAlignment="Center" /><StackPanel Orientation="Horizontal" Spacing="4">
+<Button Content="New" Command="{Binding NewDocumentCommand}" Padding="6,1" ToolTip.Tip="Ctrl+N" /><Button Content="Open ASS" Command="{Binding Actions[subtitle/open]}" Padding="6,1" ToolTip.Tip="Ctrl+O" /><Button Content="Save" Command="{Binding Actions[subtitle/save]}" Padding="6,1" ToolTip.Tip="Ctrl+S" /><Button Content="Open media" Command="{Binding Actions[media/open]}" Padding="6,1" />
+<Button Command="{Binding UndoCommand}" Padding="6,1" ToolTip.Tip="Undo (Ctrl+Z)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Undo}" /></Button><Button Command="{Binding RedoCommand}" Padding="6,1" ToolTip.Tip="Redo (Ctrl+Y)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Redo}" /></Button>
+</StackPanel></Grid></Grid></Border>
+<Grid Grid.Row="2" Name="UpperWorkspace">
+  <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
+  <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn">
+    <Border Grid.Row="0" Background="{DynamicResource PanelBrush}">
+      <Grid Name="VideoRegion" Margin="6" RowDefinitions="*,22,26,Auto" RowSpacing="4">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*">      <StackPanel Name="VisualPrimaryTools" Grid.Column="0" Orientation="Vertical" Spacing="3" Margin="0,0,8,0">
+        <ToggleButton Name="VisualToolCrosshair" Classes="authoring" IsChecked="{Binding IsCrosshairTool, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" Padding="5,2" ToolTip.Tip="Crosshair"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualCrosshair}" /></ToggleButton>
+        <ToggleButton Name="VisualToolPosition" Classes="authoring" IsChecked="{Binding IsPositionTool, Mode=OneWay}" Command="{Binding Actions[video/tool/position]}" Padding="5,2" ToolTip.Tip="Position"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualPosition}" /></ToggleButton>
+        <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
+        <ToggleButton Name="VisualToolRotateZ" Classes="authoring" IsChecked="{Binding IsRotateZTool, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatez]}" Padding="5,2" ToolTip.Tip="RotateZ"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRotateZ}" /></ToggleButton>
+        <ToggleButton Name="VisualToolRotateXY" Classes="authoring" IsChecked="{Binding IsRotateXYTool, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatexy]}" Padding="5,2" ToolTip.Tip="RotateXY"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRotateXy}" /></ToggleButton>
+        <ToggleButton Name="VisualToolScale" Classes="authoring" IsChecked="{Binding IsScaleTool, Mode=OneWay}" Command="{Binding Actions[video/tool/scale]}" Padding="5,2" ToolTip.Tip="Scale"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualScale}" /></ToggleButton>
+        <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
+        <ToggleButton Name="VisualToolClip" Classes="authoring" IsChecked="{Binding IsClipTool, Mode=OneWay}" Command="{Binding Actions[video/tool/clip]}" Padding="5,2" ToolTip.Tip="Clip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRectangle}" /></ToggleButton>
+        <ToggleButton Name="VisualToolVectorClip" Classes="authoring" IsChecked="{Binding IsVectorClipTool, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" Padding="5,2" ToolTip.Tip="VectorClip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualVector}" /></ToggleButton>
+        <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
+        <ToggleButton Name="VisualToolDistort" Classes="authoring" IsChecked="{Binding IsDistortTool, Mode=OneWay}" Command="{Binding Actions[video/tool/distort]}" Padding="5,2" ToolTip.Tip="Distort"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualDistort}" /></ToggleButton>
+      </StackPanel><Border Grid.Column="1" Background="Black" ClipToBounds="True"><Grid><Image Name="VideoImage" Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
+        <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="1" Model="{Binding}" />
+        <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="8">        <StackPanel Orientation="Horizontal" Spacing="4">
+          <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />
+          <Button Content="◀" Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame" /><Button Content="▶" Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame" />
+          <TextBox Margin="4,0,0,0" Name="ExactTime" Width="92" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
+        </StackPanel>        <Grid Grid.Column="1" ColumnDefinitions="*" ColumnSpacing="4"><TextBlock Text="{Binding FramePositionDisplay}" ToolTip.Tip="{Binding RelativeTimingDisplay}" VerticalAlignment="Center" FontSize="10" TextTrimming="CharacterEllipsis" /></Grid></Grid>
+
+    <Border Grid.Row="3" Name="VisualToolsBar" ToolTip.Tip="{Binding VisualHint}" IsVisible="{Binding HasVisualOptions}" Padding="0,4,0,0"><StackPanel>
+      <WrapPanel Name="VisualToolGroups">
+
+      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,12,0"><Button Name="MoveToggle" Command="{Binding Actions[video/position/toggle-move]}" Padding="4,1" ToolTip.Tip="Convert position to frame-timed movement, or keep movement start as position"><StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VisualMoveToggle}" /><TextBlock Text="pos ⇄ move" FontSize="11" /></StackPanel></Button></StackPanel>
+
+      <StackPanel Name="VectorSubtoolbar" Orientation="Horizontal" IsVisible="{Binding IsVectorClipTool}" Spacing="3" Margin="0,0,12,0">
+        <ToggleButton Name="VectorSelect" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding IsVectorSelect, Mode=OneWay}" Command="{Binding Actions[video/vector/select]}" Padding="4,1" ToolTip.Tip="Select"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSelect}" /></ToggleButton>
+        <ToggleButton Name="VectorLine" Classes="authoring" IsChecked="{Binding IsVectorLine, Mode=OneWay}" Command="{Binding Actions[video/vector/line]}" Padding="4,1" ToolTip.Tip="Line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorLine}" /></ToggleButton>
+        <ToggleButton Name="VectorBicubic" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding IsVectorBicubic, Mode=OneWay}" Command="{Binding Actions[video/vector/bicubic]}" Padding="4,1" ToolTip.Tip="Bicubic"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorBicubic}" /></ToggleButton>
+        <ToggleButton Name="VectorConvert" Classes="authoring" IsChecked="{Binding IsVectorConvert, Mode=OneWay}" Command="{Binding Actions[video/vector/convert]}" Padding="4,1" ToolTip.Tip="Convert"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorConvert}" /></ToggleButton>
+        <ToggleButton Name="VectorInsert" Classes="authoring" IsChecked="{Binding IsVectorInsert, Mode=OneWay}" Command="{Binding Actions[video/vector/insert]}" Padding="4,1" ToolTip.Tip="Insert"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorInsert}" /></ToggleButton>
+        <ToggleButton Name="VectorRemove" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding IsVectorRemove, Mode=OneWay}" Command="{Binding Actions[video/vector/remove]}" Padding="4,1" ToolTip.Tip="Remove"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorRemove}" /></ToggleButton>
+        <ToggleButton Name="VectorFreehand" Classes="authoring" IsChecked="{Binding IsVectorFreehand, Mode=OneWay}" Command="{Binding Actions[video/vector/freehand]}" Padding="4,1" ToolTip.Tip="Freehand"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorFreehand}" /></ToggleButton>
+        <ToggleButton Name="VectorSmooth" Classes="authoring" IsChecked="{Binding IsVectorSmooth, Mode=OneWay}" Command="{Binding Actions[video/vector/smooth]}" Padding="4,1" ToolTip.Tip="Smooth"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSmooth}" /></ToggleButton>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsClipFamily}" Spacing="3" Margin="0,0,0,0"><CheckBox Content="New inverse clip" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="11" /><Button Content="Invert clip" Command="{Binding Actions[video/clip/invert]}" Padding="4,1" FontSize="11" /></StackPanel>
+      </WrapPanel>
+    </StackPanel></Border>
+      </Grid>
     </Border>
 
-    <Grid Grid.Row="2" ColumnDefinitions="2*,4,3*" Name="UpperWorkspace">
-      <Grid Grid.Column="0" RowDefinitions="*,4,58" Name="VisualColumn">
-        <Border Grid.Row="0" Margin="6,6,3,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <Grid RowDefinitions="26,*,40">
-            <TextBlock Grid.Row="0" Margin="8,5" FontSize="12" FontWeight="SemiBold" Text="VIDEO" />
-            <Border Grid.Row="1" Margin="6,0" Background="#FF000000" ClipToBounds="True">
-              <Grid>
-                <Image Source="{Binding VideoFrame}" Stretch="Uniform" />
-                <Border HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="8" Padding="8,4" CornerRadius="3" Background="#AA111318">
-                  <TextBlock Foreground="White" FontSize="11" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" MaxWidth="560" />
-                </Border>
-              </Grid>
-            </Border>
-            <Grid Grid.Row="2" Margin="7,3" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="5">
-              <Button Grid.Column="0" Click="PlayPauseClick" Content="{Binding PlayPauseText}" IsEnabled="{Binding CanPlayMedia}" MinWidth="50" Padding="7,2" />
-              <Button Grid.Column="1" Click="StopPlaybackClick" Content="Stop" IsEnabled="{Binding IsPlaying}" MinWidth="46" Padding="7,2" />
-              <Slider Grid.Column="2"
-                      Minimum="0"
-                      Maximum="{Binding MediaDurationSeconds}"
-                      Value="{Binding CurrentTimeSeconds, Mode=TwoWay}"
-                      PointerReleased="VideoSeekReleased" />
-              <TextBlock Grid.Column="3" VerticalAlignment="Center" FontSize="11" Text="{Binding CurrentTimeSeconds, StringFormat={}{0:0.000}s}" MinWidth="62" />
-              <TextBlock Grid.Column="4" VerticalAlignment="Center" FontSize="11" Opacity="0.65" Text="{Binding MediaDurationSeconds, StringFormat={}/ {0:0.000}s}" MinWidth="72" />
-            </Grid>
-          </Grid>
-        </Border>
-        <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
-        <Border Grid.Row="2" Margin="6,3,3,6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <DockPanel Margin="6">
-            <TextBlock DockPanel.Dock="Left" VerticalAlignment="Center" FontSize="11" FontWeight="SemiBold" Text="VISUAL TOOLS" Margin="0,0,8,0" />
-            <StackPanel Orientation="Horizontal" Spacing="4">
-              <Button Command="{Binding PositionToolCommand}" ToolTip.Tip="Position tool" Padding="6,3">
-                <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Position}" Foreground="{DynamicResource IconForegroundBrush}" />
-              </Button>
-              <Button Command="{Binding ClipToolCommand}" ToolTip.Tip="Clip tool" Padding="6,3">
-                <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Clip}" Foreground="{DynamicResource IconForegroundBrush}" />
-              </Button>
-              <TextBlock VerticalAlignment="Center" Margin="5,0,0,0" FontSize="11" Text="{Binding ActiveVisualTool}" />
-            </StackPanel>
-          </DockPanel>
-        </Border>
+  </Grid>
+  <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
+  <Grid Grid.Column="2" Name="TemporalTextColumn">
+    <Grid.RowDefinitions><RowDefinition Height="180" MinHeight="160" /><RowDefinition Height="4" /><RowDefinition Height="*" MinHeight="280" /></Grid.RowDefinitions>
+    <Border Grid.Row="0" Background="{DynamicResource PanelBrush}">
+      <Grid Name="AudioRegion" Margin="6,6,6,4" RowDefinitions="24,*,14" RowSpacing="4">
+        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="0,0,132,0"><StackPanel Orientation="Horizontal" Spacing="4"><Button Content="−" Command="{Binding Actions[audio/zoom/out]}" Padding="5,0" /><Button Content="+" Command="{Binding Actions[audio/zoom/in]}" Padding="5,0" /><Button Content="Play line" Command="{Binding Actions[audio/play/selection]}" Padding="5,0" /><ToggleButton Classes="authoring" Content="Mute" IsChecked="{Binding PlaybackMuted, Mode=TwoWay}" Padding="4,0" ToolTip.Tip="Mute editor playback" /><Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="4,0" ToolTip.Tip="Play / pause from cursor" /><ComboBox Name="AudioMode" Margin="4,0,0,0" SelectedIndex="0" SelectionChanged="AudioModeChanged" Padding="5,0"><ComboBoxItem Content="Waveform" /><ComboBoxItem Content="Spectrogram" /></ComboBox></StackPanel><TextBlock Grid.Column="1" Name="AudioStatus" Text="{Binding MediaStatus}" ToolTip.Tip="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10" /></Grid>
+        <controls:AudioWaveformControl Grid.Row="1" Margin="0,4,132,0" Name="AudioDisplay" ToolTip.Tip="Click: seek · Green/red: drag start/end · Shift+drag inside line: move timing · Wheel: pan · Ctrl+wheel: zoom · Shift+wheel: amplitude" Model="{Binding}" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
+        <Border Grid.Row="1" Grid.RowSpan="2" HorizontalAlignment="Right" Width="1" Margin="0,8,124,20" Background="{DynamicResource DividerBrush}" />
+        <Grid Grid.Row="1" Grid.RowSpan="2" HorizontalAlignment="Right" ColumnDefinitions="32,32,32" RowDefinitions="14,*,18" ColumnSpacing="10" RowSpacing="4" Margin="0,4,0,0">
+          <TextBlock Grid.Column="0" Text="Time" FontSize="10" HorizontalAlignment="Center" ToolTip.Tip="Horizontal zoom" />
+          <TextBlock Grid.Column="1" Text="Amp" FontSize="10" HorizontalAlignment="Center" ToolTip.Tip="Vertical zoom / display amplitude" />
+          <TextBlock Grid.Column="2" Text="Vol" FontSize="10" HorizontalAlignment="Center" ToolTip.Tip="Playback volume" />
+          <Slider Grid.Row="1" Grid.Column="0" Name="AudioHorizontalZoom" Orientation="Vertical" Minimum="0" Maximum="100" Value="{Binding AudioHorizontalZoom, Mode=TwoWay}" ToolTip.Tip="Horizontal zoom · time per pixel" />
+          <Slider Grid.Row="1" Grid.Column="1" Name="AudioIntensity" Orientation="Vertical" Minimum="10" Maximum="100" Value="{Binding AudioAmplitude, Mode=TwoWay}" ToolTip.Tip="Display amplitude / spectral intensity (independent of volume)" />
+          <Slider Grid.Row="1" Grid.Column="2" Name="AudioVolume" IsEnabled="{Binding IsVolumeIndependent}" Orientation="Vertical" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding PlaybackVolume, Mode=TwoWay}" ToolTip.Tip="Playback volume · 0–100%" />
+          <ToggleButton Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Name="AudioVolumeLink" Classes="authoring" Content="Link" HorizontalAlignment="Stretch" MinWidth="44" FontSize="10" MinHeight="16" Padding="2,0" IsChecked="{Binding AudioVolumeLinked, Mode=TwoWay}" ToolTip.Tip="Link display amplitude to playback level" />
+        </Grid>
+        <ScrollBar Grid.Row="2" Name="AudioPanner" Orientation="Horizontal" Minimum="0" Maximum="{Binding #AudioDisplay.MaximumPan}" ViewportSize="{Binding #AudioDisplay.VisibleSeconds}" Value="{Binding #AudioDisplay.ViewportStart, Mode=TwoWay}" SmallChange="0.5" LargeChange="5" Margin="0,0,132,0" ToolTip.Tip="Pan the visible audio time range" />
       </Grid>
-
-      <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
-
-      <Grid Grid.Column="2" RowDefinitions="150,4,*" Name="TemporalTextColumn">
-        <Border Grid.Row="0" Margin="3,6,6,3" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <Grid RowDefinitions="24,*,22">
-            <DockPanel Grid.Row="0" Margin="8,4">
-              <TextBlock FontSize="12" FontWeight="SemiBold" Text="AUDIO" />
-              <TextBlock Margin="8,0,0,0" FontSize="10" Opacity="0.6" Text="plays from the same FFMS2 media clock" />
-            </DockPanel>
-            <controls:AudioWaveformControl Grid.Row="1" Margin="6,0" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
-            <TextBlock Grid.Row="2" Margin="7,2" FontSize="10" Opacity="0.72" Text="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" />
-          </Grid>
-        </Border>
-        <GridSplitter Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
-        <Border Grid.Row="2" Margin="3,3,6,6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-          <Grid Margin="7" RowDefinitions="26,32,32,*" IsEnabled="{Binding HasSelectedEvent}">
-            <TextBlock Grid.Row="0" FontSize="12" FontWeight="SemiBold" Text="EDIT PANEL" VerticalAlignment="Center" />
-            <Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="6" Margin="0,0,0,3">
-              <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" Text="Start" />
-              <TextBox Grid.Column="1" FontSize="11" Padding="5,2" Text="{Binding SelectedEvent.Start, Mode=TwoWay}" />
-              <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11" Text="End" />
-              <TextBox Grid.Column="3" FontSize="11" Padding="5,2" Text="{Binding SelectedEvent.End, Mode=TwoWay}" />
+    </Border>
+    <GridSplitter Name="AudioSplitter" Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
+    <Border Grid.Row="2" Background="{DynamicResource PanelBrush}">
+      <Grid Name="EventEditorRegion" Margin="6" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="4" IsEnabled="{Binding HasSelectedEvent}">
+        <Grid.Styles>
+          <Style Selector="TextBox"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
+          <Style Selector="ComboBox"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
+          <Style Selector="NumericUpDown"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
+          <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
+        </Grid.Styles>
+        <WrapPanel Grid.Row="0" Name="MetadataFields">
+          <Grid Name="CommentStyleGroup" Width="240" ColumnDefinitions="80,*" ColumnSpacing="3" Margin="0,0,12,8">
+            <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
+            <Grid Grid.Column="1" Name="StyleControls" ColumnDefinitions="*,26" ColumnSpacing="3">
+              <ComboBox Name="LineStyle" Height="26" VerticalAlignment="Center" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding EditorDraft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
+              <Button Grid.Column="1" Height="26" Content="…" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" />
             </Grid>
-            <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="6" Margin="0,0,0,3">
-              <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="11" Text="Style" />
-              <TextBox Grid.Column="1" FontSize="11" Padding="5,2" Text="{Binding SelectedEvent.Style, Mode=TwoWay}" />
-              <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11" Text="Actor" />
-              <TextBox Grid.Column="3" FontSize="11" Padding="5,2" Text="{Binding SelectedEvent.Actor, Mode=TwoWay}" />
-            </Grid>
-            <TextBox Grid.Row="3" FontSize="13" Padding="7" Text="{Binding SelectedEvent.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" Watermark="Select a subtitle row to edit its text" />
           </Grid>
-        </Border>
-      </Grid>
-    </Grid>
-
-    <GridSplitter Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
-
-    <Border Grid.Row="4" Margin="6" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Name="SubtitleGridRegion">
-      <Grid RowDefinitions="25,24,*">
-        <TextBlock Grid.Row="0" Margin="7,4" FontSize="12" FontWeight="SemiBold" Text="SUBTITLE GRID" />
-        <Border Grid.Row="1" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1" Padding="6,3">
-          <Grid ColumnDefinitions="42,82,82,110,110,*" ColumnSpacing="6">
-            <TextBlock Grid.Column="0" FontSize="11" FontWeight="SemiBold" Text="Layer" />
-            <TextBlock Grid.Column="1" FontSize="11" FontWeight="SemiBold" Text="Start" />
-            <TextBlock Grid.Column="2" FontSize="11" FontWeight="SemiBold" Text="End" />
-            <TextBlock Grid.Column="3" FontSize="11" FontWeight="SemiBold" Text="Style" />
-            <TextBlock Grid.Column="4" FontSize="11" FontWeight="SemiBold" Text="Actor" />
-            <TextBlock Grid.Column="5" FontSize="11" FontWeight="SemiBold" Text="Text" />
+          <Grid Name="MetadataOtherFields" Width="336" ColumnDefinitions="*,*,86" ColumnSpacing="12" Margin="0,0,0,8">
+            <AutoCompleteBox Name="LineActor" Height="26" VerticalAlignment="Center" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
+            <TextBox Name="LineEffect" Grid.Column="1" Height="26" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
+            <NumericUpDown Name="LineLayer" Grid.Column="2" Value="{Binding EditorDraft.LayerNumber, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
           </Grid>
-        </Border>
-        <ListBox Grid.Row="2" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent, Mode=TwoWay}" BorderThickness="0">
-          <ListBox.ItemTemplate>
-            <DataTemplate x:DataType="sub:AssEvent">
-              <Grid ColumnDefinitions="42,82,82,110,110,*" ColumnSpacing="6" Margin="3,1">
-                <TextBlock Grid.Column="0" FontSize="11" Text="{Binding Layer}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Column="1" FontSize="11" Text="{Binding Start}" />
-                <TextBlock Grid.Column="2" FontSize="11" Text="{Binding End}" />
-                <TextBlock Grid.Column="3" FontSize="11" Text="{Binding Style}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Column="4" FontSize="11" Text="{Binding Actor}" TextTrimming="CharacterEllipsis" />
-                <TextBlock Grid.Column="5" FontSize="11" Text="{Binding Text}" TextTrimming="CharacterEllipsis" />
-              </Grid>
-            </DataTemplate>
-          </ListBox.ItemTemplate>
-        </ListBox>
+        </WrapPanel>
+        <WrapPanel Grid.Row="1" Name="TimingFields">
+          <Grid Name="LineTimingGroup" ColumnDefinitions="Auto,96,Auto,96,Auto,72" ColumnSpacing="3" Margin="0,0,12,8">
+            <TextBlock Text="Start" FontSize="10" VerticalAlignment="Center" /><TextBox Name="LineStart" Grid.Column="1" Text="{Binding EditorDraft.Start, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start h:mm:ss.cc" />
+            <TextBlock Grid.Column="2" Text="End" FontSize="10" VerticalAlignment="Center" /><TextBox Name="LineEnd" Grid.Column="3" Text="{Binding EditorDraft.End, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End h:mm:ss.cc" />
+            <TextBlock Grid.Column="4" Text="Dur." FontSize="10" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding EditorDraft.Duration}" FontSize="11" VerticalAlignment="Center" />
+          </Grid>
+          <Grid Name="LineMarginGroup" ColumnDefinitions="Auto,86,Auto,86,Auto,86" ColumnSpacing="3" Margin="0,0,0,8">
+            <TextBlock Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Value="{Binding EditorDraft.LeftMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
+            <TextBlock Grid.Column="2" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Value="{Binding EditorDraft.RightMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
+            <TextBlock Grid.Column="4" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Value="{Binding EditorDraft.VerticalMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
+          </Grid>
+        </WrapPanel>
+        <WrapPanel Grid.Row="2" Name="FormattingToolbar" Margin="0,0,0,4">
+          <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,0,12,4">
+            <ToggleButton Classes="authoring" Content="B" FontWeight="Bold" IsThreeState="True" IsChecked="{Binding Formatting.Bold, Mode=OneWay}" Command="{Binding Actions[text/format/bold]}" ToolTip.Tip="Bold · Ctrl+B (mixed/animated state is indeterminate)" />
+            <ToggleButton Classes="authoring" Content="I" FontStyle="Italic" IsThreeState="True" IsChecked="{Binding Formatting.Italic, Mode=OneWay}" Command="{Binding Actions[text/format/italic]}" ToolTip.Tip="Italic · Ctrl+I" />
+            <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Underline, Mode=OneWay}" Command="{Binding Actions[text/format/underline]}" ToolTip.Tip="Underline · Ctrl+U"><TextBlock Text="U" TextDecorations="Underline" /></ToggleButton>
+            <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Strikeout, Mode=OneWay}" Command="{Binding Actions[text/format/strikeout]}" ToolTip.Tip="Strikeout"><TextBlock Text="S" TextDecorations="Strikethrough" /></ToggleButton>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,12,4">
+            <Button Content="Font…" Command="{Binding Actions[text/format/font]}" Padding="5,0" ToolTip.Tip="Font family and size for selection" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,0,12,4">
+            <controls:AssColorButton Value="{Binding Formatting.Primary}" Label="1" Command="{Binding Actions[text/format/primary]}" ToolTip.Tip="Primary color and alpha at caret (static state)" />
+            <controls:AssColorButton Value="{Binding Formatting.Secondary}" Label="2" Command="{Binding Actions[text/format/secondary]}" ToolTip.Tip="Secondary karaoke color and alpha at caret (static state)" />
+            <controls:AssColorButton Value="{Binding Formatting.Outline}" Label="3" Command="{Binding Actions[text/format/outline]}" ToolTip.Tip="Outline color and alpha at caret (static state)" />
+            <controls:AssColorButton Value="{Binding Formatting.Shadow}" Label="4" Command="{Binding Actions[text/format/shadow]}" ToolTip.Tip="Shadow color and alpha at caret (static state)" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+            <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="5,0" FontSize="11" ToolTip.Tip="Reset to line style at caret / selection" />
+          </StackPanel>
+        </WrapPanel>
+
+        <controls:AssTextBox Name="SubtitleText" Grid.Row="3" ToolTip.Tip="Enter: commit and next · Ctrl+Enter: commit and stay · Shift+Enter: insert \N · Ctrl+Shift+D: split" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
       </Grid>
     </Border>
   </Grid>
-</Window>
+</Grid>
+<GridSplitter Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
+<Border Grid.Row="4" Margin="6" Name="SubtitleGridRegion" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
+<Grid RowDefinitions="24,*" ToolTip.Tip="SUBTITLE GRID">
+<Border Padding="10,2" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1"><Grid Name="ColumnHeader" PointerPressed="HeaderPressed" PointerMoved="HeaderMoved" PointerReleased="HeaderReleased" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4" ToolTip.Tip="Drag a column boundary to resize"><TextBlock Text="#" /><TextBlock Grid.Column="1" Text="L" ToolTip.Tip="Layer" /><TextBlock Grid.Column="2" Text="Start" /><TextBlock Grid.Column="3" Text="End" /><TextBlock Grid.Column="4" Text="Style" /><TextBlock Grid.Column="5" Text="Actor" /><TextBlock Grid.Column="6" Text="Effect" /><TextBlock Grid.Column="7" Text="Text" /></Grid></Border>
+<ListBox Name="SubtitleRows" Grid.Row="1" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
+<ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,0" /><Setter Property="Height" Value="26" /><Setter Property="MinHeight" Value="26" /><Setter Property="MaxHeight" Value="26" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style><Style Selector="Grid.subtitle-row TextBlock"><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" /></Style><Style Selector="Grid.subtitle-row.comment TextBlock"><Setter Property="Foreground" Value="{DynamicResource AssSyntaxUnknown}" /></Style><Style Selector="ListBoxItem:selected Grid.subtitle-row TextBlock"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style></ListBox.Styles>
+<ListBox.ContextMenu><ContextMenu>
+<MenuItem Header="Insert before" Command="{Binding Actions[grid/insert/before]}" />
+<MenuItem Header="Insert after" Command="{Binding Actions[grid/insert/after]}" />
+<MenuItem Header="Duplicate" Command="{Binding Actions[grid/duplicate]}" />
+<MenuItem Header="Delete selected" Command="{Binding Actions[grid/delete]}" />
+<MenuItem Header="Dialogue / Comment" Command="{Binding Actions[grid/toggle-comment]}" />
+<MenuItem Header="Split at text cursor" Command="{Binding Actions[grid/split]}" />
+<MenuItem Header="Join selected" Command="{Binding Actions[grid/join]}" />
+<MenuItem Header="Move up" Command="{Binding Actions[grid/move/up]}" />
+<MenuItem Header="Move down" Command="{Binding Actions[grid/move/down]}" />
+<MenuItem Header="Styles Manager…" Command="{Binding Actions[styles/manage]}" />
+<MenuItem Header="Copy lines" Command="{Binding Actions[grid/copy]}" />
+<MenuItem Header="Cut lines" Command="{Binding Actions[grid/cut]}" />
+<MenuItem Header="Paste lines" Command="{Binding Actions[grid/paste]}" />
+<MenuItem Header="Select all lines" Command="{Binding Actions[grid/select-all]}" />
+</ContextMenu></ListBox.ContextMenu><ListBox.ItemTemplate><DataTemplate x:DataType="sub:AssEvent"><Grid Tag="SubtitleRow" Classes="subtitle-row" Classes.comment="{Binding IsComment}" Height="26" ClipToBounds="True" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4">
+<Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource IconAccentBrush}" IsVisible="{Binding IsCurrent}" /><Border Grid.ColumnSpan="8" Background="{DynamicResource IconAccentBrush}" Opacity="0.12" IsVisible="{Binding IsActive}" /><TextBlock Text="{Binding Number}" FontSize="11" Margin="5,0,0,0" /><TextBlock Grid.Column="1" Text="{Binding DisplayLayer}" FontSize="11" /><TextBlock Grid.Column="2" Text="{Binding DisplayStart}" FontSize="11" /><TextBlock Grid.Column="3" Text="{Binding DisplayEnd}" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DisplayStyle}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="5" Text="{Binding DisplayActor}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="6" Text="{Binding DisplayEffect}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="7" Text="{Binding DisplayText}" MaxLines="1" TextTrimming="CharacterEllipsis" FontSize="12" />
+</Grid></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></Border></Grid></Window>

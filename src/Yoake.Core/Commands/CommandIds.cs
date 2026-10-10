@@ -2,6 +2,17 @@ namespace Yoake.Core.Commands;
 
 public static class CommandIds
 {
+    public const string FormatBold="text/format/bold", FormatItalic="text/format/italic", FormatUnderline="text/format/underline", FormatStrikeout="text/format/strikeout";
+    public const string FormatFont="text/format/font", FormatPrimary="text/format/primary", FormatSecondary="text/format/secondary", FormatOutline="text/format/outline", FormatShadow="text/format/shadow", FormatReset="text/format/reset";
+    public const string TextHardNewline="text/insert/hard-newline";
+    public const string EditComment="edit/comment";
+    public const string GestureBegin="editor/gesture/begin";
+    public const string GestureTiming="editor/gesture/timing";
+    public const string GesturePosition="editor/gesture/position";
+    public const string GestureClip="editor/gesture/clip";
+    public const string GestureCommit="editor/gesture/commit";
+    public const string GestureCancel="editor/gesture/cancel";
+    public const string GridColumnWidths = "view/grid-column-widths";
     public const string SubtitleNew = "subtitle/new";
     public const string SubtitleOpen = "subtitle/open";
     public const string SubtitleSave = "subtitle/save";
@@ -16,4 +27,37 @@ public static class CommandIds
     public const string GridLineNext = "grid/line/next";
     public const string VideoToolPosition = "video/tool/position";
     public const string VideoToolClip = "video/tool/clip";
+    public const string SubtitleSaveAs = "subtitle/save-as";
+    public const string SubtitleRevert = "subtitle/revert";
+    public const string MediaOpen = "media/open";
+    public const string VideoStop = "video/stop";
+    public const string VideoFramePrevious = "video/frame/previous";
+    public const string GridLinePrevious = "grid/line/previous";
+    public const string GridInsertBefore = "grid/insert/before";
+    public const string GridInsertAfter = "grid/insert/after";
+    public const string GridDuplicate = "grid/duplicate";
+    public const string GridDelete = "grid/delete";
+    public const string GridToggleComment = "grid/toggle-comment";
+    public const string GridSplit = "grid/split";
+    public const string GridJoin = "grid/join";
+    public const string GridMoveUp = "grid/move/up";
+    public const string GridMoveDown = "grid/move/down";
+    public const string GridCopy = "grid/copy";
+    public const string GridCut = "grid/cut";
+    public const string GridPaste = "grid/paste";
+    public const string GridSelectAll = "grid/select-all";
+    public const string EditCommit = "edit/commit";
+    public const string EditCommitNext = "edit/commit-next";
+    public const string EditFind = "edit/find";
+    public const string TimingSetStart = "timing/set-start";
+    public const string TimingSetEnd = "timing/set-end";
+    public const string TimingJumpStart = "timing/jump-start";
+    public const string TimingJumpEnd = "timing/jump-end";
+    public const string AudioPlayCursor = "audio/play/cursor";
+    public const string StylesManage = "styles/manage";
+    public const string ScriptInfoEdit = "script-info/edit";
+    public const string VideoSeek = "video/seek";
+    public const string AudioZoomIn = "audio/zoom/in";
+    public const string AudioZoomOut = "audio/zoom/out";
+    public const string EditCancel = "edit/cancel";
 }

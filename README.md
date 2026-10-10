@@ -1,73 +1,77 @@
-# Yoake — greenfield native editor foundation
+# Yoake — native ASS subtitle editor
 
-This repository is the **new C#/Avalonia Yoake**, not an in-place port of the old Qt/QML architecture. The first milestone deliberately establishes the runtime and editor architecture before implementing subtitle/media features.
+Yoake is a C#/Avalonia subtitle editor using FFMS2 for media and Mangetsu for live ASS rendering. It keeps document tabs near native window controls, video and visual tools on the left, audio above the event editor on the right, and a virtualized subtitle grid below. Splitters remain resizable.
 
-## Baseline
+## Editing workflow
 
-- .NET 10 LTS, SDK pinned by `global.json`
-- Avalonia 12.1.3
-- Windows-first desktop UX, Linux kept architecturally viable
-- NativeAOT is a design constraint from the first commit
-- No Electron, WebView shell, reflection-heavy DI container, or arbitrary managed plugin loading
-- Native libraries live behind `Yoake.Native` / future provider boundaries
+Open an ASS file with **Ctrl+O**, then use **Video → Open video/audio**. Existing Aegisub project media references and same-basename video files are discovered when opening through the File command. Each tab owns its subtitle model, undo history, media session, waveform and playback position.
 
-## What exists now
+Use the grid to select rows: click, Ctrl+click, Shift+click, arrows, Home/End, and Page Up/Down. The current row has an accent stripe; rows active at media time have a subtle highlight. Drag column boundaries in the header to resize columns; widths are saved in settings. Right-click for row operations.
 
-- Windows browser-style document tabs integrated into the titlebar region while retaining Full platform decorations/caption buttons; other platforms keep normal chrome
-- corrected workspace: **Video + Visual Tools** on the left, **Audio + Edit** on the right, **Subtitle Grid** across the bottom
-- resizable splitters for all required boundaries
-- stable command registry and UI command adapters
-- contextual hotkey resolver with conflict detection
-- rollback-by-default transaction-aware undo manager with explicit commit/cancel
-- observable workspace/document lifetime foundation with live tab title/dirty updates
-- versioned, source-generated JSON settings with explicit portable-mode marker support
-- cancellation-aware background job service and small logging abstraction
-- Light/Dark/System theme foundation
-- deliberately narrow monochrome SVG functional-icon pipeline plus SVG-master → Windows `.ico` application identity generation
-- deterministic FFmpeg/FFMS2 dependency preparation derived from old Yoake's pins and layout
-- Windows CI for native dependencies, managed build/tests, NativeAOT publish, strict startup smoke check, transitive runtime-DLL staging/verification, and portable ZIP
-- architecture and agent guidance
+The edit panel buffers text and metadata. **Ctrl+Enter** commits; **Enter** in subtitle text commits and advances (creating a following line at the end); **Shift+Enter** inserts a newline. Moving to another row or tab commits valid edits. Invalid timings or margins keep the draft available for correction. Actual line breaks normalize to ASS `\N` when committed. IME preedit and open dropdowns retain their Enter handling.
 
-Actual ASS parsing, media decode/playback, waveform/spectrogram, Mangetsu rendering, visual editing, timing modes, and Automation are intentionally **not** faked in this milestone. Their panels are explicit placeholders.
+Undo/redo includes text, metadata, timings, multi-row operations, styles, Script Info and visual edits. Continuous drags coalesce to one operation; Esc or capture loss rolls them back. The dirty indicator tracks drafts and the saved undo state. Save As updates the tab path/title; closing dirty documents offers Save, Discard and Cancel.
 
-## Build
+## Timing and visual tools
 
-Windows app builds generate the executable/window `.ico` from the SVG master and therefore require ImageMagick's `magick.exe` on `PATH`. CI pins the Chocolatey ImageMagick package version; local developers can install the same tool or another compatible ImageMagick 7 build. Functional UI icons do not use ImageMagick at runtime.
+- Click the audio display to seek. Drag green/red markers to change start/end. **Shift+drag inside the selected region** moves the whole timing range.
+- The three vertical audio controls are horizontal zoom, display amplitude, and playback volume. Link couples amplitude to volume; the audio/edit sash independently controls panel height. Wheel pans, Ctrl+wheel zooms at the pointer, and Shift+wheel adjusts amplitude. The bottom panner shares the same viewport.
+- The audio mode selector switches between full sequential waveform peaks and a working, bounded viewport spectrogram. Analysis runs as cancellable background jobs. The spectrum is intentionally a basic linear-frequency view rather than a high-end timing spectrogram.
+- **Crosshair** shows script coordinates and double-clicks to shift the visible selection, including both move endpoints and explicit origins. **Position** shows standby/start/end/origin handles and the current frame's movement position. Endpoint drags associate their time with that frame; the contextual action converts pos/move.
+- **Rotate Z**, **Rotate X/Y**, and **Scale** provide rings, transformed grids and oriented guides. Ctrl snaps angles to 30° or scale to 25%; Shift constrains axes; Alt preserves scale aspect. Origin handles create/update `\org` explicitly.
+- **Clip** creates and resizes rectangles, shades clipped regions and deliberately moves existing masks. **Vector Clip** has Select/box selection, Line, Bicubic, Convert, Insert, Remove, Freehand and Smooth subtools. Integer drawing scale, inverse masks and animated `\clippos` survive editing.
+- **Distort** edits four corners through Mangetsu's eight-value `\distort`, upgrading a legacy six-value tag only on an intentional edit. Bounds are measured asynchronously through Mangetsu; raster bounds and complex run/layout cases have the limits documented in [visual typesetting architecture](docs/architecture/visual-typesetting.md).
+- Visual gestures edit visible selected dialogue lines together, preview during the drag, undo once and roll back on Esc, capture loss, seek or tool/document changes. Relative/expression positions that cannot be interpreted remain preserved in the text editor.
+- Mangetsu remains the preview authority. Overlays are editing handles, not another subtitle renderer.
 
-```powershell
-# .NET SDK 10.0.401 + ImageMagick 7 on PATH for Windows app builds
-dotnet restore Yoake.sln
-dotnet build Yoake.sln -c Debug
-dotnet test tests/Yoake.Core.Tests/Yoake.Core.Tests.csproj -c Debug
+## Shortcuts
 
-dotnet publish src/Yoake.App/Yoake.App.csproj `
-  -c Release -r win-x64 --self-contained true -p:PublishAot=true
-```
+| Action | Shortcut / context |
+| --- | --- |
+| New / Open / Save | Ctrl+N / Ctrl+O / Ctrl+S |
+| Save As / close tab | Ctrl+Shift+S / Ctrl+W |
+| Undo / Redo | Ctrl+Z / Ctrl+Y (also Ctrl+Shift+Z) |
+| Find / Replace | Ctrl+F |
+| Commit / commit and next | Ctrl+Enter / Enter in subtitle text or grid |
+| Previous / next subtitle | Alt+Up / Alt+Down |
+| Insert after / before | Insert / Ctrl+Insert in grid |
+| Duplicate / split at cursor | Ctrl+D / Ctrl+Shift+D |
+| Delete lines | Delete in grid |
+| Copy / cut / paste / select all lines | Ctrl+C / Ctrl+X / Ctrl+V / Ctrl+A in grid |
+| Move selected lines | Alt+Shift+Up / Down |
+| Set start / end to media time | Ctrl+3 / Ctrl+4 |
+| Play / pause | Space in video, audio or grid |
+| Play current subtitle | R in video, audio or grid |
+| Previous / next frame | Left / Right in video |
+| Stop | Esc in video/audio |
+| Cancel draft / gesture | Esc in editor/grid/visual tools |
 
-Native dependency preparation is authoritative in one place:
+The File, Edit, Subtitle, Timing, Video, Audio and View menus expose implemented commands. Styles Manager supports creation, duplication, editing, rename with event reference updates, deletion with a replacement style, reordering, undo and redo. Script Info and find/replace operate on the current document. Find supports case sensitivity, regular expressions with timeouts, and the selection captured when opening the dialog.
 
-```powershell
-.\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage All
-```
+## Data and runtime guarantees
 
-## Portable mode
+The source model preserves unknown sections, comments, unknown fields, field ordering, unknown override syntax, Mangetsu tags and mixed line endings. Records retain their local Format; structural edits preserve unrelated source lines. UTF-8, UTF-16 and UTF-32 BOM/endianness are retained. Unsupported legacy code pages are refused rather than silently corrupted. Saves write a temporary file before replacing the destination.
 
-Normal mode stores settings under the user's application-data directory. To opt into Windows-style portable settings, create an empty file named `yoake.portable` beside the executable before launch.
+Native pointers stay in `Yoake.Native`. FFMS2 supplies indexed frame timestamps for VFR stepping. Audio output supplies the playback clock when audio exists; video-only playback uses a monotonic clock. There is no second audio-display timeline. No managed runtime dependency was added for the editor work.
 
-## Repository map
+The baseline is .NET 10 LTS (SDK `10.0.401`), Avalonia `12.1.3`, Windows first, with NativeAOT/trimming checks enabled. Normal settings use application data; an empty `yoake.portable` marker beside the executable selects portable settings.
 
-- `src/Yoake.Core` — application/editor-domain infrastructure; no Avalonia dependency
-- `src/Yoake.Native` — native dependency contracts/layout only; no native pointer leakage into UI
-- `src/Yoake.UI` — Avalonia shell, theme service, command adapters, generated icon geometry
-- `src/Yoake.App` — composition root and executable
-- `tests/Yoake.Core.Tests` — command/hotkey/undo/settings/workspace tests
-- `third_party` — immutable native dependency metadata/build descriptors
-- `ci` — dependency, package, smoke, and source-policy scripts
-- `docs/architecture` — architectural contracts future work must preserve
-- `luna.md` — contributor/agent rules
+## Validation and limitations
 
-See `docs/architecture/overview.md` before adding a subsystem.
+GitHub Actions is the build/test authority for this implementation. It runs source policy, Core regression tests, UI command-model workflow tests, compiled bindings, Windows NativeAOT publish, native runtime closure verification, strict desktop startup smoke, and a packaged editor/provider verification against deterministic AVI/PCM fixtures. No local compilation or native build was performed for this task.
 
-## License
+Interactive MKV playback, audio hardware, Japanese/Burmese input methods, OS clipboard interoperability, pointer gestures and long-film laptop performance still need a hands-on release smoke test. The automated checks do not replace that test. Legacy code-page import, advanced vector-path construction, movement/rotation/tracking tools, automation, and a high-end spectrogram remain future work. Styles use explicit ASS field editors and hex/decimal color entries rather than font/color picker dialogs.
 
-Yoake is licensed under the BSD 3-Clause License; see `LICENSE`. Third-party license texts shipped with the portable package live under `third_party/licenses` plus the native license bundle collected by CI.
+## Repository map and developer build
+
+- `src/Yoake.Core` — lossless subtitle source model, editor operations, undo, commands, settings and jobs
+- `src/Yoake.Native` — FFMS2, waveOut and Mangetsu provider boundaries
+- `src/Yoake.UI` — Avalonia workspace, drafts, controls and dialogs
+- `src/Yoake.App` — composition and packaged verification entry point
+- `tests` — domain and command-model workflow regressions
+- `ci` / `third_party` — authoritative native dependency and packaging pipeline
+- `docs/architecture` / `luna.md` — architectural contracts and contributor rules
+
+Windows executable builds generate the application `.ico` from its SVG master and require ImageMagick 7 on PATH. The native dependency entry point remains `ci/build_dependencies.ps1`; do not duplicate its acquisition/build logic. Developers outside this CI-only task can restore/build `Yoake.sln`, run both test projects, and publish `Yoake.App` for `win-x64` with `PublishAot=true`.
+
+Yoake is BSD 3-Clause; see `LICENSE`. Third-party texts are packaged under `licenses`. Functional icons remain Yoake-owned SVG geometry and are independent from the application identity.

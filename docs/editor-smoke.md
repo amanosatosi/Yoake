@@ -1,0 +1,22 @@
+# Manual release smoke
+
+Use the Windows portable artifact from the implementation PR's green Actions run, a real MKV with audio, and `tests/Yoake.Core.Tests/Fixtures/fansub.ass` (then a representative production script).
+
+1. Open the ASS, then MKV. Check video, Mangetsu subtitle pixels, duration, waveform, play/pause/stop and synchronization.
+2. Select rows by click, Ctrl, Shift and keyboard. Resize columns, scroll to the end of a large file and return to the current row. Confirm playback does not steal selection.
+3. Drag start/end and Shift+drag the timing range. Undo/redo once per gesture. Esc and capture loss must restore the original timing.
+4. Edit text, actor, style, margins, effect and layer. Test Enter/Shift+Enter/Ctrl+Enter, actual newlines and literal `\N`. Try Japanese IME, Burmese combining text and family emoji. Invalid timing must retain the draft.
+5. Select text across existing bold/reset/transform tags. Use Ctrl+B/Ctrl+I/Ctrl+U, strikeout, Font, four color/alpha actions and Reset; undo/redo, verify restored surrounding state and exact unknown tags. Check highlighting in both themes and a 5,000-character KFX line.
+6. Duplicate several rows, toggle comments, insert before/after, move, join, copy/cut/paste, select all and delete. Undo/redo each operation.
+7. Split at a grapheme boundary. Verify unknown tags remain unchanged; inspect the second line's leading overrides.
+8. Create, duplicate, rename, edit, reorder and delete styles both without references and with a required replacement. Undo reference changes. In the same Styles Manager pane, choose font, size, alpha colors, alignment and margins; confirm the actual Mangetsu checkerboard preview updates. Compare sample/current-line modes. Copy both directions through a named library collection, reopen the app and verify presets/extra fields. Import styles from another ASS. Edit Script Info resolution/title.
+9. Use Ctrl+3/Ctrl+4, play current line, jump start/end and frame-step through VFR content. Seek while playing and after pause.
+10. Use every visual tool over real sign footage. Check standby/move endpoints and current-frame marker, crosshair double-click, origins, Rotate Z/XY guides and Shift/Ctrl/Alt scale modifiers. Create/resize/move rectangle and inverse masks; exercise all eight vector subtools, box/Ctrl selection, cubic controls, scale 3, animated clippos and closing edges. Drag each Distort corner and center with six/eight-value source; compare actual glyph corners to the cage, including multiline and mixed-style signs. Select overlapping lines and confirm shared deltas exclude comments/out-of-frame rows. For each continuous drag check live pixels, one-step undo, Esc, capture loss, seek and tab/tool switches.
+11. Drag the color hue/alpha strips and use arrow/Home/End keys. Activate eyedropper by click and drag, inspect the magnifier, select center/neighbors, cancel with Esc/capture loss, and cross mixed-DPI monitors with negative origins. ASS alpha must remain independent.
+12. Exercise horizontal zoom/amplitude/volume sliders and Link; resize panel with the sash and reopen to check persistence. Pan with the bottom scrollbar and wheels; zoom at the cursor without jumping. Compare waveform/spectrogram amplitude while unlinked from volume.
+13. Switch waveform/spectrum, scroll, zoom rapidly, switch tabs while indexing/analysis runs, and confirm inactive work cannot replace the current preview.
+14. Find next/previous, case-sensitive and regex searches, replace and replace all in captured selected rows. Undo replace all once.
+15. Save As, close with Save/Discard/Cancel, reopen, and diff unknown sections/fields/override spans against the original. Verify BOM/newlines and another tab's independent history/media.
+16. Check native caption buttons, snap layouts, resize hit tests, theme switching and laptop-scale workspace proportions. At 100%, 125%, 150% and 200% Windows scaling, check readable layer/margin/time fields, narrow-window reflow and audio/edit splitter limits.
+
+Automated CI also captures real authoring controls in both themes at normal/narrow widths and 96/120/144/192 render DPI, checks editable numeric bounds and actual syntax brushes, and exercises inline style/library switching. Render DPI captures do not simulate monitor changes. CI also drives routed pointer/key input through real visual/color/audio controls, checks live/cancelled Mangetsu pixels and captures all tool overlays. Interactive OS capture, audio-device, IME and monitor transitions still need this hands-on check.

@@ -20,4 +20,41 @@ Windows portable packages may include only the x64 Visual C++ runtime DLLs that 
 
 ## Aegisub
 
-No Aegisub asset or source file is copied into this M0 repository. Aegisub/Toshi-ban is used as a behavioral and visual reference; Yoake's functional icons remain separately authored, theme-neutral SVG geometry. If future work actually derives or copies an Aegisub asset, its exact source and BSD attribution must be recorded before merge. See `docs/architecture/asset-provenance.md`.
+Yoake adapts five functional style-list SVG paths from
+https://github.com/amanosatosi/Aegisub_Toshi-ban at commit
+`b20d63af149568cbef00f3a22742217ecd915990`:
+`docs/art-sources/buttons/arrow_up.svg`, `arrow_down.svg`,
+`arrow_up_stop.svg`, `arrow_down_stop.svg`, `arrow_sort.svg`.
+
+Copyright (c) 2004-2012, Aegisub Project. BSD 3-Clause; full license is
+`licenses/Aegisub-BSD-3-Clause.txt` in Windows distributions and
+`third_party/licenses/Aegisub-BSD-3-Clause.txt` in source.
+Modifications: path coordinates scaled from 64 to 24 units, black fill replaced
+with semantic currentColor, Inkscape metadata removed, decorative two-unit
+black stroke deliberately removed for compact filled silhouettes. No unsupported
+stroke/transform is passed to the SVG generator. Application identity is independent.
+
+
+## Visual authoring artwork
+
+Yoake adapts functional SVG artwork from https://github.com/amanosatosi/Aegisub_Toshi-ban
+at `28b5156df94cb2538d373db503445d2b07466396`, BSD 3-Clause,
+Copyright (c) 2004-2012, Aegisub Project; the full license is retained at
+`third_party/licenses/Aegisub-BSD-3-Clause.txt` and packaged in `licenses/`.
+
+Exact source directory: `docs/art-sources/buttons/`. Source filenames:
+`visual_standard.svg`, `visual_move.svg`, `visual_rotatez.svg`,
+`visual_rotatexy.svg`, `visual_scale.svg`, `visual_clip.svg`,
+`visual_vector_clip.svg`, `visual_perspective.svg`, `visual_move_conv_move.svg`,
+`eyedropper_tool.svg`, `visual_vector_clip_drag.svg`,
+`visual_vector_clip_line.svg`, `visual_vector_clip_bicubic.svg`,
+`visual_vector_clip_convert.svg`, `visual_vector_clip_insert.svg`,
+`visual_vector_clip_remove.svg`, `visual_vector_clip_freehand.svg`,
+`visual_vector_clip_freehand_smooth.svg`.
+
+Adaptations: all coordinates and stroke widths scaled from 64 to 24 units;
+fill/stroke colors replaced with semantic currentColor; Inkscape metadata and
+unused defs removed. Curves, strokes, caps, joins and fill rules are retained.
+The quadrilateral icon is renamed Distort and denotes Mangetsu bilinear
+four-corner authoring; it does not introduce Aegisub tag semantics.
+No upstream application identity artwork is used.

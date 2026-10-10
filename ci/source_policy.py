@@ -48,7 +48,7 @@ for path in (ROOT/'src').rglob('*.cs'):
     if 'IntPtr' in text and 'Yoake.Native' not in str(path): fail(f"native pointer leaked outside Yoake.Native: {path.relative_to(ROOT)}")
 
 ui=(ROOT/'src/Yoake.UI/MainWindow.axaml').read_text(encoding='utf-8')
-for marker in ('Name="UpperWorkspace"','Name="VisualColumn"','Name="TemporalTextColumn"','Name="SubtitleGridRegion"','VIDEO','AUDIO','EDIT PANEL','SUBTITLE GRID'):
+for marker in ('Name="UpperWorkspace"','Name="VisualColumn"','Name="TemporalTextColumn"','Name="SubtitleGridRegion"','Name="VideoRegion"','Name="AudioRegion"','Name="EventEditorRegion"','SUBTITLE GRID'):
     if marker not in ui: fail(f"required workspace marker missing: {marker}")
 if 'SystemDecorations="None"' in ui or 'WindowDecorations="None"' in ui:
     fail('window chrome must retain native system/snap/maximize behavior')
@@ -64,8 +64,8 @@ app_project=(ROOT/'src/Yoake.App/Yoake.App.csproj').read_text(encoding='utf-8')
 for marker in ('ApplicationIcon', 'AvaloniaIncludeApplicationIconAsWindowIcon', 'generate-app-icon.ps1', 'yoake.ico'):
     if marker not in app_project: fail(f'Windows application icon pipeline marker missing: {marker}')
 smoke=(ROOT/'ci/smoke_windows.ps1').read_text(encoding='utf-8')
-if 'clean early exit' in smoke.lower() or 'if ($process.exitcode -ne 0)' in smoke.lower():
-    fail('startup smoke must fail on any early desktop-app exit')
+for marker in ('--verify-ui-startup', '--profile-directory', 'legacy', 'damaged', 'fatal-diagnostics', 'WaitForExit', "StartsWith('PASS:')", '$process.ExitCode -ne 0'):
+    if marker not in smoke: fail(f'real MainWindow/profile startup verification marker missing: {marker}')
 commands=(ROOT/'src/Yoake.Core/Commands/CommandRegistry.cs').read_text(encoding='utf-8')
 registry_adapter=(ROOT/'src/Yoake.UI/Commands/RegistryCommand.cs').read_text(encoding='utf-8')
 if 'ConfigureAwait(false)' in commands:
@@ -117,4 +117,6 @@ for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll')"):
 
 result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--check'])
 if result.returncode: fail('generated icon catalog is stale')
+result=subprocess.run([sys.executable, str(ROOT/'ci/test_icon_generator.py')])
+if result.returncode: fail('SVG semantic regression checks failed')
 print('source-policy: OK')

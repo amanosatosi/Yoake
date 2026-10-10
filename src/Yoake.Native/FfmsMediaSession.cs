@@ -1,3 +1,4 @@
+using Yoake.Core.Audio;
 using System.Runtime.InteropServices;
 
 namespace Yoake.Native;
@@ -35,6 +36,10 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     private nint _videoSource;
     private nint _audioSource;
     private bool _disposed;
+    private double[] _frameTimes = [];
+    private int[] _keyframes=[];
+    public IReadOnlyList<double> FrameTimes=>_frameTimes;
+    public IReadOnlyList<int> Keyframes=>_keyframes;
 
     private FfmsMediaSession(string path, nint videoSource, nint audioSource, MediaInfo info)
     {
@@ -45,17 +50,18 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     }
 
     public string SourcePath { get; }
-    public MediaInfo Info { get; }
+    public MediaInfo Info { get; private set; }
     public bool HasVideo => _videoSource != 0;
     public bool HasAudio => _audioSource != 0;
 
-    public static FfmsMediaSession Open(string path)
+    public static FfmsMediaSession Open(string path, CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         path = System.IO.Path.GetFullPath(path);
         if (!File.Exists(path))
             throw new FileNotFoundException("Media file does not exist.", path);
 
+        cancellationToken.ThrowIfCancellationRequested();
         EnsureInitialized();
 
         byte* errorBuffer = stackalloc byte[ErrorBufferSize];
@@ -67,9 +73,15 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         Native.FFMS_TrackTypeIndexSettings(indexer, VideoTrackType, IndexTrack, 0);
         Native.FFMS_TrackTypeIndexSettings(indexer, AudioTrackType, IndexTrack, 0);
         ResetError(ref error, errorBuffer);
-        var index = Native.FFMS_DoIndexing2(indexer, IndexErrorHandlingClearTrack, &error);
-        if (index == 0)
-            throw CreateException("FFMS_DoIndexing2", errorBuffer);
+        var cancellationHandle = GCHandle.Alloc(cancellationToken);
+        nint index;
+        try
+        {
+            Native.FFMS_SetProgressCallback(indexer, &IndexProgress, GCHandle.ToIntPtr(cancellationHandle));
+            index = Native.FFMS_DoIndexing2(indexer, IndexErrorHandlingClearTrack, &error);
+        }
+        finally { cancellationHandle.Free(); }
+        if (index == 0) { cancellationToken.ThrowIfCancellationRequested(); throw CreateException("FFMS_DoIndexing2", errorBuffer); }
 
         nint videoSource = 0;
         nint audioSource = 0;
@@ -173,7 +185,31 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
 
             var duration = Math.Max(videoDuration, audioDuration);
             var info = new MediaInfo(path, width, height, frameCount, fps, duration, sampleRate, channels, audioSamples);
-            return new FfmsMediaSession(path, videoSource, audioSource, info);
+            var session = new FfmsMediaSession(path, videoSource, audioSource, info);
+            if (videoSource != 0)
+            {
+                var track = Native.FFMS_GetTrackFromVideo(videoSource);
+                var timeBase = (FfmsTimeBase*)Native.FFMS_GetTimeBase(track);
+                if (timeBase == null || timeBase->Den == 0) throw new InvalidOperationException("Invalid FFMS2 time base.");
+                session._frameTimes = new double[frameCount];
+                List<int> keyframes=[];
+                for (var i = 0; i < frameCount; i++)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var frameInfo = (FfmsFrameInfo*)Native.FFMS_GetFrameInfo(track, i);
+                    if (frameInfo == null) throw new InvalidOperationException("Missing FFMS2 frame timestamp.");
+                    if(frameInfo->KeyFrame!=0)keyframes.Add(i);
+                    session._frameTimes[i] = (double)frameInfo->PTS * timeBase->Num / timeBase->Den / 1000d;
+                }
+                session._keyframes=keyframes.ToArray();
+            }
+            if(session._frameTimes.Length>0)
+            {
+                var last=session._frameTimes[^1];
+                var frameDuration=session._frameTimes.Length>1?last-session._frameTimes[^2]:fps>0?1/fps:0;
+                session.Info=info with{DurationSeconds=Math.Max(audioDuration,last+Math.Max(0,frameDuration))};
+            }
+            return session;
         }
         catch
         {
@@ -189,7 +225,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         }
     }
 
-    public DecodedVideoFrame GetFrameAtTime(double seconds)
+    public DecodedVideoFrame GetFrameAtTime(double seconds, byte[]? destinationPixels = null)
     {
         lock (_videoGate)
         {
@@ -213,7 +249,8 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
                 throw new InvalidOperationException("FFMS2 returned an incomplete BGRA frame.");
 
             var destinationStride = checked(width * 4);
-            var pixels = GC.AllocateUninitializedArray<byte>(checked(destinationStride * height));
+            var length=checked(destinationStride*height);
+            var pixels=destinationPixels is not null&&destinationPixels.Length==length?destinationPixels:GC.AllocateUninitializedArray<byte>(length);
             for (var y = 0; y < height; y++)
             {
                 var sourceRow = source + y * sourceStride;
@@ -224,50 +261,50 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         }
     }
 
-    public float[] BuildWaveform(int buckets = 1200, int samplesPerBucket = 1024)
+    // A bounded signed overview (<= 2M envelopes) plus a cached pyramid.
+    // Fine zoom requests viewport analysis below the overview resolution.
+    public WaveformData BuildWaveform(CancellationToken cancellationToken = default)
     {
-        lock (_audioGate)
-        {
-            ThrowIfDisposed();
-            if (_audioSource == 0 || Info.AudioSamples <= 0 || Info.Channels <= 0)
-                return [];
-            if (buckets <= 0)
-                throw new ArgumentOutOfRangeException(nameof(buckets));
-            if (samplesPerBucket <= 0)
-                throw new ArgumentOutOfRangeException(nameof(samplesPerBucket));
-
-            var result = new float[buckets];
-            var channels = Info.Channels;
-            var buffer = new float[checked(samplesPerBucket * channels)];
-            byte* errorBuffer = stackalloc byte[ErrorBufferSize];
-            var error = CreateErrorInfo(errorBuffer);
-
-            for (var bucket = 0; bucket < buckets; bucket++)
-            {
-                var center = (long)((bucket + 0.5) * Info.AudioSamples / buckets);
-                var start = Math.Max(0, center - samplesPerBucket / 2L);
-                var count = (int)Math.Min(samplesPerBucket, Info.AudioSamples - start);
-                if (count <= 0)
-                    continue;
-
-                Array.Clear(buffer, 0, count * channels);
-                ResetError(ref error, errorBuffer);
-                fixed (float* destination = buffer)
-                {
-                    if (Native.FFMS_GetAudio(_audioSource, destination, start, count, &error) != 0)
-                        throw CreateException($"FFMS_GetAudio({start}, {count})", errorBuffer);
-                }
-
-                var peak = 0f;
-                var sampleCount = count * channels;
-                for (var i = 0; i < sampleCount; i++)
-                    peak = Math.Max(peak, Math.Abs(buffer[i]));
-                result[bucket] = Math.Min(1f, peak);
-            }
-
-            return result;
-        }
+        var step=Math.Max(Math.Max(1,Info.SampleRate/1000),(int)Math.Ceiling(Info.AudioSamples/2000000d));
+        return BuildEnvelope(0,Info.AudioSamples,step,cancellationToken);
     }
+    public WaveformData BuildWaveformViewport(double start,double duration,int columns,CancellationToken token)
+    {
+        var first=TimeToAudioFrame(start);var count=Math.Min(Info.AudioSamples-first,(long)Math.Ceiling(duration*Info.SampleRate));
+        var step=(int)Math.Max(1,Math.Ceiling(count/(double)Math.Clamp(columns,1,4096)));
+        return BuildEnvelope(first,count,step,token);
+    }
+    private WaveformData BuildEnvelope(long first,long frames,int step,CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();if(!HasAudio||Info.SampleRate<=0)return new([],1);
+        var count=checked((int)((frames+step-1)/step));var peaks=new WaveformEnvelope[count];
+        Array.Fill(peaks,new WaveformEnvelope(1,-1));
+        for(long start=first;start<first+frames;)
+        {
+            token.ThrowIfCancellationRequested();var audio=ReadAudioFrames(start,(int)Math.Min(Info.SampleRate,first+frames-start));if(audio.FrameCount==0)break;
+            for(var f=0;f<audio.FrameCount;f++)
+            {
+                var index=(int)((start-first+f)/step);var envelope=WaveformEnvelope.FromSamples(audio.Samples.AsSpan(f*Info.Channels,Info.Channels));
+                peaks[index]=WaveformEnvelope.Merge(peaks[index],envelope);
+            }
+            start+=audio.FrameCount;
+        }
+        return new(peaks,step/(double)Info.SampleRate,first/(double)Info.SampleRate,token);
+    }
+    public double AdjacentFrameTime(double seconds, int direction)
+    {
+        if (_frameTimes.Length == 0) return 0;
+        var index = Array.BinarySearch(_frameTimes, seconds + 0.000001);
+        if (index < 0) index = Math.Max(0, ~index - 1);
+        return _frameTimes[Math.Clamp(index + Math.Sign(direction), 0, _frameTimes.Length - 1)];
+    }
+    [UnmanagedCallersOnly]
+    private static int IndexProgress(long current, long total, nint state)
+        => GCHandle.FromIntPtr(state).Target is CancellationToken token && token.IsCancellationRequested ? 1 : 0;
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FfmsTimeBase { public long Num; public long Den; }
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FfmsFrameInfo { public long PTS; public int RepeatPict; public int KeyFrame; public long OriginalPTS; }
 
     public void Dispose()
     {
@@ -411,6 +448,11 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     private static partial class Native
     {
         private const string Library = "ffms2.dll";
+        [LibraryImport(Library)] internal static partial void FFMS_SetProgressCallback(nint indexer, delegate* unmanaged<long, long, nint, int> callback, nint state);
+        [LibraryImport(Library)] internal static partial nint FFMS_GetTrackFromVideo(nint source);
+        [LibraryImport(Library)] internal static partial nint FFMS_GetTimeBase(nint track);
+        [LibraryImport(Library)] internal static partial nint FFMS_GetFrameInfo(nint track, int frame);
+
 
         [LibraryImport(Library, EntryPoint = "FFMS_Init")]
         internal static partial void FFMS_Init(int unused, int unused2);

@@ -13,6 +13,7 @@ public sealed unsafe partial class MangetsuSubtitleRenderer : IDisposable
     private nint _track;
     private int _width;
     private int _height;
+    private byte[] _alphaScratch = [];
     private bool _disposed;
 
     public MangetsuSubtitleRenderer(string assText, int width, int height)
@@ -57,6 +58,13 @@ public sealed unsafe partial class MangetsuSubtitleRenderer : IDisposable
         lock (_gate)
         {
             ThrowIfDisposed();
+            ArgumentNullException.ThrowIfNull(frame.Pixels);
+            if (frame.Width <= 0 || frame.Height <= 0)
+                throw new ArgumentException("Video frame dimensions must be positive.", nameof(frame));
+            var rowBytes = checked(frame.Width * 4);
+            var pixelCount = checked(frame.Width * frame.Height);
+            if (frame.Stride < rowBytes || frame.Pixels.LongLength < (long)(frame.Height - 1) * frame.Stride + rowBytes)
+                throw new ArgumentException("Video frame buffer/stride does not contain the BGRA rows.", nameof(frame));
             if (_track == 0)
                 return;
             if (frame.Width != _width || frame.Height != _height)
@@ -70,16 +78,44 @@ public sealed unsafe partial class MangetsuSubtitleRenderer : IDisposable
 
             try
             {
+                // Mangetsu composites RGB but writes zero to destination alpha
+                // throughout each RGBA tile, including transparent source pixels.
+                // Preserve the host frame's alpha exactly, as mpv's BGRA host does.
+                // Grow only when needed; the renderer lock also owns this scratch.
+                if (_alphaScratch.Length < pixelCount)
+                    _alphaScratch = new byte[pixelCount];
                 fixed (byte* destination = frame.Pixels)
                 {
-                    if (Native.ass_composite_images_bgra(
-                        images,
-                        destination,
-                        frame.Width,
-                        frame.Height,
-                        frame.Stride) != 0)
+                    var alphaIndex = 0;
+                    for (var y = 0; y < frame.Height; y++)
                     {
-                        throw new InvalidOperationException("Mangetsu failed to composite subtitles into the video frame.");
+                        var row = destination + y * frame.Stride;
+                        for (var x = 0; x < frame.Width; x++)
+                            _alphaScratch[alphaIndex++] = row[x * 4 + 3];
+                    }
+                    try
+                    {
+                        if (Native.ass_composite_images_bgra(
+                            images,
+                            destination,
+                            frame.Width,
+                            frame.Height,
+                            frame.Stride) != 0)
+                        {
+                            throw new InvalidOperationException("Mangetsu failed to composite subtitles into the video frame.");
+                        }
+                    }
+                    finally
+                    {
+                        // Restore even on a reported compositor failure. RGB and
+                        // row padding remain entirely under the native compositor.
+                        alphaIndex = 0;
+                        for (var y = 0; y < frame.Height; y++)
+                        {
+                            var row = destination + y * frame.Stride;
+                            for (var x = 0; x < frame.Width; x++)
+                                row[x * 4 + 3] = _alphaScratch[alphaIndex++];
+                        }
                     }
                 }
             }
@@ -129,6 +165,7 @@ public sealed unsafe partial class MangetsuSubtitleRenderer : IDisposable
 
     private void CleanupLocked()
     {
+        _alphaScratch = [];
         if (_track != 0)
         {
             Native.ass_free_track(_track);

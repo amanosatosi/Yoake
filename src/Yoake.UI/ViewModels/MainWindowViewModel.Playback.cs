@@ -10,7 +10,6 @@ public sealed partial class MainWindowViewModel
     private MangetsuSubtitleRenderer? _subtitleRenderer;
     private long _subtitleRevision;
     private long _subtitleRendererRevision = -1;
-    private bool _selectionFromPlayback;
     private bool _clockUpdateFromPlayback;
 
     private CancellationTokenSource? _playbackCancellation;
@@ -45,7 +44,7 @@ public sealed partial class MainWindowViewModel
         await StartPlaybackAsync();
     }
 
-    public async Task StartPlaybackAsync()
+    public async Task StartPlaybackAsync(double? endSeconds = null)
     {
         var session = _media;
         if (session is null || (!session.HasVideo && !session.HasAudio) || _disposed)
@@ -76,6 +75,7 @@ public sealed partial class MainWindowViewModel
             if (session.HasAudio)
             {
                 player = new WindowsWaveOutStream();
+                player.SetVolume(PlaybackVolume,PlaybackMuted);
                 _audioPlayer = player;
                 audioTask = Task.Run(
                     () => player.PlayAsync(
@@ -106,6 +106,8 @@ public sealed partial class MainWindowViewModel
                 var seconds = session.HasAudio
                     ? BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits))
                     : start + stopwatch.Elapsed.TotalSeconds;
+
+                if (endSeconds is { } stopAt && seconds >= stopAt) { SetPlaybackTime(stopAt); player?.Stop(); break; }
 
                 if (MediaDurationSeconds > 0 && seconds >= MediaDurationSeconds)
                 {
@@ -194,40 +196,7 @@ public sealed partial class MainWindowViewModel
             _clockUpdateFromPlayback = false;
         }
 
-        UpdatePlaybackSelection(seconds);
-    }
 
-    private void UpdatePlaybackSelection(double seconds)
-    {
-        var milliseconds = (long)Math.Round(seconds * 1000);
-        AssEvent? active = null;
-        foreach (var candidate in Events)
-        {
-            if (candidate.StartMilliseconds is not { } start ||
-                candidate.EndMilliseconds is not { } end)
-            {
-                continue;
-            }
-
-            if (milliseconds >= start && milliseconds < end)
-            {
-                active = candidate;
-                break;
-            }
-        }
-
-        if (active is null || ReferenceEquals(active, SelectedEvent))
-            return;
-
-        _selectionFromPlayback = true;
-        try
-        {
-            SelectedEvent = active;
-        }
-        finally
-        {
-            _selectionFromPlayback = false;
-        }
     }
 
     private string? CompositeSubtitles(
@@ -267,20 +236,30 @@ public sealed partial class MainWindowViewModel
         }
     }
 
+    private CancellationTokenSource? _previewDelay;
     private void InvalidateSubtitlePreview(bool refreshCurrentFrame)
     {
         Interlocked.Increment(ref _subtitleRevision);
-        if (refreshCurrentFrame && !IsPlaying && _media?.HasVideo == true)
-            _ = RefreshVideoFrameAsync(CurrentTimeSeconds);
+        _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;
+        if(refreshCurrentFrame&&!IsPlaying&&_media?.HasVideo==true)
+        {
+            var cancellation=new CancellationTokenSource();_previewDelay=cancellation;
+            _=RefreshPreviewAfterDelayAsync(cancellation.Token);
+        }
+    }
+    private async Task RefreshPreviewAfterDelayAsync(CancellationToken token)
+    {
+        try{await Task.Delay(30,token);await RefreshVideoFrameAsync(CurrentTimeSeconds);}catch(OperationCanceledException){}
     }
 
     private void DisposeSubtitleRenderer()
     {
-        lock (_subtitleRendererGate)
+        _=Task.Run(()=>
         {
-            _subtitleRenderer?.Dispose();
-            _subtitleRenderer = null;
-            _subtitleRendererRevision = -1;
-        }
+            lock(_subtitleRendererGate)
+            {
+                _subtitleRenderer?.Dispose();_subtitleRenderer=null;_subtitleRendererRevision=-1;
+            }
+        });
     }
 }
