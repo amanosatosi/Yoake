@@ -18,6 +18,10 @@ loaders, mutation, validation/toggle and tight-loop cancellation. Unmodified rel
 Karaoke Templater fixtures provide native integration evidence. No Lua 5.2 compatibility build flag is
 enabled. The interpreter runs with JIT disabled, and `jit.on` cannot re-enable it,
 so count hooks can interrupt otherwise non-cooperative scripts.
+The private adapter restores `math.mod`/`string.gfind`, enabled by the release's
+LuaJIT 2.0.3 `LUA_COMPAT_MOD/GFIND` flags but absent from maintained 2.1 defaults.
+These aliases retain the exact fmod/gmatch functions; native language regressions
+assert them alongside environment, coroutine, module, BitOp and FFI behavior.
 
 LuaJIT is MIT licensed, implements the Lua 5.1 API/ABI, supports Windows x64,
 and has Linux/macOS implementations. Its native DLL and modules add package size,

@@ -230,6 +230,8 @@ local co=coroutine.create(function() coroutine.yield('ready'); return 'done' end
 local ok,value=coroutine.resume(co); assert(ok and value=='ready')
 ok,value=coroutine.resume(co); assert(ok and value=='done')
 assert(math.mod(9,4)==1 and type(io.open)=='function' and type(os.clock)=='function')
+assert(math.mod==math.fmod and string.gfind==string.gmatch)
+local match=string.gfind('日本語 42','%d+'); assert(match()=='42')
 local bit=require('bit'); assert(bit.bxor(0xff,0x0f)==0xf0)
 local ffi=require('ffi'); local integers=ffi.new('int32_t[2]',{42,-17})
 assert(tonumber(integers[0])==42 and tonumber(integers[1])==-17)

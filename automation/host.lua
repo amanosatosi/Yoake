@@ -45,6 +45,10 @@ end
 
 dofile, loadfile = nil, nil
 if jit then jit.on = function() end end -- retain cancellable interpreter hooks
+-- The exact release's LuaJIT 2.0.3 luaconf.h enables LUA_COMPAT_MOD/GFIND.
+-- Maintained LuaJIT 2.1 omits these deprecated 5.1 aliases by default.
+math.mod = math.mod or math.fmod
+string.gfind = string.gfind or string.gmatch
 local function load_source(path)
   local text = host('read_file', path)
   if path:lower():sub(-5) == '.moon' then
