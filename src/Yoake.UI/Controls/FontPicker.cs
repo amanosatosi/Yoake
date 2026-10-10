@@ -54,7 +54,7 @@ public sealed class FontPicker : UserControl
         _entry.PropertyChanged+=(_,e)=>{if(e.Property==AutoCompleteBox.TextProperty&&!_sync){SetCurrentValue(FontNameProperty,_entry.Text??"");if(_popup.IsOpen){if(_fonts.Length==0)PopulateBrowser();else _list.ItemsSource=_fonts.Where(f=>f.Contains(FontName,StringComparison.CurrentCultureIgnoreCase)).ToArray();}Refresh();ValueChanged?.Invoke(this,EventArgs.Empty);}};
         AttachedToVisualTree+=async (_,_)=>
         {
-            try{_fonts=await Installed.Value;_entry.ItemsSource=_fonts;if(_popup.IsOpen)PopulateBrowser();Refresh();}
+            try{_fonts=await Installed.Value;_entry.ItemsSource=_fonts;if(_popup.IsOpen){_browserFocusPending=true;PopulateBrowser();}Refresh();}
             catch(Exception exception){_status.Text="Font list unavailable: "+exception.Message;_status.IsVisible=true;}
         };
         DetachedFromVisualTree+=(_,_)=>_popup.IsOpen=false;
@@ -73,7 +73,7 @@ public sealed class FontPicker : UserControl
     }
     public void OpenBrowser(){_entry.IsDropDownOpen=false;PopulateBrowser();_browserFocusPending=true;_popup.IsOpen=true;Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(_popup.IsOpen){_browserFocusPending=true;_list.Focus();if(_list.SelectedItem is {} selected)_list.ScrollIntoView(selected);FocusBrowserRow();}});}
     public void CloseBrowser(){_browserFocusPending=false;_popup.IsOpen=false;}
-    private void Choose(){if(_list.SelectedItem is not string family)return;SetCurrentValue(FontNameProperty,family);ValueChanged?.Invoke(this,EventArgs.Empty);_popup.IsOpen=false;_entry.Focus();}
+    private void Choose(){if(_fonts.Length==0||_list.SelectedItem is not string family)return;SetCurrentValue(FontNameProperty,family);ValueChanged?.Invoke(this,EventArgs.Empty);CloseBrowser();_entry.Focus();}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);

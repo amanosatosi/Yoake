@@ -6,7 +6,7 @@ public sealed partial class MainWindowViewModel
 {
     public double PlaybackVolume{get=>_settings.PlaybackVolume??0.8;set=>InvokeAudioSetting("audio/volume",value);}
     public bool PlaybackMuted{get=>_settings.PlaybackMuted;set=>InvokeAudioSetting("audio/mute",value);}
-    public double AudioDisplayHeight{get=>_settings.AudioDisplayHeight??160;set=>InvokeAudioSetting("audio/display/height",value);}
+    public double AudioDisplayHeight{get=>_settings.AudioDisplayHeight??180;set=>InvokeAudioSetting("audio/display/height",value);}
     public double AudioIntensity{get=>_settings.AudioIntensity??1;set=>InvokeAudioSetting("audio/display/intensity",value);}
     public double AudioHorizontalZoom{get=>AudioViewportMath.Zoom(AudioWindowSeconds);set=>AudioWindowSeconds=AudioViewportMath.Span(value);}
     public double AudioAmplitude{get=>AudioViewportMath.AmplitudePosition(AudioIntensity);set=>AudioIntensity=AudioViewportMath.Amplitude(value);}

@@ -18,6 +18,7 @@ public sealed class ScreenColorDropper : Control
     private bool _moved;
     public byte Transparency {get;set;}
     public bool IsSampling=>_pointer is not null;
+    public AssColor? SampledColor=>_sample?.Center;
     public event Action<AssColor>? ColorPicked;
     public event Action<Exception>? SamplingFailed;
     public ScreenColorDropper()
@@ -29,7 +30,7 @@ public sealed class ScreenColorDropper : Control
     public void Begin(IPointer pointer)
     {
         Cancel();_pointer=pointer;_latched=false;_moved=false;Cursor=new Cursor(StandardCursorType.Cross);pointer.Capture(this);Focus();Sample();
-        if(_sample is {} s)_anchor=new(s.X,s.Y);_moved=false;_timer.Start();
+        if(_sample is {} s)_anchor=new(s.X,s.Y);_moved=false;if(IsSampling)_timer.Start();
     }
     private void Sample()
     {

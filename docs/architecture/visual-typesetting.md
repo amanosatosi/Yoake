@@ -91,6 +91,13 @@ CI configures a temporary 1920x1080 desktop to verify the actual default
 1440x900 window, in addition to narrower reflow and render-DPI captures. Default
 workspace assertions protect video, waveform, multiline text and grid space.
 
+Audio status shares the playback row. Fresh profiles allocate 180 DIP to the
+audio pane, including 120 DIP of waveform at 1440x900, while saved splitter heights
+remain respected (160-DIP minimum). The reclaimed status row and 20-DIP default
+rebalance preserve video/grid dimensions and at least 140 DIP of ASS text. The
+packaged media probe additionally checks the fitted decoded picture, rather than
+only its surrounding overlay bounds.
+
 Vector Line/Bicubic hover rendering appends to a copy of the parsed topology
 and renders its complete closed contour, replacing the old closing edge. It
 uses the same append/save and clip-mapping compensation as the eventual edit.

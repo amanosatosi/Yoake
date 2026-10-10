@@ -143,6 +143,8 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.AudioHorizontalZoom=75;_model.AudioAmplitude=75;_model.AudioVolumeLinked=true;
         Assert.Equal(.75,_model.PlaybackVolume,8);Assert.False(_model.IsVolumeIndependent);
         var settings=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.True(settings.AudioVolumeLinked);Assert.Equal(_model.AudioWindowSeconds,settings.AudioWindowSeconds);
+        using(var restored=new MainWindowViewModel(new CommandRegistry(),new WorkspaceManager(),new UndoManager(),new ThemeService(),new SettingsStore(Path.Combine(_root,"settings.json")),settings))
+        {Assert.True(restored.AudioVolumeLinked);Assert.Equal(.75,restored.PlaybackVolume,8);Assert.Equal(75,restored.AudioAmplitude,8);Assert.False(restored.IsVolumeIndependent);}
         _model.AudioVolumeLinked=false;_model.PlaybackVolume=.2;_model.AudioAmplitude=50;Assert.Equal(.2,_model.PlaybackVolume);
         await Command("audio/display/height",230d);Assert.Equal(230,_model.AudioDisplayHeight);
     }

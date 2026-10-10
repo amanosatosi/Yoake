@@ -43,3 +43,9 @@ family and refreshes an already open list when enumeration finishes. Missing
 exact names remain unchanged and explicitly unavailable. Packaged tests open
 the Subtitle Font dialog, inspect realized rows/dimensions, and choose by row
 release and keyboard rather than relying on IsOpen alone.
+
+Browser opening scrolls and focuses the realized current ListBoxItem after layout.
+Avalonia navigation uses the focused container; changing SelectedIndex and sending
+a key while the requested row is still virtualized does not exercise that path.
+The packaged probe waits for realization, requires row focus and routes Down/Enter
+from that row. Loading placeholders cannot be accepted as installed families.

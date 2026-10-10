@@ -35,12 +35,13 @@ internal static class ColorInputVerification
         {
             var dropper=Named<ScreenColorDropper>(dialog,"ScreenMagnifier");var button=Named<Button>(dialog,"Eyedropper");
             var color=dialog.SelectedColor;
-            Press(button,new(10,10));Require(dropper.IsSampling,"Eyedropper button must begin live desktop sampling.");
+            Press(button,new(10,10));Require(dropper.IsSampling&&dropper.SampledColor.HasValue&&TopLevel.GetTopLevel(dropper)==dialog&&dropper.Bounds.Width>=56&&dropper.Bounds.Height>=56,"Eyedropper must realize its magnified grid and sample actual desktop RGB.");
             capture(dialog,"color-picker-live-magnifier",1);
             Release(dropper,new(29,29));Require(dropper.IsSampling,"An unmoved click must latch the eyedropper for desktop movement.");
             pointer.Capture(null);Require(!dropper.IsSampling&&dialog.SelectedColor==color,"Capture loss must cancel sampling without changing the color.");
             Press(button,new(10,10));Release(dropper,new(29,29));Press(dropper,new(29,29));Release(dropper,new(29,29));
             Require(!dropper.IsSampling&&dialog.SelectedColor.Transparency==color.Transparency,"Sample acceptance must keep ASS alpha separate.");
+            Require(dialog.SelectedColor==dropper.SampledColor!.Value with{Transparency=color.Transparency},"Accepted RGB must equal the actual center pixel displayed by the magnifier.");
             Press(button,new(10,10));dropper.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=dropper,Key=Key.Escape});
             Require(!dropper.IsSampling&&dialog.IsVisible,"Escape must cancel the magnifier while leaving the color dialog open.");
         }

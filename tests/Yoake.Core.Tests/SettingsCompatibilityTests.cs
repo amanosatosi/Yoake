@@ -26,6 +26,7 @@ public sealed class SettingsCompatibilityTests : IDisposable
         Assert.Equal(new AppSettings().GridColumnWidths, settings.GridColumnWidths);
         Assert.NotNull(settings.RecentFiles);
         Assert.Empty(settings.RecentFiles);
+        Assert.Equal(180,settings.AudioDisplayHeight);
         Assert.Equal(LegacyProfile, File.ReadAllText(SettingsPath)); // No startup rewrite.
     }
     [Theory]
@@ -45,6 +46,12 @@ public sealed class SettingsCompatibilityTests : IDisposable
     {
         Assert.Equal(new double[] { 50, 70, 48, 92, 92, 110, 100, 90 }, Read("{\"gridColumnWidths\":[50,70]}").GridColumnWidths);
         Assert.Equal(Enumerable.Repeat(80d,8), Read("{\"gridColumnWidths\":[80,80,80,80,80,80,80,80,999]}").GridColumnWidths);
+    }
+    [Fact] public void StoredAudioSplitIsPreservedWhileMissingHeightUsesBalancedDefault()
+    {
+        Assert.Equal(180,Read("{}").AudioDisplayHeight);
+        Assert.Equal(160,Read("{\"audioDisplayHeight\":160}").AudioDisplayHeight);
+        Assert.Equal(220,Read("{\"audioDisplayHeight\":220}").AudioDisplayHeight);
     }
     [Fact] public void NonFiniteNegativeAndExtremeWidthsAreRecoveredWithoutLosingTheme()
     {

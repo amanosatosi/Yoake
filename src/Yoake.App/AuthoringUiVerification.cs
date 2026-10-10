@@ -305,7 +305,8 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         File.WriteAllText(Path.Combine(Path.GetDirectoryName(report)!,"workspace-layout.txt"),$"Window: {window.ClientSize}\nVideo: {video.Bounds}\nAudio: {audio.Bounds}\nText: {text.Bounds}\nGrid: {rows.Bounds}\n");
         Require(window.ClientSize.Width>=1438&&window.ClientSize.Height>=898,"Default workspace must be verified in a real 1440x900 window, without desktop clamping.");
         Require(video.Bounds.Width>=600&&video.Bounds.Height>=300,"Default video workspace must retain useful typesetting area.");
-        Require(audio.Bounds.Width>=600&&audio.Bounds.Height>=80,"Default audio must retain a useful timing area.");
+        Require(audio.Bounds.Width>=600&&audio.Bounds.Height>=120,"Default audio must retain a useful timing area.");
+        Require(window.FindControl<Grid>("AudioRegion")!.RowDefinitions.Count==3,"Audio status must share the playback row rather than consume waveform space.");
         Require(text.Bounds.Width>=600&&text.Bounds.Height>=140,"Default ASS editor must retain room for tag-heavy multiline editing.");
         Require(rows.Bounds.Height>=270,"Default subtitle grid must retain at least nine dense rows of space.");
         var fields=window.FindControl<Grid>("MetadataOtherFields")!;
