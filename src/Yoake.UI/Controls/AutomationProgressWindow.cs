@@ -9,10 +9,10 @@ namespace Yoake.UI.Controls;
 public sealed class AutomationProgressWindow : Window, IAutomationProgressSession
 {
     private readonly CancellationTokenSource _cancellation = new();
-    private readonly ProgressBar _bar = new() { Minimum = 0, Maximum = 100, IsIndeterminate = true, Height = 12 };
-    private readonly TextBlock _task = new() { Text = "Running script…" };
-    private readonly TextBox _output = new() { IsReadOnly = true, AcceptsReturn = true, TextWrapping = Avalonia.Media.TextWrapping.Wrap, MinHeight = 140 };
-    private readonly Button _button = new() { Content = "Cancel", MinWidth = 80, HorizontalAlignment = HorizontalAlignment.Right };
+    private readonly ProgressBar _bar = new() { Name = "AutomationProgressBar", Minimum = 0, Maximum = 100, IsIndeterminate = true, Height = 12 };
+    private readonly TextBlock _task = new() { Name = "AutomationProgressTask", Text = "Running script…" };
+    private readonly TextBox _output = new() { Name = "AutomationProgressOutput", IsReadOnly = true, AcceptsReturn = true, TextWrapping = Avalonia.Media.TextWrapping.Wrap, MinHeight = 140 };
+    private readonly Button _button = new() { Name = "AutomationProgressAction", Content = "Cancel", MinWidth = 80, HorizontalAlignment = HorizontalAlignment.Right };
     private readonly object _pendingGate = new();
     private double? _percent; private string? _pendingTask, _pendingTitle;
     private bool _posted, _completed; private int _outputLength;

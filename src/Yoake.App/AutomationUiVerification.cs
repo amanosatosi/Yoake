@@ -208,11 +208,11 @@ end)
             case 10:
                 var progress = Windows(window).OfType<AutomationProgressWindow>().FirstOrDefault(w => w.IsVisible && w.Title == "Cancel verification");
                 if (progress is null) { Require(!_running!.IsCompleted, "Cancellation macro must enter its actual progress window."); return false; }
-                Require(progress.GetVisualDescendants().OfType<ProgressBar>().Single().Value == 17, "Actual progress must show script percentage.");
-                var output = progress.GetVisualDescendants().OfType<TextBox>().Single().Text ?? "";
+                Require(progress.GetVisualDescendants().OfType<ProgressBar>().Single(c => c.Name == "AutomationProgressBar").Value == 17, "Actual progress must show script percentage.");
+                var output = progress.GetVisualDescendants().OfType<TextBox>().Single(c => c.Name == "AutomationProgressOutput").Text ?? "";
                 if (!output.Contains("visible cancellation log", StringComparison.Ordinal)) return false;
                 Require(!output.Contains("hidden verbose log", StringComparison.Ordinal), "Verbose log must stay out of default progress output.");
-                Click(progress.GetVisualDescendants().OfType<Button>().Single()); _stage++; return false;
+                Click(progress.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "AutomationProgressAction")); _stage++; return false;
             case 11:
                 if (!_running!.IsCompleted) return false;
                 Require(_running.GetAwaiter().GetResult() && model.SubtitleStatus.Contains("cancelled", StringComparison.OrdinalIgnoreCase), "Forced native loop cancellation must finish through the command boundary.");
@@ -224,7 +224,7 @@ end)
                 Require(!_running.GetAwaiter().GetResult(), "Intentional Lua failure must be reported by the command boundary.");
                 RequireUnchanged();
                 var failureWindow = Windows(window).OfType<AutomationProgressWindow>().Single(w => w.IsVisible);
-                var failureText = failureWindow.GetVisualDescendants().OfType<TextBox>().Single().Text ?? "";
+                var failureText = failureWindow.GetVisualDescendants().OfType<TextBox>().Single(c => c.Name == "AutomationProgressOutput").Text ?? "";
                 Require(failureText.Contains("packaged intentional failure", StringComparison.Ordinal) && failureText.Contains("stack traceback:", StringComparison.Ordinal) && failureText.Contains(_path, StringComparison.Ordinal), "Actual failure output must preserve full Unicode script path and traceback.");
                 CloseProgress();
                 _stage++; return false;
@@ -369,7 +369,7 @@ end)
     private void CloseProgress()
     {
         foreach (var progress in Windows(window).OfType<AutomationProgressWindow>().Where(w => w.IsVisible).ToArray())
-            Click(progress.GetVisualDescendants().OfType<Button>().Single());
+            Click(progress.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "AutomationProgressAction"));
     }
     private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
