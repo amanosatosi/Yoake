@@ -10,6 +10,23 @@ public sealed class AutomationSubtitleTests
     private const string Source = "[Script Info]\n; preserve comment\nTitle: 日本語 မြန်မာ\nAutomation Scripts: ~missing.lua\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding, Future\nStyle: Default,Arial,060,&H00FFFFFF,&H0000FFFF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,0030,0030,0030,1,style-secret\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text, Future\nDialogue: 0,0:00:01.00,0:00:02.00,Default,Actor,0000,0000,0000,,{\\distort(1,2)\\clippos(3,4)\\1grd&HFFFFFF&\\future(foo)}漢字|かんじ,a-secret\n; anchored comment\nDialogue: 1,0:00:02.00,0:00:03.00,Default,,0,0,0,,second,b-secret\n\n[Unknown]\nMystery: untouched\n";
 
     [Fact]
+    public void CheckpointUndoRestoresOriginalSelectionAndFinalRedoUsesReturnedFileIndexes()
+    {
+        var document = AssDocument.Parse(Source); var editor = new SubtitleEditor(document);
+        var original = document.Events[0]; AutomationSelectionState? restored = null;
+        using var subs = new AutomationSubtitleDocument(document);
+        var line = subs.Read(3); line["text"] = "timed"; subs.Write(3, line); subs.SetUndoPoint("Timing");
+        line["text"] = "generated"; subs.Append(line); subs.SetUndoPoint("Generation");
+        var mapping = subs.Commit(editor, "Macro", new([original], original), new([5], 5), selection => restored = selection);
+        Assert.Null(restored); // Publication caller applies its result after the batch.
+        var generated = mapping[5];
+        editor.Undo.Undo(); Assert.Same(original, restored!.ActiveLine); Assert.Equal(new[] { original }, restored.Selection);
+        editor.Undo.Undo(); Assert.Equal(Source, document.Serialize()); Assert.Same(original, restored.ActiveLine);
+        editor.Undo.Redo(); Assert.Same(original, restored.ActiveLine);
+        editor.Undo.Redo(); Assert.Same(generated, restored.ActiveLine); Assert.Equal(new[] { generated }, restored.Selection);
+    }
+
+    [Fact]
     public void ProjectionUsesFileIndexesAndDetachedReads()
     {
         var document = AssDocument.Parse(Source);

@@ -196,6 +196,14 @@ dialog. Output is ASS with explicit Unicode encoding and atomic replacement;
 cancellation is checked before replacement. Legacy encodings and non-ASS writers
 are outside this initial subtitle-filter workflow.
 
+Macro checkpoints can carry a host selection-restoration callback. Initial
+publication leaves selection application to the session owner after the batch;
+undo restores surviving original record identities and final redo restores the
+returned file indexes. The callback receives Core event references and never
+Lua/native state. The packaged window probe exercises this with a real modal
+dialog, stable macro command, insertion, grid/draft refresh and changed Mangetsu
+video pixels, followed by exact source and selection undo/redo.
+
 GitHub Actions builds/tests the managed host, native stack, NativeAOT package,
 module fixtures and real-window macro/dialog/selection/undo scenario. Do not
 compile or rebuild either Yoake or Aegisub locally during ordinary development.

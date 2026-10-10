@@ -20,6 +20,8 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
     private bool _opened, _loaded, _inserted, _editorVerified;
     private StylesWindow? _styles;
     private AuthoringUiVerification? _authoring;
+    private AutomationUiVerification? _automation;
+    private bool _authoringCompleted;
 
     public void Start()
     {
@@ -81,6 +83,8 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
                 _editorVerified = true;
                 return;
             }
+            if (!_authoringCompleted)
+            {
             if (_styles is null)
             {
                 _styles = new StylesWindow(model.ActiveEditor!, model.StyleLibraryPath, model.SelectedEvent);
@@ -95,6 +99,10 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             _authoring??=new(window,model,_styles,options.VerificationReport!,options.VerificationMedia);
             if(!_authoring.Tick())return;
             _styles.Close();
+            _authoringCompleted = true;
+            }
+            _automation ??= new(window, model, options.VerificationReport!, options.VerificationMedia!);
+            if (!_automation.Tick()) return;
             Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
             Require(StartupDiagnostics.BindingWarningCount==0,"Authoring controls logged binding warnings; inspect startup.log.");
             while(model.ActiveEditor!.Undo.CanUndo)Invoke(CommandIds.EditUndo); // Undo the real editing probe before normal shutdown.
