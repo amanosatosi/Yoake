@@ -80,7 +80,8 @@ end
 function aegisub.register_filter(name, help, priority, run, config)
   feature(name, help, run, config, nil, true, tonumber(priority) or 0)
 end
-function aegisub.cancel() error('Automation execution cancelled', 0) end
+local script_cancelled = false
+function aegisub.cancel() script_cancelled = true; error('Automation execution cancelled', 0) end
 for _,name in ipairs({'text_extents','frame_from_ms','ms_from_frame','video_size','keyframes',
   'decode_path','file_name','gettext','project_properties'}) do
   local operation = name
@@ -155,6 +156,7 @@ local function log(...)
   return host('log',text,level)
 end
 function __yoake_invoke(index, method)
+  script_cancelled = false
   alive = true
   aegisub.set_undo_point = function(name) return host('undo_point',name) end
   aegisub.parse_karaoke_data = function(line) return host('karaoke',line_argument(line)) end
@@ -172,6 +174,7 @@ function __yoake_invoke(index, method)
   local ok,a,b = xpcall(function() return fn(subtitles(),selected,active) end,debug.traceback)
   alive=false
   aegisub.progress, aegisub.debug, aegisub.dialog = nil,nil,nil
+  if script_cancelled then return json({cancelled=true}) end
   if not ok then error(a,0) end
   return json({first=a,second=b})
 end

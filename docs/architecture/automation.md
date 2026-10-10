@@ -4,6 +4,8 @@ Status: design and implementation in progress on `automation-4-layer`.
 Acceptance is meaningful old 3.2.2 macro/KFX work in the packaged NativeAOT app,
 not merely a runtime or a Manager window. See the
 [compatibility ledger](../compatibility/aegisub-automation-3.2.2.md).
+The specification is the frozen manual `C:\aegisub source\3.2` together with
+the exact `v3.2.2` source. Historical `automation/v4-docs/*` is excluded.
 
 ## Runtime decision
 
@@ -106,6 +108,22 @@ Export filters configure and run in priority order against a working copy; expor
 does not dirty the open document or reuse Save as an implicit filter operation.
 
 ## Packaging, provenance and trust
+
+`AutomationCommandCatalog` owns command registrations, while the workspace UI
+controller owns script instances, loads and cancellation lifetimes. A stable
+path/name command resolves through explicit `CommandContext.DocumentId` to a
+local script or the autoload fallback; validation/toggle caches belong to that
+document and exact interpreter instance. Reload/unload removes old commands
+before disposal, and native disposal waits only on background workers. The
+registry can remove only an owner's exact registration.
+
+The UI snapshots media timestamps, keyframes, project properties and path roots
+before invocation. UI/dialog/clipboard work is dispatched from the worker. Macro
+success alone permits a guarded document-thread batch commit; failure and both
+script/user cancellation discard the working view. Input drafts are finalized
+before capture, stale/closed/replaced documents are rejected, and returned file
+indexes map to actual event identities after commit. Complete selection-history
+restoration and packaged UI evidence remain acceptance work.
 
 Karaoke parsing is a read-only structured scan that returns the 3.2.2 syllable
 table, including the empty index zero and unnormalized relative millisecond

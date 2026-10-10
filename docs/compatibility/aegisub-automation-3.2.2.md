@@ -1,6 +1,14 @@
 # Aegisub 3.2.2 Automation compatibility
 
 Target: the read-only tree `C:\aegisub source\Aegisub-3.2.2`.
+The API/workflow manual is the frozen **3.2 manual** at
+`C:\aegisub source\3.2`, particularly `Automation/Lua/{Registration,
+Subtitle_file_interface,Dialogs,Progress_reporting,Miscellaneous_APIs}`,
+`Automation/Lua/Modules`, `Automation/Manager`, and Karaoke Templater pages.
+Use these together with the exact `v3.2.2` implementation. Do **not** use
+`automation/v4-docs/*` as the API specification: those historical files contain
+superseded interfaces. Where the frozen manual differs from the exact release's
+execution behavior, record the discrepancy explicitly and test the implementation.
 `build/git_version.h` identifies tagged release **3.2.2, revision 8635**;
 its bundled `vendor/luajit/src/luajit.h` identifies LuaJIT **2.0.3**.
 Integration base: `bda055b2ec673a4b1e1cf4a2b1e60a3d9587ba4e` on
@@ -58,6 +66,18 @@ Paths below refer to that exact local source tree, not current Aegisub.
 
 ## Non-obvious behaviors to retain
 
+The frozen manual is checked alongside source, with these known discrepancies:
+* Default dialog OK is described as `true` by `Automation/Lua/Dialogs`; exact
+  3.2.2 `LuaDialog::LuaReadBack` returns the default button's empty label string.
+  Yoake follows that truthy empty-string return; Cancel remains `false`.
+* The manual describes floor/ceiling frame conversion. Exact 3.2.2 calls use
+  `agi::vfr::START`, including midpoint `TimeAtFrame` and shifted `FrameAtTime`.
+  Yoake's compatibility view uses these boundary rules over the central media
+  provider's timestamps; it does not create another playback timeline.
+* `alpha` is documented as a color class but exact 3.2.2 constructs `Edit`.
+  Yoake retains the edit/string behavior. The manual's nonpositive width/height
+  fallback to one is retained for usable dialog layout.
+
 * `include("name.lua")` searches the master script directory followed by configured
   include directories. Names containing either slash are resolved against the
   **master** directory, even inside a nested include. Absolute paths are accepted.
@@ -90,5 +110,7 @@ Paths below refer to that exact local source tree, not current Aegisub.
   surrogate pairs, combining sequences and complex-script shaping. Zero-spacing
   uses the same whole-string GDI path as the reference.
 * Interpreter/provider tests are not packaged application acceptance evidence.
-  Manager, menu/commands, dialogs, progress UI, export, media services, karaoke
-  parser/metrics, real karaskel and Templater workflows remain integration work.
+  Manager, command/menu registration, dialogs, progress, snapshot media/path
+  services and macro commit/selection now have application code awaiting CI.
+  Document-local persistence, export filters, complete module fixtures and the
+  real packaged macro/dialog/selection/undo scenario remain acceptance work.

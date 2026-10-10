@@ -34,6 +34,7 @@ public partial class MainWindow : Window, IEditorDialogs
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
         Opened+=(_,_)=>UpdateChrome();
+        Opened+=StartAutomation;
         LayoutUpdated+=(_,_)=>UpdateChrome();
         ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(UpdateChrome);
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
@@ -55,7 +56,7 @@ public partial class MainWindow : Window, IEditorDialogs
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
             UpdateAudioBounds();
             _model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
-            StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
+            RefreshAutomationMenu(); StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
     }
     private int _resizeColumn=-1;
     private double _resizeStart, _resizeWidth;
@@ -113,6 +114,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
+        if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();
         if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight))UpdateAudioBounds();
         if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
     }

@@ -5,6 +5,10 @@ namespace Yoake.UI.Services;
 public enum UnsavedChoice { Cancel, Discard, Save }
 public interface IEditorDialogs
 {
+    Task<string?> OpenAutomationScriptAsync() => Task.FromResult<string?>(null);
+    Task ShowAutomationManagerAsync(Yoake.UI.ViewModels.MainWindowViewModel model) => Task.CompletedTask;
+    Task<Yoake.Core.Automation.AutomationDialogResult> ShowAutomationDialogAsync(Yoake.Core.Automation.AutomationDialogRequest request, CancellationToken cancellationToken) => throw new NotSupportedException("Automation dialogs are unavailable.");
+    IAutomationProgressSession? BeginAutomationProgress(string title) => null;
     Task<FontChoice?> ChooseFontAsync(string family,string size)=>Task.FromResult<FontChoice?>(null);
     Task<AssColor?> ChooseColorAsync(AssColor color)=>Task.FromResult<AssColor?>(null);
     Task<string?> OpenSubtitleAsync();
@@ -17,5 +21,12 @@ public interface IEditorDialogs
     Task ShowStylesAsync(Yoake.Core.Subtitles.SubtitleEditor editor);
     Task ShowScriptInfoAsync(Yoake.Core.Subtitles.SubtitleEditor editor);
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model);
+}
+public interface IAutomationProgressSession
+{
+    CancellationToken CancellationToken { get; }
+    void Report(double? percent, string? task, string? title);
+    void Log(string message, int level);
+    void Complete(Exception? failure);
 }
 public sealed record FontChoice(string Family,string Size);

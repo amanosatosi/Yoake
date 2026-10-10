@@ -83,7 +83,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public IReadOnlyList<string> RecentFiles => _settings.RecentFiles;
     private readonly EventSelection _selection=[];
     public IList<AssEvent> SelectedEvents=>_selection;
-    public void SetSelectedEvents(IEnumerable<AssEvent> lines)=>_selection.Replace(lines);
+    public void SetSelectedEvents(IEnumerable<AssEvent> lines) { _selection.Replace(lines); if (_automationCatalog is not null) ScheduleAutomationValidation(); }
     public bool IsSynchronizingSelection { get; private set; }
     public int TextCursor { get; set; }
     public EventEditDraft? Draft
@@ -169,6 +169,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         _registry=registry; _workspace=workspace; _theme=theme; _settingsStore=settingsStore; _settings=settings.Normalize();
         RegisterEditorCommands();
+        InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
         CreateNewDocument();
@@ -256,14 +257,14 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         }
         CancelGesture(); StopPlayback(); state.Loading?.Cancel(); state.Loading?.Dispose();
         var media=state.Media; state.Media=null; if (media is not null) _=Task.Run(media.Dispose);
-        _documents.Remove(id); _workspace.Close(id); if (_workspace.Documents.Count==0) CreateNewDocument(); return true;
+        CloseAutomationDocument(id); _documents.Remove(id); _workspace.Close(id); if (_workspace.Documents.Count==0) CreateNewDocument(); return true;
     }
     public async Task<bool> CloseWindowAsync()
     {
         foreach (var id in _workspace.Documents.Select(s=>s.Id).ToArray()) if (!await CloseDocumentAsync(id)) return false;
         return true;
     }
-    private void OnWorkspaceChanged(object? sender,EventArgs e) { SynchronizeTabs(); SynchronizeActiveDocument(); }
+    private void OnWorkspaceChanged(object? sender,EventArgs e) { SynchronizeTabs(); SynchronizeActiveDocument(); ScheduleAutomationValidation(); OnPropertyChanged(nameof(AutomationScripts)); OnPropertyChanged(nameof(AutomationMacros)); }
     private void SynchronizeActiveDocument()
     {
         var id=_workspace.ActiveDocumentId;
@@ -344,6 +345,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public void Dispose()
     {
+        if (!_disposed) DisposeAutomation();
         if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
         foreach(var state in _documents.Values) { state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
         foreach(var tab in Tabs) tab.Dispose(); Tabs.Clear(); DisposeSubtitleRenderer(); VideoFrame=null;

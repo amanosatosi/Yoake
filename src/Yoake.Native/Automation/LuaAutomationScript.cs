@@ -91,7 +91,11 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
             _invocation = invocation; _cancellation = cancellationToken; _reads.Clear(); _templates.Clear(); _nextRead = 0;
-            return await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
+            var result = await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
+            using var json = JsonDocument.Parse(result);
+            if (json.RootElement.TryGetProperty("cancelled", out var cancelled) && cancelled.ValueKind == JsonValueKind.True)
+                throw new OperationCanceledException("Automation script cancelled execution.");
+            return result;
         }
         finally { _invocation = null; _reads.Clear(); _templates.Clear(); _gate.Release(); }
     }
@@ -141,7 +145,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             case "include_path": return [_paths.ResolveInclude(Text(1))];
             case "package_path": return [_paths.PackagePath];
             case "module_path": return [_paths.ResolveModule(Text(1), Text(2))];
-            case "decode_path": return [_paths.DecodePath(Text(1))];
+            case "decode_path": return [services?.DecodePath(Text(1)) ?? _paths.DecodePath(Text(1))];
             case "register_macro":
                 var name = Text(2);
                 if (!_names.Add(name)) throw new ArgumentException($"A macro named '{name}' is already defined in script '{Path}'.");
@@ -218,7 +222,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
                 JsonValueKind.String => pair.Value.GetString(), JsonValueKind.Number => pair.Value.GetDouble(),
                 JsonValueKind.True => true, JsonValueKind.False => false, JsonValueKind.Null => null,
                 JsonValueKind.Object when pair.Name == "extra" => pair.Value.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.ToString()),
-                JsonValueKind.Object => pair.Value.Clone(),
+                JsonValueKind.Object => Data(pair.Value),
                 _ => throw new ArgumentException($"Unsupported field '{pair.Name}'.")
             };
         return line;
@@ -226,6 +230,13 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
 
     private static IEnumerable<JsonElement> Values(JsonElement table) => table.EnumerateObject()
         .Where(p => p.Name != "n").OrderBy(p => int.TryParse(p.Name, out var i) ? i : int.MaxValue).Select(p => p.Value);
+    private static object? Data(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.Object => value.EnumerateObject().ToDictionary(p => p.Name, p => Data(p.Value), StringComparer.Ordinal),
+        JsonValueKind.String => value.GetString(), JsonValueKind.Number => value.GetDouble(),
+        JsonValueKind.True => true, JsonValueKind.False => false, JsonValueKind.Null => null,
+        _ => throw new ArgumentException("Unsupported Automation data value.")
+    };
     private static int Integer(JsonElement element)
     {
         double n;

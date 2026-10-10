@@ -25,6 +25,7 @@ public interface IAutomationHostServices
     IReadOnlyList<int> Keyframes { get; }
     AutomationTextMetrics MeasureText(AutomationLine style, string text);
     string Translate(string text);
+    string DecodePath(string path) => path;
     string? ClipboardGet();
     bool ClipboardSet(string text);
     AutomationDialogResult DisplayDialog(AutomationDialogRequest request, CancellationToken cancellationToken);

@@ -196,7 +196,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
         events.Select(IndexOf).Where(i => i > 0).Distinct().Order().ToArray();
 
     // Must run on the host's document thread, only after successful script return.
-    public void Commit(SubtitleEditor editor, string macroName)
+    public IReadOnlyDictionary<int, AssEvent> Commit(SubtitleEditor editor, string macroName)
     {
         RequireWritable();
         if (!ReferenceEquals(editor.Document, _document)) throw new InvalidOperationException("Automation editor ownership mismatch.");
@@ -217,6 +217,10 @@ public sealed class AutomationSubtitleDocument : IDisposable
         }
         using (_document.BeginUpdate()) editor.Undo.ExecuteBatch(operations);
         _expired = true;
+        Dictionary<int, AssEvent> events = [];
+        for (var i = 0; i < _entries.Count; i++)
+            if (_entries[i].Group == Group.Dialogue && _records.GetValueOrDefault(_entries[i].Id) is AssEvent line) events[i + 1] = line;
+        return events;
     }
 
     public void Dispose() { _expired = true; _entries.Clear(); _checkpoints.Clear(); }

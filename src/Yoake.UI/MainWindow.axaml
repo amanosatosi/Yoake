@@ -82,6 +82,12 @@
 <MenuItem Header="Styles Manager…" Command="{Binding Actions[styles/manage]}" />
 <MenuItem Header="Script Info…" Command="{Binding Actions[script-info/edit]}" />
 </MenuItem>
+<MenuItem Header="Automation" SubmenuOpened="AutomationMenuOpened">
+<MenuItem Header="Automation Manager…" Command="{Binding Actions[automation/manager]}" />
+<MenuItem Header="Rescan autoload" Command="{Binding Actions[automation/rescan]}" />
+<Separator />
+<MenuItem Name="AutomationMacroMenu" Header="Macros" />
+</MenuItem>
 <MenuItem Header="Timing">
 <MenuItem Header="Set start to current time" Command="{Binding Actions[timing/set-start]}" />
 <MenuItem Header="Set end to current time" Command="{Binding Actions[timing/set-end]}" />
