@@ -54,19 +54,19 @@ public sealed partial class MainWindowViewModel
         public string? ClipboardGet()
         {
             if (dialogs is null) return null;
-            var value = Dispatcher.UIThread.InvokeAsync(dialogs.ReadClipboardAsync).GetAwaiter().GetResult().GetAwaiter().GetResult();
+            var value = Dispatcher.UIThread.InvokeAsync(dialogs.ReadClipboardAsync).GetAwaiter().GetResult();
             return string.IsNullOrEmpty(value) ? null : value;
         }
         public bool ClipboardSet(string text)
         {
             RequireInteractive(); if (dialogs is null) return false;
-            Dispatcher.UIThread.InvokeAsync(() => dialogs.WriteClipboardAsync(text)).GetAwaiter().GetResult().GetAwaiter().GetResult(); return true;
+            Dispatcher.UIThread.InvokeAsync(() => dialogs.WriteClipboardAsync(text)).GetAwaiter().GetResult(); return true;
         }
         public AutomationDialogResult DisplayDialog(AutomationDialogRequest request, CancellationToken token)
         {
             RequireInteractive();
             if (dialogs is null) throw new InvalidOperationException("Automation requires a desktop dialog host.");
-            return Dispatcher.UIThread.InvokeAsync(() => dialogs.ShowAutomationDialogAsync(request, token)).GetAwaiter().GetResult().WaitAsync(token).GetAwaiter().GetResult();
+            return Dispatcher.UIThread.InvokeAsync(() => dialogs.ShowAutomationDialogAsync(request, token)).WaitAsync(token).GetAwaiter().GetResult();
         }
         public void ReportProgress(double? percent = null, string? task = null, string? title = null) => progress?.Report(percent, task, title);
         public void Log(string message, int level) { log.Info($"Automation [{level}]: {message}"); progress?.Log(message, level); }
