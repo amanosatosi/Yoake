@@ -291,6 +291,16 @@ aegisub.register_macro('Initialized metrics','',function() end)
     }
 
     [Fact]
+    public async Task MoonScriptLocationTrackingRetainsTightLoopCancellationAndReuse()
+    {
+        using var script = await Load("aegisub.register_macro 'Loop', '', ->\n  while true\n    value = 1\naegisub.register_macro 'Reuse', '', ->\n  value = 2\n", "cancel.moon");
+        using var subs = new AutomationSubtitleDocument(Document());
+        using var cancellation = new CancellationTokenSource(TimeSpan.FromMilliseconds(300));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await script.RunAsync(1, Context(subs), cancellation.Token));
+        await script.RunAsync(2, Context(subs), default);
+    }
+
+    [Fact]
     public async Task NativeKaraokeArrayIncludesNumericZeroAndContiguousSyllables()
     {
         using var script = await Load("""

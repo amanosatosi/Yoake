@@ -24,6 +24,8 @@ typedef struct runtime {
     char *result;
     const char *source, *name;
     int source_length;
+    int trace_moon, trace_line;
+    char *trace_source;
 #ifdef _WIN32
     volatile LONG cancelled;
 #else
@@ -50,13 +52,41 @@ static runtime *owner(lua_State *L) {
 
 static void cancellation_hook(lua_State *L, lua_Debug *ar) {
     runtime *r = owner(L);
-    (void)ar;
+    if (ar->event == LUA_HOOKLINE && lua_getinfo(L, "Sl", ar)) {
+        size_t length = strlen(ar->source);
+        if (length >= 5 && !strcmp(ar->source + length - 5, ".moon")) {
+            if (!r->trace_source || strcmp(r->trace_source, ar->source)) {
+                char *copy = (char *)malloc(length + 1);
+                if (!copy) luaL_error(L, "Out of memory recording MoonScript source");
+                memcpy(copy, ar->source, length + 1);
+                free(r->trace_source); r->trace_source = copy;
+            }
+            r->trace_line = ar->currentline;
+        }
+    }
 #ifdef _WIN32
     if (InterlockedCompareExchange(&r->cancelled, 0, 0))
 #else
     if (atomic_load(&r->cancelled))
 #endif
         luaL_error(L, "Automation execution cancelled");
+}
+
+/* LuaJIT elides a tail call into error(). Keep its MoonScript call site in
+   the same hook as cancellation; never replace the count hook from Lua. */
+static int moon_location(lua_State *L) {
+    runtime *r = owner(L);
+    if (lua_gettop(L)) {
+        if (lua_toboolean(L, 1)) {
+            r->trace_moon = 1;
+            lua_sethook(L, cancellation_hook, LUA_MASKCOUNT | LUA_MASKLINE, 10000);
+        }
+        r->trace_line = 0;
+        return 0;
+    }
+    if (!r->trace_line || !r->trace_source) return 0;
+    lua_pushstring(L, r->trace_source); lua_pushinteger(L, r->trace_line);
+    return 2;
 }
 
 static int dispatch(lua_State *L) {
@@ -89,6 +119,8 @@ static int initialize(lua_State *L) {
     lua_setfield(L, LUA_REGISTRYINDEX, "yoake.runtime");
     lua_pushcfunction(L, dispatch);
     lua_setglobal(L, "__yoake_transport");
+    lua_pushcfunction(L, moon_location);
+    lua_setglobal(L, "__yoake_moon_location");
     /* Count hooks cannot reliably interrupt compiled tight loops. Disable
        Lua JIT for this cancellable host; this does not affect managed AOT. */
     luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE | LUAJIT_MODE_OFF);
@@ -141,7 +173,7 @@ API int ya_execute(runtime *r, const char *source, int length, const char *name,
     free(r->result); r->result = NULL; release_reply(r);
     r->source = source; r->source_length = length; r->name = name;
     lua_settop(r->L, 0);
-    lua_sethook(r->L, cancellation_hook, LUA_MASKCOUNT, 10000);
+    lua_sethook(r->L, cancellation_hook, LUA_MASKCOUNT | (r->trace_moon ? LUA_MASKLINE : 0), 10000);
     int status = lua_cpcall(r->L, execute, r);
     lua_sethook(r->L, NULL, 0, 0);
     release_reply(r);
@@ -151,5 +183,5 @@ API int ya_execute(runtime *r, const char *source, int length, const char *name,
 
 API void ya_destroy(runtime *r) {
     if (!r) return;
-    lua_close(r->L); release_reply(r); free(r->result); free(r);
+    lua_close(r->L); release_reply(r); free(r->result); free(r->trace_source); free(r);
 }

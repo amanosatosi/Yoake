@@ -1,6 +1,8 @@
 -- Yoake's private native-host adapter. The public surface targets Aegisub 3.2.2.
 -- The managed host never evaluates or marshals raw Lua tables or Lua pointers.
 local transport, compile = __yoake_transport, loadstring
+local moon_location = __yoake_moon_location
+__yoake_moon_location = nil
 local moon_sources = {}
 __yoake_transport = nil
 local function quote(s)
@@ -47,6 +49,7 @@ local function load_source(path)
   local text = host('read_file', path)
   if path:lower():sub(-5) == '.moon' then
     moon_sources['@'..path] = text
+    moon_location(true)
     return require('moonscript').loadstring(text, '@'..path)
   end
   return compile(text, '@'..path)
@@ -171,6 +174,7 @@ end
 local function script_traceback(message)
   local lines = {tostring(message), 'stack traceback:'}
   local tables = package.loaded['moonscript.line_tables'] or {}
+  local seen = {}
   for level=2,200 do
     local info=debug.getinfo(level,'Sln')
     if not info then break end
@@ -179,6 +183,7 @@ local function script_traceback(message)
     else
       local line=info.currentline
       local source=info.source
+      seen[source] = true
       local original=moon_sources[source]
       local positions=tables[source]
       local position=positions and positions[line]
@@ -195,9 +200,24 @@ local function script_traceback(message)
       lines[#lines+1]='\t'..source:gsub('^@','')..':'..line..': '..(info.name and "in function '"..info.name.."'" or 'in script')
     end
   end
+  local source,line = moon_location()
+  if source and not seen[source] then
+    local original,positions = moon_sources[source],tables[source]
+    local position = positions and positions[line]
+    if original and positions and not position then
+      for generated=line-1,0,-1 do
+        if positions[generated] then position=positions[generated]; break end
+      end
+    end
+    if original and position then
+      local _,count=original:sub(1,position):gsub('\n','\n'); line=count+1
+    end
+    lines[#lines+1]='\t'..source:gsub('^@','')..':'..line..': last MoonScript call site'
+  end
   return table.concat(lines,'\n')
 end
 function __yoake_invoke(index, method, settings)
+  moon_location(false)
   script_cancelled = false
   generation = generation + 1
   provenance = setmetatable({}, {__mode='k'})
