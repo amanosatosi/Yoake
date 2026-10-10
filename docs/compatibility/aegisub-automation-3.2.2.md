@@ -77,6 +77,12 @@ The frozen manual is checked alongside source, with these known discrepancies:
 * `alpha` is documented as a color class but exact 3.2.2 constructs `Edit`.
   Yoake retains the edit/string behavior. The manual's nonpositive width/height
   fallback to one is retained for usable dialog layout.
+* The frozen Dialogs manual lists open/save arguments as
+  `(title, default_file, default_dir, wildcards, ...)`. Exact 3.2.2
+  `LuaDisplayOpenDialog` / `LuaDisplaySaveDialog` read directory at argument two
+  and filename at three. Yoake follows release execution order and records it
+  in a native transport regression. `must_exist` defaults true; save's fifth
+  argument suppresses the overwrite prompt when truthy.
 
 * `include("name.lua")` searches the master script directory followed by configured
   include directories. Names containing either slash are resolved against the

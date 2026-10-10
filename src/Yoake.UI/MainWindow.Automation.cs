@@ -6,6 +6,7 @@ using Yoake.Core.Commands;
 using Yoake.UI.Controls;
 using Yoake.UI.Services;
 using Yoake.UI.ViewModels;
+using Yoake.Native.Automation;
 
 namespace Yoake.UI;
 
@@ -23,6 +24,11 @@ public partial class MainWindow
         return files.FirstOrDefault()?.TryGetLocalPath();
     }
     public Task ShowAutomationManagerAsync(MainWindowViewModel model) => new AutomationManagerWindow(model).ShowDialog(this);
+    public Task<IReadOnlyList<string>?> ShowAutomationFileDialogAsync(AutomationFileDialogRequest request, CancellationToken token)
+    {
+        var owner = _automationProgress is { IsVisible: true } progress ? progress : this;
+        return Task.FromResult(WindowsAutomationFilePicker.Pick(request, owner.TryGetPlatformHandle()?.Handle ?? 0, token));
+    }
     public Task<AutomationDialogResult> ShowAutomationDialogAsync(AutomationDialogRequest request, CancellationToken cancellationToken) =>
         new AutomationDialog(request, e => _model?.Registry.ReportFailure("automation/dialog", e)).DisplayAsync(_automationProgress is { IsVisible: true } progress ? progress : this, cancellationToken);
     public Task<AutomationExportChoice?> ShowAutomationExportAsync(IReadOnlyList<AutomationExportOption> options, IReadOnlyList<string> selected, string encoding, CancellationToken token) =>

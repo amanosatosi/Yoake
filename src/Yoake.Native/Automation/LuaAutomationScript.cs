@@ -159,7 +159,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         if (op is "subs_write" or "subs_delete" or "subs_deleterange" or "subs_append" or "subs_insert" or "undo_point")
             if (_mode is not ("run" or "filter")) throw new InvalidOperationException("Subtitles are read-only during validation and export configuration.");
         if (op == "undo_point" && _mode == "filter") throw new InvalidOperationException("Export filters cannot set undo points.");
-        if (op == "dialog" && _mode != "run") throw new InvalidOperationException("This Automation invocation cannot open a dialog.");
+        if ((op == "dialog" || op.StartsWith("file_dialog_", StringComparison.Ordinal)) && _mode != "run") throw new InvalidOperationException("This Automation invocation cannot open a dialog.");
         switch (op)
         {
             case "read_file": return [File.ReadAllText(Text(1), new UTF8Encoding(false, true)).TrimStart('\uFEFF')];
@@ -214,6 +214,13 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
                 return [metrics.Width, metrics.Height, metrics.Descent, metrics.ExternalLeading];
             case "clipboard_get": return [services!.ClipboardGet()];
             case "clipboard_set": return [services!.ClipboardSet(Text(1))];
+            case "file_dialog_open": case "file_dialog_save":
+                static bool Truth(JsonElement v) => v.ValueKind is not (JsonValueKind.Null or JsonValueKind.Undefined or JsonValueKind.False);
+                var save = op == "file_dialog_save";
+                var multiple = !save && Truth(Arg(5));
+                var mustExist = !save && (Arg(6).ValueKind is JsonValueKind.Null or JsonValueKind.Undefined || Truth(Arg(6)));
+                var paths = services!.PickFiles(new(Text(1), Text(2), Text(3), Text(4), save, multiple, mustExist, save && !Truth(Arg(5))), _cancellation);
+                return [multiple ? paths : paths?.FirstOrDefault() as object];
             case "dialog":
                 var controls = Values(Arg(1)).Select(v => Line(v, default)).ToArray();
                 var buttons = Arg(2).ValueKind == JsonValueKind.Object ? Values(Arg(2)).Select(v => v.ToString()).ToArray() : null;
@@ -287,6 +294,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             case IReadOnlyDictionary<string, object?> fields: return "{" + string.Join(',', fields.Select(p => "[" + Literal(p.Key) + "]=" + Literal(p.Value))) + "}";
             case IReadOnlyDictionary<string, string> fields: return "{" + string.Join(',', fields.Select(p => "[" + Literal(p.Key) + "]=" + Literal(p.Value))) + "}";
             case IReadOnlyList<int> array: return "{" + string.Join(',', array.Select(n => Literal(n))) + "}";
+            case IReadOnlyList<string> array: return "{" + string.Join(',', array.Select(n => Literal(n))) + "}";
             default: throw new ArgumentException("Unsupported Automation host response value.");
         }
     }

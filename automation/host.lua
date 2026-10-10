@@ -183,7 +183,11 @@ function __yoake_invoke(index, method, settings)
     is_cancelled=function() check(current); return host('is_cancelled') end
   } or nil
   aegisub.log, aegisub.debug = log,processing and {out=log} or nil
-  aegisub.dialog = processing and not feature.filter and {display=function(...) check(current); return host('dialog',...) end} or nil
+  aegisub.dialog = processing and not feature.filter and {
+    display=function(...) check(current); return host('dialog',...) end,
+    open=function(...) check(current); return host('file_dialog_open',...) end,
+    save=function(...) check(current); return host('file_dialog_save',...) end
+  } or nil
   local selected, active = host('selection')
   local fn = feature[method]
   local ok,a,b = xpcall(function()

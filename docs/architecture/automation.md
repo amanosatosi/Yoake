@@ -204,6 +204,14 @@ Lua/native state. The packaged window probe exercises this with a real modal
 dialog, stable macro command, insertion, grid/draft refresh and changed Mangetsu
 video pixels, followed by exact source and selection undo/redo.
 
+File-picker requests are data-only Core values, marshalled by the UI service to
+the native Windows Unicode common dialog. `OPENFILENAMEW`, owner handles,
+selection buffers and cancellation hooks remain in `Yoake.Native`. This supplies
+the release's multiple/non-existing-file/overwrite flags and preserves process
+working directory. A cancellation closes the native modal dialog; no callback
+exception crosses its window procedure. Returned paths are Unicode strings,
+a Lua array for multiple selection, or nil on dismissal.
+
 GitHub Actions builds/tests the managed host, native stack, NativeAOT package,
 module fixtures and real-window macro/dialog/selection/undo scenario. Do not
 compile or rebuild either Yoake or Aegisub locally during ordinary development.

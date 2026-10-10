@@ -192,7 +192,7 @@ aegisub.register_macro('Modules loaded','',function() end)
         var document = AssDocument.CreateEmpty(); var editor = new SubtitleEditor(document);
         var template = editor.Insert(null, after: true);
         template.Effect = "template syl"; template.Text = "{\\pos($scenter,$smiddle)\\k$sdur}";
-        var song = editor.Insert(template, after: true); song.Text = "{\\k20}日{\\kf30}本語";
+        var song = editor.Insert(template, after: true); song.Effect = ""; song.Text = "{\\k20}日{\\kf30}本語";
         song.Start = "0:00:01.00"; song.End = "0:00:03.00";
         editor.ToggleComment([template]); editor.MarkSaved();
         var before = document.Serialize();
@@ -232,6 +232,34 @@ end)
         subs.Commit(editor, "Copy");
         Assert.Equal("generated", document.Events[1].Text);
         Assert.Equal("evidence", document.Events[1].Get("Future"));
+    }
+
+    [Fact]
+    public async Task FileDialogTransportUsesReleaseArgumentOrderTruthinessAndUnicodeReturnTypes()
+    {
+        using var script = await Load("""
+aegisub.register_macro('Files','',function(subs)
+  assert(aegisub.dialog.open('Open','directory','name.txt','Text|*.txt')==nil)
+  local paths=aegisub.dialog.open('Multiple','directory','name.txt','Text|*.txt',0,false)
+  assert(#paths==2 and paths[1]=='日本語.txt' and paths[2]=='မြန်မာ.txt')
+  assert(aegisub.dialog.save('Save','directory','name.txt','Text|*.txt')=='日本語.txt')
+  assert(aegisub.dialog.save('Quiet','directory','name.txt','Text|*.txt',true)=='မြန်မာ.txt')
+end)
+""");
+        List<AutomationFileDialogRequest> requests = [];
+        var services = new Services(request =>
+        {
+            requests.Add(request);
+            return requests.Count switch { 1 => null, 2 => new[] { "日本語.txt", "မြန်မာ.txt" }, 3 => new[] { "日本語.txt" }, _ => new[] { "မြန်မာ.txt" } };
+        });
+        using var subs = new AutomationSubtitleDocument(Document());
+        await script.RunAsync(1, Context(subs) with { Services = services }, default);
+        Assert.Equal(4, requests.Count);
+        Assert.All(requests, request => { Assert.Equal("directory", request.DefaultDirectory); Assert.Equal("name.txt", request.DefaultFile); });
+        Assert.False(requests[0].AllowMultiple); Assert.True(requests[0].MustExist);
+        Assert.True(requests[1].AllowMultiple); Assert.False(requests[1].MustExist);
+        Assert.True(requests[2].Save); Assert.True(requests[2].PromptOverwrite);
+        Assert.True(requests[3].Save); Assert.False(requests[3].PromptOverwrite);
     }
 
     [Fact]
@@ -314,7 +342,7 @@ end)
         Assert.Equal(spaced.Height * 2, scaled.Height, precision: 8);
     }
 
-    private sealed class Services : IAutomationHostServices
+    private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null) : IAutomationHostServices
     {
         public string? FileName => null;
         public IReadOnlyDictionary<string, object?> ProjectProperties => new Dictionary<string, object?>();
@@ -327,6 +355,7 @@ end)
         public string? ClipboardGet() => null;
         public bool ClipboardSet(string text) => false;
         public AutomationDialogResult DisplayDialog(AutomationDialogRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
+        public IReadOnlyList<string>? PickFiles(AutomationFileDialogRequest request, CancellationToken token) => pick?.Invoke(request);
         public void ReportProgress(double? percent = null, string? task = null, string? title = null) { }
         public void Log(string message, int level) { }
     }

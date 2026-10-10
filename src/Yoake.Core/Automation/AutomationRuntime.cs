@@ -13,6 +13,8 @@ public sealed record AutomationTextMetrics(double Width, double Height, double D
 public sealed record AutomationVideoSize(int Width, int Height, double AspectRatio, int AspectRatioMode);
 public sealed record AutomationDialogRequest(IReadOnlyList<AutomationLine> Controls, IReadOnlyList<string>? Buttons, IReadOnlyDictionary<string, string>? ButtonIds);
 public sealed record AutomationDialogResult(object Button, IReadOnlyDictionary<string, object?> Values);
+public sealed record AutomationFileDialogRequest(string Title, string DefaultDirectory, string DefaultFile, string Wildcards,
+    bool Save, bool AllowMultiple, bool MustExist, bool PromptOverwrite);
 public sealed record AutomationFilterBinding(IAutomationScript Script, AutomationExportFilter Filter, string Name);
 public sealed record AutomationFilterSettings(AutomationFilterBinding Binding, IReadOnlyDictionary<string, object?> Values);
 
@@ -32,6 +34,8 @@ public interface IAutomationHostServices
     string? ClipboardGet();
     bool ClipboardSet(string text);
     AutomationDialogResult DisplayDialog(AutomationDialogRequest request, CancellationToken cancellationToken);
+    IReadOnlyList<string>? PickFiles(AutomationFileDialogRequest request, CancellationToken cancellationToken)
+        => throw new NotSupportedException("Automation file dialogs are unavailable.");
     void ReportProgress(double? percent = null, string? task = null, string? title = null);
     void Log(string message, int level);
 }

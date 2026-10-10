@@ -68,6 +68,12 @@ public sealed partial class MainWindowViewModel
             if (dialogs is null) throw new InvalidOperationException("Automation requires a desktop dialog host.");
             return Dispatcher.UIThread.InvokeAsync(() => dialogs.ShowAutomationDialogAsync(request, token)).WaitAsync(token).GetAwaiter().GetResult();
         }
+        public IReadOnlyList<string>? PickFiles(AutomationFileDialogRequest request, CancellationToken token)
+        {
+            RequireInteractive();
+            if (dialogs is null) throw new InvalidOperationException("Automation requires a desktop dialog host.");
+            return Dispatcher.UIThread.InvokeAsync(() => dialogs.ShowAutomationFileDialogAsync(request, token)).WaitAsync(token).GetAwaiter().GetResult();
+        }
         public void ReportProgress(double? percent = null, string? task = null, string? title = null) => progress?.Report(percent, task, title);
         public void Log(string message, int level) { log.Info($"Automation [{level}]: {message}"); progress?.Log(message, level); }
         private void RequireInteractive() { if (!interactive) throw new InvalidOperationException("Interactive Automation services are unavailable during validation."); }
