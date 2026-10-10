@@ -10,12 +10,21 @@ public enum ThemePreference
     Dark,
 }
 
+public enum WorkspaceViewMode
+{
+    Default,
+    Audio,
+    Video,
+    AudioVideo,
+}
+
 public sealed record AppSettings
 {
     public double[] GridColumnWidths { get; init; } = [40,65,48,92,92,110,100,90];
     public string[] RecentFiles { get; init; } = [];
     public int SchemaVersion { get; init; } = 1;
     public ThemePreference Theme { get; init; } = ThemePreference.System;
+    public WorkspaceViewMode ViewMode { get; init; } = WorkspaceViewMode.Default;
     public double MainSplitRatio { get; init; } = 0.5;
     public double GridHeight { get; init; } = 230;
     public double[]? CompactGridColumnWidths {get;init;}
@@ -49,11 +58,13 @@ public sealed record AppSettings
         if (RecentFiles is null || !RecentFiles.SequenceEqual(recent))
             report?.Invoke("RecentFiles normalized: removed null/empty, duplicate or excess entries.");
         var theme = Theme is >= ThemePreference.System and <= ThemePreference.Dark ? Theme : defaults.Theme;
+        var viewMode = ViewMode is >= WorkspaceViewMode.Default and <= WorkspaceViewMode.AudioVideo ? ViewMode : WorkspaceViewMode.Default;
+        if (viewMode != ViewMode) report?.Invoke("Unknown workspace view mode normalized to Default.");
         var ratio = double.IsFinite(MainSplitRatio) && MainSplitRatio > 0 && MainSplitRatio < 1 ? Math.Clamp(MainSplitRatio, 0.1, 0.9) : defaults.MainSplitRatio;
         var height = double.IsFinite(GridHeight) && GridHeight > 0 ? Math.Clamp(GridHeight, 100, 2000) : defaults.GridHeight;
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
-        return this with { GridColumnWidths = widths, RecentFiles = recent, Theme = theme,
+        return this with { GridColumnWidths = widths, RecentFiles = recent, Theme = theme, ViewMode = viewMode,
             AutomationAutoloadDirectories=NormalizePaths(AutomationAutoloadDirectories), AutomationIncludeDirectories=NormalizePaths(AutomationIncludeDirectories),
             CompactGridColumnWidths=CompactGridColumnWidths is {Length:7} compact&&compact.All(w=>double.IsFinite(w)&&w>=24&&w<=600)?compact:null,
             StyleSplitWeights=StyleSplitWeights is {Length:3} split&&split.All(w=>double.IsFinite(w)&&w>0)?split.Select(w=>Math.Clamp(w,0.1,10)).ToArray():null,

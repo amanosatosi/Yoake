@@ -2,6 +2,10 @@ namespace Yoake.Core.Commands;
 
 public static class CommandIds
 {
+    public const string ViewDefault = "view/default";
+    public const string ViewAudio = "view/audio";
+    public const string ViewVideo = "view/video";
+    public const string ViewAudioVideo = "view/audio-video";
     public const string AutomationManager = "automation/manager";
     public const string AutomationLoad = "automation/load";
     public const string AutomationRemove = "automation/remove";

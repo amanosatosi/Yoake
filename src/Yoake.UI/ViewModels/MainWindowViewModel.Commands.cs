@@ -103,6 +103,7 @@ public sealed partial class MainWindowViewModel
     }
     private void RegisterEditorCommands()
     {
+        RegisterViewCommands();
         void R(string id,string label,Func<CommandInvocation,ValueTask> action,Func<bool>? available=null)
         {
             _registry.Register(new AppCommand(new(id,label,label,id.Split('/')[0]),(i,_)=>action(i),_=>available?.Invoke()??true));

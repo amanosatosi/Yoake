@@ -113,6 +113,11 @@
 <MenuItem Header="Zoom out" Command="{Binding Actions[audio/zoom/out]}" />
 </MenuItem>
 <MenuItem Header="View">
+<MenuItem Name="ViewDefault" Header="Default" ToggleType="Radio" IsChecked="{Binding IsDefaultView, Mode=OneWay}" Command="{Binding Actions[view/default]}" />
+<MenuItem Name="ViewAudio" Header="Audio" ToggleType="Radio" IsChecked="{Binding IsAudioView, Mode=OneWay}" Command="{Binding Actions[view/audio]}" />
+<MenuItem Name="ViewVideo" Header="Video" ToggleType="Radio" IsChecked="{Binding IsVideoView, Mode=OneWay}" Command="{Binding Actions[view/video]}" />
+<MenuItem Name="ViewAudioVideo" Header="Audio + Video" ToggleType="Radio" IsChecked="{Binding IsAudioVideoView, Mode=OneWay}" Command="{Binding Actions[view/audio-video]}" />
+<Separator />
 <MenuItem Header="Cycle theme" Command="{Binding Actions[view/theme/cycle]}" />
 </MenuItem>
 </Menu><Grid Grid.Row="1" Margin="6,2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><TextBlock Grid.Column="2" MaxWidth="360" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Name="VisualToolStatus" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="10" VerticalAlignment="Center" /><StackPanel Orientation="Horizontal" Spacing="4">
@@ -121,7 +126,7 @@
 </StackPanel></Grid></Grid></Border>
 <Grid Grid.Row="2" Name="UpperWorkspace">
   <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
-  <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn">
+  <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn" IsVisible="{Binding ShowVideo}">
     <Border Grid.Row="0" Background="{DynamicResource PanelBrush}">
       <Grid Name="VideoRegion" Margin="6" RowDefinitions="*,22,26,Auto" RowSpacing="4">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*">      <StackPanel Name="VisualPrimaryTools" Grid.Column="0" Orientation="Vertical" Spacing="3" Margin="0,0,8,0">
@@ -166,10 +171,10 @@
     </Border>
 
   </Grid>
-  <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
+  <GridSplitter Name="VideoSplitter" Grid.Column="1" IsVisible="{Binding ShowVideo}" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
   <Grid Grid.Column="2" Name="TemporalTextColumn">
     <Grid.RowDefinitions><RowDefinition Height="180" MinHeight="160" /><RowDefinition Height="4" /><RowDefinition Height="*" MinHeight="280" /></Grid.RowDefinitions>
-    <Border Grid.Row="0" Background="{DynamicResource PanelBrush}">
+    <Border Grid.Row="0" IsVisible="{Binding ShowAudio}" Background="{DynamicResource PanelBrush}">
       <Grid Name="AudioRegion" Margin="6,6,6,4" RowDefinitions="24,*,14" RowSpacing="4">
         <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="0,0,132,0"><StackPanel Orientation="Horizontal" Spacing="4"><Button Content="−" Command="{Binding Actions[audio/zoom/out]}" Padding="5,0" /><Button Content="+" Command="{Binding Actions[audio/zoom/in]}" Padding="5,0" /><Button Content="Play line" Command="{Binding Actions[audio/play/selection]}" Padding="5,0" /><ToggleButton Classes="authoring" Content="Mute" IsChecked="{Binding PlaybackMuted, Mode=TwoWay}" Padding="4,0" ToolTip.Tip="Mute editor playback" /><Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="4,0" ToolTip.Tip="Play / pause from cursor" /><ComboBox Name="AudioMode" Margin="4,0,0,0" SelectedIndex="0" SelectionChanged="AudioModeChanged" Padding="5,0"><ComboBoxItem Content="Waveform" /><ComboBoxItem Content="Spectrogram" /></ComboBox></StackPanel><TextBlock Grid.Column="1" Name="AudioStatus" Text="{Binding MediaStatus}" ToolTip.Tip="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10" /></Grid>
         <controls:AudioWaveformControl Grid.Row="1" Margin="0,4,132,0" Name="AudioDisplay" ToolTip.Tip="Click: seek · Green/red: drag start/end · Shift+drag inside line: move timing · Wheel: pan · Ctrl+wheel: zoom · Shift+wheel: amplitude" Model="{Binding}" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
@@ -186,7 +191,7 @@
         <ScrollBar Grid.Row="2" Name="AudioPanner" Orientation="Horizontal" Minimum="0" Maximum="{Binding #AudioDisplay.MaximumPan}" ViewportSize="{Binding #AudioDisplay.VisibleSeconds}" Value="{Binding #AudioDisplay.ViewportStart, Mode=TwoWay}" SmallChange="0.5" LargeChange="5" Margin="0,0,132,0" ToolTip.Tip="Pan the visible audio time range" />
       </Grid>
     </Border>
-    <GridSplitter Name="AudioSplitter" Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
+    <GridSplitter Name="AudioSplitter" Grid.Row="1" IsVisible="{Binding ShowAudio}" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
     <Border Grid.Row="2" Background="{DynamicResource PanelBrush}">
       <Grid Name="EventEditorRegion" Margin="6" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="4" IsEnabled="{Binding HasSelectedEvent}">
         <Grid.Styles>

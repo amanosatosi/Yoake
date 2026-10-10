@@ -52,6 +52,7 @@ public sealed class SettingsStore(string path)
     {
         var defaults = new AppSettings();
         var theme = defaults.Theme; var schema = defaults.SchemaVersion;
+        var viewMode = WorkspaceViewMode.Default;
         var ratio = defaults.MainSplitRatio; var height = defaults.GridHeight;
         double? volume=null,audioHeight=null,intensity=null;var muted=false;double[]? compact=null,styleSplit=null;
         double[]? widths = null; string[]? recent = null;
@@ -62,6 +63,7 @@ public sealed class SettingsStore(string path)
             {
                 case "schemaVersion": if (TryReadInt(member.Value, out var version)) schema = version; break;
                 case "theme": if (TryReadInt(member.Value, out var value)) theme = (ThemePreference)value; break;
+                case "viewMode": if (TryReadInt(member.Value, out var mode)) viewMode = (WorkspaceViewMode)mode; break;
                 case "mainSplitRatio": ratio = ReadNumber(member.Value); break;
                 case "gridHeight": height = ReadNumber(member.Value); break;
                 case "playbackVolume":volume=ReadNumber(member.Value);break;
@@ -79,7 +81,7 @@ public sealed class SettingsStore(string path)
                 default: future[member.Name] = member.Value.Clone(); break;
             }
         }
-        return new AppSettings { Theme = theme, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
+        return new AppSettings { Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
             GridColumnWidths = widths!, RecentFiles = recent!, FutureSettings = future,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };
     }

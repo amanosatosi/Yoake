@@ -22,6 +22,8 @@ public partial class MainWindow : Window, IEditorDialogs
 {
     private bool _closingAllowed, _closingPending, _selectionSync;
     private MainWindowViewModel? _model;
+    private bool _videoRegionShown = true;
+    private GridLength _videoWidth = new(6, GridUnitType.Star), _textWidth = new(7, GridUnitType.Star);
     private static readonly FilePickerFileType SubtitleFiles=new("ASS/SSA subtitles"){Patterns=["*.ass","*.ssa"]};
     private static readonly FilePickerFileType MediaFiles=new("Video/audio"){Patterns=["*.mkv","*.mp4","*.webm","*.avi","*.mov","*.m2ts","*.ts","*.mp3","*.flac","*.wav","*.m4a","*.ogg","*.opus"]};
     public MainWindow()
@@ -54,7 +56,7 @@ public partial class MainWindow : Window, IEditorDialogs
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
-            UpdateAudioBounds();
+            UpdateWorkspaceView();
             _model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
             RefreshAutomationMenu(); StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
     }
@@ -101,10 +103,36 @@ public partial class MainWindow : Window, IEditorDialogs
     private void UpdateAudioBounds()
     {
         if(_model is null)return;
+        if(!_model.ShowAudio)return;
         TemporalTextColumn.RowDefinitions[0].Height=new GridLength(_model.AudioDisplayHeight);ClampAudioBounds();
+    }
+    private void UpdateWorkspaceView()
+    {
+        if (_model is null) return;
+        var columns = UpperWorkspace.ColumnDefinitions;
+        if (_videoRegionShown != _model.ShowVideo)
+        {
+            if (!_model.ShowVideo)
+            {
+                _videoWidth = columns[0].Width;
+                _textWidth = columns[2].Width;
+            }
+            columns[0].MinWidth = _model.ShowVideo ? 340 : 0;
+            columns[0].Width = _model.ShowVideo ? _videoWidth : new GridLength(0);
+            columns[1].Width = new GridLength(_model.ShowVideo ? 4 : 0);
+            columns[2].Width = _model.ShowVideo ? _textWidth : new GridLength(1, GridUnitType.Star);
+            _videoRegionShown = _model.ShowVideo;
+        }
+        var rows = TemporalTextColumn.RowDefinitions;
+        rows[0].MinHeight = _model.ShowAudio ? 160 : 0;
+        rows[0].Height = new GridLength(_model.ShowAudio ? _model.AudioDisplayHeight : 0);
+        rows[1].Height = new GridLength(_model.ShowAudio ? 4 : 0);
+        rows[2].Height = new GridLength(1, GridUnitType.Star);
+        ClampAudioBounds();
     }
     private void ClampAudioBounds()
     {
+        if (_model?.ShowAudio != true) return;
         var available=TemporalTextColumn.Bounds.Height;if(available<=0)return;
         var maximum=Math.Max(160,available-TemporalTextColumn.RowDefinitions[2].MinHeight-4);
         var row=TemporalTextColumn.RowDefinitions[0];
@@ -116,6 +144,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();
         if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight))UpdateAudioBounds();
+        if(e.PropertyName==nameof(MainWindowViewModel.ViewMode))UpdateWorkspaceView();
         if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }

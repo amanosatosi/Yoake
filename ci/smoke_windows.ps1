@@ -47,7 +47,10 @@ foreach ($case in @('clean', 'legacy', 'damaged', 'null-collections', 'irrecover
       Write-Host 'PASS: fatal bootstrap diagnostics, nonzero exit, independent full crash report.'
     } else {
       if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Real UI startup failed for $case (exit $($process.ExitCode)):`n$text" }
+      $views = Get-Content -LiteralPath ($report + '.views.txt') -Raw
+      if (-not $views.Contains('empty media') -or -not $views.Contains('loaded native media')) { throw "Workspace modes were not verified with empty and loaded media: $case" }
       Write-Host "$case : $text"
+      Write-Host $views
     }
   } catch {
     if (Test-Path -LiteralPath $logs) { Get-ChildItem -LiteralPath $logs -File | ForEach-Object { Write-Host $_.Name; Get-Content -LiteralPath $_.FullName } }

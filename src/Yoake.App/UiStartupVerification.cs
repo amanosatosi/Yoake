@@ -22,6 +22,8 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
     private AuthoringUiVerification? _authoring;
     private AutomationUiVerification? _automation;
     private bool _authoringCompleted;
+    private WorkspaceViewVerification? _emptyViews, _loadedViews;
+    private bool _emptyViewsCompleted;
 
     public void Start()
     {
@@ -87,6 +89,12 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             }
             if (!_authoringCompleted)
             {
+            if (!_emptyViewsCompleted)
+            {
+                _emptyViews ??= new(window, model, options.VerificationReport!, false);
+                if (!_emptyViews.Tick()) return;
+                _emptyViewsCompleted = true;
+            }
             if (_styles is null)
             {
                 _styles = new StylesWindow(model.ActiveEditor!, model.StyleLibraryPath, model.SelectedEvent);
@@ -105,6 +113,11 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             }
             _automation ??= new(window, model, options.VerificationReport!, options.VerificationMedia!);
             if (!_automation.Tick()) return;
+            // Automation has just restored the original tab. Let its normal
+            // asynchronous preview finish before comparing retained media.
+            if (_loadedViews is null && (model.VideoFrame is null || model.WaveformSamples is null || model.DisplayedPreviewRevision < model.PreviewRevision)) return;
+            _loadedViews ??= new(window, model, options.VerificationReport!, true);
+            if (!_loadedViews.Tick()) return;
             Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
             Require(StartupDiagnostics.BindingWarningCount==0,"Authoring controls logged binding warnings; inspect startup.log.");
             while(model.ActiveEditor!.Undo.CanUndo)Invoke(CommandIds.EditUndo); // Undo the real editing probe before normal shutdown.

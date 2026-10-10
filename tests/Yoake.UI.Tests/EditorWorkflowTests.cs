@@ -22,6 +22,45 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task ViewCommandsOnlyChangePresentationAndRestoreOnNextLaunch()
+    {
+        await Command(CommandIds.GridInsertAfter);
+        await Command(CommandIds.GridInsertAfter);
+        await Command(CommandIds.GridSelectAll);
+        _model.Draft!.Text="committed"; await Command(CommandIds.EditCommit);
+        await Command(CommandIds.EditUndo); // Keep both undo and redo branches.
+        _model.Draft!.End="unfinished timing";
+        _model.CurrentTimeSeconds=1.25;
+        _model.TextCursor=3;
+        var editor=_model.ActiveEditor!; var session=_workspace.ActiveDocument;
+        var draft=_model.Draft; var line=_model.SelectedEvent;
+        var selection=_model.SelectedEvents.ToArray(); var source=editor.Document.Serialize();
+        var undo=editor.Undo.NextUndoName; var redo=editor.Undo.NextRedoName;
+        var modes=new[] {
+            (CommandIds.ViewDefault,WorkspaceViewMode.Default,false,false),
+            (CommandIds.ViewAudio,WorkspaceViewMode.Audio,true,false),
+            (CommandIds.ViewVideo,WorkspaceViewMode.Video,false,true),
+            (CommandIds.ViewAudioVideo,WorkspaceViewMode.AudioVideo,true,true),
+        };
+        foreach(var (id,mode,audio,video) in modes.Concat(modes))
+        {
+            await Command(id);
+            Assert.Equal(mode,_model.ViewMode); Assert.Equal(audio,_model.ShowAudio); Assert.Equal(video,_model.ShowVideo);
+            foreach(var item in modes)Assert.Equal(item.Item1==id,_model.Registry.GetRequired(item.Item1).IsChecked(new()));
+            Assert.Single(modes.Where(item=>_model.Registry.GetRequired(item.Item1).IsChecked(new())));
+            Assert.Same(editor,_model.ActiveEditor); Assert.Same(session,_workspace.ActiveDocument);
+            Assert.Same(draft,_model.Draft); Assert.Same(line,_model.SelectedEvent); Assert.Equal(selection,_model.SelectedEvents);
+            Assert.Equal("unfinished timing",_model.Draft!.End); Assert.Equal(source,editor.Document.Serialize());
+            Assert.Equal(undo,editor.Undo.NextUndoName); Assert.Equal(redo,editor.Undo.NextRedoName);
+            Assert.Equal(1.25,_model.CurrentTimeSeconds); Assert.Equal(3,_model.TextCursor);
+            var store=new SettingsStore(Path.Combine(_root,"settings.json"));
+            using var restored=new MainWindowViewModel(new(),new(),new(),new ThemeService(),store,store.Load());
+            Assert.Equal(mode,restored.ViewMode); Assert.Null(restored.VideoFrame); Assert.Null(restored.WaveformSamples);
+        }
+        await Command(CommandIds.ViewDefault);
+        await Command(CommandIds.EditCancel); await Command(CommandIds.EditRedo);
+        Assert.Equal("committed",line!.Text); // History remains usable.
+    }
     [Fact] public async Task DraftFeedbackIsLiveCoalescedAndRevertible()
     {
         await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;var revision=_model.PreviewRevision;
