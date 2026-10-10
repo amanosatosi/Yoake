@@ -235,6 +235,22 @@ end)
     }
 
     [Fact]
+    public async Task NativeKaraokeArrayIncludesNumericZeroAndContiguousSyllables()
+    {
+        using var script = await Load("""
+aegisub.register_macro('Karaoke','',function(subs)
+  local line=subs[2]; line.text='{\\k20}日{\\kf30}本語'
+  local kara=aegisub.parse_karaoke_data(line)
+  assert(type(kara[0])=='table' and kara[0].text=='' and #kara==2)
+  assert(kara[1].text_stripped=='日' and kara[1].duration==200)
+  assert(kara[2].text_stripped=='本語' and kara[2].start_time==200 and kara[2].duration==300)
+end)
+""");
+        using var subs = new AutomationSubtitleDocument(Document());
+        await script.RunAsync(1, Context(subs), default);
+    }
+
+    [Fact]
     public async Task UnmodifiedReleaseRegexAndUnicodeModuleSuitesPassAllAssertions()
     {
         var directory = Path.Combine(AppContext.BaseDirectory, "Fixtures");

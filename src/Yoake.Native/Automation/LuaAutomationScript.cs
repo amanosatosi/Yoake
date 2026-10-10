@@ -197,7 +197,8 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
                 else subs!.Append(lines.ToArray());
                 return [];
             case "undo_point": subs!.SetUndoPoint(Text(1)); return [];
-            case "karaoke": return [AutomationKaraokeParser.Parse(Line(Arg(1), default))];
+            case "karaoke": return [AutomationKaraokeParser.Parse(Line(Arg(1), default))
+                .ToDictionary(p => int.Parse(p.Key, CultureInfo.InvariantCulture), p => p.Value)];
             case "is_cancelled": return [_cancellation.IsCancellationRequested];
             case "progress": services!.ReportProgress(NullableNumber(Arg(1)), NullableText(Arg(2)), NullableText(Arg(3))); return [];
             case "log": services!.Log(Text(1), Index(2)); return [];
@@ -293,6 +294,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             case double n when double.IsFinite(n): return n.ToString("G17", CultureInfo.InvariantCulture);
             case IReadOnlyDictionary<string, object?> fields: return "{" + string.Join(',', fields.Select(p => "[" + Literal(p.Key) + "]=" + Literal(p.Value))) + "}";
             case IReadOnlyDictionary<string, string> fields: return "{" + string.Join(',', fields.Select(p => "[" + Literal(p.Key) + "]=" + Literal(p.Value))) + "}";
+            case IReadOnlyDictionary<int, object?> fields: return "{" + string.Join(',', fields.Select(p => "[" + Literal(p.Key) + "]=" + Literal(p.Value))) + "}";
             case IReadOnlyList<int> array: return "{" + string.Join(',', array.Select(n => Literal(n))) + "}";
             case IReadOnlyList<string> array: return "{" + string.Join(',', array.Select(n => Literal(n))) + "}";
             default: throw new ArgumentException("Unsupported Automation host response value.");
