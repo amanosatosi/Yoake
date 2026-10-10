@@ -1,0 +1,74 @@
+# Aegisub 3.2.2 Automation compatibility
+
+Target: the read-only tree `C:\aegisub source\Aegisub-3.2.2`.
+`build/git_version.h` identifies tagged release **3.2.2, revision 8635**;
+its bundled `vendor/luajit/src/luajit.h` identifies LuaJIT **2.0.3**.
+Integration base: `bda055b2ec673a4b1e1cf4a2b1e60a3d9587ba4e` on
+`csharp-ban`. Development stays on `automation-4-layer`.
+
+This is a work-in-progress compatibility ledger, not a claim that scripts
+already run in Yoake. “Supported” requires executable regression evidence;
+Core implementations without a script/provider/UI path remain partial.
+Paths below refer to that exact local source tree, not current Aegisub.
+
+| Behavior | Status | Authority / acceptance evidence |
+| --- | --- | --- |
+| Lua 5.1, module/unpack/standard libraries, LuaJIT extensions | Not implemented yet | `src/auto4_lua.cpp:LuaScript::Create`, `vendor/luajit` |
+| One interpreter per master script; reload/disposal | Not implemented yet | `src/auto4_lua.cpp:Create/Destroy` |
+| `.lua` and `.moon` masters | Not implemented yet | `src/auto4_lua.cpp:LuaScriptFactory`, `libaegisub/lua/script_reader.cpp:LoadFile` |
+| Metadata and filename fallback; Automation 3 rejection | Not implemented yet | `src/auto4_lua.cpp:LuaScript::Create` |
+| `include` search/returns/errors; removed `dofile/loadfile` | Not implemented yet | `src/auto4_base.cpp:Script::Script`, `src/auto4_lua.cpp:LuaInclude/Create` |
+| `require`, editable package.path, Unicode paths, Moon precedence | Not implemented yet | `libaegisub/lua/script_reader.cpp:module_loader/Install` |
+| `register_macro(name, help, run, validate, isactive)` | Not implemented yet | `src/auto4_lua.cpp:LuaCommand`; fifth callback is implemented |
+| Duplicate macros, stable IDs, command unregister | Not implemented yet | `src/auto4_lua.cpp:RegisterCommand/LuaCommand` |
+| Validation boolean + dynamic help, toggle state | Not implemented yet | `src/auto4_lua.cpp:Validate/IsActive` |
+| File indexes, input selection/active, returned selection | Not implemented yet | `src/auto4_lua.cpp:selected_rows/operator()`, `automation/tests/automation/selection-set-test.lua` |
+| Subtitle projection: info, styles, dialogue | Not implemented yet | `src/auto4_lua_assfile.cpp:LuaAssFile/AssEntryToLua/LuaToAssEntry` |
+| Headers, Format, comments outside dialogue, attachments, unknown sections | Intentionally unsupported as Lua line classes | 3.2.2 exposes **only info/style/dialogue**. Yoake must preserve other source lines outside the projection. `src/auto4_lua_assfile.cpp:LuaAssFile/LuaToAssEntry` |
+| Style and dialogue fields, raw/section, extra | Not implemented yet | `src/auto4_lua_assfile.cpp:AssEntryToLua/LuaToAssEntry`; `margin_b` is read but `margin_t` is written; `relative_to` is read-only compatibility data |
+| `#subs`, `subs.n`, detached table reads, read-only/expired objects | Not implemented yet | `src/auto4_lua_assfile.cpp:ObjectIndexRead/ObjectGetLen/GetObjPointer` |
+| Positive replace/nil delete; zero append; negative insert | Not implemented yet | `src/auto4_lua_assfile.cpp:ObjectIndexWrite`, `automation/tests/automation/basic-tests.lua` |
+| append grouped by class; insert at n+1 invokes grouped append | Not implemented yet | `src/auto4_lua_assfile.cpp:ObjectAppend/ObjectInsert`, `automation/tests/automation/appended-lines.lua` |
+| delete variadic/table, duplicates, deleterange clamp, ipairs | Not implemented yet | `src/auto4_lua_assfile.cpp:ObjectDelete/ObjectDeleteRange/ObjectIPairs` |
+| Lossless unknown fields/Mangetsu text; efficient bulk generation | Not implemented yet | Yoake stronger guarantee; `AssDocument`, `AssRecord`; 50,000-event regression required |
+| set_undo_point, implicit final point, multiple points, rollback | Not implemented yet | `src/auto4_lua_assfile.cpp:LuaSetUndoPoint/ProcessingComplete/Cancel`. Points are queued; failed runs discard **all** pending commits, including earlier points. Successful uncheckpointed tail uses macro display name. |
+| parse_karaoke_data, empty syllable zero, tags/text/times | Not implemented yet | `src/auto4_lua_assfile.cpp:LuaParseKaraokeData`, `src/ass_karaoke.cpp:ParseSyllables`, `automation/tests/automation/karaoke-parse-test.lua` |
+| text_extents width/height/descent/external-leading | Not implemented yet | `src/auto4_base.cpp:CalculateTextExtents`; Windows GDI at 64x size, scale applied afterwards; two text-extents fixtures |
+| frame_from_ms/ms_from_frame/video_size/keyframes | Not implemented yet | `src/auto4_lua.cpp`; START timecode rounding, video_size returns four values; bind existing timeline |
+| file_name/project_properties/decode_path/gettext | Not implemented yet | `src/auto4_lua.cpp`; file_name returns basename or nil; properties contains fourteen fields |
+| Clipboard get/set + compatibility wrappers | Not implemented yet | `src/auto4_lua.cpp:clipboard_*`, `automation/include/aegisub/clipboard.lua`; empty clipboard returns nil |
+| All ten dialog classes and grid/layout/typed defaults | Not implemented yet | `src/auto4_lua_dialog.cpp`, `automation/tests/automation/config-dialog-test.lua`; **alpha is an Edit control in source** |
+| Dialog default/custom buttons, cancellation, third button-ID map | Not implemented yet | `src/auto4_lua_dialog.cpp:LuaDialog/LuaReadBack`; source supports a third argument absent from older docs |
+| Dialog RGB/RGBA color string conversion | Not implemented yet | `src/auto4_lua_dialog.cpp:LuaControl::Color`; must test ASS/BGR/alpha conversion |
+| Progress task/title/set/cancel, logging levels, debug.out | Not implemented yet | `src/auto4_lua_progresssink.cpp`, progress and trace-level fixtures |
+| Background execution, forced loop cancellation, tracebacks | Not implemented yet | `src/auto4_lua.cpp:LuaThreadedCall`, `libaegisub/lua/utils.cpp:add_stack_trace`; Yoake hook required for non-cooperative loops |
+| `lfs`, `lpeg`, `luabins` | Not implemented yet | `libaegisub/lua/modules.cpp`, `lua/modules/{lfs.cpp,lpeg.c}`, `vendor/luabins`; lfs module tests + luabins round trips required |
+| `aegisub.__re_impl` / `aegisub.__unicode_impl` | Not implemented yet | `libaegisub/lua/modules/{re.cpp,unicode.cpp}`, `automation/tests/modules/{re,unicode}.moon` |
+| Shipped includes, wrappers, `aegisub.util` | Not implemented yet | `automation/include`: karaskel, utils, unicode, re, clipboard, cleantags, moonscript and `aegisub/*` |
+| Real karaskel collect_head/preproc_line/furigana | Not implemented yet | `automation/include/karaskel.lua`, `automation/tests/automation/test-furi.lua` |
+| Real Karaoke Templater + realistic retiming workflow | Not implemented yet | `automation/autoload/kara-templater.lua`, `automation/tests/automation/kara-templater-retime.ass` |
+| register_filter, priority/config/run, isolated ASS export | Not implemented yet | `src/auto4_lua.cpp:LuaExportFilter`, `src/ass_export_filter.cpp`, basic-export and name-clash fixtures |
+| Automation Manager, script metadata/errors/load/remove/reload | Not implemented yet | `src/dialog_automation.cpp`, `src/command/automation.cpp` |
+| App/user autoload; duplicate discovery; document-local scripts | Not implemented yet | `src/auto4_base.cpp:AutoloadScriptManager/LocalScriptManager`; local `~`, `$`, `/` specifiers; preserve missing entries |
+| Project Automation Scripts persistence | Not implemented yet | `src/ass_parser.cpp:HeaderToProperty`, `src/auto4_base.cpp:SaveLoadedList`; 3.2.2 stores project properties rather than exposing them as ordinary info lines |
+| Draft finalization, batch grid/preview/selection refresh, undo | Not implemented yet | Yoake `MainWindowViewModel`, `EventEditDraft`, `SubtitleEditor` |
+| Native dependency staging / NativeAOT / real-window smoke | Not implemented yet | `ci/build_dependencies.ps1`, `third_party/versions.json`, real packaged macro/dialog/mutation/undo scenario required |
+| Custom file-format reader/writer registration | Intentionally unsupported | Not registered by 3.2.2 `LuaScript::Create`; old docs alone are not evidence |
+| DependencyControl | Not implemented yet; outside initial acceptance | Third-party ecosystem, not the 3.2.2 host specification; do not claim compatibility |
+
+## Non-obvious behaviors to retain
+
+* `include("name.lua")` searches the master script directory followed by configured
+  include directories. Names containing either slash are resolved against the
+  **master** directory, even inside a nested include. Absolute paths are accepted.
+* `require` checks a same-name `.moon` before `.lua`; the loader is installed before
+  the master script and initializes `moonscript.loadstring` eagerly.
+* Subtitle reads return new tables. Editing one does not write until assignment.
+  Unknown table fields are ignored by 3.2.2; unknown **ASS** source is retained by
+  Yoake outside this compatibility view.
+* Source `ObjectDelete` does not deduplicate its sorted index list. A duplicate
+  prevents consumption of subsequent indexes. Record this oddity in regression
+  evidence rather than silently “fixing” it for old scripts.
+* 3.2.2 has no host strong sandbox. Trusted scripts can access Lua I/O, OS functions,
+  and native module facilities. NativeAOT restrictions apply to the managed host,
+  not to Lua language execution. Yoake must not load managed plugin assemblies.

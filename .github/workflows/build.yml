@@ -2,7 +2,7 @@ name: Build, test, NativeAOT, package
 
 on:
   push:
-    branches: [main, csharp-ban, "codex/**", "sol/**"]
+    branches: [main, csharp-ban, automation-4-layer, "codex/**", "sol/**"]
   pull_request:
   workflow_dispatch:
 
