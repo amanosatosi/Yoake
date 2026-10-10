@@ -11,7 +11,7 @@ public sealed partial class MainWindowViewModel
     private async ValueTask ExportAutomationAsync(CommandInvocation command, CancellationToken token)
     {
         if (command.Context.DocumentId is not { } id || !_documents.TryGetValue(id, out var state) || id != _activeId || Dialogs is null || !CommitDraft() || _automationRuns.ContainsKey(id)) return;
-        CancelGesture(); StopPlayback(); _automationValidation?.Cancel();
+        CancelGesture(); StopPlayback(); CancelAutomationValidation();
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, _automationLifetime.Token);
         _automationRuns[id] = cancellation;
         try

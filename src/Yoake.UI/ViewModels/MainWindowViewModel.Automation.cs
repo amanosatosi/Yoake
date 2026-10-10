@@ -176,7 +176,7 @@ public sealed partial class MainWindowViewModel
     {
         if (command.Context.DocumentId is not { } id || !_documents.TryGetValue(id, out var state) || id != _activeId || !CommitDraft()) return;
         CancelGesture(); StopPlayback();
-        _automationValidation?.Cancel();
+        CancelAutomationValidation();
         var item = _automationEntries.First(e => ReferenceEquals(e.Script, binding.Script));
         var progress = Dialogs?.BeginAutomationProgress(binding.Macro.Name);
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, _automationLifetime.Token, item.Lifetime.Token, progress?.CancellationToken ?? CancellationToken.None);
@@ -224,10 +224,19 @@ public sealed partial class MainWindowViewModel
 
     public void ScheduleAutomationValidation()
     {
-        _automationValidation?.Cancel(); _automationValidation?.Dispose();
+        CancelAutomationValidation();
         if (_disposed || _activeId is not { } id || !_documents.TryGetValue(id, out var state) || _automationCatalog.IsBusy(id) || _automationCatalog.Macros(id).Count == 0) return;
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(_automationLifetime.Token); _automationValidation = cancellation;
         _ = ValidateAutomationAsync(id, state, cancellation.Token);
+    }
+
+    private void CancelAutomationValidation()
+    {
+        // Detach first: a document with no macros must not leave a disposed
+        // source in the field for the next tab switch, validation or shutdown.
+        var previous = _automationValidation; _automationValidation = null;
+        if (previous is null) return;
+        previous.Cancel(); previous.Dispose();
     }
 
     private void RestoreAutomationSelection(Guid id, DocumentState state, AutomationSelectionState restored)
@@ -272,7 +281,7 @@ public sealed partial class MainWindowViewModel
     }
     private void DisposeAutomation()
     {
-        _automationLifetime.Cancel(); _automationValidation?.Cancel(); _automationCatalog.Dispose();
+        _automationLifetime.Cancel(); CancelAutomationValidation(); _automationCatalog.Dispose();
         foreach (var item in _automationEntries.ToArray())
         {
             item.Lifetime.Cancel(); var script = item.Script; item.Script = null;
