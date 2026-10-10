@@ -47,6 +47,7 @@ public sealed class RectangleClipTool : VisualTool
         c.Apply(l=>
         {
             var clip=AssVisualTags.Clip(l.Text);if(clip is {Rectangular:false})return l.Text;
+            if(clip is null&&AssVisualTags.Scan(l.Text).Any(t=>t.Name is "clip" or "iclip"))return l.Text;
             if(translate)return clip is null?l.Text:AssVisualTags.TranslateClip(l.Text,delta);
             var mapping=AssVisualTags.ClipTransform(l.Text,l.RelativeTime,l.Duration);
             if(corner>=0&&clip is not null)

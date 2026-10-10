@@ -130,6 +130,25 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.True(_model.BeginGesture("Visual gesture"));_model.UpdateVisualGesture(l=>AssVisualTags.SetOrigin(l.Text,new(20,30)));Assert.NotEqual(source,line.Text);
         await Command(command);Assert.Equal(source,line.Text);Assert.False(_model.HasGesture);Assert.DoesNotContain("\\org(20,30)",_model.PreviewSource());
     }
+    [Theory]
+    [InlineData(@"{\iclip(3,m 0 0 l 80 0 80 80)\clippos(5,6)\future(x)}vector")]
+    [InlineData(@"{\clip(future(mask))\clippos(5,6)\future(x)}unknown")]
+    public async Task RectangleBatchCreationProtectsOtherSelectedVectorAndUnknownClips(string protectedText)
+    {
+        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;
+        _model.ActiveEditor!.SetTiming(first,0,1000);_model.ActiveEditor.SetField(first,"Text",@"{\future(keep)}plain","Fixture");
+        await Command(CommandIds.GridInsertAfter);var other=_model.SelectedEvent!;
+        _model.ActiveEditor.SetTiming(other,0,1000);_model.ActiveEditor.SetField(other,"Text",protectedText,"Fixture");
+        _model.SelectedEvent=first;_model.SetSelectedEvents([first,other]);_model.CurrentTimeSeconds=.5;
+        var original=first.Text;
+        var context=new Yoake.UI.VisualTools.VisualToolContext(_model,new Avalonia.Rect(0,0,384,288),_model.VisibleVisualLines());
+        var tool=new Yoake.UI.VisualTools.RectangleClipTool();
+        var a=new Yoake.UI.VisualTools.VisualPointer(new Avalonia.Point(20,20),new(20,20),Avalonia.Input.KeyModifiers.None);
+        var b=new Yoake.UI.VisualTools.VisualPointer(new Avalonia.Point(80,60),new(80,60),Avalonia.Input.KeyModifiers.None);
+        Assert.True(tool.Press(context,a));tool.Move(context,b);tool.Release(context,b);_model.EndGesture();
+        Assert.NotNull(AssVisualTags.Clip(first.Text));Assert.Equal(protectedText,other.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(original,first.Text);Assert.Equal(protectedText,other.Text);
+    }
     [Fact] public async Task VisualExceptionAndSeekRollbackWithoutPartialEdits()
     {
         await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(line,0,1000);

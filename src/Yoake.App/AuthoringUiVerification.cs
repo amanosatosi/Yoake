@@ -190,6 +190,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 var splitter=window.FindControl<GridSplitter>("AudioSplitter")!;
                 splitter.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyUpEvent,Source=splitter,Key=Key.Down});
                 Require(model.AudioDisplayHeight>_audioHeight,"The real audio sash must resize and persist panel height.");
+                AudioInputVerification.Run(window,model);
                 Capture(window,"editor-signed-waveform",1);
                 _originalTab=model.Tabs.Single(t=>t.IsActive).Id;
                 Require(model.OpenSubtitle(Path.Combine(mediaFixtures!,"large.ass")),"Large multilingual ASS fixture must open.");return false;
