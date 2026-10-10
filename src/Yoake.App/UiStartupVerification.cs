@@ -35,6 +35,8 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
     private void Verify(object? sender, EventArgs args)
     {
         if (!_opened || !_loaded || _layouts == 0) return;
+        if (options.MarkStartupVerified())
+            StartupDiagnostics.Checkpoint("UI startup gate passed: opened, loaded, first layout, dispatcher responsive");
         try
         {
             if (!_inserted)

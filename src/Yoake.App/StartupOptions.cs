@@ -8,7 +8,9 @@ internal sealed class StartupOptions
     public string? DiagnosticsDirectory { get; private set; }
     public bool NonInteractive { get; private set; }
     private int _verificationFinished;
+    private int _startupVerified;
     public bool VerificationFinished => Volatile.Read(ref _verificationFinished) != 0;
+    public bool StartupVerified => Volatile.Read(ref _startupVerified) != 0;
 
     public static StartupOptions Parse(string[] args)
     {
@@ -29,6 +31,8 @@ internal sealed class StartupOptions
         }
         return options;
     }
+
+    public bool MarkStartupVerified() => Interlocked.Exchange(ref _startupVerified, 1) == 0;
 
     public void FinishVerification(string report)
     {

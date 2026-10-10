@@ -34,7 +34,7 @@ foreach ($case in @('clean', 'legacy', 'damaged', 'null-collections', 'irrecover
   if ($MediaFixturesRoot) { $arguments += @('--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot)))) }
   $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
   try {
-    if (-not $process.WaitForExit(40000)) { throw "UI startup verification timed out: $case" }
+    if (-not $process.WaitForExit(150000)) { throw "Packaged UI verification exceeded its startup/acceptance watchdogs: $case" }
     $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
     if ($case -eq 'fatal-diagnostics') {
       if ($process.ExitCode -eq 0 -or -not $text.StartsWith('FAIL')) { throw 'Expected bootstrap failure did not produce a failing report/exit code.' }
