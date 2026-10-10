@@ -23,6 +23,10 @@ internal sealed class AutomationUiVerification(MainWindow window, MainWindowView
     private AutomationScriptItem? _script;
     private AssEvent? _original;
     private string _before = "", _after = "", _command = "", _path = "";
+    private string _exportPath = "";
+    private string? _undoName, _redoName;
+    private bool _dirty;
+    private bool _reuseStarted;
     private int _count, _responsiveTicks;
     private long _preview;
     private Guid _document;
@@ -78,12 +82,50 @@ aegisub.register_macro('Verification/Authoring','Real dialog and mutation',funct
 end,function(subs,selected,active)
   return #selected==1 and active>0,'Validated packaged macro'
 end,function() return true end)
+aegisub.register_macro('Verification/Defaults','Default buttons and clipboard',function()
+  local clipboard=require('aegisub.clipboard')
+  local previous=clipboard.get()
+  assert(clipboard.set('日本語 မြန်မာ clipboard'))
+  assert(clipboard.get()=='日本語 မြန်မာ clipboard')
+  assert(clipboard.set(previous or ''))
+  local button,v=aegisub.dialog.display({
+    {class='textbox',name='notes',text='initial',width=2,height=2},
+    {class='intedit',name='maximum',value=2147483647,y=2},
+    {class='intedit',name='minimum',value=-2147483648,x=1,y=2},
+    {class='floatedit',name='fraction',value=-.125,y=3},
+    {class='dropdown',name='empty',items={},value='',x=1,y=3},
+    {class='checkbox',name='check',label='Check',value=true,y=4}
+  })
+  assert(button=='' and v.maximum==2147483647 and v.minimum==-2147483648)
+  assert(v.fraction==-.125 and v.empty=='' and v.check==false)
+  assert(v.notes=='日本語\nမြန်မာ')
+end)
+aegisub.register_macro('Verification/Cancel','Forced loop cancellation',function(subs,selected,active)
+  local line=subs[active]; line.text='temporary cancelled edit'; subs[active]=line
+  aegisub.set_undo_point('Temporary cancelled checkpoint')
+  aegisub.progress.title('Cancel verification'); aegisub.progress.task('Forced loop'); aegisub.progress.set(17)
+  aegisub.log(2,'visible cancellation log\n'); aegisub.log(4,'hidden verbose log\n')
+  while true do end
+end)
+aegisub.register_macro('Verification/Failure','Rollback and traceback',function(subs,selected,active)
+  local line=subs[active]; line.text='temporary failed edit'; subs[active]=line
+  aegisub.set_undo_point('Temporary failed checkpoint')
+  error('packaged intentional failure')
+end)
+aegisub.register_filter('Verification export','Isolated configured export',1000,function(subs,settings)
+  for i=1,#subs do
+    local line=subs[i]
+    if line.class=='dialogue' then line.text=line.text..settings.suffix; subs[i]=line end
+  end
+end,function()
+  return {{class='edit',name='suffix',text=' export 日本語',width=2}}
+end)
 """);
                 _loading = model.LoadAutomationScriptAsync(_path, _document); _stage++; return false;
             case 1:
                 if (!_loading!.IsCompleted) return false;
                 _script = _loading.GetAwaiter().GetResult(); Require(_script.Error is null, "Packaged Lua master must load: " + _script.Error);
-                Require(_script.Status.StartsWith("1 macros", StringComparison.Ordinal), "Manager metadata must expose registered macros.");
+                Require(_script.Status.StartsWith("4 macros, 1 filters", StringComparison.Ordinal), "Manager metadata must expose registered macros and filters.");
                 _command = AutomationCommandCatalog.CommandId(_path, "Verification/Authoring");
                 if (!model.Registry.CanExecute(_command, new(_document))) return false;
                 Require(model.Registry.GetRequired(_command).IsChecked(new(_document)), "Actual Lua isactive must reach the command state.");
@@ -130,11 +172,104 @@ end,function() return true end)
                 var rows = window.FindControl<ListBox>("SubtitleRows")!;
                 Require(rows.SelectedItems?.Contains(model.SelectedEvent!) == true, "Actual grid must show the returned selection after redo.");
                 Invoke(CommandIds.EditUndo); Require(model.ActiveEditor!.Document.Serialize() == _before, "Verification cleanup must restore pre-macro source.");
+                _undoName = model.ActiveEditor.Undo.NextUndoName; _redoName = model.ActiveEditor.Undo.NextRedoName; _dirty = model.ActiveEditor.IsDirty;
+                _stage++; return false;
+            case 7:
+                if (!StartMacro("Defaults")) return false;
+                _stage++; return false;
+            case 8:
+                if (!AcceptDefaults()) return false;
+                _stage++; return false;
+            case 9:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult(), "Default dialog or real clipboard round trip failed: " + model.SubtitleStatus);
+                RequireUnchanged();
+                if (!StartMacro("Cancel")) return false;
+                _stage++; return false;
+            case 10:
+                var progress = Windows(window).OfType<AutomationProgressWindow>().FirstOrDefault(w => w.IsVisible && w.Title == "Cancel verification");
+                if (progress is null) { Require(!_running!.IsCompleted, "Cancellation macro must enter its actual progress window."); return false; }
+                Require(progress.GetVisualDescendants().OfType<ProgressBar>().Single().Value == 17, "Actual progress must show script percentage.");
+                var output = progress.GetVisualDescendants().OfType<TextBox>().Single().Text ?? "";
+                if (!output.Contains("visible cancellation log", StringComparison.Ordinal)) return false;
+                Require(!output.Contains("hidden verbose log", StringComparison.Ordinal), "Verbose log must stay out of default progress output.");
+                Click(progress.GetVisualDescendants().OfType<Button>().Single()); _stage++; return false;
+            case 11:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult() && model.SubtitleStatus.Contains("cancelled", StringComparison.OrdinalIgnoreCase), "Forced native loop cancellation must finish through the command boundary.");
+                RequireUnchanged(); CloseProgress();
+                if (!StartMacro("Failure")) return false;
+                _stage++; return false;
+            case 12:
+                if (!_running!.IsCompleted) return false;
+                Require(!_running.GetAwaiter().GetResult(), "Intentional Lua failure must be reported by the command boundary.");
+                RequireUnchanged();
+                var failureWindow = Windows(window).OfType<AutomationProgressWindow>().Single(w => w.IsVisible);
+                var failureText = failureWindow.GetVisualDescendants().OfType<TextBox>().Single().Text ?? "";
+                Require(failureText.Contains("packaged intentional failure", StringComparison.Ordinal) && failureText.Contains("stack traceback:", StringComparison.Ordinal) && failureText.Contains(_path, StringComparison.Ordinal), "Actual failure output must preserve full Unicode script path and traceback.");
+                CloseProgress();
+                _stage++; return false;
+            case 13:
+                if (!_reuseStarted) { _reuseStarted = StartMacro("Defaults"); if (!_reuseStarted) return false; }
+                if (!AcceptDefaults()) return false;
+                _stage++; return false;
+            case 14:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult(), "Interpreter must remain usable after cancellation and failure."); RequireUnchanged();
+                _exportPath = Path.Combine(Path.GetDirectoryName(_path)!, "export-日本語.ass");
+                _running = model.Registry.InvokeAsync(CommandIds.AutomationExport, new(_document), _exportPath).AsTask(); _stage++; return false;
+            case 15:
+                var export = Windows(window).OfType<AutomationExportWindow>().FirstOrDefault(w => w.IsVisible);
+                if (export is null) { Require(!_running!.IsCompleted, "Export must show its real settings dialog."); return false; }
+                var filter = export.GetVisualDescendants().OfType<CheckBox>().Single(c => Equals(c.Content, "Verification export"));
+                filter.IsChecked = true;
+                _stage++; return false;
+            case 16:
+                var exportDialog = Windows(window).OfType<AutomationExportWindow>().Single(w => w.IsVisible);
+                var suffix = exportDialog.GetVisualDescendants().OfType<TextBox>().Single(c => c.Name == "AutomationControl_suffix");
+                Require(suffix.IsVisible && suffix.Bounds.Width >= 100, "Checked filter must reveal its actual embedded settings.");
+                suffix.Text = " export 日本語 မြန်မာ";
+                Click(exportDialog.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "AutomationExportAccept")); _stage++; return false;
+            case 17:
+                if (!_running!.IsCompleted) return false;
+                Require(_running.GetAwaiter().GetResult() && File.Exists(_exportPath), "Configured export must write an ASS output file: " + model.SubtitleStatus);
+                RequireUnchanged();
+                var exported = AssDocument.Load(_exportPath);
+                Require(exported.Events.Count == _count && exported.Events.All(e => e.Text.EndsWith(" export 日本語 မြန်မာ", StringComparison.Ordinal)), "Actual selected filter must process the isolated output copy.");
                 File.AppendAllText(report + ".automation.txt", "PASS: packaged Lua runtime, Unicode master path, live validation/isactive, all ten dialog classes, custom/default buttons, responsive dispatcher, real mutation/insertion, lossless source, grid/draft refresh, actual Mangetsu pixel change, selection undo/redo.\n");
+                File.AppendAllText(report + ".automation.txt", "PASS: actual Unicode clipboard round trip, default empty-label OK result, signed integer limits, negative float, empty dropdown, multiline text, checkbox edit, forced loop cancellation and checkpoint rollback, log-level filtering, full failure traceback, interpreter reuse, embedded export settings and isolated Unicode ASS output with unchanged live history.\n");
                 _stage++; return true;
             default: return true;
         }
     }
+
+    private bool StartMacro(string name)
+    {
+        var command = AutomationCommandCatalog.CommandId(_path, "Verification/" + name);
+        if (!model.Registry.CanExecute(command, new(_document))) return false;
+        _running = model.Registry.InvokeAsync(command, new(_document)).AsTask(); return true;
+    }
+    private bool AcceptDefaults()
+    {
+        var dialog = Windows(window).OfType<AutomationDialog>().FirstOrDefault(w => w.IsVisible);
+        if (dialog is null) { Require(!_running!.IsCompleted, "Default dialog must be shown: " + model.SubtitleStatus); return false; }
+        dialog.GetVisualDescendants().OfType<TextBox>().Single(c => c.Name == "AutomationControl_notes").Text = "日本語\nမြန်မာ";
+        dialog.GetVisualDescendants().OfType<CheckBox>().Single(c => c.Name == "AutomationControl_check").IsChecked = false;
+        var accept = dialog.GetVisualDescendants().OfType<Button>().Single(c => c.Name == "AutomationButton_0");
+        Require(accept.IsDefault && Equals(accept.Content, "OK"), "Default buttons must present the actual OK action."); Click(accept); return true;
+    }
+    private void RequireUnchanged()
+    {
+        Require(model.ActiveEditor!.Document.Serialize() == _before && model.ActiveEditor.Undo.NextUndoName == _undoName && model.ActiveEditor.Undo.NextRedoName == _redoName && model.ActiveEditor.IsDirty == _dirty,
+            "Cancelled, failed and export workflows must preserve live source, dirty state and undo/redo branch.");
+        Require(ReferenceEquals(model.SelectedEvent, _original) && model.SelectedEvents.Count == 1 && ReferenceEquals(model.SelectedEvents[0], _original), "Uncommitted workflows must retain active row and selection.");
+    }
+    private void CloseProgress()
+    {
+        foreach (var progress in Windows(window).OfType<AutomationProgressWindow>().Where(w => w.IsVisible).ToArray())
+            Click(progress.GetVisualDescendants().OfType<Button>().Single());
+    }
+    private static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
     private void Invoke(string id)
     {
