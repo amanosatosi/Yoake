@@ -124,4 +124,6 @@ result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--c
 if result.returncode: fail('generated icon catalog is stale')
 result=subprocess.run([sys.executable, str(ROOT/'ci/test_icon_generator.py')])
 if result.returncode: fail('SVG semantic regression checks failed')
+result=subprocess.run([sys.executable, str(ROOT/'ci/test_aegisub_audit.py')])
+if result.returncode: fail('exact Aegisub command/hotkey evidence or parity ledger checks failed')
 print('source-policy: OK')

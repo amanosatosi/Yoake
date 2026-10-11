@@ -1,0 +1,3128 @@
+{
+  "schema": 1,
+  "yoake_baseline_commit": "f07a69f5e05c07af1d5bb79a61a7396d5b05950a",
+  "commands": [
+    {
+      "id": "am/manager",
+      "yoake_command": "automation/manager",
+      "status": "already complete",
+      "backend": "Existing frozen 3.2.2 Automation host/catalog; UI routing only. Required action: Open automation manager",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "AutomationCommandTests",
+        "EditorWorkflowTests",
+        "AutomationUiVerification"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "am/meta",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Dynamic macro menu grouping, not an editor action.",
+      "exposure": [],
+      "tests": [],
+      "notes": "Covered by the single dynamic Automation macro feature below.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "am/reload",
+      "yoake_command": "automation/reload",
+      "status": "already complete",
+      "backend": "Existing frozen 3.2.2 Automation host/catalog; UI routing only. Required action: Reload all Automation scripts and rescan the autoload folder",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "AutomationCommandTests",
+        "EditorWorkflowTests",
+        "AutomationUiVerification"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "am/reload/autoload",
+      "yoake_command": "automation/rescan",
+      "status": "already complete",
+      "backend": "Existing frozen 3.2.2 Automation host/catalog; UI routing only. Required action: Rescan the Automation autoload folder",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "AutomationCommandTests",
+        "EditorWorkflowTests",
+        "AutomationUiVerification"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/about",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: About Aegisub",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/bring_to_front",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Native platform behavior; no Windows clone of macOS application menu.",
+      "exposure": [],
+      "tests": [],
+      "notes": "3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/display/audio_subs",
+      "yoake_command": "view/audio",
+      "status": "already complete",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Display audio and the subtitles grid only",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SettingsTests",
+        "SettingsCompatibilityTests",
+        "EditorWorkflowTests",
+        "WorkspaceViewVerification (empty and loaded media)"
+      ],
+      "notes": "Presentation only, persisted single ViewMode, existing providers/draft/session/history retained. CI passed f07a69f.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/display/full",
+      "yoake_command": "view/audio-video",
+      "status": "already complete",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Display audio, video and then subtitles grid",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SettingsTests",
+        "SettingsCompatibilityTests",
+        "EditorWorkflowTests",
+        "WorkspaceViewVerification (empty and loaded media)"
+      ],
+      "notes": "Presentation only, persisted single ViewMode, existing providers/draft/session/history retained. CI passed f07a69f.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/display/subs",
+      "yoake_command": "view/default",
+      "status": "already complete",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Display the subtitles grid only",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SettingsTests",
+        "SettingsCompatibilityTests",
+        "EditorWorkflowTests",
+        "WorkspaceViewVerification (empty and loaded media)"
+      ],
+      "notes": "Presentation only, persisted single ViewMode, existing providers/draft/session/history retained. CI passed f07a69f.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/display/video_subs",
+      "yoake_command": "view/video",
+      "status": "already complete",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Display video and the subtitles grid only",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SettingsTests",
+        "SettingsCompatibilityTests",
+        "EditorWorkflowTests",
+        "WorkspaceViewVerification (empty and loaded media)"
+      ],
+      "notes": "Presentation only, persisted single ViewMode, existing providers/draft/session/history retained. CI passed f07a69f.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/exit",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Exit the application",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/hide",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Native platform behavior; no Windows clone of macOS application menu.",
+      "exposure": [],
+      "tests": [],
+      "notes": "3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/hide_others",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Native platform behavior; no Windows clone of macOS application menu.",
+      "exposure": [],
+      "tests": [],
+      "notes": "3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/language",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Select Aegisub interface language",
+      "exposure": [],
+      "tests": [],
+      "notes": "No localization selector exists; user-visible translations require real resources, not a language list placeholder.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/log",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: View the event log",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/maximize",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Native platform behavior; no Windows clone of macOS application menu.",
+      "exposure": [],
+      "tests": [],
+      "notes": "3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/minimize",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Native platform behavior; no Windows clone of macOS application menu.",
+      "exposure": [],
+      "tests": [],
+      "notes": "3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/new_window",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Open a new application window",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/options",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Configure Aegisub",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/show_all",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Native platform behavior; no Windows clone of macOS application menu.",
+      "exposure": [],
+      "tests": [],
+      "notes": "3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/toggle/global_hotkeys",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Toggle global hotkey overrides (Medusa Mode)",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/toggle/toolbar",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Toggle the main toolbar",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "app/updates",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Window lifetime or normal application settings; no global current document. Required action: Check to see if there is a new version of Aegisub available",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/close",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Close the currently open audio file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/commit",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Commit any pending audio timing changes",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/commit/default",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Commit any pending audio timing changes and reset the next line's times to the default",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/commit/next",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Commit any pending audio timing changes and move to the next line",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/commit/stay",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Commit any pending audio timing changes and stay on the current line",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/go_to",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Scroll the audio display to center on the current audio selection",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/go_to/end",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Scroll the audio display to center on the end of current audio selection",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/go_to/start",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Scroll the audio display to center on the start of current audio selection",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/karaoke",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Toggle karaoke mode",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/open",
+      "yoake_command": "media/open",
+      "status": "partially implemented",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Open an audio file",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Bundled media/open replaces video and audio together; independent open is missing.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/open/blank",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Open a 150 minutes blank audio clip, for debugging",
+      "exposure": [],
+      "tests": [],
+      "notes": "Development-only synthetic audio in upstream; packaged deterministic provider fixtures serve Yoake tests. No user command planned.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/open/noise",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Open a 150 minutes noise-filled audio clip, for debugging",
+      "exposure": [],
+      "tests": [],
+      "notes": "Development-only synthetic audio in upstream; packaged deterministic provider fixtures serve Yoake tests. No user command planned.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/open/video",
+      "yoake_command": "media/open",
+      "status": "partially implemented",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Open the audio from the current video file",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Bundled media open exists; explicit reuse of already loaded video audio is missing.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/opt/autocommit",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Automatically commit all changes",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/opt/autonext",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Automatically go to next line on commit",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/opt/autoscroll",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Auto scroll audio display to selected line",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/opt/spectrum",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Spectrum analyzer mode",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/opt/vertical_link",
+      "yoake_command": "audio/volume/link",
+      "status": "partially implemented",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Link vertical zoom and volume sliders",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Persisted audio intensity/volume link exists; registry checked state and options exposure need completion.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/play/current",
+      "yoake_command": "audio/play/cursor",
+      "status": "partially implemented",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play the current audio selection, ignoring changes made while playing",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/play/line",
+      "yoake_command": "audio/play/selection",
+      "status": "partially implemented",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play the audio for the current line",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Actual current-line playback exists; separate audio-only semantics and defaults need integration.",
+      "yoake_default_hotkeys": {
+        "Video": [
+          "R"
+        ],
+        "Audio": [
+          "R"
+        ],
+        "Subtitle Grid": [
+          "R"
+        ]
+      }
+    },
+    {
+      "id": "audio/play/selection",
+      "yoake_command": "audio/play/selection",
+      "status": "partially implemented",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play audio until the end of the selection is reached",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Current line interval plays; editable timing/syllable selection is not yet equivalent.",
+      "yoake_default_hotkeys": {
+        "Video": [
+          "R"
+        ],
+        "Audio": [
+          "R"
+        ],
+        "Subtitle Grid": [
+          "R"
+        ]
+      }
+    },
+    {
+      "id": "audio/play/selection/after",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play 500 ms after selection",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/play/selection/before",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play 500 ms before selection",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/play/selection/begin",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play first 500 ms of selection",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/play/selection/end",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play last 500 ms of selection",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/play/to_end",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play from selection start to end of file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/play/toggle",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play selection, or stop playback if it's already playing",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/save/clip",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Save an audio clip of the selected line",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/scroll/left",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Scroll the audio display left",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/scroll/right",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Scroll the audio display right",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/stop",
+      "yoake_command": "video/stop",
+      "status": "partially implemented",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Stop audio and video playback",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Video": [
+          "Escape"
+        ],
+        "Audio": [
+          "Escape"
+        ]
+      }
+    },
+    {
+      "id": "audio/view/spectrum",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Display audio as a frequency-power spectrograph",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "audio/view/waveform",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Display audio as a linear amplitude graph",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/clear",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Clear the current line's text",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/clear/text",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Clear the current line's text, leaving override tags",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/color/outline",
+      "yoake_command": "text/format/outline",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the outline color (\\3c) at the cursor position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/color/primary",
+      "yoake_command": "text/format/primary",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the primary fill color (\\c) at the cursor position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/color/secondary",
+      "yoake_command": "text/format/secondary",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the secondary (karaoke) fill color (\\2c) at the cursor position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/color/shadow",
+      "yoake_command": "text/format/shadow",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the shadow color (\\4c) at the cursor position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/find_replace",
+      "yoake_command": "edit/find",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Find and replace words in subtitles",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Regex/literal raw Text search and replace exist; field/scope/skip-tags and persistent Find Next are missing.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-F"
+        ]
+      }
+    },
+    {
+      "id": "edit/font",
+      "yoake_command": "text/format/font",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Select a font face and size",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/insert_original",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Insert the original line text at the cursor",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/copy",
+      "yoake_command": "grid/copy",
+      "status": "already complete",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Copy subtitles to the clipboard",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Ctrl-C"
+        ]
+      }
+    },
+    {
+      "id": "edit/line/cut",
+      "yoake_command": "grid/cut",
+      "status": "already complete",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Cut subtitles",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Ctrl-X"
+        ]
+      }
+    },
+    {
+      "id": "edit/line/delete",
+      "yoake_command": "grid/delete",
+      "status": "already complete",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Delete currently selected lines",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Delete"
+        ]
+      }
+    },
+    {
+      "id": "edit/line/duplicate",
+      "yoake_command": "grid/duplicate",
+      "status": "already complete",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Duplicate the selected lines",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-D"
+        ]
+      }
+    },
+    {
+      "id": "edit/line/join/as_karaoke",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Join selected lines in a single one, as karaoke",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/join/concatenate",
+      "yoake_command": "grid/join",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Join selected lines in a single one, concatenating text together",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Existing Join uses ASS hard newlines; Aegisub concatenates with spaces. Add an explicit concatenate variant and keep Yoake hard-newline join.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/join/keep_first",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Join selected lines in a single one, keeping text of first and discarding remaining",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/paste",
+      "yoake_command": "grid/paste",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Paste subtitles",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Ctrl-V"
+        ]
+      }
+    },
+    {
+      "id": "edit/line/paste/over",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Paste subtitles over others",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/recombine",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Recombine subtitles which have been split and merged",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/split/after",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the current frame and a line which starts on the next frame",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/split/before",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the previous frame and a line which starts on the current frame",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/split/by_karaoke",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Use karaoke timing to split line into multiple smaller lines",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/split/estimate",
+      "yoake_command": "grid/split",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line at the cursor, dividing the original line's duration between the new ones",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Existing cursor split is grapheme-safe; compare its duration estimate and tag inheritance with upstream.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-Shift-D"
+        ]
+      }
+    },
+    {
+      "id": "edit/line/split/preserve",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line at the cursor, setting both lines to the original line's times",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/line/split/video",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line at the cursor, dividing the line's duration at the current video frame",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/redo",
+      "yoake_command": "edit/redo",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Redo last undone action",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Logical redo works; contextual action labels and defaults need integration.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-Y",
+          "Ctrl-Shift-Z"
+        ]
+      }
+    },
+    {
+      "id": "edit/revert",
+      "yoake_command": "edit/cancel",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Revert the active line to its initial state (shown in the upper editor)",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Draft/gesture cancel exists; actual edit-text reset and active-line behavior need parity tests.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Escape"
+        ]
+      }
+    },
+    {
+      "id": "edit/style/bold",
+      "yoake_command": "text/format/bold",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Toggle bold (\\b) for the current selection or at the current cursor position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {
+        "Subtitle Edit Box": [
+          "Ctrl-B"
+        ]
+      }
+    },
+    {
+      "id": "edit/style/italic",
+      "yoake_command": "text/format/italic",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Toggle italics (\\i) for the current selection or at the current cursor position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {
+        "Subtitle Edit Box": [
+          "Ctrl-I"
+        ]
+      }
+    },
+    {
+      "id": "edit/style/strikeout",
+      "yoake_command": "text/format/strikeout",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Toggle strikeout (\\s) for the current selection or at the current cursor position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "edit/style/underline",
+      "yoake_command": "text/format/underline",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Toggle underline (\\u) for the current selection or at the current cursor position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "yoake_default_hotkeys": {
+        "Subtitle Edit Box": [
+          "Ctrl-U"
+        ]
+      }
+    },
+    {
+      "id": "edit/undo",
+      "yoake_command": "edit/undo",
+      "status": "partially implemented",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Undo last action",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Logical history and draft cancellation work; contextual action labels and defaults need integration.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-Z"
+        ]
+      }
+    },
+    {
+      "id": "grid/line/next",
+      "yoake_command": "grid/line/next",
+      "status": "already complete",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Move to the next subtitle line",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Alt-Down"
+        ]
+      }
+    },
+    {
+      "id": "grid/line/next/create",
+      "yoake_command": "edit/commit-next",
+      "status": "partially implemented",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Move to the next subtitle line, creating a new one if needed",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Commit + next creates a line at EOF; retain invalid-draft and IME protections.",
+      "yoake_default_hotkeys": {
+        "Subtitle Edit Box": [
+          "Enter"
+        ],
+        "Subtitle Grid": [
+          "Enter"
+        ]
+      }
+    },
+    {
+      "id": "grid/line/prev",
+      "yoake_command": "grid/line/previous",
+      "status": "already complete",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Move to the previous line",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Alt-Up"
+        ]
+      }
+    },
+    {
+      "id": "grid/move/down",
+      "yoake_command": "grid/move/down",
+      "status": "partially implemented",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Move the selected lines down one row",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Row move exists; current Alt-Shift-Down differs from shipped Alt-Down.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Alt-Shift-Down"
+        ]
+      }
+    },
+    {
+      "id": "grid/move/up",
+      "yoake_command": "grid/move/up",
+      "status": "partially implemented",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Move the selected lines up one row",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Row move exists; current Alt-Shift-Up differs from shipped Alt-Up.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Alt-Shift-Up"
+        ]
+      }
+    },
+    {
+      "id": "grid/sort/actor",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their actor names",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/actor/selected",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their actor names",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/effect",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their effects",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/effect/selected",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their effects",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/end",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their end times",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/end/selected",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their end times",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/layer",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their layer number",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/layer/selected",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their layer number",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/start",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their start times",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/start/selected",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their start times",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/style",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their style names",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/sort/style/selected",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their style names",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/swap",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Swap the two selected lines",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/tag/cycle_hiding",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Cycle through tag hiding modes",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/tags/hide",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Hide override tags in the subtitle grid",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/tags/show",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Show full override tags in the subtitle grid",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "grid/tags/simplify",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Replace override tags in the subtitle grid with a simplified placeholder",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "help/bugs",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Yoake documentation/support links through semantic commands. Required action: Visit Aegisub's bug tracker to report bugs and request new features",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "help/contents",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Yoake documentation/support links through semantic commands. Required action: Help topics",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "help/forums",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Yoake documentation/support links through semantic commands. Required action: Visit Aegisub's forums",
+      "exposure": [],
+      "tests": [],
+      "notes": "Aegisub community destinations are not Yoake product actions; Yoake support/documentation must use its own destinations.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "help/irc",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Yoake documentation/support links through semantic commands. Required action: Visit Aegisub's official IRC channel",
+      "exposure": [],
+      "tests": [],
+      "notes": "Aegisub community destinations are not Yoake product actions; Yoake support/documentation must use its own destinations.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "help/video",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Yoake documentation/support links through semantic commands. Required action: Open the manual page for Visual Typesetting",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "help/website",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Yoake documentation/support links through semantic commands. Required action: Visit Aegisub's official website",
+      "exposure": [],
+      "tests": [],
+      "notes": "Aegisub community destinations are not Yoake product actions; Yoake support/documentation must use its own destinations.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "keyframe/close",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Document-local external override of provider keyframes; validated keyframe I/O. Required action: Discard the currently loaded keyframes and use those from the video, if any",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "keyframe/open",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Document-local external override of provider keyframes; validated keyframe I/O. Required action: Open a keyframe list file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "keyframe/save",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Document-local external override of provider keyframes; validated keyframe I/O. Required action: Save the current list of keyframes to a file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "recent/audio",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent audio",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "recent/keyframe",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent keyframes",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "recent/subtitle",
+      "yoake_command": "subtitle/open",
+      "status": "partially implemented",
+      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent subtitles",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Persisted subtitle MRU exists; generated menu uses direct input handler rather than a typed semantic recent action.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-O"
+        ]
+      }
+    },
+    {
+      "id": "recent/timecodes",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent timecodes",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "recent/video",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent video",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/attachment",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open the attachment manager dialog",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/close",
+      "yoake_command": "subtitle/close",
+      "status": "already complete",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Close",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Yoake closes one independent tab with unsaved prompt; Aegisub 3.5 command closes its project window.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-W"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/find",
+      "yoake_command": "edit/find",
+      "status": "partially implemented",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Search for text in the subtitles",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Existing Find/Replace combines both entries; production scope/options and Find Next need completion.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-F"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/find/next",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Find next match of last search",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/insert/after",
+      "yoake_command": "grid/insert/after",
+      "status": "partially implemented",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Insert a new line after the current one",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Insert"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/insert/after/videotime",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Insert a new line after the current one, starting at video time",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/insert/before",
+      "yoake_command": "grid/insert/before",
+      "status": "partially implemented",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Insert a new line before the current one",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Ctrl-Insert"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/insert/before/videotime",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Insert a new line before the current one, starting at video time",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/new",
+      "yoake_command": "subtitle/new",
+      "status": "already complete",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: New subtitles",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-N"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/open",
+      "yoake_command": "subtitle/open",
+      "status": "already complete",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open a subtitles file",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-O"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/open/autosave",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open a previous version of a file which was autosaved by Aegisub",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/open/charset",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open a subtitles file with a specific file encoding",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/open/video",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open the subtitles from the current video file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/properties",
+      "yoake_command": "script-info/edit",
+      "status": "partially implemented",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open script properties window",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Generic Script Info editor works; typed script properties need a usable consolidated workflow.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/save",
+      "yoake_command": "subtitle/save",
+      "status": "already complete",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Save the current subtitles",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-S"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/save/as",
+      "yoake_command": "subtitle/save-as",
+      "status": "already complete",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Save subtitles with another name",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-Shift-S"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/select/all",
+      "yoake_command": "grid/select-all",
+      "status": "already complete",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Select all dialogue lines",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Ctrl-A"
+        ]
+      }
+    },
+    {
+      "id": "subtitle/select/visible",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Select all dialogue lines that are visible on the current video frame",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "subtitle/spellcheck",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open spell checker",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/continuous/end",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Change end times of lines to the next line's start time",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/continuous/start",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Change start times of lines to the previous line's end time",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/frame/current",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Shift selection so that the active line starts at current frame",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/lead/both",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Add both lead in and out to the selected lines",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/lead/in",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Add the lead in time to the selected lines",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/lead/out",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Add the lead out time to the selected lines",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/length/decrease",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Decrease the length of the current timing unit",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/length/decrease/shift",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Decrease the length of the current timing unit and shift the following items",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/length/increase",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Increase the length of the current timing unit",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/length/increase/shift",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Increase the length of the current timing unit and shift the following items",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/next",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Next line or syllable",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/prev",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Previous line or syllable",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/shift",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Shift subtitles by time or frames",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/snap/end_video",
+      "yoake_command": "timing/set-end",
+      "status": "partially implemented",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Set end of selected subtitles to current video frame",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Current millisecond-time command affects active line only; selection and VFR END semantics need completion.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-4"
+        ]
+      }
+    },
+    {
+      "id": "time/snap/scene",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Set start and end of subtitles to the keyframes around current video frame",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/snap/start_video",
+      "yoake_command": "timing/set-start",
+      "status": "partially implemented",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Set start of selected subtitles to current video frame",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Current millisecond-time command affects active line only; selection and VFR START semantics need completion.",
+      "yoake_default_hotkeys": {
+        "Always": [
+          "Ctrl-3"
+        ]
+      }
+    },
+    {
+      "id": "time/start/decrease",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Shift the start time of the current timing unit backward",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "time/start/increase",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Shift the start time of the current timing unit forward",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "timecode/close",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Document-local central frame map; validated v1/v2 import/export and provider fallback. Required action: Close the currently open timecodes file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "timecode/open",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Document-local central frame map; validated v1/v2 import/export and provider fallback. Required action: Open a VFR timecodes v1 or v2 file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "timecode/save",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Document-local central frame map; validated v1/v2 import/export and provider fallback. Required action: Save a VFR timecodes v2 file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/assdraw",
+      "yoake_command": "video/tool/vectorclip",
+      "status": "superseded by better Yoake behavior",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Launch the ASSDraw3 tool for vector drawing",
+      "exposure": [],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "External ASSDraw launcher removed in 3.5; Yoake retains its integrated structured vector-clip tools.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/export",
+      "yoake_command": "automation/export",
+      "status": "partially implemented",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Save a copy of subtitles in a different format or with processing applied to it",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Real frozen Automation filter pipeline and ASS export exist; broader format/encoding workflow needs audit.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/font_collector",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open fonts collector",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/line/select",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Select lines based on defined criteria",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/resampleres",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Resample subtitles to maintain their current appearance at a different script resolution",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/style/assistant",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open styling assistant",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/style/manager",
+      "yoake_command": "styles/manage",
+      "status": "superseded by better Yoake behavior",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open the styles manager",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "StyleAuthoringTests",
+        "AuthoringUiVerification"
+      ],
+      "notes": "Existing rich script/library manager, collections, import, multi-selection, reference-safe rename/delete, undo and live preview; preserve this implementation.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/styling_assistant/commit",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Commit changes and move to the next line",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/styling_assistant/preview",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Commit changes and stay on the current line",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/time/kanji",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open the Kanji timer copier",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/time/postprocess",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Post-process the subtitle timing to add lead-ins and lead-outs, snap timing to scene changes, etc.",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/translation_assistant",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open translation assistant",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/translation_assistant/commit",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Commit changes and move to the next line",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/translation_assistant/insert_original",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Insert the untranslated text",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/translation_assistant/next",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Move to the next line without committing changes",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/translation_assistant/prev",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Move to the previous line without committing changes",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "tool/translation_assistant/preview",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Commit changes and stay on the current line",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/aspect/cinematic",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Force video to 2.35 aspect ratio",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/aspect/custom",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Force video to a custom aspect ratio",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/aspect/default",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Use video's original aspect ratio",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/aspect/full",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Force video to 4:3 aspect ratio",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/aspect/wide",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Force video to 16:9 aspect ratio",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/close",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Close the currently open video file",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/copy_coordinates",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Copy the current coordinates of the mouse over the video to the clipboard",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/detach",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Detach the video display from the main window, displaying it in a separate Window",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/details",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Show video details",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/focus_seek",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Toggle focus between the video slider and the previous thing to have focus",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/copy",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Copy the currently displayed frame to the clipboard",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/copy/raw",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Copy the currently displayed frame to the clipboard, without the subtitles",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/copy/subs",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Copy the currently displayed subtitles to the clipboard, with transparent background",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/next",
+      "yoake_command": "video/frame/next",
+      "status": "already complete",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Seek to the next frame",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "AuthoringPolishTests",
+        "EditorVerification",
+        "AuthoringUiVerification"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Video": [
+          "Right"
+        ]
+      }
+    },
+    {
+      "id": "video/frame/next/boundary",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Seek to the next beginning or end of a subtitle",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/next/keyframe",
+      "yoake_command": "video/frame/next-keyframe",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Seek to the next keyframe",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Central frame navigation exists; default Grid/Video routing and boundary cases need coverage.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/next/large",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Fast jump forward",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/prev",
+      "yoake_command": "video/frame/previous",
+      "status": "already complete",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Seek to the previous frame",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "AuthoringPolishTests",
+        "EditorVerification",
+        "AuthoringUiVerification"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {
+        "Video": [
+          "Left"
+        ]
+      }
+    },
+    {
+      "id": "video/frame/prev/boundary",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Seek to the previous beginning or end of a subtitle",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/prev/keyframe",
+      "yoake_command": "video/frame/previous-keyframe",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Seek to the previous keyframe",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Central frame navigation exists; default Grid/Video routing and boundary cases need coverage.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/prev/large",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Fast jump backwards",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/save",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Save the currently displayed frame to a PNG file in the video's directory",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/save/raw",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Save the currently displayed frame without the subtitles to a PNG file in the video's directory",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/frame/save/subs",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Save the currently displayed subtitles with transparent background to a PNG file in the video's directory",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/jump",
+      "yoake_command": "video/seek",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Jump to frame or time",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Exact-time seek command/text field exists; modal frame/time input and default binding are missing.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/jump/end",
+      "yoake_command": "timing/jump-end",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Jump the video to the end frame of current subtitle",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/jump/start",
+      "yoake_command": "timing/jump-start",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Jump the video to the start frame of current subtitle",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/open",
+      "yoake_command": "media/open",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Open a video file",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Real FFMS2 media open exists; independent video ownership/open/close workflow needs completion.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/open/dummy",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Open a placeholder video clip with solid color",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/opt/autoscroll",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Toggle automatically seeking video to the start time of selected lines",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/play",
+      "yoake_command": "video/play",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Play the video starting on this position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Real central-clock playback exists; exact defaults and media-specific availability need integration.",
+      "yoake_default_hotkeys": {
+        "Video": [
+          "Space"
+        ],
+        "Audio": [
+          "Space"
+        ],
+        "Subtitle Grid": [
+          "Space"
+        ]
+      }
+    },
+    {
+      "id": "video/play/line",
+      "yoake_command": "audio/play/selection",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Play the video for the current line",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Shared line playback exists; needs explicit video command and correct media-specific availability.",
+      "yoake_default_hotkeys": {
+        "Video": [
+          "R"
+        ],
+        "Audio": [
+          "R"
+        ],
+        "Subtitle Grid": [
+          "R"
+        ]
+      }
+    },
+    {
+      "id": "video/reset_pan",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Reset the video's position in the video display",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/show_overscan",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Show a mask over the video, indicating areas that might get cropped off by overscan on televisions",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/stop",
+      "yoake_command": "video/stop",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Stop video playback",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "SubtitleEditorTests",
+        "EditorWorkflowTests",
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+      ],
+      "notes": "Real playback stop exists; Audio/Video default routing remains incomplete.",
+      "yoake_default_hotkeys": {
+        "Video": [
+          "Escape"
+        ],
+        "Audio": [
+          "Escape"
+        ]
+      }
+    },
+    {
+      "id": "video/subtitles_provider/cycle",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Cycle through the available subtitles providers",
+      "exposure": [],
+      "tests": [],
+      "notes": "Upstream cycles alternative renderer providers. Yoake intentionally uses Mangetsu; introducing a competing renderer is outside this architecture.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/clip",
+      "yoake_command": "video/tool/clip",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Clip subtitles to a rectangle",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/cross",
+      "yoake_command": "video/tool/crosshair",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Standard mode, double click sets position",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/drag",
+      "yoake_command": "video/tool/position",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Drag subtitles",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/rotate/xy",
+      "yoake_command": "video/tool/rotatexy",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Rotate subtitles on their X and Y axes",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/rotate/z",
+      "yoake_command": "video/tool/rotatez",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Rotate subtitles on their Z axis",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/scale",
+      "yoake_command": "video/tool/scale",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Scale subtitles on X and Y axes",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vclip/bicubic",
+      "yoake_command": "video/vector/bicubic",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Append a bezier bicubic curve",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vclip/convert",
+      "yoake_command": "video/vector/convert",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Convert a segment between line and bicubic",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vclip/drag",
+      "yoake_command": "video/vector/select",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Drag control points",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vclip/freehand",
+      "yoake_command": "video/vector/freehand",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Draw a freehand shape",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vclip/freehand_smooth",
+      "yoake_command": "video/vector/smooth",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Draw a smoothed freehand shape",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vclip/insert",
+      "yoake_command": "video/vector/insert",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Insert a control point",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vclip/line",
+      "yoake_command": "video/vector/line",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Append a line",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vclip/remove",
+      "yoake_command": "video/vector/remove",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Remove a control point",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/tool/vector_clip",
+      "yoake_command": "video/tool/vectorclip",
+      "status": "partially implemented",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Clip subtitles to a vectorial area",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow menu/control (see implementation evidence)"
+      ],
+      "tests": [
+        "VisualTypesettingTests",
+        "VisualUiVerification"
+      ],
+      "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/zoom/100",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Set zoom to 100%",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/zoom/200",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Set zoom to 200%",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/zoom/50",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Set zoom to 50%",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/zoom/in",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Zoom video in",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    },
+    {
+      "id": "video/zoom/out",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Zoom video out",
+      "exposure": [],
+      "tests": [],
+      "notes": "",
+      "yoake_default_hotkeys": {}
+    }
+  ],
+  "dynamic_automation": {
+    "status": "already complete",
+    "yoake_command": "automation/lua/{path-sha256}/{escaped-macro-name}",
+    "backend": "Existing frozen 3.2.2 runtime and document-local AutomationCommandCatalog; validation/toggle/cancellation/undo/export are implemented.",
+    "exposure": [
+      "Automation dynamic macro menu",
+      "CommandRegistry; customizable hotkeys pending unified settings"
+    ],
+    "tests": [
+      "AutomationCommandTests",
+      "LuaProviderTests",
+      "AutomationUiVerification"
+    ],
+    "notes": "Dynamic command IDs are not individual static parity features. Do not upgrade Lua profile or DependencyControl."
+  }
+}
