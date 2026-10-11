@@ -33,7 +33,7 @@ public sealed partial class MainWindowViewModel
                 var job=_jobs.Run("Open keyframes",ct=>{loaded=KeyframeFile.Load(full,ct);return Task.CompletedTask;},cancellation.Token);
                 await job.Completion;cancellation.Token.ThrowIfCancellationRequested();
                 if(_disposed||!_documents.TryGetValue(id,out live)||!ReferenceEquals(live,state))return;
-                state.Media?.SetExternalKeyframes(loaded);state.ExternalKeyframes=loaded;state.KeyframePath=full;
+                state.Editing?.Cancel();state.Media?.SetExternalKeyframes(loaded);state.ExternalKeyframes=loaded;state.KeyframePath=full;
                 RememberKeyframes(full);
                 if(_activeId==id){NotifyKeyframes();MediaStatus=$"Keyframes: {Path.GetFileName(full)} ({loaded!.Count} cuts)";ScheduleAutomationValidation();}
             }
@@ -52,7 +52,7 @@ public sealed partial class MainWindowViewModel
         });
         Register("keyframe/close","Close external keyframes",(_,_)=>
         {
-            var state=_documents[_activeId!.Value];state.KeyframeLoading?.Cancel();state.KeyframeLoading=null;state.ExternalKeyframes=null;state.KeyframePath=null;state.Media?.SetExternalKeyframes(null);
+            var state=_documents[_activeId!.Value];state.KeyframeLoading?.Cancel();state.KeyframeLoading=null;state.Editing?.Cancel();state.ExternalKeyframes=null;state.KeyframePath=null;state.Media?.SetExternalKeyframes(null);
             NotifyKeyframes();MediaStatus="Using video keyframes.";ScheduleAutomationValidation();return ValueTask.CompletedTask;
         },()=>ExternalKeyframePath is not null||HasKeyframeOperation);
         Register("keyframe/save","Save keyframes…",async(invocation,token)=>
@@ -72,7 +72,7 @@ public sealed partial class MainWindowViewModel
             {
                 if(ReferenceEquals(state.KeyframeLoading,cancellation))state.KeyframeLoading=null;cancellation.Dispose();if(_activeId==id)NotifyKeyframes();
             }
-        },()=>Keyframes.Count>0&&!HasKeyframeOperation);
+        },()=>((_activeId is {} id&&_documents.TryGetValue(id,out var state)?state.ExternalKeyframes:null)??Keyframes).Count>0&&!HasKeyframeOperation);
     }
     private void NotifyKeyframes(){OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(ExternalKeyframePath));OnPropertyChanged(nameof(HasKeyframeOperation));OnPropertyChanged(nameof(FramePositionDisplay));_registry.NotifyStateChanged();}
     private void RememberKeyframes(string path)

@@ -21,7 +21,7 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
     MainWindow window,MainWindowViewModel model,StartupOptions options)
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
-    private bool _ready,_ticking,_openTimingKeysPending;private int _stage;private ShiftTimesWindow? _shift;
+    private bool _ready,_ticking,_openTimingKeysPending;private int _stage=-3;private ShiftTimesWindow? _shift;
     private SubtitleEditor? _editor;private AssEvent[] _rows=[];private string _source="";private Task<bool>? _media;
     private FrameTiming? _timing;private IReadOnlyList<double>? _providerTimes;private int _frame;
     private IReadOnlyList<int>? _providerKeys;private string _keyPath="",_savedKeys="";
@@ -42,6 +42,16 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
             }
             switch(_stage++)
             {
+                case -3:
+                    _keyPath=Path.Combine(options.ProfileDirectory!,"before-video.key.txt");
+                    File.WriteAllText(_keyPath,"# keyframe format v1\nfps 0\n0\n7\n");
+                    await Invoke("keyframe/open",_keyPath);await Invoke(CommandIds.ViewVideo);return;
+                case -2:
+                    Require(model.Keyframes.SequenceEqual(new[]{0,7})&&model.FrameTimes.Count==0&&model.Actions["keyframe/save"].CanExecute(null),"External keyframe metadata must load and remain exportable before video.");
+                    Require(window.FindControl<Yoake.UI.Controls.VideoFrameSlider>("VideoSeekBar")!.RenderedKeyframeMarks==0,"Empty video ruler must not draw external cuts without a frame map.");
+                    await Invoke("keyframe/close");await Invoke(CommandIds.ViewDefault);return;
+                case -1:
+                    Require(model.ExternalKeyframePath is null&&model.Keyframes.Count==0&&!model.ActiveEditor!.Undo.CanUndo,"Closing metadata without video must clear it without subtitle edits.");return;
                 case 0:
                     Require(window.TryGetPlatformHandle() is not null,"Timing acceptance requires the real native window.");
                     var restored=model.ShiftHistory.Count>0;
@@ -149,9 +159,17 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 25:
                     Require(ReferenceEquals(_providerKeys,model.Keyframes)&&model.ExternalKeyframePath is null&&!model.Actions["keyframe/close"].CanExecute(null),"Real remapped close key must restore the same provider keyframe metadata without recreation.");
                     Require(ReferenceEquals(_providerTimes,model.FrameTimes)&&model.CurrentFrame==_frame&&ReferenceEquals(_editor,model.ActiveEditor)&&_editor!.Document.Serialize()==_source&&!_editor.Undo.CanUndo,"Keyframe load/export/close must preserve the active editor, exact source, undo, provider and frame.");
+                    File.WriteAllText(_keyPath,$"# keyframe format v1\nfps 0\n{model.FrameTimes.Count+8}\n");
+                    await Invoke("keyframe/open",_keyPath);return;
+                case 26:
+                    Require(model.Keyframes.Count==0&&model.Actions["keyframe/save"].CanExecute(null),"A full external list containing only out-of-video cuts must still be exportable.");
+                    await Invoke("keyframe/save",_savedKeys);
+                    Require(KeyframeFile.Load(_savedKeys).SequenceEqual(new[]{model.FrameTimes.Count+8}),"Export must retain out-of-video metadata even when no cuts are navigable.");Press(Grid,Key.F12);return;
+                case 27:
+                    Require(ReferenceEquals(_providerKeys,model.Keyframes)&&ReferenceEquals(_providerTimes,model.FrameTimes)&&model.CurrentFrame==_frame,"Closing an entirely out-of-video list must restore provider metadata and retain its frame map/position.");
                     await Invoke("settings/hotkeys/reset-command",new HotkeyCommandReset(Yoake.Core.Hotkeys.HotkeyContext.Default,"keyframe/close"));
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Keyframe menu workflow must have no binding/framework errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window timing acceptance; Ctrl-I; actual time/frame Shift Times controls and reusable persisted history; IME Enter and Escape; non-destructive validation; real Ctrl-3/Ctrl-4 multi-selection VFR snaps, Ctrl-5 scene boundaries and Ctrl-6 selection shift; exact transactional undo and unknown/Mangetsu/Unicode source; provider/frame retention; two-process settings restoration; actual keyframe menu keyboard loading/export, WWXD and Aegisub formats, live remapped close/provider fallback, semantic recents, source/history/provider/frame retention.\n");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window timing acceptance; Ctrl-I; actual time/frame Shift Times controls and reusable persisted history; IME Enter and Escape; non-destructive validation; real Ctrl-3/Ctrl-4 multi-selection VFR snaps, Ctrl-5 scene boundaries and Ctrl-6 selection shift; exact transactional undo and unknown/Mangetsu/Unicode source; provider/frame retention; two-process settings restoration; actual keyframe menu keyboard loading/export, WWXD and Aegisub formats, live remapped close/provider fallback, semantic recents, pre-video metadata/empty-ruler behavior, export of entirely out-of-video lists, source/history/provider/frame retention.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
