@@ -95,6 +95,7 @@ public partial class App : Application
                 else if(_startup.AudioDisplayAcceptance)new AudioDisplayUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.SelectionAcceptance)new SelectionUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.AudioClipAcceptance)new AudioClipUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AudioPlaybackAcceptance)new AudioPlaybackUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else new UiStartupVerification(desktop, window, viewModel, _startup).Start();
             }
             desktop.MainWindow = window;

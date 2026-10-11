@@ -600,36 +600,44 @@
     },
     {
       "id": "audio/play/current",
-      "yoake_command": "audio/play/cursor",
+      "yoake_command": "audio/play/current",
       "status": "partially implemented",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play the current audio selection, ignoring changes made while playing",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
       ],
-      "notes": "",
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "audio/play/line",
-      "yoake_command": "audio/play/selection",
+      "yoake_command": "audio/play/line",
       "status": "partially implemented",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play the audio for the current line",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
       ],
-      "notes": "Actual current-line playback exists; separate audio-only semantics and defaults need integration.",
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_5"
@@ -656,17 +664,21 @@
       "id": "audio/play/selection",
       "yoake_command": "audio/play/selection",
       "status": "partially implemented",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play audio until the end of the selection is reached",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
       ],
-      "notes": "Current line interval plays; editable timing/syllable selection is not yet equivalent.",
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_5"
@@ -691,12 +703,23 @@
     },
     {
       "id": "audio/play/selection/after",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play 500 ms after selection",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/play/selection/after",
+      "status": "partially implemented",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
+      ],
+      "tests": [
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
+      ],
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_3"
@@ -708,12 +731,23 @@
     },
     {
       "id": "audio/play/selection/before",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play 500 ms before selection",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/play/selection/before",
+      "status": "partially implemented",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
+      ],
+      "tests": [
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
+      ],
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_1"
@@ -725,12 +759,23 @@
     },
     {
       "id": "audio/play/selection/begin",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play first 500 ms of selection",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/play/selection/begin",
+      "status": "partially implemented",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
+      ],
+      "tests": [
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
+      ],
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Audio": [
           "E"
@@ -739,12 +784,23 @@
     },
     {
       "id": "audio/play/selection/end",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play last 500 ms of selection",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/play/selection/end",
+      "status": "partially implemented",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
+      ],
+      "tests": [
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
+      ],
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Audio": [
           "D"
@@ -753,12 +809,23 @@
     },
     {
       "id": "audio/play/to_end",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play from selection start to end of file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/play/to_end",
+      "status": "partially implemented",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
+      ],
+      "tests": [
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
+      ],
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Audio": [
           "T"
@@ -767,12 +834,23 @@
     },
     {
       "id": "audio/play/toggle",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Play selection, or stop playback if it's already playing",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/play/toggle",
+      "status": "partially implemented",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
+      ],
+      "tests": [
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
+      ],
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Audio": [
           "B"
@@ -782,7 +860,7 @@
     {
       "id": "audio/save/clip",
       "yoake_command": "audio/save/clip",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Bounded background PCM16 WAV export of one min-start/max-end selected-row span, stored timings including comments; ceiling sample boundaries and 3.5 EOF/empty-range behavior; native provider decoding, atomic output and document-owned cancellation.",
       "exposure": [
         "CommandRegistry",
@@ -795,7 +873,7 @@
         "EditorVerification native decode/export",
         "AudioClipUiAcceptanceVerification (real native menu Enter and contextual cancel key)"
       ],
-      "notes": "Exact src/command/audio.cpp and libaegisub/audio/provider.cpp plus tests/tests/audio.cpp from both releases inspected. 3.5 clamps to EOF and emits a 44-byte WAV for an empty interval; 3.2 returned without writing on empty ranges. Yoake retains source channels/rate rather than Aegisub's provider downmix limitation, uses safe saturated PCM16 conversion independent of playback gain/mute, prevents overwriting opened media, and adds atomic cancellation/error handling. No subtitle draft commit or undo mutation. Pending CI validation; do not count complete yet.",
+      "notes": "Exact release audio.cpp exports the whole earliest-start/latest-end span of actual selected rows, including comments and intervening gaps. Exact 3.5 provider tests require ceiling sample boundaries, EOF clamping and valid empty WAVs; Yoake also preserves source channels/rate, ignores playback gain/mute, rejects RIFF overflow/source overwrite, and atomically publishes cancellable output. Verified managed/native/provider/all packaged acceptance at ab270f8466bd2abc64579194f38fc11954e237c3, run 38172064653. Opened native menu effective command availability and keyboard navigation past disabled export are checked without substituting the active row for an empty selection.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -848,19 +926,23 @@
     },
     {
       "id": "audio/stop",
-      "yoake_command": "video/stop",
+      "yoake_command": "audio/stop",
       "status": "partially implemented",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Stop audio and video playback",
+      "backend": "Shared document-owned audio playback through the existing central timeline and native output. Immutable ceiling-sample plans provide fixed current/line and preview intervals, live selection/end endpoints, bounded queued PCM, EOF clamping, toggle and stop without committing drafts or recreating providers.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Audio > Playback menu with live effective shortcuts",
+        "Exact Audio and enabled Always hotkey contexts",
+        "Selection/stop Audio toolbar"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AudioPlaybackPlanTests",
+        "EditorWorkflowTests.AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument",
+        "EditorWorkflowTests.AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback",
+        "EditorVerification pre-device output validation",
+        "AudioPlaybackUiAcceptanceVerification"
       ],
-      "notes": " Audio H/Escape and Medusa KP_8 share the existing central playback stop command; no second playback clock.",
+      "notes": "Exact 3.2.2/3.5 audio.cpp/audio_controller.cpp distinguish captured intervals from selection-following endpoints; preview windows are 500 ms. Valid draft fields preview live; invalid fields fall back non-destructively to stored timing. Audio duration remains independent of retimed VFR video. Pending CI; audible output/shrink/extend and driver latency require hardware QA. Karaoke primary sub-selection remains unfinished, so this row does not claim full audio timing integration. Deliberate retained Yoake behavior: audio auditions keep video preview synchronized through the single media timeline, rather than acquiring Aegisub's independent audio cursor against a frozen video controller. Existing stop remaps/removals migrate once without changing physical bindings.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_8"

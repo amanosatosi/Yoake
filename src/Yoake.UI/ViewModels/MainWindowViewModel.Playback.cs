@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using Yoake.Core.Audio;
+using Yoake.Core.Commands;
 using Yoake.Core.Subtitles;
 using Yoake.Native;
 
@@ -27,6 +29,7 @@ public sealed partial class MainWindowViewModel
             _isPlaying = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(PlayPauseText));
+            _registry.NotifyStateChanged();
         }
     }
 
@@ -44,7 +47,9 @@ public sealed partial class MainWindowViewModel
         await StartPlaybackAsync();
     }
 
-    public async Task StartPlaybackAsync(double? endSeconds = null)
+    public Task StartPlaybackAsync(double? endSeconds = null)=>RunPlaybackAsync(endSeconds,null,CommandIds.VideoPlay);
+
+    private async Task RunPlaybackAsync(double? endSeconds,AudioPlaybackPlan? range,string commandId)
     {
         var session = _media;
         if (session is null || (!session.HasVideo && !session.HasAudio) || _disposed)
@@ -54,8 +59,8 @@ public sealed partial class MainWindowViewModel
         }
 
         StopPlayback();
-
-        if (CurrentTimeSeconds >= MediaDurationSeconds - 0.001)
+        if(range is not null)CurrentTimeSeconds=range.StartSeconds;
+        else if (CurrentTimeSeconds >= MediaDurationSeconds - 0.001)
             CurrentTimeSeconds = 0;
 
         var start = CurrentTimeSeconds;
@@ -63,6 +68,7 @@ public sealed partial class MainWindowViewModel
         var cancellation = new CancellationTokenSource();
         _playbackCancellation = cancellation;
         var token = cancellation.Token;
+        ActiveAudioPlayback=range;
         IsPlaying = true;
 
         WindowsWaveOutStream? player = null;
@@ -72,10 +78,16 @@ public sealed partial class MainWindowViewModel
 
         try
         {
+            // Publish the activity on the owner dispatcher before opening output.
+            // An immediate Stop can cancel startup without acquiring a device.
+            await Task.Yield();
+            token.ThrowIfCancellationRequested();
             if (session.HasAudio)
             {
                 player = new WindowsWaveOutStream();
                 player.SetVolume(PlaybackVolume,PlaybackMuted);
+                if(range is not null)player.SetEndFrame(ActiveAudioPlayback?.EndFrame??range.EndFrame);
+                else if(endSeconds is {} end)player.SetEndFrame(AudioPlaybackPlan.FrameAtSeconds(end,session.Info.SampleRate,session.Info.AudioSamples));
                 _audioPlayer = player;
                 audioTask = Task.Run(
                     () => player.PlayAsync(
@@ -84,7 +96,7 @@ public sealed partial class MainWindowViewModel
                         seconds => Interlocked.Exchange(
                             ref audioClockBits,
                             BitConverter.DoubleToInt64Bits(seconds)),
-                        token),
+                        token,range),
                     token);
             }
 
@@ -100,6 +112,8 @@ public sealed partial class MainWindowViewModel
                 if (audioTask is { IsCompleted: true })
                 {
                     await audioTask;
+                    SetPlaybackTime(BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits)));
+                    if(session.HasVideo)await RefreshVideoFrameAsync(CurrentTimeSeconds);
                     break;
                 }
 
@@ -107,7 +121,8 @@ public sealed partial class MainWindowViewModel
                     ? BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits))
                     : start + stopwatch.Elapsed.TotalSeconds;
 
-                if (endSeconds is { } stopAt && seconds >= stopAt) { SetPlaybackTime(stopAt); player?.Stop(); break; }
+                var stopAt=ActiveAudioPlayback?.EndSeconds??endSeconds;
+                if(stopAt is {} endAt&&seconds>=endAt){SetPlaybackTime(endAt);player?.Stop();break;}
 
                 if (MediaDurationSeconds > 0 && seconds >= MediaDurationSeconds)
                 {
@@ -134,10 +149,19 @@ public sealed partial class MainWindowViewModel
         catch (Exception exception)
         {
             if (!_disposed && generation == Volatile.Read(ref _playbackGeneration))
-                MediaStatus = $"Playback failed: {exception.Message}";
+            {MediaStatus = $"Playback failed: {exception.Message}";_registry.ReportFailure(commandId,exception);}
         }
         finally
         {
+            player?.Stop();
+            // Observe the decoder/output task before releasing its native state,
+            // including a stop which happens before the worker opens the device.
+            if(audioTask is not null)
+            {
+                try{await audioTask;}
+                catch(OperationCanceledException){}
+                catch(Exception){/* Already reported above, or belongs to canceled playback. */}
+            }
             player?.Dispose();
             if (ReferenceEquals(_audioPlayer, player))
                 _audioPlayer = null;
@@ -149,7 +173,7 @@ public sealed partial class MainWindowViewModel
             }
 
             if (!_disposed && generation == Volatile.Read(ref _playbackGeneration))
-                IsPlaying = false;
+            {ActiveAudioPlayback=null;IsPlaying = false;}
         }
     }
 
@@ -181,6 +205,7 @@ public sealed partial class MainWindowViewModel
 
         var player = Interlocked.Exchange(ref _audioPlayer, null);
         player?.Stop();
+        ActiveAudioPlayback=null;
         IsPlaying = false;
     }
 

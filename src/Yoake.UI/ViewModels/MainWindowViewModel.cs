@@ -124,6 +124,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false);
         _registry.NotifyStateChanged();
         if(e.PropertyName is nameof(EventEditDraft.Text) or nameof(EventEditDraft.Style))RefreshFormatting();
+        if(e.PropertyName is nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))UpdateAudioPlaybackEnd();
     }
     private async Task FinalizeBurstAsync(CancellationToken token)
     {
@@ -148,6 +149,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));OnPropertyChanged(nameof(SelectedIsComment));
             if (!_suppressSelectionSeek&&value?.StartMilliseconds is { } start && !IsPlaying&&(_media?.HasVideo!=true||VideoAutoSeek)) CurrentTimeSeconds=start/1000d;
             _registry.NotifyStateChanged();
+            UpdateAudioPlaybackEnd();
         }
     }
     public bool HasSelectedEvent => SelectedEvent is not null;
@@ -176,7 +178,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         {
             var time=MediaDurationSeconds>0 ? Math.Clamp(value,0,MediaDurationSeconds) : Math.Max(0,value);
             if (!double.IsFinite(time) || Math.Abs(_currentTimeSeconds-time)<0.00001) return;
-            CancelGesture();
+            if(!_clockUpdateFromPlayback)CancelGesture();
             _currentTimeSeconds=time; OnPropertyChanged(); OnPropertyChanged(nameof(TimeDisplay));OnPropertyChanged(nameof(FramePositionDisplay));OnPropertyChanged(nameof(RelativeTimingDisplay));
             _activeSubtitleDocument?.UpdateActiveTime((long)(time*1000));
             if (!_clockUpdateFromPlayback && _media?.HasVideo==true) _=RefreshVideoFrameAsync(time);
@@ -198,6 +200,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterAudioPresentationCommands();
         RegisterSelectionCommands();
         RegisterAudioExportCommands();
+        RegisterAudioPlaybackCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
@@ -214,6 +217,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
         SelectedEvent?.ShowDraft(null);Draft=SelectedEvent is {} line?new EventEditDraft(line):null;
+        UpdateAudioPlaybackEnd();
         if(AssVisualTags.Clip(Draft?.Text??"") is {} clip)InverseClip=clip.Inverse;
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));OnPropertyChanged(nameof(SelectedIsComment));
         if(_workspace.ActiveDocument is {} session)session.IsDirty=ActiveEditor?.IsDirty??false;

@@ -70,7 +70,7 @@ public sealed partial class MainWindowViewModel
         var text=pointIndex==-2 ? AssVisualTags.TranslateClip(_gestureText,new(point.X-anchor.X,point.Y-anchor.Y)) : pointIndex>=0 ? AssVisualTags.MoveClipPoint(_gestureText,pointIndex,point) : AssVisualTags.SetRectangle(_gestureText,InverseClip,anchor,point);
         _gestureEditor.SetField(_gestureLine,"Text",text,"Edit subtitle clip");GestureChanged();
     }
-    private void GestureChanged(){InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));}
+    private void GestureChanged(){InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();}
     private void EndGestureCore() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); _visualBaseline=[]; ReloadDraft(); GestureEnded?.Invoke(this,EventArgs.Empty); } }
     private void CancelGestureCore() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); _visualBaseline=[]; if(gesture is not null){ReloadDraft();GestureEnded?.Invoke(this,EventArgs.Empty);} }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
@@ -178,8 +178,6 @@ public sealed partial class MainWindowViewModel
         // Playback is a continuing activity; registry invocation completes once started.
         S(CommandIds.VideoPlay,"Play / Pause",()=>{if(IsPlaying)StopPlayback();else _=StartPlaybackAsync();},()=>CanPlayMedia);
         S(CommandIds.VideoStop,"Stop",StopPlayback,()=>CanPlayMedia);
-        S(CommandIds.AudioPlayCursor,"Play from cursor",()=>{_ = StartPlaybackAsync();},()=>CanPlayMedia);
-        S(CommandIds.AudioPlaySelection,"Play current line",()=>{if(!CommitDraft()||SelectedEvent is null)return;StopPlayback();CurrentTimeSeconds=(SelectedEvent.StartMilliseconds??0)/1000d;_=StartPlaybackAsync((SelectedEvent.EndMilliseconds??0)/1000d);},()=>CanPlayMedia&&HasLine());
         R(CommandIds.VideoFrameNext,"Next frame",async _=>await StepFrameAsync(1),()=>_media?.HasVideo==true);
         R("video/seek/frame","Seek to frame",async i=>{if(i.Parameter is int frame)await SeekFrameAsync(frame);},()=>_media?.HasVideo==true);
         foreach(var delta in new[]{-1,1}){var step=delta;R(step>0?"video/frame/next-keyframe":"video/frame/previous-keyframe","Step keyframe",async _=>await SeekFrameAsync(Yoake.Core.Media.FrameNavigation.StepKeyframe(Keyframes,CurrentFrame,step)),()=>_media?.HasVideo==true);}

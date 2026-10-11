@@ -101,9 +101,14 @@ public sealed class AudioWaveformControl : Control
             void Boundary(long? boundary){if(boundary is {} ms){var x=X(ms/1000d);if(x>=0&&x<=Bounds.Width&&_boundaryPixels.Add((int)x))context.DrawLine(neighbor,new(x,0),new(x,Bounds.Height));}}
             Boundary(line.StartMilliseconds);Boundary(line.EndMilliseconds);
         }
-        if(model.SelectedEvent is {} selected)
+        if(model.ActiveAudioPlayback is {} preview)
         {
-            var left=X((selected.StartMilliseconds??0)/1000d);var right=X((selected.EndMilliseconds??0)/1000d);
+            var left=X(preview.StartSeconds);var right=X(preview.EndSeconds);
+            if(right>left)context.FillRectangle(new SolidColorBrush(Color.FromArgb(30,240,190,70)),new Rect(left,0,right-left,Bounds.Height));
+        }
+        if(model.PrimaryAudioRange is {} selected)
+        {
+            var left=X(selected.StartMilliseconds/1000d);var right=X(selected.EndMilliseconds/1000d);
             if(right>left)context.FillRectangle(new SolidColorBrush(Color.FromArgb(45,80,180,255)),new Rect(left,0,right-left,Bounds.Height));
             context.DrawLine(new Pen(Brushes.LimeGreen,2),new(left,0),new(left,Bounds.Height));context.DrawLine(new Pen(Brushes.OrangeRed,2),new(right,0),new(right,Bounds.Height));
         }

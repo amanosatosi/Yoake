@@ -2,6 +2,25 @@ namespace Yoake.Core.Hotkeys;
 
 public static partial class AegisubHotkeyDefaults
 {
+    public static HotkeyOverride[] MigrateAudioStopOverrides(HotkeyOverride[]? overrides)
+    {
+        var source=(overrides??[]).OfType<HotkeyOverride>().ToArray();var result=new List<HotkeyOverride>();
+        foreach(var item in source)
+        {
+            if(item.CommandId!="video/stop"||item.Context is not (HotkeyContext.Audio or HotkeyContext.Always))
+            {result.Add(item);continue;}
+            try
+            {if(item.Gestures is null||item.Gestures.Any(text=>!HotkeyGesture.Parse(text).IsKnownKey)){result.Add(item);continue;}}
+            catch(ArgumentException){result.Add(item);continue;}
+            // The old audio-stop adapter shared video/stop's Audio/Always row.
+            // Preserve its complete custom gesture set, including explicit empty
+            // removals; suppress the old row so Escape is not silently restored.
+            result.Add(item with {Gestures=[]});
+            if(!source.Any(other=>other.Context==item.Context&&other.CommandId=="audio/stop"))
+                result.Add(item with {CommandId="audio/stop"});
+        }
+        return result.ToArray();
+    }
     // Preserve stable Yoake IDs for existing actions. New actions retain the
     // upstream semantic ID; their registration remains a separate backend task.
     public static string MapCommand(string command) => command switch
@@ -12,7 +31,6 @@ public static partial class AegisubHotkeyDefaults
         "edit/line/delete" => "grid/delete", "grid/line/prev" => "grid/line/previous",
         "grid/line/next/create" => "edit/commit-next", "subtitle/save/as" => "subtitle/save-as",
         "subtitle/select/all" => "grid/select-all", "subtitle/find" => "edit/find",
-        "audio/stop" => "video/stop",
         "video/frame/prev" => "video/frame/previous",
         "video/frame/next/keyframe" => "video/frame/next-keyframe", "video/frame/prev/keyframe" => "video/frame/previous-keyframe",
         "video/jump/start" => "timing/jump-start", "video/jump/end" => "timing/jump-end",

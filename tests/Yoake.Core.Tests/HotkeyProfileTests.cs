@@ -24,6 +24,7 @@ public sealed class HotkeyProfileTests
     [InlineData(HotkeyContext.Audio,"S","audio/play/selection")]
     [InlineData(HotkeyContext.Video,"S","video/tool/position")]
     [InlineData(HotkeyContext.Audio,"D","audio/play/selection/end")]
+    [InlineData(HotkeyContext.Audio,"H","audio/stop")]
     [InlineData(HotkeyContext.Video,"D","video/tool/rotatez")]
     [InlineData(HotkeyContext.SubtitleEdit,"Enter","edit/commit-next")]
     [InlineData(HotkeyContext.Audio,"Enter","audio/commit")]
@@ -33,6 +34,27 @@ public sealed class HotkeyProfileTests
     {
         var resolver=new HotkeyProfile(AegisubHotkeyDefaults.ForYoake()).Resolver;
         Assert.Equal(expected,resolver.Resolve(HotkeyGesture.Parse(gesture),[HotkeyContext.Default,context])?.CommandId);
+    }
+
+    [Fact] public void AudioStopAdapterMigrationRetainsRemapsAndRemovalsAndRunsOnlyOnce()
+    {
+        var directory=Path.Combine(Path.GetTempPath(),"Yoake-audio-stop-"+Guid.NewGuid());Directory.CreateDirectory(directory);
+        try
+        {
+            var store=new SettingsStore(Path.Combine(directory,"settings.json"));
+            File.WriteAllText(store.Path,"""{"hotkeyOverrides":[{"context":3,"commandId":"video/stop","gestures":["F10","H"]},{"context":0,"commandId":"video/stop","gestures":[]}]}""");
+            var migrated=store.Load();Assert.True(migrated.AudioStopHotkeysMigrated);
+            var profile=new HotkeyProfile(AegisubHotkeyDefaults.ForYoake(),migrated.HotkeyOverrides);
+            Assert.Equal(new[]{"F10","H"},profile.EffectiveGestures("audio/stop",HotkeyContext.Audio));
+            Assert.Empty(profile.EffectiveGestures("video/stop",HotkeyContext.Audio));Assert.Empty(profile.EffectiveGestures("audio/stop",HotkeyContext.Always));
+            profile.Set(HotkeyContext.Audio,"video/stop",["F11"]);store.Save(migrated with {HotkeyOverrides=profile.Overrides});
+            var again=store.Load();var restored=new HotkeyProfile(AegisubHotkeyDefaults.ForYoake(),again.HotkeyOverrides);
+            Assert.Equal(new[]{"F11"},restored.EffectiveGestures("video/stop",HotkeyContext.Audio));Assert.Equal(new[]{"F10","H"},restored.EffectiveGestures("audio/stop",HotkeyContext.Audio));
+            var removed=(new AppSettings {HotkeyOverrides=[new(HotkeyContext.Audio,"video/stop",[])]}).Normalize();
+            var empty=new HotkeyProfile(AegisubHotkeyDefaults.ForYoake(),removed.HotkeyOverrides);
+            Assert.Empty(empty.EffectiveGestures("audio/stop",HotkeyContext.Audio));Assert.Empty(empty.EffectiveGestures("video/stop",HotkeyContext.Audio));
+        }
+        finally{Directory.Delete(directory,true);}
     }
 
     [Fact] public void AlwaysOverridesRequireOptInAndExclusiveModesDoNotLeakDefaults()

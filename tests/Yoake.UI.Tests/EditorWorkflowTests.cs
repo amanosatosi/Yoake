@@ -22,6 +22,40 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語 é မြန်မာ 👩‍👩‍👧";
+        _model.Draft.Start="0:00:00.30";_model.Draft.End="0:00:01.40";await Command(CommandIds.EditCommit);
+        var source=_model.ActiveEditor!.Document.Serialize();var history=_model.ActiveEditor.Undo.NextUndoName;
+        _model.Draft!.Start="unfinished";var draft=_model.Draft;
+        foreach(var id in new[]{"audio/play/current","audio/play/line","audio/play/selection","audio/play/selection/before","audio/play/selection/after","audio/play/selection/begin","audio/play/selection/end","audio/play/to_end","audio/play/cursor","audio/play/toggle","audio/stop"})
+        {
+            Assert.False(_model.Actions[id].CanExecute(null));Assert.False(await _model.Registry.InvokeAsync(id,new()));
+            Assert.False(await _model.Registry.InvokeAsync(id,new(Guid.NewGuid())));
+        }
+        Assert.Null(_model.ActiveAudioPlayback);Assert.False(_model.IsPlaying);Assert.Same(draft,_model.Draft);
+        Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+        Assert.False(_model.Registry.GetRequired("audio/play/toggle").IsChecked(new()));
+    }
+    [Fact] public async Task AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Start="0:00:00.30";_model.Draft.End="0:00:01.40";await Command(CommandIds.EditCommit);
+        var source=_model.ActiveEditor!.Document.Serialize();var history=_model.ActiveEditor.Undo.NextUndoName;
+        _model.Draft!.Start="unfinished";_model.Draft.End="0:00:01.50";
+        Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(300,1500),_model.PrimaryAudioRange);
+        _model.Draft.End="0:00:00.20";Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(300,1400),_model.PrimaryAudioRange);
+        _model.Draft.Start="0:00:00.10";Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(100,200),_model.PrimaryAudioRange);
+        Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+    }
+    [Fact] public async Task AudioOverlayFollowsLiveTimingGestureAndRestoresItsIntervalOnCancel()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Start="0:00:00.30";_model.Draft.End="0:00:01.40";await Command(CommandIds.EditCommit);
+        var source=_model.ActiveEditor!.Document.Serialize();var history=_model.ActiveEditor.Undo.NextUndoName;
+        Assert.True(_model.BeginGesture("Adjust audio timing"));_model.UpdateTimingGesture(1,.2);
+        Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(300,1600),_model.PrimaryAudioRange);Assert.True(_model.HasGesture);
+        _model.CancelGesture();Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(300,1400),_model.PrimaryAudioRange);
+        Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+    }
     [Fact] public async Task AudioClipExportRequiresLoadedAudioAndActualSelectedRows()
     {
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)}日本語 é";await Command(CommandIds.EditCommit);var editor=_model.ActiveEditor!;

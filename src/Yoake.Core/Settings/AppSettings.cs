@@ -30,6 +30,7 @@ public sealed record AppSettings
     public ThemePreference Theme { get; init; } = ThemePreference.System;
     public WorkspaceViewMode ViewMode { get; init; } = WorkspaceViewMode.Default;
     public HotkeyOverride[]? HotkeyOverrides { get; init; }
+    public bool AudioStopHotkeysMigrated {get;init;}
     public bool GlobalTimingHotkeys { get; init; }
     public bool? ToolbarVisible { get; init; }
     public GridTagDisplayMode? GridTagDisplay { get; init; }
@@ -80,7 +81,8 @@ public sealed record AppSettings
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
         return this with { GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), RecentTimecodes=(NormalizePaths(RecentTimecodes)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
-            HotkeyOverrides=HotkeyProfile.Normalize(HotkeyOverrides, report),
+            HotkeyOverrides=HotkeyProfile.Normalize(AudioStopHotkeysMigrated?HotkeyOverrides:AegisubHotkeyDefaults.MigrateAudioStopOverrides(HotkeyOverrides), report),
+            AudioStopHotkeysMigrated=true,
             ToolbarVisible=ToolbarVisible??true,
             GridTagDisplay=GridTagDisplay is {} tags&&Enum.IsDefined(tags)?tags:GridTagDisplayMode.Simplified,
             SearchPreferences=SearchPreferences?.Normalize()??new SubtitleSearchPreferences(),

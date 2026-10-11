@@ -53,6 +53,14 @@ internal static class EditorVerification
                 }
                 try{audio.SaveAudioClip(audio.SourcePath,new(0,100));throw new InvalidOperationException("Audio export must reject overwriting its source.");}catch(ArgumentException){}
                 using var cancellation=new CancellationTokenSource();cancellation.Cancel();
+                using(var output=new WindowsWaveOutStream())
+                {
+                    try{output.PlayAsync(audio,0,null,cancellation.Token).GetAwaiter().GetResult();throw new InvalidOperationException("Canceled audio playback must not open an output device.");}
+                    catch(OperationCanceledException){}
+                    var other=Yoake.Core.Audio.AudioPlaybackPlan.Create(Yoake.Core.Audio.AudioPlaybackKind.Selection,11025,1000,new(0,100));
+                    try{output.PlayAsync(audio,0,null,CancellationToken.None,other).GetAwaiter().GetResult();throw new InvalidOperationException("Audio playback must reject foreign-provider sample geometry before opening a device.");}
+                    catch(ArgumentException){}
+                }
                 try{audio.BuildWaveform(cancellation.Token);throw new InvalidOperationException("Peak cancellation failed.");}catch(OperationCanceledException){}
             }
             File.WriteAllText(report,"PASS: NativeAOT ASS edit/undo/save/reopen; FFMS2 video/frame timestamps/audio decode; full peaks/cancellation; viewport spectrum; Mangetsu render/update/composite.\n"+alphaVerification+"\nAudio device playback and manual UI gestures require interactive smoke testing.\n");
