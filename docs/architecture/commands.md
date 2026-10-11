@@ -17,3 +17,9 @@ Native window close requests and the File/keyboard Exit action invoke `app/exit`
 Each document owns its current editing cancellation token. Draft/document changes, document close, replacement work and disposal cancel obsolete work; `editor/cancel-operation` exposes user cancellation. This token does not represent another editor/session or timeline. Results for closed or changed documents cannot overwrite later edits.
 
 `grid/tags/show`, `grid/tags/simplify`, `grid/tags/hide` and `grid/tag/cycle_hiding` change only the persisted display mode. `SubtitleGridText` projects the draft-aware display source for realized rows through the structured syntax tokenizer. Its inheritable attached display property avoids per-record settings and whole-document reparsing. Exact source, unknown tags, Mangetsu syntax, drafts and undo history remain unchanged. Escaped braces and incomplete blocks remain visible.
+
+## Transactional line operations
+
+Modern frame split commands own the imported Ctrl-D/Ctrl-Shift-D actions. Each selected contiguous block is duplicated immediately after itself, and every copy is selected. Timing edits and structural insertion form one rollback-capable transaction. Splitting at a zero-duration edge or outside a line creates a one-frame copy rather than corrupting the original duration.
+
+The cursor split commands separately expose preserve, grapheme-estimated and current-frame timing. Structured override/escape boundaries and grapheme clusters cannot be cut in half. The new segment carries exact prior override blocks while excluding preceding karaoke timing tags; unknown and Mangetsu tags remain intact. Join variants distinguish spaces, first-text retention, modern duration-based karaoke and Yoake's existing line-break behavior. Clearing visible text retains structured overrides, comments and drawing sections. All actions route through the existing per-document editor/undo boundary.

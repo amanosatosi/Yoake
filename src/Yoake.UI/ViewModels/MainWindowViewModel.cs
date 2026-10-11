@@ -1,4 +1,5 @@
 using Yoake.Core.Audio;
+using Yoake.Core.Media;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -27,6 +28,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public SubtitleEditor Editor { get; } = editor;
         public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
         public FfmsMediaSession? Media;
+        public FrameTiming? FrameTiming;
         public WaveformData? Waveform;
         public double Time;
         public AssEvent? Selected;
@@ -88,7 +90,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public IList<AssEvent> SelectedEvents=>_selection;
     public void SetSelectedEvents(IEnumerable<AssEvent> lines) { _selection.Replace(lines);_registry.NotifyStateChanged(); if (_automationCatalog is not null) ScheduleAutomationValidation(); }
     public bool IsSynchronizingSelection { get; private set; }
-    public int TextCursor { get; set; }
+    public int TextCursor {get=>_textCursor;set{if(_textCursor==value)return;_textCursor=value;_registry.NotifyStateChanged();}}
     public EventEditDraft? Draft
     {
         get => _draft;
@@ -176,6 +178,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterApplicationCommands();
         RegisterEditorCommands();
         RegisterGridCommands();
+        RegisterLineCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
@@ -316,15 +319,17 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if (_activeId is not { } id || !_documents.TryGetValue(id,out var state)) return false;
         CancelGesture(); StopPlayback(); state.Editing?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
         MediaStatus=$"FFMS2 indexing {Path.GetFileName(path)}窶ｦ";
-        FfmsMediaSession? opened=null;
+        FfmsMediaSession? opened=null;FrameTiming? frameTiming=null;Exception? boundaryError=null;
         try
         {
-            var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>FfmsMediaSession.Open(path,ct),ct); },token); await job.Completion;
+            var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>FfmsMediaSession.Open(path,ct),ct);if(opened.HasVideo)try{frameTiming=new(opened.FrameTimes,opened.Info.FramesPerSecond,ct);}catch(Exception exception)when(exception is ArgumentException or OverflowException){boundaryError=exception;} },token); await job.Completion;
             token.ThrowIfCancellationRequested();
+            if(boundaryError is not null)_registry.ReportFailure("media/frame-boundaries",boundaryError);
             if (_disposed || !_documents.ContainsKey(id)) { opened?.Dispose(); return false; }
             if(_activeId==id){CancelGesture();CancelVisualBounds();}
-            var old=state.Media; state.Media=opened; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
+            var old=state.Media; state.Media=opened;state.FrameTiming=frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
             if (_activeId==id) { _media=state.Media;if(!_media!.HasVideo)VideoFrame=null; MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
+            _registry.NotifyStateChanged();
             var media=state.Media!; WaveformData? peaks=null;
             var analysis=_jobs.Run("Audio peaks",ct=> { peaks=media.BuildWaveform(cancellationToken:ct); return Task.CompletedTask; },token); await analysis.Completion;
             token.ThrowIfCancellationRequested(); state.Waveform=peaks;

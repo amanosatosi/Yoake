@@ -8,6 +8,7 @@ using Avalonia.VisualTree;
 using Yoake.Core.Commands;
 using Yoake.Core.Hotkeys;
 using Yoake.Core.Logging;
+using Yoake.Core.Media;
 using Yoake.Core.Settings;
 using Yoake.Core.Subtitles;
 using Yoake.UI;
@@ -28,6 +29,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
     private Guid? _document;private AssEvent? _line;private SubtitleEditor? _editor;
     private int _frame;private string _savedPath="";
     private AssEvent[]? _sortRows;private string _sortSource="";private double _sortTime;
+    private string _splitSource="";private FrameTiming? _frameTiming;
     private const string Source=@"{\future(opaque)\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦";
     private AssTextBox Text=>window.FindControl<AssTextBox>("SubtitleText")!;
     private ListBox Grid=>window.FindControl<ListBox>("SubtitleRows")!;
@@ -176,8 +178,24 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Press(Grid,Key.F11);return;
                 case 24:
                     Require(model.GridTagDisplay==GridTagDisplayMode.Full&&Grid.GetVisualDescendants().OfType<SubtitleGridText>().Any(row=>row.Text==row.SourceText&&row.Text!.Contains("\\future",StringComparison.Ordinal)),"Cycle must restore full exact source in the actual grid.");
+                    _editor!.SetTiming(_sortRows![0],0,5000);model.SelectedEvent=_sortRows[1];model.SelectedEvent=_sortRows[0];
+                    _splitSource=_editor.Document.Serialize();_frameTiming=new(model.FrameTimes,25);_frame=model.CurrentFrame;
+                    Press(Grid,Key.D,KeyModifiers.Control);return;
+                case 25:
+                    Require(model.Events.Count==3&&model.SelectedEvents.Count==1&&!_sortRows!.Contains(model.SelectedEvent!),"Real Ctrl-D must split and select the copy through the migrated default command.");
+                    Require(_sortRows[0].EndMilliseconds==_frameTiming!.SubtitleBoundary(_frame,FrameTimeKind.Start)&&model.SelectedEvent!.StartMilliseconds==_sortRows[0].EndMilliseconds,"Ctrl-D must use the VFR boundary before the current frame.");
+                    Require(model.SelectedEvent!.Text==_sortRows[0].Text&&model.CurrentFrame==_frame&&ReferenceEquals(_editor,model.ActiveEditor),"Frame splits must preserve unknown source and media state.");
+                    Press(Grid,Key.Z,KeyModifiers.Control);return;
+                case 26:
+                    Require(_editor!.Document.Serialize()==_splitSource,"Ctrl-Z must undo the complete before-frame split in one operation.");
+                    model.SelectedEvent=_sortRows![0];Press(Grid,Key.D,KeyModifiers.Control|KeyModifiers.Shift);return;
+                case 27:
+                    Require(model.Events.Count==3&&_sortRows![0].EndMilliseconds==_frameTiming!.SubtitleBoundary(_frame,FrameTimeKind.End)&&model.SelectedEvent!.StartMilliseconds==_sortRows[0].EndMilliseconds,"Real Ctrl-Shift-D must split after the current frame using its VFR end boundary.");
+                    Press(Grid,Key.Z,KeyModifiers.Control);return;
+                case 28:
+                    Require(_editor!.Document.Serialize()==_splitSource&&model.CurrentFrame==_frame,"Undoing the after-frame split must retain exact source and current frame.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source.\n");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source; exact migrated Ctrl-D/Ctrl-Shift-D real keyboard frame splits with VFR-derived boundaries and complete one-step undo.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }

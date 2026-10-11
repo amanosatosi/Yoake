@@ -71,6 +71,8 @@
 <MenuItem Header="Cut lines" InputGesture="{Binding Actions[grid/cut].InputGesture}" Command="{Binding Actions[grid/cut]}" />
 <MenuItem Header="Paste lines" InputGesture="{Binding Actions[grid/paste].InputGesture}" Command="{Binding Actions[grid/paste]}" />
 <MenuItem Header="Select all lines" InputGesture="{Binding Actions[grid/select-all].InputGesture}" Command="{Binding Actions[grid/select-all]}" />
+<MenuItem Header="Clear line text" InputGesture="{Binding Actions[edit/clear].InputGesture}" Command="{Binding Actions[edit/clear]}" />
+<MenuItem Header="Clear visible text" InputGesture="{Binding Actions[edit/clear/text].InputGesture}" Command="{Binding Actions[edit/clear/text]}" />
 <MenuItem Header="Find / Replace…" InputGesture="{Binding Actions[edit/find].InputGesture}" Command="{Binding Actions[edit/find]}" />
 <MenuItem Header="Cancel background operation" Command="{Binding Actions[editor/cancel-operation]}" />
 </MenuItem>
@@ -80,8 +82,20 @@
 <MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />
 <MenuItem Header="Delete selected" InputGesture="{Binding Actions[grid/delete].InputGesture}" Command="{Binding Actions[grid/delete]}" />
 <MenuItem Header="Dialogue / Comment" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
-<MenuItem Header="Split at text cursor" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
-<MenuItem Header="Join selected" InputGesture="{Binding Actions[grid/join].InputGesture}" Command="{Binding Actions[grid/join]}" />
+<MenuItem Header="Split at text cursor">
+<MenuItem Header="Preserve times" InputGesture="{Binding Actions[edit/line/split/preserve].InputGesture}" Command="{Binding Actions[edit/line/split/preserve]}" />
+<MenuItem Header="Estimate times" InputGesture="{Binding Actions[edit/line/split/estimate].InputGesture}" Command="{Binding Actions[edit/line/split/estimate]}" />
+<MenuItem Header="At video frame" InputGesture="{Binding Actions[edit/line/split/video].InputGesture}" Command="{Binding Actions[edit/line/split/video]}" />
+<MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
+</MenuItem>
+<MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
+<MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />
+<MenuItem Header="Join selected">
+<MenuItem Header="Concatenate" InputGesture="{Binding Actions[edit/line/join/concatenate].InputGesture}" Command="{Binding Actions[edit/line/join/concatenate]}" />
+<MenuItem Header="Keep first text" InputGesture="{Binding Actions[edit/line/join/keep_first].InputGesture}" Command="{Binding Actions[edit/line/join/keep_first]}" />
+<MenuItem Header="As karaoke" InputGesture="{Binding Actions[edit/line/join/as_karaoke].InputGesture}" Command="{Binding Actions[edit/line/join/as_karaoke]}" />
+<MenuItem Header="With line breaks" InputGesture="{Binding Actions[grid/join].InputGesture}" Command="{Binding Actions[grid/join]}" />
+</MenuItem>
 <MenuItem Header="Swap selected lines" InputGesture="{Binding Actions[grid/swap].InputGesture}" Command="{Binding Actions[grid/swap]}" />
 <MenuItem Header="Sort all lines">
 <MenuItem Header="By start" InputGesture="{Binding Actions[grid/sort/start].InputGesture}" Command="{Binding Actions[grid/sort/start]}" />
@@ -293,8 +307,20 @@
 <MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />
 <MenuItem Header="Delete selected" InputGesture="{Binding Actions[grid/delete].InputGesture}" Command="{Binding Actions[grid/delete]}" />
 <MenuItem Header="Dialogue / Comment" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
-<MenuItem Header="Split at text cursor" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
-<MenuItem Header="Join selected" InputGesture="{Binding Actions[grid/join].InputGesture}" Command="{Binding Actions[grid/join]}" />
+<MenuItem Header="Split at text cursor">
+<MenuItem Header="Preserve times" InputGesture="{Binding Actions[edit/line/split/preserve].InputGesture}" Command="{Binding Actions[edit/line/split/preserve]}" />
+<MenuItem Header="Estimate times" InputGesture="{Binding Actions[edit/line/split/estimate].InputGesture}" Command="{Binding Actions[edit/line/split/estimate]}" />
+<MenuItem Header="At video frame" InputGesture="{Binding Actions[edit/line/split/video].InputGesture}" Command="{Binding Actions[edit/line/split/video]}" />
+<MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
+</MenuItem>
+<MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
+<MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />
+<MenuItem Header="Join selected">
+<MenuItem Header="Concatenate" InputGesture="{Binding Actions[edit/line/join/concatenate].InputGesture}" Command="{Binding Actions[edit/line/join/concatenate]}" />
+<MenuItem Header="Keep first text" InputGesture="{Binding Actions[edit/line/join/keep_first].InputGesture}" Command="{Binding Actions[edit/line/join/keep_first]}" />
+<MenuItem Header="As karaoke" InputGesture="{Binding Actions[edit/line/join/as_karaoke].InputGesture}" Command="{Binding Actions[edit/line/join/as_karaoke]}" />
+<MenuItem Header="With line breaks" InputGesture="{Binding Actions[grid/join].InputGesture}" Command="{Binding Actions[grid/join]}" />
+</MenuItem>
 <MenuItem Header="Swap selected lines" InputGesture="{Binding Actions[grid/swap].InputGesture}" Command="{Binding Actions[grid/swap]}" />
 <MenuItem Header="Sort selected blocks">
 <MenuItem Header="By start" InputGesture="{Binding Actions[grid/sort/start/selected].InputGesture}" Command="{Binding Actions[grid/sort/start/selected]}" />

@@ -80,7 +80,8 @@ public sealed partial class SubtitleEditor(AssDocument document)
     }
     private AssEvent[] Ordered(IEnumerable<AssEvent> selection)
     {
-        var set = selection.ToHashSet(); foreach (var line in set) Require(line);
+        var set = selection.ToHashSet();var owned=Document.Events.ToHashSet();
+        foreach(var line in set)if(!owned.Contains(line))throw new InvalidOperationException("Record belongs to another document.");
         return Document.Events.Where(set.Contains).ToArray();
     }
     public void Delete(IEnumerable<AssEvent> selection)
@@ -91,8 +92,7 @@ public sealed partial class SubtitleEditor(AssDocument document)
     public IReadOnlyList<AssEvent> Duplicate(IEnumerable<AssEvent> selection)
     {
         var lines = Ordered(selection); var copies = lines.Select(l => l.Clone()).ToArray(); if (lines.Length == 0) return copies;
-        var before = Document.Events.ElementAtOrDefault(Document.Events.IndexOf(lines[^1]) + 1);
-        Structure("Duplicate subtitles", () => { foreach (var line in copies) Document.Insert(line, before); }); return copies;
+        InsertCopies(lines,copies,"Duplicate subtitles");return copies;
     }
     public void ToggleComment(IEnumerable<AssEvent> selection)
     {
@@ -270,10 +270,27 @@ public static class AssText
         cursor = Math.Clamp(cursor, 0, text.Length);
         var boundaries = StringInfo.ParseCombiningCharacters(text);
         if (cursor < text.Length) cursor = boundaries.LastOrDefault(i => i <= cursor);
-        var open = text.LastIndexOf('{', Math.Max(0, cursor - 1), cursor);
-        var close = text.LastIndexOf('}', Math.Max(0, cursor - 1), cursor);
-        if (open > close) return open;
-        if (cursor > 0 && cursor < text.Length && text[cursor - 1] == '\\' && text[cursor] is 'N' or 'n' or 'h') cursor--;
+        foreach(var block in AssTextOperations.Blocks(text))if(cursor>block.Start&&cursor<block.End)return block.Start;
+        var tokens=AssSyntax.Tokenize(text);
+        foreach(var token in tokens)
+            if(token.Kind==AssSyntaxKind.Escape)
+                for(var index=token.Start;index<token.Start+token.Length;)
+                {
+                    var length=text[index+1]=='|'&&index+2<text.Length&&text[index+2]=='\\'?3:2;
+                    if(cursor>index&&cursor<index+length)return index;index+=length;
+                }
+        var drawingStart=-1;var drawingEnd=0;
+        foreach(var token in tokens)
+        {
+            if(token.Kind is AssSyntaxKind.Drawing or AssSyntaxKind.Number)
+            {if(drawingStart<0)drawingStart=token.Start;drawingEnd=token.Start+token.Length;}
+            else
+            {
+                if(drawingStart>=0&&cursor>drawingStart&&cursor<drawingEnd)return drawingStart;
+                drawingStart=-1;
+            }
+        }
+        if(drawingStart>=0&&cursor>drawingStart&&cursor<drawingEnd)return drawingStart;
         return cursor;
     }
     public static string LeadingOverrides(string text)

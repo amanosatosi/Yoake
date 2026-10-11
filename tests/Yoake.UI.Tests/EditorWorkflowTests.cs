@@ -22,6 +22,38 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="A{\\future(opaque)\\distort(0,0,1,1)}é👩‍👩‍👧‍👦漢";await Command(CommandIds.EditCommit);
+        var editor=_model.ActiveEditor!;var line=_model.SelectedEvent!;var source=editor.Document.Serialize();
+        Assert.False(_model.Actions["edit/line/split/before"].CanExecute(null));Assert.False(_model.Actions["edit/line/split/after"].CanExecute(null));
+        Assert.Equal("edit/line/split/before",_model.Hotkeys.Resolve(new("D",Yoake.Core.Hotkeys.KeyModifiers.Control),[Yoake.Core.Hotkeys.HotkeyContext.Default])!.CommandId);
+        Assert.Equal("edit/line/split/after",_model.Hotkeys.Resolve(new("D",Yoake.Core.Hotkeys.KeyModifiers.Control|Yoake.Core.Hotkeys.KeyModifiers.Shift),[Yoake.Core.Hotkeys.HotkeyContext.Default])!.CommandId);
+        _model.TextCursor=0;Assert.False(_model.Actions["edit/line/split/preserve"].CanExecute(null));
+        _model.TextCursor=line.Text.IndexOf("é",StringComparison.Ordinal)+2;Assert.True(_model.Actions["edit/line/split/preserve"].CanExecute(null));
+        Assert.False(_model.Actions["edit/line/split/video"].CanExecute(null));await Command("edit/line/split/preserve");
+        Assert.Equal(2,_model.Events.Count);Assert.Equal(line.Start,_model.SelectedEvent!.Start);Assert.Equal(line.End,_model.SelectedEvent.End);
+        Assert.Equal("{\\future(opaque)\\distort(0,0,1,1)}👩‍👩‍👧‍👦漢",_model.SelectedEvent.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());_model.SelectedEvent=line;
+        await Command("edit/clear/text");Assert.Equal("{\\future(opaque)\\distort(0,0,1,1)}",line.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());await Command("edit/clear");Assert.Equal("",line.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+    }
+    [Theory] [InlineData("concatenate")][InlineData("keep_first")][InlineData("as_karaoke")]
+    public async Task JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo(string variant)
+    {
+        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;_model.Draft!.Text="{\\future(x)}日本語";await Command(CommandIds.EditCommit);
+        await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent!;_model.Draft!.Text="မြန်မာ 👩‍👩‍👧‍👦";await Command(CommandIds.EditCommit);
+        Assert.False(_model.Actions["edit/line/join/"+variant].CanExecute(null));
+        _model.SelectedEvent=first;_model.SetSelectedEvents([first,second]);var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
+        await Command("edit/line/join/"+variant);Assert.Single(_model.Events);Assert.Same(first,_model.SelectedEvent);Assert.Single(_model.SelectedEvents);Assert.Contains("\\future(x)",first.Text);
+        if(variant=="as_karaoke")Assert.StartsWith("{\\k200}",first.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+        _model.SelectedEvent=first;_model.SetSelectedEvents([first,second]);await Command(CommandIds.GridDuplicate);
+        Assert.Equal(4,_model.Events.Count);Assert.Equal(2,_model.SelectedEvents.Count);Assert.Same(_model.Events[2],_model.SelectedEvent);
+        Assert.All(_model.SelectedEvents,item=>Assert.DoesNotContain(item,new[]{first,second}));await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+    }
+
     [Theory]
     [InlineData(SubtitleSortKey.Start)][InlineData(SubtitleSortKey.End)][InlineData(SubtitleSortKey.Style)]
     [InlineData(SubtitleSortKey.Actor)][InlineData(SubtitleSortKey.Effect)][InlineData(SubtitleSortKey.Layer)]

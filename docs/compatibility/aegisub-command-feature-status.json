@@ -814,22 +814,42 @@
     },
     {
       "id": "edit/clear",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Clear the current line's text",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "edit/clear",
+      "status": "partially implemented",
+      "backend": "Implemented: Clear the active line text through an undoable editor operation. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
+      ],
+      "notes": "No unrelated metadata or other selected lines are changed. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/clear/text",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Clear the current line's text, leaving override tags",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "edit/clear/text",
+      "status": "partially implemented",
+      "backend": "Implemented: Clear visible text, retaining exact override/comment blocks and drawing sections. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
+      ],
+      "notes": "Incomplete blocks are deliberately retained for repair; escaped braces in ordinary text are removed as text, rather than misclassified as tags. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1033,18 +1053,21 @@
     {
       "id": "edit/line/duplicate",
       "yoake_command": "grid/duplicate",
-      "status": "already complete",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Duplicate the selected lines",
+      "status": "partially implemented",
+      "backend": "Implemented: Duplicate every contiguous selected block immediately after itself and select all copies. Relevant CI pending.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "",
+      "notes": "Structured cloning retains unknown fields and exact syntax; copy order and first active copy follow upstream. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Alt-D"
@@ -1053,39 +1076,62 @@
     },
     {
       "id": "edit/line/join/as_karaoke",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Join selected lines in a single one, as karaoke",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "edit/line/join/as_karaoke",
+      "status": "partially implemented",
+      "backend": "Implemented: Join with 3.5 duration-based karaoke tags for the first and each subsequent line. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
+      ],
+      "notes": "Uses the researched 3.5 behavior rather than resurrecting earlier gap-based karaoke semantics; exact input tag text follows each new duration tag. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/line/join/concatenate",
-      "yoake_command": "grid/join",
+      "yoake_command": "edit/line/join/concatenate",
       "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Join selected lines in a single one, concatenating text together",
+      "backend": "Implemented: Join selected lines with spaces, retain first line identity/start/fields and extend end to the largest selected end. Relevant CI pending.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Existing Join uses ASS hard newlines; Aegisub concatenates with spaces. Add an explicit concatenate variant and keep Yoake hard-newline join.",
+      "notes": "Yoake also retains its explicit join-with-line-breaks command; the Aegisub command has its own accurate semantics. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/line/join/keep_first",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Join selected lines in a single one, keeping text of first and discarding remaining",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "edit/line/join/keep_first",
+      "status": "partially implemented",
+      "backend": "Implemented: Join timing/records while keeping the first line text. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
+      ],
+      "notes": "Discarding other selected text is intentional; undo restores every exact removed record. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1135,12 +1181,22 @@
     },
     {
       "id": "edit/line/split/after",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the current frame and a line which starts on the next frame",
-      "exposure": [],
-      "tests": [],
-      "notes": "Modern Ctrl-D/Ctrl-Shift-D defaults are reserved for these semantic actions; the frame-split backend remains pending. Existing plain duplicate and text-cursor split use Ctrl-Alt-D and Ctrl-Alt-Shift-D.",
+      "yoake_command": "edit/line/split/after",
+      "status": "partially implemented",
+      "backend": "Implemented: Split every selected line after the current frame, using the central provider timeline and exact release midpoint/centisecond rules. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
+      ],
+      "notes": "Imported Ctrl-Shift-D and legacy user aliases resolve here. Very short frames get at least one ASS centisecond in fallback copies; no invalid negative duration is published. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Shift-D"
@@ -1149,12 +1205,22 @@
     },
     {
       "id": "edit/line/split/before",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the previous frame and a line which starts on the current frame",
-      "exposure": [],
-      "tests": [],
-      "notes": "Modern Ctrl-D/Ctrl-Shift-D defaults are reserved for these semantic actions; the frame-split backend remains pending. Existing plain duplicate and text-cursor split use Ctrl-Alt-D and Ctrl-Alt-Shift-D.",
+      "yoake_command": "edit/line/split/before",
+      "status": "partially implemented",
+      "backend": "Implemented: Split every selected line before the current frame, using the central provider timeline and exact release midpoint/centisecond rules. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
+      ],
+      "notes": "Imported Ctrl-D and legacy user aliases resolve to this modern command. Outside the interval or at an unusable split edge, create a useful one-frame copy while leaving the original unchanged. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-D"
@@ -1173,19 +1239,22 @@
     },
     {
       "id": "edit/line/split/estimate",
-      "yoake_command": "grid/split",
+      "yoake_command": "edit/line/split/estimate",
       "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line at the cursor, dividing the original line's duration between the new ones",
+      "backend": "Implemented: Split at a safe cursor position and divide duration using visible grapheme counts. Relevant CI pending.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Existing cursor split is grapheme-safe; compare its duration estimate and tag inheritance with upstream.",
+      "notes": "Works without video when subtitle timing exists. Unicode graphemes, not upstream UTF-8 byte length, determine the estimate; drawing and furigana annotation text do not inflate the count. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Alt-Shift-D"
@@ -1194,22 +1263,42 @@
     },
     {
       "id": "edit/line/split/preserve",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line at the cursor, setting both lines to the original line's times",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "edit/line/split/preserve",
+      "status": "partially implemented",
+      "backend": "Implemented: Split at a safe grapheme/escape/override boundary while both lines retain their timing. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
+      ],
+      "notes": "Preserve whitespace rather than silently trim it; carry prior opaque/known/Mangetsu override state into the new segment, excluding earlier karaoke timing tags. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/line/split/video",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line at the cursor, dividing the line's duration at the current video frame",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "edit/line/split/video",
+      "status": "partially implemented",
+      "backend": "Implemented: Split text at the cursor and divide timing at the current VFR frame end boundary. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit/Subtitle menu and split/join grid context menus where applicable",
+        "Exact imported defaults or live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "FrameTimingTests",
+        "SubtitleLineOperationTests",
+        "EditorWorkflowTests.ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource",
+        "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
+        "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
+      ],
+      "notes": "Clamp the split to the original line duration to avoid invalid edge timing; exact source and opaque fields survive. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
