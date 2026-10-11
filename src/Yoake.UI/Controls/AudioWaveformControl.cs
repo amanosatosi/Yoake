@@ -31,10 +31,12 @@ public sealed class AudioWaveformControl : Control
     private int _part;
     private bool _drag;
     private AssEvent? _lastLine;
+    private Guid? _lastDocument;private bool _restoringDocument;
     private WriteableBitmap? _spectrum;
     private CancellationTokenSource? _analysis;
-    private bool _spectrogram;
-    public bool Spectrogram { get=>_spectrogram;set { _spectrogram=value; RequestSpectrum();InvalidateVisual(); } }
+
+    public bool Spectrogram=>Model?.IsAudioSpectrum==true;
+    public bool SpectrumTileReady=>_spectrum is not null;
     public AudioWaveformControl() { Focusable=true;ClipToBounds=true; }
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -42,8 +44,9 @@ public sealed class AudioWaveformControl : Control
         if(change.Property==ModelProperty)
         {
             if(change.OldValue is MainWindowViewModel old){old.PropertyChanged-=ModelChanged;old.AudioZoomChanged-=ZoomChanged;}
-            if(Model is {} model){model.PropertyChanged+=ModelChanged;model.AudioZoomChanged+=ZoomChanged;}
+            if(Model is {} model){model.PropertyChanged+=ModelChanged;model.AudioZoomChanged+=ZoomChanged;_lastDocument=model.ActiveDocumentId;_lastLine=model.SelectedEvent;}
         }
+        if(change.Property==BoundsProperty)Model?.ReportAudioViewportWidth(Bounds.Width);
         if(change.Property==SamplesProperty||change.Property==ViewportStartProperty||change.Property==VisibleSecondsProperty||change.Property==BoundsProperty)
         {MaximumPan=Math.Max(0,(Model?.MediaDurationSeconds??0)-VisibleSeconds);if(ViewportStart>MaximumPan)ViewportStart=MaximumPan;RequestSpectrum();}
         if(change.Property==ViewportStartProperty||change.Property==VisibleSecondsProperty)Model?.RememberAudioViewport(ViewportStart,VisibleSeconds);
@@ -52,12 +55,15 @@ public sealed class AudioWaveformControl : Control
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
         if(Model is not {} model)return;
+        if(_lastDocument!=model.ActiveDocumentId){_lastDocument=model.ActiveDocumentId;_restoringDocument=true;}
+        if(e.PropertyName==nameof(MainWindowViewModel.IsAudioSpectrum)){_spectrum?.Dispose();_spectrum=null;RequestSpectrum();}
+        if(e.PropertyName==nameof(MainWindowViewModel.AudioViewport)){var viewport=model.AudioViewport;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;}
         if(e.PropertyName==nameof(MainWindowViewModel.AudioIntensity))RequestSpectrum();
-        if(e.PropertyName==nameof(MainWindowViewModel.CanPlayMedia)){var viewport=model.AudioViewport;_spectrum?.Dispose();_spectrum=null;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;_lastLine=model.SelectedEvent;RequestSpectrum();}
-        if(_lastLine!=model.SelectedEvent)
+        if(e.PropertyName==nameof(MainWindowViewModel.CanPlayMedia)){var viewport=model.AudioViewport;_spectrum?.Dispose();_spectrum=null;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;_lastLine=model.SelectedEvent;_restoringDocument=false;RequestSpectrum();}
+        if(!_restoringDocument&&_lastLine!=model.SelectedEvent)
         {
             _lastLine=model.SelectedEvent;
-            if(_lastLine?.StartMilliseconds is {} ms){ViewportStart=Math.Max(0,ms/1000d-VisibleSeconds/5);RequestSpectrum();}
+            if(model.AudioAutoScroll)model.Actions["audio/go_to"].Execute(null);
         }
         if(e.PropertyName==nameof(MainWindowViewModel.CurrentTimeSeconds) && model.IsPlaying && (model.CurrentTimeSeconds<ViewportStart||model.CurrentTimeSeconds>ViewportStart+VisibleSeconds)){ViewportStart=Math.Max(0,model.CurrentTimeSeconds-VisibleSeconds/5);RequestSpectrum();}
         InvalidateVisual();
@@ -77,7 +83,7 @@ public sealed class AudioWaveformControl : Control
     {
         base.Render(context);var model=Model;if(model is null||Bounds.Width<=1||Bounds.Height<=1)return;
         var area=new Rect(0,0,Bounds.Width,Bounds.Height);context.FillRectangle(new SolidColorBrush(Color.FromRgb(20,23,29)),area);
-        if(_spectrogram&&_spectrum is not null)context.DrawImage(_spectrum,new Rect(_spectrum.Size),area);
+        if(Spectrogram&&_spectrum is not null)context.DrawImage(_spectrum,new Rect(_spectrum.Size),area);
         else if((_detail??Samples) is {Count:>0} samples && model.MediaDurationSeconds>0)
         {
             var pen=new Pen(Stroke??Brushes.DodgerBlue,1);var mid=Bounds.Height/2;
@@ -157,11 +163,11 @@ public sealed class AudioWaveformControl : Control
         _detail=null;if(Model is not {} model)return;
         // Supply a visible-range tile while the long-file overview is still
         // building. Once available, use the overview unless finer detail is needed.
-        if(!_spectrogram&&Samples is not null&&VisibleSeconds/Math.Max(1,Bounds.Width)>=Samples.StepSeconds)return;
+        if(!Spectrogram&&Samples is not null&&VisibleSeconds/Math.Max(1,Bounds.Width)>=Samples.StepSeconds)return;
         var cancellation=new CancellationTokenSource();_analysis=cancellation;
         try {
             await Task.Delay(25,cancellation.Token);
-            if(!_spectrogram){var detail=await model.CreateWaveformViewportAsync(ViewportStart,VisibleSeconds,(int)Math.Clamp(Bounds.Width,1,4096),cancellation.Token);if(!cancellation.IsCancellationRequested){_detail=detail;InvalidateVisual();}return;}
+            if(!Spectrogram){var detail=await model.CreateWaveformViewportAsync(ViewportStart,VisibleSeconds,(int)Math.Clamp(Bounds.Width,1,4096),cancellation.Token);if(!cancellation.IsCancellationRequested){_detail=detail;InvalidateVisual();}return;}
             var bitmap=await model.CreateSpectrumAsync(ViewportStart,VisibleSeconds,cancellation.Token);if(cancellation.IsCancellationRequested){bitmap?.Dispose();return;}var old=_spectrum;_spectrum=bitmap;old?.Dispose();InvalidateVisual(); }
         catch(OperationCanceledException) { }
         catch(Exception e){if(!cancellation.IsCancellationRequested)model.Registry.ReportFailure("audio/spectrogram",e);}

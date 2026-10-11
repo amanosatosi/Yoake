@@ -46,6 +46,8 @@ public sealed record AppSettings
     public double? AudioIntensity {get;init;}
     public double? AudioWindowSeconds {get;init;}
     public bool AudioVolumeLinked {get;init;}
+    public bool? AudioSpectrum {get;init;}
+    public bool? AudioAutoScroll {get;init;}
     public double[]? StyleSplitWeights {get;init;}
     public string[]? AutomationAutoloadDirectories { get; init; }
     public string[]? AutomationIncludeDirectories { get; init; }
@@ -91,6 +93,7 @@ public sealed record AppSettings
             AudioDisplayHeight=AudioDisplayHeight is {} audioHeight&&double.IsFinite(audioHeight)?Math.Clamp(audioHeight,160,1000):180,
             AudioIntensity=AudioIntensity is {} intensity&&double.IsFinite(intensity)?Math.Clamp(intensity,0.008,8):1,
             AudioWindowSeconds=AudioWindowSeconds is {} audioSpan&&double.IsFinite(audioSpan)?Math.Clamp(audioSpan,0.02,3600):20,
+            AudioSpectrum=AudioSpectrum??false,AudioAutoScroll=AudioAutoScroll??true,
             MainSplitRatio = ratio, GridHeight = height, SchemaVersion = SchemaVersion > 0 ? SchemaVersion : defaults.SchemaVersion };
     }
     private static string[]? NormalizePaths(string[]? paths) => paths?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();

@@ -22,6 +22,23 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task AudioPresentationCommandsShareOneCheckedSettingAndPreserveDraftDocumentSelectionAndHistory()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é";await Command(CommandIds.EditCommit);
+        var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;var selection=_model.SelectedEvents.ToArray();
+        _model.Draft!.Start="unfinished";var draft=_model.Draft;_model.CurrentTimeSeconds=.7;
+        Assert.False(_model.IsAudioSpectrum);Assert.True(_model.Registry.GetRequired("audio/view/waveform").IsChecked(new()));
+        foreach(var id in new[]{"audio/scroll/left","audio/scroll/right","audio/go_to","audio/go_to/start","audio/go_to/end"})Assert.False(_model.Actions[id].CanExecute(null));
+        Assert.False(await _model.Registry.InvokeAsync("audio/view/spectrum",new(Guid.NewGuid())));
+        await Command("audio/view/spectrum");Assert.True(_model.IsAudioSpectrum);Assert.Equal(1,_model.AudioDisplayModeIndex);Assert.True(_model.Registry.GetRequired("audio/opt/spectrum").IsChecked(new()));Assert.False(_model.Registry.GetRequired("audio/view/waveform").IsChecked(new()));
+        _model.AudioDisplayModeIndex=0;Assert.False(_model.IsAudioSpectrum);await Command("audio/opt/spectrum");Assert.True(_model.IsAudioSpectrum);
+        Assert.True(_model.AudioAutoScroll);await Command("audio/opt/autoscroll");Assert.False(_model.AudioAutoScroll);Assert.False(_model.Registry.GetRequired("audio/opt/autoscroll").IsChecked(new()));
+        await Command("audio/opt/vertical_link");Assert.True(_model.AudioVolumeLinked);Assert.True(_model.Registry.GetRequired("audio/opt/vertical_link").IsChecked(new()));
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Equal(selection,_model.SelectedEvents);Assert.Equal(.7,_model.CurrentTimeSeconds);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        var restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.True(restored.AudioSpectrum);Assert.False(restored.AudioAutoScroll);Assert.True(restored.AudioVolumeLinked);
+        File.WriteAllText(Path.Combine(_root,"settings.json"),"""{"audioSpectrum":"bad","audioAutoScroll":9,"videoAutoSeek":false}""");restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();
+        Assert.False(restored.AudioSpectrum);Assert.True(restored.AudioAutoScroll);Assert.False(restored.VideoAutoSeek);
+    }
     [Fact] public async Task TimecodesAreDocumentLocalMetadataWithAtomicValidationCancellationExportAndPersistedRecents()
     {
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é မြန်မာ";await Command(CommandIds.EditCommit);

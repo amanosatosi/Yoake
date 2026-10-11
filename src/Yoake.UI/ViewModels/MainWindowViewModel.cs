@@ -192,6 +192,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterTimingCommands();
         RegisterKeyframeCommands();
         RegisterTimecodeCommands();
+        RegisterAudioPresentationCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;

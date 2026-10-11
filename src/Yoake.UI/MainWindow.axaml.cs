@@ -291,7 +291,7 @@ public partial class MainWindow : Window, IEditorDialogs
         UpdateTabLimit();
     }
     private void UpdateTabLimit()=>TabScroll.MaxWidth=Math.Max(0,TitleTabStrip.Bounds.Width-TitleTabStrip.Padding.Right-80);
-    private void AudioModeChanged(object? sender,SelectionChangedEventArgs e){if(AudioDisplay is not null&&sender is ComboBox box)AudioDisplay.Spectrogram=box.SelectedIndex==1;}
+
     private async void RecentFileClick(object? sender,RoutedEventArgs e){if(_model is not null&&sender is Control{DataContext:string path})await _model.Registry.InvokeAsync(CommandIds.SubtitleOpen,new(),path);}
     private static string? LocalPath(IStorageItem item)=>item.Path is{IsAbsoluteUri:true,IsFile:true} uri?uri.LocalPath:null;
     public async Task<string?> OpenSubtitleAsync()
