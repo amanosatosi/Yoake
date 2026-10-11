@@ -63,8 +63,10 @@ internal sealed class AudioClipUiAcceptanceVerification(IClassicDesktopStyleAppl
                     model.SetSelectedEvents([]);window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen=true;return;
                 case 8:
                     Require(model.SelectedEvents.Count==0&&!model.Actions["audio/save/clip"].CanExecute(null)&&!window.FindControl<MenuItem>("SaveAudioClipMenu")!.IsEffectivelyEnabled,"An empty actual selection must disable the opened native export item rather than substitute its active row.");
-                    Press(window.FindControl<MenuItem>("SaveAudioClipMenu")!,Key.Enter);
-                    Require(!model.HasAudioExportOperation&&File.ReadAllBytes(Clip).AsSpan().SequenceEqual(_saved),"Real Enter on the disabled export item must preserve the destination without starting a job.");
+                    var disabled=window.FindControl<MenuItem>("SaveAudioClipMenu")!;
+                    Require(!disabled.Focus(),"A disabled native export item must reject keyboard focus.");
+                    Press(window.FindControl<MenuItem>("AudioMenu")!,Key.Down);
+                    Require(window.FindControl<MenuItem>("AudioMenu")!.SelectedItem!=disabled&&!model.HasAudioExportOperation&&File.ReadAllBytes(Clip).AsSpan().SequenceEqual(_saved),"Native keyboard navigation must skip disabled export and preserve the destination without starting a job.");
                     window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen=false;model.SetSelectedEvents(_selection);Preserved();
                     await Invoke("settings/hotkeys/reset-command",new HotkeyCommandReset(HotkeyContext.Audio,"audio/save/cancel"));
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Audio export routing must have no binding/framework errors.");
