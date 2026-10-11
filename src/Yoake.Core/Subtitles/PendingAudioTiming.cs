@@ -29,7 +29,7 @@ public sealed class PendingAudioTiming(SubtitleEditor editor)
     public void Stage(AssEvent line,AudioClipInterval range)
     {
         Require(line);Validate(range);
-        if(line.StartMilliseconds is not {} start||line.EndMilliseconds is not {} end||end<start)
+        if(line.StartMilliseconds is not {} start||line.EndMilliseconds is not {} end||end!=0&&end<start)
             throw new ArgumentException("Correct the stored subtitle timing before adjusting audio markers.");
         if(range.StartMilliseconds==start&&range.EndMilliseconds==end)_pending.Remove(line);
         else _pending[line]=new(line.Start,line.End,range);

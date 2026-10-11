@@ -54,6 +54,12 @@ public sealed partial class EditorWorkflowTests
         await Command("audio/commit/next");Assert.Same(rows[1],_model.SelectedEvent);Assert.Equal(new AudioClipInterval(1400,4400),_model.PrimaryAudioRange);
         await Command("audio/commit/next");Assert.Equal(3,_model.Events.Count);Assert.Equal(4400,_model.SelectedEvent!.StartMilliseconds);Assert.Equal(7400,_model.SelectedEvent.EndMilliseconds);Assert.False(_model.HasPendingAudioTiming);
     }
+    [Fact] public async Task DefaultNextRepairsAZeroEndedDestinationEvenWhenItsStoredStartIsNonzero()
+    {
+        var rows=await TimingRows(true);_model.ActiveEditor!.SetField(rows[1],"Start","0:00:01.20","Stored zero-ended start");
+        await Command("audio/commit/default");Assert.Same(rows[1],_model.SelectedEvent);Assert.Equal(1200,rows[1].StartMilliseconds);Assert.Equal(0,rows[1].EndMilliseconds);
+        Assert.Equal(new AudioClipInterval(1400,4400),_model.PrimaryAudioRange);await Command("audio/commit/stay");Assert.Equal(1400,rows[1].StartMilliseconds);Assert.Equal(4400,rows[1].EndMilliseconds);
+    }
     [Fact] public async Task AutoCommitDoesNotNavigateAndBareCommitHonorsAutoNextWhileStayOverridesIt()
     {
         var rows=await TimingRows();await Command("audio/opt/autocommit");Assert.True(_model.Actions["audio/opt/autocommit"].IsChecked);Assert.True(_model.Actions["audio/opt/autonext"].IsChecked);

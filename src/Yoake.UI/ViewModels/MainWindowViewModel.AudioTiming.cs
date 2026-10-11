@@ -28,7 +28,20 @@ public sealed partial class MainWindowViewModel
     private bool ValidAudioTimingDraft()
     {
         if(ActiveEditor is not {} editor||SelectedEvent is null)return false;
-        try{if(Draft is {} draft)SubtitleEditor.ValidateEventDraftValues(SelectedEvent,draft.Values);return true;}
+        try
+        {
+            if(Draft is {} draft)
+            {
+                var values=draft.Values;
+                // A zero-ended destination may retain a nonzero stored start.
+                // Validate the controller's explicitly staged default range,
+                // while genuinely edited/invalid endpoint input still blocks.
+                if(draft.Start==SelectedEvent.Start&&draft.End==SelectedEvent.End&&AudioTiming?.Get(SelectedEvent) is not null)
+                    values=AudioPreviewValues()!;
+                SubtitleEditor.ValidateEventDraftValues(SelectedEvent,values);
+            }
+            return true;
+        }
         catch(ArgumentException){return false;}
     }
     private IReadOnlyDictionary<string,string>? AudioPreviewValues()
@@ -36,7 +49,9 @@ public sealed partial class MainWindowViewModel
         if(SelectedEvent is not {} line)return null;
         var values=_gesture is null&&Draft?.IsChanged==true?Draft.Values:null;
         if(AudioTiming?.Get(line) is not {} pending)return values;
-        var merged=values is null?line.FieldNames.ToDictionary(name=>name,line.Get,StringComparer.OrdinalIgnoreCase):new Dictionary<string,string>(values,StringComparer.OrdinalIgnoreCase);
+        var merged=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
+        if(values is not null){foreach(var pair in values)merged[pair.Key]=pair.Value;}
+        else{foreach(var name in line.FieldNames)merged[name]=line.Get(name);}
         merged["Start"]=AssTime.Format(pending.StartMilliseconds);merged["End"]=AssTime.Format(pending.EndMilliseconds);return merged;
     }
     private void AudioTimingChanged()

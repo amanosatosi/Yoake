@@ -20,9 +20,9 @@ public sealed partial class MainWindowViewModel
         get
         {
             if(SelectedEvent is not {} line)return null;
+            if(_gesture is null&&AudioTiming?.Get(line) is {} pending)return pending;
             if(line.StartMilliseconds is not {} left||line.EndMilliseconds is not {} right||left<0||right<left)return null;
             if(_gesture is not null)return new(left,right);
-            if(AudioTiming?.Get(line) is {} pending)return pending;
             var start=Draft is {} draft&&AssTime.TryParse(draft.Start,out var draftStart)?draftStart:left;
             var end=Draft is {} endDraft&&AssTime.TryParse(endDraft.End,out var draftEnd)?draftEnd:right;
             if(start>=0&&end>=start)return new(start,end);
