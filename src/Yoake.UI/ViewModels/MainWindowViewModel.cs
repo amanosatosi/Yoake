@@ -236,7 +236,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         if(_documents.TryGetValue(session.Id,out var previous))previous.AudioExport?.Cancel();
         var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds,Search=new(_settings.SearchPreferences??new())}; _documents[session.Id]=state;
-        document.Changed+=(_,_)=> { state.AudioTiming.Reconcile();state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
+        document.Changed+=(_,_)=> { state.AudioTiming.Reconcile();state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
             session.IsDirty=state.Editor.IsDirty;

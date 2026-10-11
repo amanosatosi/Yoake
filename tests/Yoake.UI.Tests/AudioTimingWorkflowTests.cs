@@ -88,4 +88,17 @@ public sealed partial class EditorWorkflowTests
         restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal(3000,restored.AudioDefaultDuration);Assert.Equal(100,restored.AudioLeadIn);Assert.Equal(350,restored.AudioLeadOut);Assert.True(restored.AudioAutoCommit);Assert.False(restored.AudioAutoNext);Assert.False(restored.ToolbarVisible);
         var old=_model.SelectedEvent!;await Command(CommandIds.GridInsertAfter);Assert.Equal(old.EndMilliseconds+2000,_model.SelectedEvent!.EndMilliseconds);
     }
+    [Fact] public async Task SourceChangeCancelsAnObsoleteGestureAndSaveDoesNotPublishMarkers()
+    {
+        var rows=await TimingRows();await Command("time/lead/in");var source=_model.ActiveEditor!.Document.Serialize();
+        var path=Path.Combine(_root,"stored-only.ass");Assert.True(_model.SaveActiveSubtitle(path));Assert.Equal(source,AssDocument.Load(path).Serialize());Assert.True(_model.HasPendingAudioTiming);
+        Assert.True(_model.BeginAudioTimingGesture());_model.UpdateAudioTimingGesture(1,.2);
+        _model.ActiveEditor.SetField(rows[0],"End","0:00:02.00","External timing");Assert.False(_model.HasGesture);Assert.False(_model.HasPendingAudioTiming);
+        _model.EndAudioTimingGesture();Assert.Equal(2000,rows[0].EndMilliseconds);Assert.Equal("External timing",_model.ActiveEditor.Undo.NextUndoName);
+    }
+    [Fact] public async Task NormalCommitNextRetainsStoredDestinationAndEditNextUsesTimingSuccessorPolicy()
+    {
+        var rows=await TimingRows();await Command("time/lead/out");await Command("audio/commit/next");Assert.Same(rows[1],_model.SelectedEvent);Assert.Equal(new AudioClipInterval(2000,3000),_model.PrimaryAudioRange);Assert.False(_model.HasPendingAudioTiming);
+        await Command("time/lead/out");await Command(CommandIds.EditCommitNext);Assert.Equal(3350,rows[1].EndMilliseconds);Assert.Equal(3350,_model.SelectedEvent!.StartMilliseconds);Assert.Equal(6350,_model.SelectedEvent.EndMilliseconds);
+    }
 }
