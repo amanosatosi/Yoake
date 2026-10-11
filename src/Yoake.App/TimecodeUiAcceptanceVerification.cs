@@ -5,6 +5,7 @@ using Avalonia.Input;
 using KeyModifiers = Avalonia.Input.KeyModifiers;
 using Avalonia.Threading;
 using Yoake.Core.Commands;
+using Yoake.Core.Logging;
 using Yoake.Core.Hotkeys;
 using Yoake.Core.Media;
 using Yoake.Core.Subtitles;
