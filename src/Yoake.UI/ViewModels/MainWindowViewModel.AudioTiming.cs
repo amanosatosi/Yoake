@@ -99,7 +99,11 @@ public sealed partial class MainWindowViewModel
         // Each line's audio markers remain transient and never commit here.
         if(!CommitDraft())return;
         var index=SelectedEvent is null?-1:Events.ToList().IndexOf(SelectedEvent);
-        if(Events.Count>0)Select(Events[Math.Clamp(index+delta,0,Events.Count-1)]);
+        if(Events.Count>0)
+        {
+            var destination=Events[Math.Clamp(index+delta,0,Events.Count-1)];
+            if(!ReferenceEquals(destination,SelectedEvent))Select(destination);
+        }
         AudioTimingChanged();
     }
     private void CommitEditingNext()

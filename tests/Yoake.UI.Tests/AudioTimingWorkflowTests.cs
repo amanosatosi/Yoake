@@ -35,8 +35,9 @@ public sealed partial class EditorWorkflowTests
     [Fact] public async Task NavigationDoesNotCommitPreservesMarkersAndHandlesFirstLastEmptyAndInvalidDraft()
     {
         var rows=await TimingRows();var source=_model.ActiveEditor!.Document.Serialize();await Command("time/prev");Assert.Same(rows[0],_model.SelectedEvent);
+        _model.SetSelectedEvents(rows);await Command("time/prev");Assert.Equal(rows,_model.SelectedEvents);
         await Command("time/lead/out");await Command("time/next");Assert.Same(rows[1],_model.SelectedEvent);Assert.Equal(new AudioClipInterval(2000,3000),_model.PrimaryAudioRange);
-        await Command("time/next");Assert.Equal(2,_model.Events.Count);await Command("time/prev");Assert.Equal(new AudioClipInterval(300,1750),_model.PrimaryAudioRange);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.False(_model.ActiveEditor.Undo.CanUndo);
+        _model.SetSelectedEvents(rows);await Command("time/next");Assert.Equal(rows,_model.SelectedEvents);Assert.Equal(2,_model.Events.Count);await Command("time/prev");Assert.Equal(new AudioClipInterval(300,1750),_model.PrimaryAudioRange);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.False(_model.ActiveEditor.Undo.CanUndo);
         _model.Draft!.Start="unfinished";var draft=_model.Draft;await Command("time/next");Assert.Same(rows[0],_model.SelectedEvent);Assert.Same(draft,_model.Draft);Assert.False(await _model.Registry.InvokeAsync("audio/commit",new()));
         _model.Draft.Start=rows[0].Start;_model.SelectedEvent=null;_model.SetSelectedEvents([]);Assert.False(_model.Actions["audio/commit"].CanExecute(null));await Command("time/next");Assert.Same(rows[0],_model.SelectedEvent);
     }
