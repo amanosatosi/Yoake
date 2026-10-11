@@ -17,11 +17,11 @@ public sealed class OptionsWindow : Window
     }
     private readonly MainWindowViewModel _model;
     private readonly ComboBox _context=new(){Name="HotkeyContext",MinWidth=200};
-    private readonly TextBox _filter=new(){Name="HotkeyFilter",Watermark="Filter commands…"};
+    private readonly TextBox _filter=new(){Name="HotkeyFilter",PlaceholderText="Filter commands…"};
     private readonly ListBox _commands=new(){Name="HotkeyCommands"};
     private readonly ListBox _bindings=new(){Name="EffectiveHotkeys",MinHeight=72};
-    private readonly TextBox _gesture=new(){Name="HotkeyGesture",Watermark="e.g. Ctrl-Alt-K"};
-    private readonly TextBox _capture=new(){Name="HotkeyCapture",Watermark="Focus here and press a shortcut",IsReadOnly=true};
+    private readonly TextBox _gesture=new(){Name="HotkeyGesture",PlaceholderText="e.g. Ctrl-Alt-K"};
+    private readonly TextBox _capture=new(){Name="HotkeyCapture",PlaceholderText="Focus here and press a shortcut",IsReadOnly=true};
     private readonly TextBlock _status=new(){Name="HotkeyStatus",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
     private readonly CheckBox _global=new(){Name="GlobalTimingHotkeys",Content="Global timing keypad overrides (Medusa)"};
     private bool _refreshing;

@@ -7,6 +7,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Yoake.Core.Commands;
 using Yoake.Core.Hotkeys;
+using Yoake.Core.Logging;
 using Yoake.Core.Settings;
 using Yoake.Core.Subtitles;
 using Yoake.UI;
