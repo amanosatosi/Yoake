@@ -60,9 +60,12 @@ internal sealed class AudioClipUiAcceptanceVerification(IClassicDesktopStyleAppl
                 case 7:
                     if(model.HasAudioExportOperation){_stage--;return;}
                     Require(model.SubtitleStatus.Contains("destination other than",StringComparison.Ordinal),"Attempting to overwrite opened media must report a non-destructive validation error.");Preserved();
-                    model.SetSelectedEvents([]);return;
+                    model.SetSelectedEvents([]);window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen=true;return;
                 case 8:
-                    Require(!model.Actions["audio/save/clip"].CanExecute(null)&&!window.FindControl<MenuItem>("SaveAudioClipMenu")!.IsEnabled,"An empty actual selection must disable export rather than substitute its active row.");model.SetSelectedEvents(_selection);Preserved();
+                    Require(model.SelectedEvents.Count==0&&!model.Actions["audio/save/clip"].CanExecute(null)&&!window.FindControl<MenuItem>("SaveAudioClipMenu")!.IsEffectivelyEnabled,"An empty actual selection must disable the opened native export item rather than substitute its active row.");
+                    Press(window.FindControl<MenuItem>("SaveAudioClipMenu")!,Key.Enter);
+                    Require(!model.HasAudioExportOperation&&File.ReadAllBytes(Clip).AsSpan().SequenceEqual(_saved),"Real Enter on the disabled export item must preserve the destination without starting a job.");
+                    window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen=false;model.SetSelectedEvents(_selection);Preserved();
                     await Invoke("settings/hotkeys/reset-command",new HotkeyCommandReset(HotkeyContext.Audio,"audio/save/cancel"));
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Audio export routing must have no binding/framework errors.");
                     _timer.Stop();options.FinishVerification("PASS: separate real-window audio clip export acceptance; actual native menu Enter; native FFMS2 PCM span including selected comments/gaps; Unicode destination; raw audio independent of mute/gain; real focused Audio F12 cancellation preserving the previous destination; foreign-document and empty-selection availability; safe opened-media overwrite rejection; retained document/selection/draft/source/undo/native providers/current frame.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
