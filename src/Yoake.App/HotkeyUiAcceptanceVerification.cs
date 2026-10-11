@@ -87,7 +87,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     // Route the same physical Right key to a real different action
                     // in Audio, using the shipping customization workflow.
                     InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
-                    Choose("time/next");Click("ClearHotkeys");await Choose(CommandIds.GridLineNext);Capture(Key.Right);Click("AddHotkey");return;
+                    await Choose("time/next");Click("ClearHotkeys");await Choose(CommandIds.GridLineNext);Capture(Key.Right);Click("AddHotkey");return;
                 case 7:
                     Require(model.Hotkeys.Resolve(new("Right"),[HotkeyContext.Audio])?.CommandId==CommandIds.GridLineNext,"Audio customization must remain context-local.");
                     Require(ReferenceEquals(_editor,model.ActiveEditor)&&ReferenceEquals(_line,model.SelectedEvent)&&model.SelectedEvent!.Text==Source,"Settings must preserve the active editor and source.");
