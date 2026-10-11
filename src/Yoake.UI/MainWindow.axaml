@@ -141,7 +141,13 @@
 <MenuItem Header="Previous subtitle" InputGesture="{Binding Actions[grid/line/previous].InputGesture}" Command="{Binding Actions[grid/line/previous]}" />
 <MenuItem Header="Next subtitle" InputGesture="{Binding Actions[grid/line/next].InputGesture}" Command="{Binding Actions[grid/line/next]}" />
 </MenuItem>
-<MenuItem Header="Video">
+<MenuItem Name="VideoMenu" Header="Video">
+<MenuItem Name="KeyframesMenu" Header="Keyframes">
+<MenuItem Name="OpenKeyframesMenu" Header="Open keyframes…" Command="{Binding Actions[keyframe/open]}" InputGesture="{Binding Actions[keyframe/open].InputGesture}" />
+<MenuItem Name="SaveKeyframesMenu" Header="Save keyframes…" Command="{Binding Actions[keyframe/save]}" InputGesture="{Binding Actions[keyframe/save].InputGesture}" />
+<MenuItem Name="CloseKeyframesMenu" Header="Close external keyframes" Command="{Binding Actions[keyframe/close]}" InputGesture="{Binding Actions[keyframe/close].InputGesture}" />
+<MenuItem Header="Recent keyframes" ItemsSource="{Binding RecentKeyframeItems}"><MenuItem.ItemTemplate><DataTemplate x:DataType="vm:RecentKeyframeItem"><Button Content="{Binding Path}" Command="{Binding Command}" /></DataTemplate></MenuItem.ItemTemplate></MenuItem>
+</MenuItem>
 <MenuItem Name="VideoAutoSeekMenu" Header="Autoseek to selected line" ToggleType="CheckBox" IsChecked="{Binding Actions[video/autoseek].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/autoseek]}" />
 <MenuItem Header="Open video/audio…" InputGesture="{Binding Actions[media/open].InputGesture}" Command="{Binding Actions[media/open]}" />
 <MenuItem Header="Play / Pause" InputGesture="{Binding Actions[video/play].InputGesture}" Command="{Binding Actions[video/play]}" />

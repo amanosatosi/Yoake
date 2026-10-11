@@ -13,3 +13,5 @@ The background job service provides cancellation and lifetime tracking without a
 Logging is intentionally small and dependency-free in M0. If a richer logger is proposed later, its NativeAOT/trimming behavior and cost must be justified first.
 
 Shift Times preferences and bounded reusable history use the same source-generated settings record. Malformed preference/history entries recover independently and enum/range validation restores safe defaults. Timing results use the existing document-owned background edit lifetime and revision checks, with cancellation available through the semantic editor cancel command.
+
+Recent keyframe paths use the real source-generated settings model (12 unique paths, most recent first), with independent damaged-member recovery. They only populate semantic recent command adapters; restoring settings never reopens media or keyframe files. Keyframe load/export cancellation belongs to the existing document lifetime and the background job service; closing external keyframes cancels obsolete I/O without committing a draft or changing subtitle history.

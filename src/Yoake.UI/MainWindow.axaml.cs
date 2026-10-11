@@ -268,6 +268,15 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         var files=await StorageProvider.OpenFilePickerAsync(new(){Title="Open video/audio",AllowMultiple=false,FileTypeFilter=[MediaFiles,FilePickerFileTypes.All]});return files.Count>0?LocalPath(files[0]):null;
     }
+    public async Task<string?> OpenKeyframesAsync()
+    {
+        var types=new FilePickerFileType("Keyframe lists and encoder logs"){Patterns=["*.txt","*.pass","*.stats","*.log"]};
+        var files=await StorageProvider.OpenFilePickerAsync(new(){Title="Open keyframes",AllowMultiple=false,FileTypeFilter=[types,FilePickerFileTypes.All]});return files.Count>0?LocalPath(files[0]):null;
+    }
+    public async Task<string?> SaveKeyframesAsync(string suggestedName)
+    {
+        var file=await StorageProvider.SaveFilePickerAsync(new(){Title="Save keyframes",SuggestedFileName=suggestedName,DefaultExtension="txt",ShowOverwritePrompt=true,FileTypeChoices=[new FilePickerFileType("Keyframe list"){Patterns=["*.txt"]}]});return file is null?null:LocalPath(file);
+    }
     public async Task<string?> SaveSubtitleAsync(string suggestedName)
     {
         var file=await StorageProvider.SaveFilePickerAsync(new(){Title="Save subtitle",SuggestedFileName=suggestedName,DefaultExtension="ass",ShowOverwritePrompt=true,FileTypeChoices=[SubtitleFiles]});return file is null?null:LocalPath(file);

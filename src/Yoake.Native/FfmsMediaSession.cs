@@ -39,7 +39,22 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     private double[] _frameTimes = [];
     private int[] _keyframes=[];
     public IReadOnlyList<double> FrameTimes=>_frameTimes;
-    public IReadOnlyList<int> Keyframes=>_keyframes;
+    private IReadOnlyList<int>? _externalKeyframes;
+    public IReadOnlyList<int> Keyframes=>Volatile.Read(ref _externalKeyframes)??_keyframes;
+    // Managed metadata override only. Decoder handles, clocks and native
+    // indexing survive loading/closing an external keyframe list.
+    public void SetExternalKeyframes(IReadOnlyList<int>? keyframes)
+    {
+        IReadOnlyList<int>? snapshot=null;
+        if(keyframes is not null)
+        {
+            var previous=-1;
+            foreach(var frame in keyframes)
+            {if(frame<0||frame<=previous)throw new ArgumentException("Keyframes must be ordered, unique and non-negative.");previous=frame;}
+            snapshot=Array.AsReadOnly(keyframes.Where(frame=>frame<Info.FrameCount).ToArray());
+        }
+        Volatile.Write(ref _externalKeyframes,snapshot);
+    }
 
     private FfmsMediaSession(string path, nint videoSource, nint audioSource, MediaInfo info)
     {

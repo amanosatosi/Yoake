@@ -21,9 +21,10 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
     MainWindow window,MainWindowViewModel model,StartupOptions options)
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
-    private bool _ready,_ticking;private int _stage;private ShiftTimesWindow? _shift;
+    private bool _ready,_ticking,_openTimingKeysPending;private int _stage;private ShiftTimesWindow? _shift;
     private SubtitleEditor? _editor;private AssEvent[] _rows=[];private string _source="";private Task<bool>? _media;
     private FrameTiming? _timing;private IReadOnlyList<double>? _providerTimes;private int _frame;
+    private IReadOnlyList<int>? _providerKeys;private string _keyPath="",_savedKeys="";
     private ListBox Grid=>window.FindControl<ListBox>("SubtitleRows")!;
     private T InShift<T>(string name)where T:Control=>_shift!.FindControl<T>(name)??throw new InvalidOperationException("Missing Shift Times control: "+name);
     public void Start(){window.LayoutUpdated+=(_,_)=>_ready=window.IsVisible&&window.Bounds.Width>0;_timer.Tick+=Tick;_timer.Start();}
@@ -32,6 +33,13 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
         if(!_ready||_ticking)return;_ticking=true;options.MarkStartupVerified();
         try
         {
+            if(_openTimingKeysPending)
+            {
+                // Opening a new document replaces the grid ItemsSource. Wait
+                // for its actual layout/container before sending real keys.
+                if(Grid.ContainerFromIndex(Math.Max(0,Grid.SelectedIndex)) is not Control {Bounds.Height:>0})return;
+                _openTimingKeysPending=false;Press(Grid,Key.I,KeyModifiers.Control);return;
+            }
             switch(_stage++)
             {
                 case 0:
@@ -44,7 +52,7 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
                         "Dialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,,မြန်မာ 👩‍👩‍👧‍👦\n");
                     Require(model.OpenSubtitle(path),"Open timing fixture.");_editor=model.ActiveEditor;_rows=model.Events.ToArray();_source=_editor!.Document.Serialize();
                     model.SetSelectedEvents(_rows);Require(!model.Actions["time/snap/start_video"].CanExecute(null),"Video-only snaps must be disabled without video.");
-                    Press(Grid,Key.I,KeyModifiers.Control);return;
+                    _openTimingKeysPending=true;return;
                 case 1:
                     _shift=window.OwnedWindows.OfType<ShiftTimesWindow>().Single();
                     Require(_shift.IsVisible&&_shift.Bounds.Width>=640&&InShift<TextBox>("ShiftTime").IsKeyboardFocusWithin,"Ctrl-I must open a usable, focused actual shift dialog.");
@@ -115,14 +123,42 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 18:
                     Require(_editor!.Document.Serialize()==_source&&!_editor.Undo.CanUndo,"All timing commands must undo exact source in one operation.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Timing workflow must have no binding/framework errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window timing acceptance; Ctrl-I; actual time/frame Shift Times controls and reusable persisted history; IME Enter and Escape; non-destructive validation; real Ctrl-3/Ctrl-4 multi-selection VFR snaps, Ctrl-5 scene boundaries and Ctrl-6 selection shift; exact transactional undo and unknown/Mangetsu/Unicode source; provider/frame retention; two-process settings restoration.\n");
+                    _providerKeys=model.Keyframes;_keyPath=Path.Combine(options.ProfileDirectory!,"日本語.key.txt");_savedKeys=Path.Combine(options.ProfileDirectory!,"export.key.txt");
+                    Require(model.FrameTimes.Count>2,"Native fixture must contain enough frames to verify external cuts.");
+                    File.WriteAllText(_keyPath,$"# WWXD log file, using qpfile format\n0 I -1\n2 I -1\n{model.FrameTimes.Count+8} I -1\n");
+                    window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen=true;return;
+                case 19:
+                    window.FindControl<MenuItem>("KeyframesMenu")!.IsSubMenuOpen=true;return;
+                case 20:
+                    var open=window.FindControl<MenuItem>("OpenKeyframesMenu")!;open.CommandParameter=_keyPath;Press(open,Key.Enter);return;
+                case 21:
+                    if(model.HasKeyframeOperation){_stage--;return;}
+                    Require(model.Keyframes.SequenceEqual(new[]{0,2})&&model.ExternalKeyframePath==_keyPath,"Real menu Enter must load WWXD cuts, filtering out-of-video indices only for navigation.");
+                    Require(ReferenceEquals(_providerTimes,model.FrameTimes)&&model.CurrentFrame==_frame&&_editor!.Document.Serialize()==_source&&!_editor.Undo.CanUndo,"External cuts cannot reload media, seek or mutate document/history.");
+                    await Invoke("settings/hotkeys/set",new HotkeyChange(Yoake.Core.Hotkeys.HotkeyContext.Default,"keyframe/close",["F12"]));
+                    window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen=true;return;
+                case 22:
+                    window.FindControl<MenuItem>("KeyframesMenu")!.IsSubMenuOpen=true;return;
+                case 23:
+                    var save=window.FindControl<MenuItem>("SaveKeyframesMenu")!;save.CommandParameter=_savedKeys;Press(save,Key.Enter);return;
+                case 24:
+                    if(model.HasKeyframeOperation){_stage--;return;}
+                    Require(KeyframeFile.Load(_savedKeys).SequenceEqual(new[]{0,2,model.FrameTimes.Count+8}),"Real Save menu must export the complete external metadata in interoperable Aegisub format.");
+                    Require(model.RecentKeyframeItems.Any(item=>item.Path==_savedKeys),"Successful export must update the semantic recent-keyframe menu.");
+                    Require(window.FindControl<MenuItem>("CloseKeyframesMenu")!.InputGesture?.Key==Key.F12,"The keyframe menu must reflect a live user binding.");Press(Grid,Key.F12);return;
+                case 25:
+                    Require(ReferenceEquals(_providerKeys,model.Keyframes)&&model.ExternalKeyframePath is null&&!model.Actions["keyframe/close"].CanExecute(null),"Real remapped close key must restore the same provider keyframe metadata without recreation.");
+                    Require(ReferenceEquals(_providerTimes,model.FrameTimes)&&model.CurrentFrame==_frame&&ReferenceEquals(_editor,model.ActiveEditor)&&_editor!.Document.Serialize()==_source&&!_editor.Undo.CanUndo,"Keyframe load/export/close must preserve the active editor, exact source, undo, provider and frame.");
+                    await Invoke("settings/hotkeys/reset-command",new HotkeyCommandReset(Yoake.Core.Hotkeys.HotkeyContext.Default,"keyframe/close"));
+                    Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Keyframe menu workflow must have no binding/framework errors.");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window timing acceptance; Ctrl-I; actual time/frame Shift Times controls and reusable persisted history; IME Enter and Escape; non-destructive validation; real Ctrl-3/Ctrl-4 multi-selection VFR snaps, Ctrl-5 scene boundaries and Ctrl-6 selection shift; exact transactional undo and unknown/Mangetsu/Unicode source; provider/frame retention; two-process settings restoration; actual keyframe menu keyboard loading/export, WWXD and Aegisub formats, live remapped close/provider fallback, semantic recents, source/history/provider/frame retention.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception exception){_timer.Stop();Program.Fatal("Packaged timing acceptance at stage "+(_stage-1),exception);desktop.Shutdown(1);}
         finally{_ticking=false;}
     }
-    private async Task Invoke(string id)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId)),"Timing preparation command failed: "+id);
+    private async Task Invoke(string id,object? parameter=null)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId),parameter),"Timing preparation command failed: "+id);
     private void Click(string name)=>Press(InShift<Button>(name),Key.Enter);
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
     {

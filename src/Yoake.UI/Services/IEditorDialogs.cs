@@ -18,6 +18,8 @@ public interface IEditorDialogs
     Task<AssColor?> ChooseColorAsync(AssColor color)=>Task.FromResult<AssColor?>(null);
     Task<string?> OpenSubtitleAsync();
     Task<string?> OpenMediaAsync();
+    Task<string?> OpenKeyframesAsync()=>Task.FromResult<string?>(null);
+    Task<string?> SaveKeyframesAsync(string suggestedName)=>Task.FromResult<string?>(null);
     Task<string?> SaveSubtitleAsync(string suggestedName);
     Task<UnsavedChoice> ConfirmUnsavedAsync(string title);
     Task<bool> ConfirmRevertAsync();

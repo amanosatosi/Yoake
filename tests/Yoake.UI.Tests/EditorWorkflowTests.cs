@@ -22,6 +22,32 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é";await Command(CommandIds.EditCommit);
+        var document=_model.ActiveDocumentId;var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        _model.CurrentTimeSeconds=.7;_model.Draft!.Actor="unfinished မြန်မာ";var draft=_model.Draft;var selection=_model.SelectedEvents.ToArray();
+        var input=Path.Combine(_root,"日本語.key.txt");File.WriteAllText(input,"# WWXD log file, using qpfile format\n0 I -1\n5 P -1\n7 I -1\n");
+        Assert.False(_model.Actions["keyframe/close"].CanExecute(null));Assert.False(_model.Actions["keyframe/save"].CanExecute(null));
+        Assert.False(await _model.Registry.InvokeAsync("keyframe/open",new(Guid.NewGuid()),input));
+        await Command("keyframe/open",input);Assert.Equal(new[]{0,7},_model.Keyframes);Assert.Equal(input,_model.ExternalKeyframePath);
+        Assert.True(_model.Actions["keyframe/save"].CanExecute(null));Assert.True(_model.Actions["keyframe/close"].CanExecute(null));
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Equal(selection,_model.SelectedEvents);Assert.Equal(.7,_model.CurrentTimeSeconds);
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        var exported=Path.Combine(_root,"export.key.txt");await Command("keyframe/save",exported);Assert.Equal(new[]{0,7},Yoake.Core.Media.KeyframeFile.Load(exported));
+        Assert.Equal(exported,_model.RecentKeyframeItems[0].Path);Assert.Equal("keyframe/open",_model.RecentKeyframeItems[0].Command.CommandId);
+        var malformed=Path.Combine(_root,"bad.key.txt");File.WriteAllText(malformed,"bad header");
+        Assert.False(await _model.Registry.InvokeAsync("keyframe/open",new(),malformed));Assert.Equal(new[]{0,7},_model.Keyframes);Assert.Equal(input,_model.ExternalKeyframePath);
+        _model.Draft.Actor="";await Command(CommandIds.SubtitleNew);Assert.Empty(_model.Keyframes);Assert.Null(_model.ExternalKeyframePath);
+        await Command(CommandIds.WorkspaceActivateTab,document);Assert.Equal(new[]{0,7},_model.Keyframes);Assert.Equal(input,_model.ExternalKeyframePath);
+        await Command("keyframe/close");Assert.Empty(_model.Keyframes);Assert.Null(_model.ExternalKeyframePath);Assert.False(_model.Actions["keyframe/close"].CanExecute(null));
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasKeyframeOperation)&&_model.HasKeyframeOperation)_=_model.Registry.InvokeAsync("keyframe/close",new());};
+        _model.PropertyChanged+=cancel;await Command("keyframe/open",input);_model.PropertyChanged-=cancel;Assert.Empty(_model.Keyframes);Assert.Null(_model.ExternalKeyframePath);
+        File.Delete(exported);Assert.False(await _model.Registry.InvokeAsync("keyframe/open",new(),exported));Assert.DoesNotContain(_model.RecentKeyframeItems,item=>item.Path==exported);
+        var restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Contains(input,restored.RecentKeyframes!);Assert.Equal(history,editor.Undo.NextUndoName);Assert.Equal(source,editor.Document.Serialize());
+        File.WriteAllText(Path.Combine(_root,"settings.json"),"""{"recentKeyframes":[null,7,"日本語.key.txt","日本語.key.txt"],"toolbarVisible":false}""");
+        restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal(new[]{"日本語.key.txt"},restored.RecentKeyframes);Assert.False(restored.ToolbarVisible);
+    }
     [Fact] public async Task TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability()
     {
         var path=Path.Combine(_root,"timing.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+

@@ -24,6 +24,7 @@ public sealed record AppSettings
 {
     public double[] GridColumnWidths { get; init; } = [40,65,48,92,92,110,100,90];
     public string[] RecentFiles { get; init; } = [];
+    public string[]? RecentKeyframes {get;init;}
     public int SchemaVersion { get; init; } = 1;
     public ThemePreference Theme { get; init; } = ThemePreference.System;
     public WorkspaceViewMode ViewMode { get; init; } = WorkspaceViewMode.Default;
@@ -74,7 +75,7 @@ public sealed record AppSettings
         var height = double.IsFinite(GridHeight) && GridHeight > 0 ? Math.Clamp(GridHeight, 100, 2000) : defaults.GridHeight;
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
-        return this with { GridColumnWidths = widths, RecentFiles = recent, Theme = theme, ViewMode = viewMode,
+        return this with { GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
             HotkeyOverrides=HotkeyProfile.Normalize(HotkeyOverrides, report),
             ToolbarVisible=ToolbarVisible??true,
             GridTagDisplay=GridTagDisplay is {} tags&&Enum.IsDefined(tags)?tags:GridTagDisplayMode.Simplified,

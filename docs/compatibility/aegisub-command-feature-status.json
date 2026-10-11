@@ -1965,32 +1965,59 @@
     },
     {
       "id": "keyframe/close",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Document-local external override of provider keyframes; validated keyframe I/O. Required action: Discard the currently loaded keyframes and use those from the video, if any",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "keyframe/close",
+      "status": "partially implemented",
+      "backend": "Implemented: Cancel pending metadata I/O and return to the same existing media provider keyframes without seeking, reindexing, draft commits or undo changes. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Video > Keyframes menu and native file pickers",
+        "Semantic recent-keyframe items",
+        "Live contextual user hotkeys (no upstream default gesture)"
+      ],
+      "tests": [
+        "KeyframeFileTests",
+        "EditorWorkflowTests.KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents",
+        "TimingUiAcceptanceVerification actual menu Enter and remapped close with native media"
+      ],
+      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Completion awaits relevant managed/NativeAOT packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "keyframe/open",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Document-local external override of provider keyframes; validated keyframe I/O. Required action: Open a keyframe list file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "keyframe/open",
+      "status": "partially implemented",
+      "backend": "Implemented: Cancellable background loading of exact release keyframe/log formats, including 3.5 WWXD; immutable sorted metadata, document ownership and existing-provider override. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Video > Keyframes menu and native file pickers",
+        "Semantic recent-keyframe items",
+        "Live contextual user hotkeys (no upstream default gesture)"
+      ],
+      "tests": [
+        "KeyframeFileTests",
+        "EditorWorkflowTests.KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents",
+        "TimingUiAcceptanceVerification actual menu Enter and remapped close with native media"
+      ],
+      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Completion awaits relevant managed/NativeAOT packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "keyframe/save",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Document-local external override of provider keyframes; validated keyframe I/O. Required action: Save the current list of keyframes to a file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "keyframe/save",
+      "status": "partially implemented",
+      "backend": "Implemented: Cancellable atomic Aegisub v1 export of the full external list or existing provider list; real picker and semantic recent support. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Video > Keyframes menu and native file pickers",
+        "Semantic recent-keyframe items",
+        "Live contextual user hotkeys (no upstream default gesture)"
+      ],
+      "tests": [
+        "KeyframeFileTests",
+        "EditorWorkflowTests.KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents",
+        "TimingUiAcceptanceVerification actual menu Enter and remapped close with native media"
+      ],
+      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Completion awaits relevant managed/NativeAOT packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2005,12 +2032,21 @@
     },
     {
       "id": "recent/keyframe",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent keyframes",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "keyframe/open",
+      "status": "partially implemented",
+      "backend": "Implemented: Bounded persisted semantic recent-keyframe menu adapters invoking keyframe/open; missing/malformed paths removed without discarding existing metadata. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Video > Keyframes menu and native file pickers",
+        "Semantic recent-keyframe items",
+        "Live contextual user hotkeys (no upstream default gesture)"
+      ],
+      "tests": [
+        "KeyframeFileTests",
+        "EditorWorkflowTests.KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents",
+        "TimingUiAcceptanceVerification actual menu Enter and remapped close with native media"
+      ],
+      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Completion awaits relevant managed/NativeAOT packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
