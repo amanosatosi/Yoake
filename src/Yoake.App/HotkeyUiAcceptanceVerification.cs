@@ -184,6 +184,10 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 24:
                     Require(model.GridTagDisplay==GridTagDisplayMode.Full&&Grid.GetVisualDescendants().OfType<SubtitleGridText>().Any(row=>row.Text==row.SourceText&&row.Text!.Contains("\\future",StringComparison.Ordinal)),"Cycle must restore full exact source in the actual grid.");
                     _editor!.SetTiming(_sortRows![0],0,5000);model.SelectedEvent=_sortRows[1];model.SelectedEvent=_sortRows[0];
+                    // SelectedEvent deliberately preserves an existing multi-
+                    // selection. This part verifies a single-line split after
+                    // the preceding multi-selection sorting workflow.
+                    model.SetSelectedEvents([_sortRows[0]]);
                     _splitSource=_editor.Document.Serialize();_frameTiming=new(model.FrameTimes,25);_frame=model.CurrentFrame;
                     Press(Grid,Key.D,KeyModifiers.Control);return;
                 case 25:
