@@ -50,9 +50,9 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private void AttachModel()
     {
-        if(_model is not null){_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        if(_model is not null){_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
-        if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;
+        if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
@@ -91,6 +91,18 @@ public partial class MainWindow : Window, IEditorDialogs
     private void FormattingApplied(object? sender,EventArgs args)
     {
         if(_model is null)return;var start=_model.TextSelectionStart;var end=_model.TextSelectionEnd;var cursor=_model.TextCursor;SubtitleText.Focus();SubtitleText.CaretIndex=cursor;SubtitleText.SelectionStart=start;SubtitleText.SelectionEnd=end;
+    }
+    private void SearchSelectionApplied(object? sender,EventArgs args)
+    {
+        if(_model is not {} model)return;
+        var document=model.ActiveDocumentId;var line=model.SelectedEvent;var start=model.TextSelectionStart;var end=model.TextSelectionEnd;
+        Dispatcher.UIThread.Post(()=>
+        {
+            if(!ReferenceEquals(_model,model)||model.ActiveDocumentId!=document||!ReferenceEquals(model.SelectedEvent,line))return;
+            // Apply after the new draft binding, retaining focus in the modeless
+            // search window or the control which issued Find Next.
+            SubtitleText.CaretIndex=end;SubtitleText.SelectionStart=start;SubtitleText.SelectionEnd=end;
+        });
     }
     public Task<AssColor?> ChooseColorAsync(AssColor color)=>new AssColorDialog(color,_model?.RecentColorsPath).ShowDialog<AssColor?>(this);
     public async Task<FontChoice?> ChooseFontAsync(string family,string size)
@@ -281,5 +293,12 @@ public partial class MainWindow : Window, IEditorDialogs
     public async Task WriteClipboardAsync(string text){if(Clipboard is not null){var data=new DataTransfer();data.Add(DataTransferItem.CreateText(text));await Clipboard.SetDataAsync(data);await Clipboard.FlushAsync();}}
     public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor,_model?.StyleLibraryPath, _model?.SelectedEvent,_model?.StyleSplitWeights,weights=>{if(_model is {} model)_=model.Registry.InvokeAsync("styles/layout",new(),weights);}).ShowDialog(this);
     public Task ShowScriptInfoAsync(SubtitleEditor editor)=>new ScriptInfoWindow(editor).ShowDialog(this);
-    public Task ShowFindAsync(MainWindowViewModel model)=>new FindWindow(model).ShowDialog(this);
+    public Task ShowFindAsync(MainWindowViewModel model)=>ShowFindAsync(model,false);
+    public Task ShowFindAsync(MainWindowViewModel model,bool focusReplacement)
+    {
+        var existing=OwnedWindows.OfType<FindWindow>().FirstOrDefault(window=>window.DocumentId==model.ActiveDocumentId);
+        if(existing is not null)existing.FocusSearch(focusReplacement);
+        else new FindWindow(model,focusReplacement).Show(this);
+        return Task.CompletedTask;
+    }
 }

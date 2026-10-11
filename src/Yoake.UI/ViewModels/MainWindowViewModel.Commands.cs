@@ -220,5 +220,14 @@ public sealed partial class MainWindowViewModel
         CurrentTimeSeconds=await Task.Run(()=>media.AdjacentFrameTime(CurrentTimeSeconds,delta));
         await RefreshVideoFrameAsync(CurrentTimeSeconds);
     }
-    public void SelectSearchResult(SubtitleSearchMatch match) { Select(match.Line); TextCursor=match.Index; }
+    public event EventHandler? SearchSelectionApplied;
+    public void SelectSearchResult(SubtitleSearchMatch match,IEnumerable<AssEvent>? scope=null)
+    {
+        if(!Events.Contains(match.Line))throw new InvalidOperationException("Search result belongs to another document.");
+        if(scope is null)Select(match.Line);
+        else{SetSelectedEvents(scope.Where(Events.Contains));SelectedEvent=match.Line;}
+        if(match.FieldName!="Text")return;
+        TextSelectionStart=match.Index;TextSelectionEnd=match.Index+match.Length;TextCursor=TextSelectionEnd;
+        SearchSelectionApplied?.Invoke(this,EventArgs.Empty);
+    }
 }

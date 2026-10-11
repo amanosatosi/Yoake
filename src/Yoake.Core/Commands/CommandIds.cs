@@ -61,6 +61,7 @@ public static class CommandIds
     public const string EditCommit = "edit/commit";
     public const string EditCommitNext = "edit/commit-next";
     public const string EditFind = "edit/find";
+    public const string FindNext="subtitle/find/next",FindReplace="edit/find_replace";
     public const string TimingSetStart = "timing/set-start";
     public const string TimingSetEnd = "timing/set-end";
     public const string TimingJumpStart = "timing/jump-start";

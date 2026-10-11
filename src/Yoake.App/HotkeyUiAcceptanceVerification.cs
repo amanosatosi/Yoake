@@ -25,11 +25,11 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
     private bool _opened,_loaded,_ticking;private int _layouts,_stage;
-    private OptionsWindow? _options;private LogWindow? _log;private Task<bool>? _media;
+    private OptionsWindow? _options;private LogWindow? _log;private FindWindow? _find;private Task<bool>? _media;
     private Guid? _document;private AssEvent? _line;private SubtitleEditor? _editor;
     private int _frame;private string _savedPath="";
     private AssEvent[]? _sortRows;private string _sortSource="";private double _sortTime;
-    private string _splitSource="";private FrameTiming? _frameTiming;
+    private string _splitSource="",_findSource="";private FrameTiming? _frameTiming;
     private const string Source=@"{\future(opaque)\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦";
     private AssTextBox Text=>window.FindControl<AssTextBox>("SubtitleText")!;
     private ListBox Grid=>window.FindControl<ListBox>("SubtitleRows")!;
@@ -53,6 +53,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Require(window.IsVisible&&window.TryGetPlatformHandle() is not null,"Acceptance must use a real native window.");
                     var restored=model.HotkeyProfile.Overrides.Any(item=>item.Context==HotkeyContext.Default&&item.CommandId==CommandIds.SubtitleNew);
                     Require(model.Actions[CommandIds.SubtitleNew].Shortcut==(restored?"Ctrl-Alt-K":"Ctrl-N"),"Profile must restore the effective shortcut on a subsequent launch.");
+                    Require(model.VideoAutoSeek==!restored,"The video autoseek preference must restore independently on the second launch.");
                     Invoke(CommandIds.GridInsertAfter);Invoke(CommandIds.GridInsertAfter);
                     model.SelectedEvent=model.Events[0];model.Draft!.Text=Source;Invoke(CommandIds.EditCommit);
                     _document=model.ActiveDocumentId;_line=model.SelectedEvent;_editor=model.ActiveEditor;
@@ -122,7 +123,10 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 12:
                     Require(model.CurrentFrame==_frame+1,"Video Right must use the same central frame timeline.");
                     Press(window.FindControl<VisualOverlayControl>("VisualOverlay")!,Key.D);Require(model.ActiveVisualTool=="RotateZ","Video D must select Rotate Z.");
-                    var original=model.ActiveEditor!.Document.Serialize();_frame=model.CurrentFrame;model.SelectedEvent=model.Events[0];
+                    var original=model.ActiveEditor!.Document.Serialize();
+                    if(model.VideoAutoSeek)Invoke("video/autoseek");
+                    Require(!model.VideoAutoSeek&&!window.FindControl<MenuItem>("VideoAutoSeekMenu")!.IsChecked,"The semantic autoseek option must disable selection-driven video seeks.");
+                    _frame=model.CurrentFrame;model.SelectedEvent=model.Events[0];
                     Press(window.FindControl<AudioWaveformControl>("AudioDisplay")!,Key.Right);
                     Require(ReferenceEquals(model.SelectedEvent,model.Events[1])&&model.CurrentFrame==_frame&&model.ActiveEditor.Document.Serialize()==original,"Audio Right must obey its remapped local action without leaking Video Right or mutating the document.");
                     Press(window.FindControl<VisualOverlayControl>("VisualOverlay")!,Key.S);Require(model.ActiveVisualTool=="Position","Video S must select the drag tool without starting Audio playback.");
@@ -195,8 +199,33 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Press(Grid,Key.Z,KeyModifiers.Control);return;
                 case 28:
                     Require(_editor!.Document.Serialize()==_splitSource&&model.CurrentFrame==_frame,"Undoing the after-frame split must retain exact source and current frame.");
+                    Press(Grid,Key.H,KeyModifiers.Control);return;
+                case 29:
+                    _find=window.OwnedWindows.OfType<FindWindow>().Single();
+                    Require(_find.IsVisible&&_find.DocumentId==_document&&_find.Bounds.Width>=640&&_find.FindControl<TextBox>("FindReplacement")!.IsKeyboardFocusWithin,"Real Ctrl-H must expose the document-local replacement workflow with focus in its replacement field.");
+                    _find.FindControl<TextBox>("FindQuery")!.Text="日本語";_find.FindControl<TextBox>("FindReplacement")!.Text="翻訳";
+                    _find.FindControl<CheckBox>("FindSelectedRows")!.IsChecked=true;_find.FindControl<CheckBox>("FindRawSource")!.IsChecked=false;
+                    Press(_find.FindControl<TextBox>("FindQuery")!,Key.F3);return;
+                case 30:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(ReferenceEquals(model.SelectedEvent,_sortRows![0])&&Text.Text![Text.SelectionStart..Text.SelectionEnd]=="日本語","F3 in the modeless find window must highlight the actual source match through the shared command.");
+                    Require(_find!.FindControl<TextBox>("FindQuery")!.IsKeyboardFocusWithin,"Highlighting source must retain search-window input focus.");
+                    _findSource=_editor!.Document.Serialize();_find.FindControl<Button>("FindReplace")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));return;
+                case 31:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(_sortRows![0].Text.Contains("翻訳",StringComparison.Ordinal)&&_sortRows[0].Text.Contains("\\future(opaque)\\distort",StringComparison.Ordinal),"Replacement must change visible text while preserving exact unknown/Mangetsu tags.");
+                    Press(Grid,Key.Z,KeyModifiers.Control);return;
+                case 32:
+                    Require(_editor!.Document.Serialize()==_findSource,"Real Ctrl-Z must restore the complete exact source after replacement.");
+                    Press(Grid,Key.F3);return;
+                case 33:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(Text.Text![Text.SelectionStart..Text.SelectionEnd]=="日本語"&&window.FindControl<MenuItem>("FindNextMenu")!.InputGesture?.Key==Key.F3,"Grid F3 must reuse the current document's search and display its effective menu gesture.");
+                    _find!.FindControl<Button>("FindClose")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));return;
+                case 34:
+                    Require(!window.OwnedWindows.OfType<FindWindow>().Any(),"The semantic Close action must close the actual search window.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source; exact migrated Ctrl-D/Ctrl-Shift-D real keyboard frame splits with VFR-derived boundaries and complete one-step undo.\n");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source; exact migrated Ctrl-D/Ctrl-Shift-D real keyboard frame splits with VFR-derived boundaries and complete one-step undo; persisted autoseek; real Ctrl-H and F3 in the modeless search window and grid, actual source highlighting without focus theft, protected-text replacement and exact undo.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }

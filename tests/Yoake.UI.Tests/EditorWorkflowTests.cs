@@ -22,6 +22,62 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task VideoAutoseekIsPersistedCheckedStateWithoutChangingDraftHistoryOrPosition()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="unfinished 日本語";_model.CurrentTimeSeconds=.5;
+        var editor=_model.ActiveEditor!;var draft=_model.Draft;var line=_model.SelectedEvent;var history=editor.Undo.NextUndoName;
+        Assert.True(_model.VideoAutoSeek);Assert.True(_model.Actions["video/autoseek"].IsChecked);await Command("video/autoseek");
+        Assert.False(_model.VideoAutoSeek);Assert.False(_model.Actions["video/autoseek"].IsChecked);Assert.Equal(.5,_model.CurrentTimeSeconds);
+        Assert.Same(draft,_model.Draft);Assert.Same(line,_model.SelectedEvent);Assert.Equal(history,editor.Undo.NextUndoName);
+        var store=new SettingsStore(Path.Combine(_root,"settings.json"));Assert.False(store.Load().VideoAutoSeek);
+        File.WriteAllText(store.Path,"""{"videoAutoSeek":"bad","toolbarVisible":false}""");Assert.True(store.Load().VideoAutoSeek);Assert.False(store.Load().ToolbarVisible);
+    }
+    [Fact] public async Task SearchCommandsPreserveSelectedScopeAndOwnAtomicVisibleTextReplacement()
+    {
+        var path=Path.Combine(_root,"search.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,a{\\future(x)\\distort(0,0,1,1)}bc abc\n"+
+            "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,abc unselected\n"+
+            "Dialogue: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,abc é 👩‍👩‍👧‍👦\n");
+        Assert.True(_model.OpenSubtitle(path));var rows=_model.Events.ToArray();var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
+        _model.SelectedEvent=rows[0];_model.SetSelectedEvents([rows[0],rows[2]]);
+        var preferences=new SubtitleSearchPreferences{Query="abc",SelectionOnly=true,Replacement="日本語"};
+        await Command("search/next",new SubtitleSearchRequest(preferences,[rows[0],rows[2]]));
+        Assert.Same(rows[0],_model.SelectedEvent);Assert.Equal(2,_model.SelectedEvents.Count);Assert.Equal(0,_model.TextSelectionStart);Assert.True(_model.TextSelectionEnd>3);Assert.False(editor.Undo.CanUndo);
+        await Command(CommandIds.FindNext);Assert.Same(rows[0],_model.SelectedEvent);Assert.True(_model.TextSelectionStart>0);
+        await Command(CommandIds.FindNext);Assert.Same(rows[2],_model.SelectedEvent);Assert.Equal(2,_model.SelectedEvents.Count);
+        Assert.Equal("F3",_model.Actions[CommandIds.FindNext].Shortcut);Assert.Equal("Ctrl-H",_model.Actions[CommandIds.FindReplace].Shortcut);
+        await Command("search/replace-all",new SubtitleSearchRequest(preferences,[rows[0],rows[2]]));Assert.Same(rows[2],_model.SelectedEvent);
+        Assert.Equal("abc unselected",rows[1].Text);Assert.Contains("\\future(x)\\distort(0,0,1,1)",rows[0].Text);Assert.Contains("日本語",rows[2].Text);
+        Assert.Contains("Changed 2",_model.SearchState(_model.ActiveDocumentId!.Value).Status);Assert.False(_model.HasEditOperation);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        Assert.Equal(preferences,new SettingsStore(Path.Combine(_root,"settings.json")).Load().SearchPreferences);
+    }
+    [Fact] public async Task FindNextAdvancesPastZeroWidthRegexMatchesAndWraps()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="日本語";await Command(CommandIds.EditCommit);
+        var line=_model.SelectedEvent!;var history=_model.ActiveEditor!.Undo.NextUndoName;
+        await Command("search/next",new SubtitleSearchRequest(new(){Query="^|$",RegularExpression=true}));
+        Assert.Equal(0,_model.TextSelectionStart);Assert.Equal(0,_model.TextSelectionEnd);
+        await Command(CommandIds.FindNext);Assert.Equal(line.Text.Length,_model.TextSelectionStart);Assert.Equal(line.Text.Length,_model.TextSelectionEnd);
+        await Command(CommandIds.FindNext);Assert.Equal(0,_model.TextSelectionStart);Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+    }
+    [Fact] public async Task SearchIsDocumentLocalAndCancellationOrInvalidRegexCannotCommitAnUnfinishedDraft()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="abc 日本語";await Command(CommandIds.EditCommit);
+        var first=_model.ActiveDocumentId!.Value;var editor=_model.ActiveEditor!;var tool=_model.SearchState(first);var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        System.ComponentModel.PropertyChangedEventHandler cancel=(sender,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)_=_model.Registry.InvokeAsync("search/cancel",new(first));};
+        _model.PropertyChanged+=cancel;await Command("search/next",new SubtitleSearchRequest(new(){Query="abc"}));_model.PropertyChanged-=cancel;
+        Assert.Equal("Search canceled.",tool.Status);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
+        _model.Draft!.Text="unfinished é";var draft=_model.Draft;
+        Assert.False(await _model.Registry.InvokeAsync("search/next",new(first),new SubtitleSearchRequest(new(){Query="[",RegularExpression=true})));
+        Assert.Same(draft,_model.Draft);Assert.True(draft.IsChanged);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        await Command(CommandIds.EditCancel);await Command(CommandIds.SubtitleNew);var second=_model.ActiveDocumentId!.Value;
+        Assert.NotSame(tool,_model.SearchState(second));Assert.False(_model.Registry.CanExecute("search/next",new(first)));
+        await Command("search/next",new SubtitleSearchRequest(new(){Query="second"}));Assert.Equal("abc",tool.Preferences.Query);
+        await Command(CommandIds.WorkspaceActivateTab,first);Assert.Same(tool,_model.SearchState(first));Assert.Equal("abc",tool.Preferences.Query);
+        await Command(CommandIds.FindNext);Assert.Same(editor,_model.ActiveEditor);Assert.Equal(source,editor.Document.Serialize());
+    }
+
     [Fact] public async Task ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource()
     {
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="A{\\future(opaque)\\distort(0,0,1,1)}é👩‍👩‍👧‍👦漢";await Command(CommandIds.EditCommit);

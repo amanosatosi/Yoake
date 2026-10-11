@@ -73,7 +73,9 @@
 <MenuItem Header="Select all lines" InputGesture="{Binding Actions[grid/select-all].InputGesture}" Command="{Binding Actions[grid/select-all]}" />
 <MenuItem Header="Clear line text" InputGesture="{Binding Actions[edit/clear].InputGesture}" Command="{Binding Actions[edit/clear]}" />
 <MenuItem Header="Clear visible text" InputGesture="{Binding Actions[edit/clear/text].InputGesture}" Command="{Binding Actions[edit/clear/text]}" />
-<MenuItem Header="Find / Replace…" InputGesture="{Binding Actions[edit/find].InputGesture}" Command="{Binding Actions[edit/find]}" />
+<MenuItem Header="Find…" InputGesture="{Binding Actions[edit/find].InputGesture}" Command="{Binding Actions[edit/find]}" />
+<MenuItem Name="FindNextMenu" Header="Find next" InputGesture="{Binding Actions[subtitle/find/next].InputGesture}" Command="{Binding Actions[subtitle/find/next]}" />
+<MenuItem Header="Find / Replace…" InputGesture="{Binding Actions[edit/find_replace].InputGesture}" Command="{Binding Actions[edit/find_replace]}" />
 <MenuItem Header="Cancel background operation" Command="{Binding Actions[editor/cancel-operation]}" />
 </MenuItem>
 <MenuItem Header="Subtitle">
@@ -133,6 +135,7 @@
 <MenuItem Header="Next subtitle" InputGesture="{Binding Actions[grid/line/next].InputGesture}" Command="{Binding Actions[grid/line/next]}" />
 </MenuItem>
 <MenuItem Header="Video">
+<MenuItem Name="VideoAutoSeekMenu" Header="Autoseek to selected line" ToggleType="CheckBox" IsChecked="{Binding Actions[video/autoseek].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/autoseek]}" />
 <MenuItem Header="Open video/audio…" InputGesture="{Binding Actions[media/open].InputGesture}" Command="{Binding Actions[media/open]}" />
 <MenuItem Header="Play / Pause" InputGesture="{Binding Actions[video/play].InputGesture}" Command="{Binding Actions[video/play]}" />
 <MenuItem Header="Stop" InputGesture="{Binding Actions[video/stop].InputGesture}" Command="{Binding Actions[video/stop]}" />

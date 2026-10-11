@@ -13,19 +13,22 @@ public sealed class RegistryCommand : ICommand, INotifyPropertyChanged
     private readonly Func<CommandContext> _contextFactory;
     private readonly object? _fixedParameter;
     private readonly Func<HotkeyProfile>? _hotkeys;
+    private readonly Func<object?>? _parameterFactory;
 
     public RegistryCommand(
         CommandRegistry registry,
         string commandId,
         Func<CommandContext> contextFactory,
         object? fixedParameter = null,
-        Func<HotkeyProfile>? hotkeys = null)
+        Func<HotkeyProfile>? hotkeys = null,
+        Func<object?>? parameterFactory = null)
     {
         _registry = registry ?? throw new ArgumentNullException(nameof(registry));
         _commandId = commandId ?? throw new ArgumentNullException(nameof(commandId));
         _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
         _fixedParameter = fixedParameter;
         _hotkeys = hotkeys;
+        _parameterFactory=parameterFactory;
 
         var weakCommand = new WeakReference<RegistryCommand>(this);
         var source = registry;
@@ -87,7 +90,7 @@ public sealed class RegistryCommand : ICommand, INotifyPropertyChanged
     {
         try
         {
-            var effectiveParameter = _fixedParameter ?? parameter;
+            var effectiveParameter = _fixedParameter ?? parameter ?? _parameterFactory?.Invoke();
             await _registry.InvokeAsync(_commandId, _contextFactory(), effectiveParameter);
         }
         catch (Exception exception)

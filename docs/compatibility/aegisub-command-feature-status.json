@@ -938,19 +938,22 @@
     },
     {
       "id": "edit/find_replace",
-      "yoake_command": "edit/find",
+      "yoake_command": "edit/find_replace",
       "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Find and replace words in subtitles",
+      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings. Relevant CI pending.",
       "exposure": [
-        "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "CommandRegistry shared by menus, buttons and hotkeys",
+        "Edit menu with effective Ctrl-F / F3 / Ctrl-H",
+        "Modeless search window; F3 routes through the shipping contextual resolver"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "SubtitleSearchTests",
+        "SubtitleSearchPreferencesTests",
+        "EditorWorkflowTests.SearchCommandsPreserveSelectedScopeAndOwnAtomicVisibleTextReplacement",
+        "EditorWorkflowTests.SearchIsDocumentLocalAndCancellationOrInvalidRegexCannotCommitAnUnfinishedDraft",
+        "HotkeyUiAcceptanceVerification real Ctrl-H/F3 in find window and grid, focus retention, exact tag-preserving replacement and undo"
       ],
-      "notes": "Regex/literal raw Text search and replace exist; field/scope/skip-tags and persistent Find Next are missing.",
+      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-F"
@@ -2086,17 +2089,20 @@
       "id": "subtitle/find",
       "yoake_command": "edit/find",
       "status": "partially implemented",
-      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Search for text in the subtitles",
+      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings. Relevant CI pending.",
       "exposure": [
-        "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "CommandRegistry shared by menus, buttons and hotkeys",
+        "Edit menu with effective Ctrl-F / F3 / Ctrl-H",
+        "Modeless search window; F3 routes through the shipping contextual resolver"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "SubtitleSearchTests",
+        "SubtitleSearchPreferencesTests",
+        "EditorWorkflowTests.SearchCommandsPreserveSelectedScopeAndOwnAtomicVisibleTextReplacement",
+        "EditorWorkflowTests.SearchIsDocumentLocalAndCancellationOrInvalidRegexCannotCommitAnUnfinishedDraft",
+        "HotkeyUiAcceptanceVerification real Ctrl-H/F3 in find window and grid, focus retention, exact tag-preserving replacement and undo"
       ],
-      "notes": "Existing Find/Replace combines both entries; production scope/options and Find Next need completion.",
+      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-F"
@@ -2105,12 +2111,22 @@
     },
     {
       "id": "subtitle/find/next",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Find next match of last search",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "subtitle/find/next",
+      "status": "partially implemented",
+      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry shared by menus, buttons and hotkeys",
+        "Edit menu with effective Ctrl-F / F3 / Ctrl-H",
+        "Modeless search window; F3 routes through the shipping contextual resolver"
+      ],
+      "tests": [
+        "SubtitleSearchTests",
+        "SubtitleSearchPreferencesTests",
+        "EditorWorkflowTests.SearchCommandsPreserveSelectedScopeAndOwnAtomicVisibleTextReplacement",
+        "EditorWorkflowTests.SearchIsDocumentLocalAndCancellationOrInvalidRegexCannotCommitAnUnfinishedDraft",
+        "HotkeyUiAcceptanceVerification real Ctrl-H/F3 in find window and grid, focus retention, exact tag-preserving replacement and undo"
+      ],
+      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {
         "Default": [
           "F3"

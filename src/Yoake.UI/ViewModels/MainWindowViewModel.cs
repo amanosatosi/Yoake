@@ -34,6 +34,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public AssEvent? Selected;
         public CancellationTokenSource? Loading;
         public CancellationTokenSource? Editing;
+        public SubtitleSearchToolState Search=new(new());
         public double AudioStart,AudioSpan=20;
     }
     private readonly CommandRegistry _registry;
@@ -135,7 +136,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if(value is null)SetSelectedEvents([]);
             else if(!SelectedEvents.Contains(value))SetSelectedEvents([value]);
             OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));OnPropertyChanged(nameof(SelectedIsComment));
-            if (value?.StartMilliseconds is { } start && !IsPlaying) CurrentTimeSeconds=start/1000d;
+            if (value?.StartMilliseconds is { } start && !IsPlaying&&(_media?.HasVideo!=true||VideoAutoSeek)) CurrentTimeSeconds=start/1000d;
             _registry.NotifyStateChanged();
         }
     }
@@ -179,6 +180,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterEditorCommands();
         RegisterGridCommands();
         RegisterLineCommands();
+        RegisterVideoOptions();
+        RegisterSearchCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
@@ -207,7 +210,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     private void Attach(DocumentSession session, AssDocument document)
     {
-        var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds}; _documents[session.Id]=state;
+        var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds,Search=new(_settings.SearchPreferences??new())}; _documents[session.Id]=state;
         document.Changed+=(_,_)=> { state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
@@ -286,6 +289,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         }
         CancelGesture(); StopPlayback(); state.Editing?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
         var media=state.Media; state.Media=null; if (media is not null) _=Task.Run(media.Dispose);
+        SearchWindowCloseRequested?.Invoke(this,new(id));
         CloseAutomationDocument(id); _documents.Remove(id); _workspace.Close(id); if (_workspace.Documents.Count==0) CreateNewDocument(); return true;
     }
     public async Task<bool> CloseWindowAsync()
@@ -302,7 +306,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         try
         {
             CancelGesture(); CancelVisualBounds(); StopPlayback(); Interlocked.Increment(ref _seekGeneration);
-            if (_activeId is { } old && _documents.TryGetValue(old,out var previous)) { previous.Time=CurrentTimeSeconds; previous.Selected=SelectedEvent; }
+            if (_activeId is { } old && _documents.TryGetValue(old,out var previous)) { previous.Search.Cancellation?.Cancel();previous.Time=CurrentTimeSeconds; previous.Selected=SelectedEvent; }
             _activeId=id;
             var state=id is { } key && _documents.TryGetValue(key,out var found) ? found : null;
             _activeSubtitleDocument=state?.Editor.Document; _media=state?.Media;

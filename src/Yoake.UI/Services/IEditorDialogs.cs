@@ -26,6 +26,7 @@ public interface IEditorDialogs
     Task ShowStylesAsync(Yoake.Core.Subtitles.SubtitleEditor editor);
     Task ShowScriptInfoAsync(Yoake.Core.Subtitles.SubtitleEditor editor);
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model);
+    Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model,bool focusReplacement)=>ShowFindAsync(model);
 }
 public interface IAutomationProgressSession
 {
