@@ -27,7 +27,7 @@ internal sealed class AudioPlaybackUiAcceptanceVerification(IClassicDesktopStyle
     public void Start()
     {
         model.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(MainWindowViewModel.ActiveAudioPlayback)&&model.ActiveAudioPlayback is {} plan)_lastPlan=plan;};
-        window.StartupLayoutReady+=(_,_)=>_ready=true;_timer.Tick+=Tick;_timer.Start();
+        window.LayoutUpdated+=(_,_)=>_ready=window.IsVisible&&window.Bounds.Width>0;_timer.Tick+=Tick;_timer.Start();
     }
     private async void Tick(object? sender,EventArgs args)
     {
