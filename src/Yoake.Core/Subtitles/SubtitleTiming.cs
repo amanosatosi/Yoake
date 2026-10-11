@@ -15,8 +15,11 @@ public sealed class SubtitleTimingSnapshot
     internal sealed record Row(AssEvent Line,string Start,string End,bool Selected);
     internal SubtitleEditor Editor {get;}
     internal long Revision {get;}
+    internal AssEvent? DraftLine {get;}
+    internal string[]? DraftFields {get;}
     private readonly Row[] _rows;
-    internal SubtitleTimingSnapshot(SubtitleEditor editor,Row[] rows){Editor=editor;Revision=editor.Document.Revision;_rows=rows;}
+    internal SubtitleTimingSnapshot(SubtitleEditor editor,Row[] rows,AssEvent? draftLine,string[]? draftFields)
+    {Editor=editor;Revision=editor.Document.Revision;_rows=rows;DraftLine=draftLine;DraftFields=draftFields;}
     private static (long Start,long End) Read(Row row)
     {
         if(!AssTime.TryParse(row.Start,out var start)||!AssTime.TryParse(row.End,out var end)||end<start)
@@ -123,25 +126,34 @@ public sealed class SubtitleTimingPlan
 
 public sealed partial class SubtitleEditor
 {
-    public SubtitleTimingSnapshot CaptureTiming(IEnumerable<AssEvent> selection)
+    public SubtitleTimingSnapshot CaptureTiming(IEnumerable<AssEvent> selection,AssEvent? draftLine=null,IReadOnlyDictionary<string,string>? draftValues=null)
     {
         var selected=Ordered(selection).ToHashSet();
-        return new(this,Document.Events.Select(line=>new SubtitleTimingSnapshot.Row(line,line.Start,line.End,selected.Contains(line))).ToArray());
+        AssEvent? draft=null;
+        if(draftValues is not null)
+        {if(draftLine is null)throw new ArgumentException("Draft line is required.");Require(draftLine);draft=ValidateEventValues(draftLine,draftValues);}
+        return new(this,Document.Events.Select(line=>new SubtitleTimingSnapshot.Row(line,
+            ReferenceEquals(line,draftLine)&&draft is not null?draft.Start:line.Start,
+            ReferenceEquals(line,draftLine)&&draft is not null?draft.End:line.End,selected.Contains(line))).ToArray(),draft is null?null:draftLine,draft?.Fields);
     }
     public int ApplyTiming(SubtitleTimingPlan plan)
     {
         ArgumentNullException.ThrowIfNull(plan);
         if(!ReferenceEquals(plan.Snapshot.Editor,this)||plan.Snapshot.Revision!=Document.Revision)
             throw new InvalidOperationException("Subtitles changed during timing calculation. Try again.");
-        if(plan.Count==0)return 0;
         // Validate every field before publishing any mutation. Ownership was
         // checked by the snapshot/revision, avoiding a source scan per field.
-        var fields=plan.Changes.Select(change=>
+        var draftLine=plan.Snapshot.DraftLine;
+        var changes=plan.Changes.ToDictionary(change=>change.Line);
+        var lines=plan.Changes.Select(change=>change.Line).ToHashSet();if(draftLine is not null)lines.Add(draftLine);
+        var fields=lines.Select(line=>
         {
-            var before=(string[])change.Line.Fields.Clone();var probe=change.Line.Clone();
-            probe.Set("Start",change.Start);probe.Set("End",change.End);
-            return(Line:change.Line,Before:before,After:(string[])probe.Fields.Clone());
-        }).ToArray();
+            var before=(string[])line.Fields.Clone();var probe=line.Clone();
+            if(ReferenceEquals(line,draftLine))probe.RestoreFields(plan.Snapshot.DraftFields!);
+            if(changes.TryGetValue(line,out var change)){probe.Set("Start",change.Start);probe.Set("End",change.End);}
+            return(Line:line,Before:before,After:(string[])probe.Fields.Clone());
+        }).Where(entry=>!entry.Before.SequenceEqual(entry.After)).ToArray();
+        if(fields.Length==0)return 0;
         void Restore(bool after)
         {
             using var update=Document.BeginUpdate();

@@ -121,7 +121,7 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
         finally{_ticking=false;}
     }
     private async Task Invoke(string id)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId)),"Timing preparation command failed: "+id);
-    private void Click(string name)=>InShift<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private void Click(string name)=>Press(InShift<Button>(name),Key.Enter);
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
     {
         if(control is ListBox list)control=list.ContainerFromIndex(Math.Max(0,list.SelectedIndex)) as Control??throw new InvalidOperationException("A realized grid row must receive timing keys.");

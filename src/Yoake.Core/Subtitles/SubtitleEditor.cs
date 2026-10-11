@@ -40,17 +40,21 @@ public sealed partial class SubtitleEditor(AssDocument document)
     public void EditEvent(AssEvent line, IReadOnlyDictionary<string, string> values)
     {
         Require(line);
-        var probe = line.Clone();
-        foreach (var pair in values) probe.Set(pair.Key, pair.Value);
-        if (!AssTime.TryParse(probe.Start, out var start) || !AssTime.TryParse(probe.End, out var end) || end < start) throw new ArgumentException("Use h:mm:ss.cc times, with end at or after start.");
-        foreach (var field in new[] { "Layer", "MarginL", "MarginR", "MarginV" })
-            if (probe.Index(field) >= 0 && (!int.TryParse(probe.Get(field), out var number) || field != "Layer" && number < 0)) throw new ArgumentException($"{field} must be an integer (margins must be non-negative).");
+        var probe = ValidateEventValues(line,values);
         var changed = values.Where(p => line.Get(p.Key) != probe.Get(p.Key)).ToArray();
         if (changed.Length == 0) return;
         var name = changed.Length == 1 ? changed[0].Key switch { "Text" => "Edit subtitle text", "Style" => "Change style", "Name" or "Actor" => "Change actor", "Start" or "End" => "Change line timing", "MarginL" or "MarginR" or "MarginV" => "Change margins", _ => "Edit event metadata" } : "Edit subtitle";
         using var transaction = Undo.BeginTransaction(name);
         foreach (var pair in changed) SetField(line, pair.Key, pair.Value, name);
         transaction.Commit();
+    }
+    private static AssEvent ValidateEventValues(AssEvent line,IReadOnlyDictionary<string,string> values)
+    {
+        var probe=line.Clone();foreach(var pair in values)probe.Set(pair.Key,pair.Value);
+        if (!AssTime.TryParse(probe.Start, out var start) || !AssTime.TryParse(probe.End, out var end) || end < start) throw new ArgumentException("Use h:mm:ss.cc times, with end at or after start.");
+        foreach (var field in new[] { "Layer", "MarginL", "MarginR", "MarginV" })
+            if (probe.Index(field) >= 0 && (!int.TryParse(probe.Get(field), out var number) || field != "Layer" && number < 0)) throw new ArgumentException($"{field} must be an integer (margins must be non-negative).");
+        return probe;
     }
     public void SetTiming(AssEvent line, long start, long end)
     {

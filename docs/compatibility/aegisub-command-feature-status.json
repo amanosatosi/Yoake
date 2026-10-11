@@ -2382,7 +2382,7 @@
         "SubtitleTimingTests.AdjoinOneLineUsesItsOutsideNeighborWhileBlocksChangeOnlyInternalBoundaries",
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2399,7 +2399,7 @@
         "SubtitleTimingTests.AdjoinOneLineUsesItsOutsideNeighborWhileBlocksChangeOnlyInternalBoundaries",
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2417,7 +2417,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-6"
@@ -2576,7 +2576,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (separate real-window timing workflow; fresh/restored processes)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-I"
@@ -2598,7 +2598,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-4"
@@ -2620,7 +2620,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-5"
@@ -2642,7 +2642,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-3"

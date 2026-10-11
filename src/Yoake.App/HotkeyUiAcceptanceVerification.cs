@@ -214,7 +214,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     if(model.HasEditOperation){_stage--;return;}
                     Require(ReferenceEquals(model.SelectedEvent,_sortRows![0])&&Text.Text![Text.SelectionStart..Text.SelectionEnd]=="日本語","F3 in the modeless find window must highlight the actual source match through the shared command.");
                     Require(_find!.FindControl<TextBox>("FindQuery")!.IsKeyboardFocusWithin,"Highlighting source must retain search-window input focus.");
-                    _findSource=_editor!.Document.Serialize();_find.FindControl<Button>("FindReplace")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));return;
+                    _findSource=_editor!.Document.Serialize();Press(_find.FindControl<Button>("FindReplace")!,Key.Enter);return;
                 case 31:
                     if(model.HasEditOperation){_stage--;return;}
                     Require(_sortRows![0].Text.Contains("翻訳",StringComparison.Ordinal)&&_sortRows[0].Text.Contains("\\future(opaque)\\distort",StringComparison.Ordinal),"Replacement must change visible text while preserving exact unknown/Mangetsu tags.");
@@ -225,7 +225,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 33:
                     if(model.HasEditOperation){_stage--;return;}
                     Require(Text.Text![Text.SelectionStart..Text.SelectionEnd]=="日本語"&&window.FindControl<MenuItem>("FindNextMenu")!.InputGesture?.Key==Key.F3,"Grid F3 must reuse the current document's search and display its effective menu gesture.");
-                    _find!.FindControl<Button>("FindClose")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));return;
+                    Press(_find!.FindControl<Button>("FindClose")!,Key.Enter);return;
                 case 34:
                     Require(!window.OwnedWindows.OfType<FindWindow>().Any(),"The semantic Close action must close the actual search window.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
@@ -254,7 +254,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
         Press(InOptions<TextBox>("HotkeyCapture"),key,modifiers);
         Require(!string.IsNullOrEmpty(InOptions<TextBox>("HotkeyGesture").Text),"The focused capture field must receive a real key gesture.");
     }
-    private void Click(string name)=>InOptions<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    private void Click(string name)=>Press(InOptions<Button>(name),Key.Enter);
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
     {
         if(control is ListBox list)

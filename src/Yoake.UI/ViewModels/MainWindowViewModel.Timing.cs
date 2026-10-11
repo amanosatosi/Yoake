@@ -74,22 +74,32 @@ public sealed partial class MainWindowViewModel
     }
     private async Task<int> CalculateTimingAsync(Func<SubtitleTimingSnapshot,CancellationToken,SubtitleTimingPlan> calculate,IReadOnlyList<AssEvent> selection,CancellationToken parent)
     {
-        if(_activeId is not {} document||!_documents.TryGetValue(document,out var state)||!CommitDraft())return -1;
+        if(_activeId is not {} document||!_documents.TryGetValue(document,out var state))return -1;
+        var resumeBurst=Draft?.IsChanged==true&&_editBurstDelay is not null;
+        if(resumeBurst){_editBurstDelay!.Cancel();_editBurstDelay.Dispose();_editBurstDelay=null;}
         state.Editing?.Cancel();var cancellation=CancellationTokenSource.CreateLinkedTokenSource(parent);state.Editing=cancellation;
         OnPropertyChanged(nameof(HasEditOperation));_registry.NotifyStateChanged();
         try
         {
-            var snapshot=state.Editor.CaptureTiming(selection);SubtitleTimingPlan? plan=null;SubtitleStatus="Calculating subtitle timing…";
+            cancellation.Token.ThrowIfCancellationRequested();
+            // Validate/capture the current draft without committing it. A
+            // canceled or invalid calculation must retain the exact draft.
+            var snapshot=state.Editor.CaptureTiming(selection,SelectedEvent,Draft?.IsChanged==true?Draft.Values:null);SubtitleTimingPlan? plan=null;SubtitleStatus="Calculating subtitle timing…";
             var job=_jobs.Run("Subtitle timing",token=>{plan=calculate(snapshot,token);return Task.CompletedTask;},cancellation.Token);
             await job.Completion;cancellation.Token.ThrowIfCancellationRequested();
             if(_disposed||_activeId!=document||!_documents.TryGetValue(document,out var live)||!ReferenceEquals(live,state))return -1;
-            var count=0;RunEdit(editor=>count=editor.ApplyTiming(plan!));SubtitleStatus=$"Changed timing of {count} subtitle rows.";return count;
+            int count;IsSynchronizingSelection=true;
+            try{count=state.Editor.ApplyTiming(plan!);}finally{IsSynchronizingSelection=false;}
+            ReloadDraft();OnPropertyChanged(nameof(SelectedEvent));OnPropertyChanged(nameof(ActorNames));
+            SubtitleStatus=$"Changed timing of {count} subtitle rows.";return count;
         }
         catch(OperationCanceledException)when(cancellation.IsCancellationRequested)
         {if(parent.IsCancellationRequested)throw;if(_activeId==document)SubtitleStatus="Timing canceled.";return -1;}
         finally
         {
             if(ReferenceEquals(state.Editing,cancellation))state.Editing=null;cancellation.Dispose();
+            if(resumeBurst&&!_disposed&&_activeId==document&&Draft?.IsChanged==true&&_editBurstDelay is null)
+            {var delay=new CancellationTokenSource();_editBurstDelay=delay;_=FinalizeBurstAsync(delay.Token);}
             OnPropertyChanged(nameof(HasEditOperation));_registry.NotifyStateChanged();
         }
     }

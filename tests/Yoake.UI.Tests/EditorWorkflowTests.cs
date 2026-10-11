@@ -42,11 +42,16 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.SelectedEvent=rows[1];_model.SetSelectedEvents([rows[1]]);await Command("time/continuous/start");Assert.Equal(2000,rows[1].StartMilliseconds);
         await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
         await Command("time/shift/history/clear");Assert.Empty(_model.ShiftHistory);Assert.False(_model.Actions["time/shift/history/clear"].CanExecute(null));
+        _model.Draft!.Text="unfinished {\\future(x)}日本語";var pending=_model.Draft;
         System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)_=_model.Registry.InvokeAsync("editor/cancel-operation",new());};
         _model.PropertyChanged+=cancel;await Command("time/shift/apply",new SubtitleShiftToolRequest(preferences,[rows[1]]));_model.PropertyChanged-=cancel;
         Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);Assert.Empty(_model.ShiftHistory);Assert.False(_model.HasEditOperation);
+        Assert.Same(pending,_model.Draft);Assert.True(pending.IsChanged);
         Assert.False(await _model.Registry.InvokeAsync("time/shift/apply",new(),new SubtitleShiftToolRequest(preferences with{Milliseconds=5000,Fields=SubtitleTimingFields.Start},[rows[1]])));
         Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        Assert.Same(pending,_model.Draft);Assert.True(pending.IsChanged);
+        await Command("time/shift/apply",new SubtitleShiftToolRequest(preferences,[rows[1]]));Assert.Equal(pending.Text,rows[1].Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
     }
     [Fact] public async Task VideoAutoseekIsPersistedCheckedStateWithoutChangingDraftHistoryOrPosition()
     {

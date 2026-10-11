@@ -16,6 +16,16 @@ public sealed class SubtitleTimingTests
         editor.ApplyTiming(editor.CaptureTiming(editor.Document.Events).Shift(new(100)));
         Assert.Equal(1,count);editor.Undo.Undo();Assert.Equal(2,count);editor.Undo.Redo();Assert.Equal(3,count);
     }
+    [Fact] public void PendingDraftIsValidatedWithoutMutationAndCommitsAtomicallyWithTiming()
+    {
+        var editor=Fixture();var rows=editor.Document.Events;var line=rows[1];var original=editor.Document.Serialize();
+        var draft=new Dictionary<string,string>{{"Text","{\\future(x)\\distort(0,0,1,1)}日本語"},{"Start","0:00:00.08"}};
+        var snapshot=editor.CaptureTiming([line],line,draft);Assert.Equal(original,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        Assert.Throws<ArgumentException>(()=>snapshot.Shift(new(1000,Fields:SubtitleTimingFields.Start)));Assert.Equal(original,editor.Document.Serialize());
+        editor.ApplyTiming(snapshot.Shift(new(10)));Assert.Equal(90,line.StartMilliseconds);Assert.Equal(150,line.EndMilliseconds);Assert.Equal(draft["Text"],line.Text);
+        editor.Undo.Undo();Assert.Equal(original,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        Assert.Throws<ArgumentException>(()=>editor.CaptureTiming([line],line,new Dictionary<string,string>{{"MarginL","-1"}}));Assert.Equal(original,editor.Document.Serialize());
+    }
     [Theory][InlineData(SubtitleTimingScope.All,3)][InlineData(SubtitleTimingScope.Selected,1)][InlineData(SubtitleTimingScope.SelectionOnward,2)]
     public void ShiftScopeIsExplicitAndUndoRestoresLosslessSource(SubtitleTimingScope scope,int count)
     {
