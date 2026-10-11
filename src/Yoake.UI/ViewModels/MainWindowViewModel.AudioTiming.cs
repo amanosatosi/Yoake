@@ -111,7 +111,7 @@ public sealed partial class MainWindowViewModel
         Select(index+1<Events.Count?Events[index+1]:ActiveEditor!.InsertTimingSuccessor(current,_settings.AudioDefaultDuration??3000));
     }
     public bool BeginAudioTimingGesture()
-    {Actions["audio/timing/gesture/begin"].Execute(null);return _audioTimingGesture is not null;}
+    {if(HasGesture)return false;Actions["audio/timing/gesture/begin"].Execute(null);return _audioTimingGesture is not null;}
     public void UpdateAudioTimingGesture(int part,double seconds)=>Actions["audio/timing/gesture/update"].Execute(new TimingGestureUpdate(part,seconds));
     public void EndAudioTimingGesture()=>Actions["audio/timing/gesture/commit"].Execute(null);
     private void BeginAudioTimingGestureCore()
@@ -182,7 +182,7 @@ public sealed partial class MainWindowViewModel
         {var leadIn=input;var leadOut=output;Register(id,label,(_,_)=>StageAudioTiming(PendingAudioTiming.Adjust(PrimaryAudioRange!.Value,leadIn?-(_settings.AudioLeadIn??100):0,leadOut?(_settings.AudioLeadOut??350):0)),Available);}
         Register("time/next","Next timing line",(_,_)=>NavigateAudioTiming(1),()=>!HasGesture&&Events.Count>0);
         Register("time/prev","Previous timing line",(_,_)=>NavigateAudioTiming(-1),()=>!HasGesture&&Events.Count>0);
-        Register("audio/timing/revert","Revert pending timing",(_,_)=>{if(SelectedEvent is {} line)AudioTiming?.Clear(line);AudioTimingChanged();},()=>!HasGesture&&HasPendingAudioTiming);
+        Register("audio/timing/revert","Revert pending timing",(_,_)=>{if(SelectedEvent is {} line)AudioTiming?.Clear(line);AudioTimingChanged();},()=>!HasGesture&&SelectedEvent is {} line&&AudioTiming?.Get(line) is not null);
         Register("audio/timing/gesture/begin","Begin audio timing drag",(_,_)=>BeginAudioTimingGestureCore(),Available);
         Register("audio/timing/gesture/update","Move audio timing markers",(i,_)=>
         {try{if(i.Parameter is TimingGestureUpdate p)UpdateAudioTimingGestureCore(p);}catch{FinishAudioTimingGesture(false);throw;}},()=>_audioTimingGesture is not null);

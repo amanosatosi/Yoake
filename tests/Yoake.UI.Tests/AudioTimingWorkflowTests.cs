@@ -107,4 +107,11 @@ public sealed partial class EditorWorkflowTests
         var rows=await TimingRows();await Command("time/lead/out");await Command("audio/commit/next");Assert.Same(rows[1],_model.SelectedEvent);Assert.Equal(new AudioClipInterval(2000,3000),_model.PrimaryAudioRange);Assert.False(_model.HasPendingAudioTiming);
         await Command("time/lead/out");await Command(CommandIds.EditCommitNext);Assert.Equal(3350,rows[1].EndMilliseconds);Assert.Equal(3350,_model.SelectedEvent!.StartMilliseconds);Assert.Equal(6350,_model.SelectedEvent.EndMilliseconds);
     }
+    [Fact] public async Task RevertAvailabilityFollowsTheActivePendingLineAndOverlappingGesturesAreRejected()
+    {
+        await TimingRows();await Command("time/lead/in");Assert.True(_model.Actions["audio/timing/revert"].CanExecute(null));
+        await Command("time/next");Assert.True(_model.HasPendingAudioTiming);Assert.False(_model.Actions["audio/timing/revert"].CanExecute(null));
+        await Command("time/prev");Assert.True(_model.BeginAudioTimingGesture());Assert.False(_model.BeginAudioTimingGesture());_model.UpdateAudioTimingGesture(1,.2);_model.CancelGesture();
+        Assert.Equal(new AudioClipInterval(200,1400),_model.PrimaryAudioRange);await Command("audio/timing/revert");Assert.Equal(new AudioClipInterval(300,1400),_model.PrimaryAudioRange);Assert.False(_model.HasPendingAudioTiming);Assert.False(_model.ActiveEditor!.Undo.CanUndo);
+    }
 }
