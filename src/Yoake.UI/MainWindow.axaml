@@ -127,6 +127,13 @@
 <MenuItem Name="AutomationMacroMenu" Header="Macros" />
 </MenuItem>
 <MenuItem Header="Timing">
+<MenuItem Name="ShiftTimesMenu" Header="Shift Times…" InputGesture="{Binding Actions[time/shift].InputGesture}" Command="{Binding Actions[time/shift]}" />
+<MenuItem Header="Make continuous"><MenuItem Header="Change starts" Command="{Binding Actions[time/continuous/start]}" /><MenuItem Header="Change ends" Command="{Binding Actions[time/continuous/end]}" /></MenuItem>
+<MenuItem Header="Snap starts to video" InputGesture="{Binding Actions[time/snap/start_video].InputGesture}" Command="{Binding Actions[time/snap/start_video]}" />
+<MenuItem Header="Snap ends to video" InputGesture="{Binding Actions[time/snap/end_video].InputGesture}" Command="{Binding Actions[time/snap/end_video]}" />
+<MenuItem Header="Snap to scene" InputGesture="{Binding Actions[time/snap/scene].InputGesture}" Command="{Binding Actions[time/snap/scene]}" />
+<MenuItem Header="Shift selection to current frame" InputGesture="{Binding Actions[time/frame/current].InputGesture}" Command="{Binding Actions[time/frame/current]}" />
+<Separator />
 <MenuItem Header="Set start to current time" InputGesture="{Binding Actions[timing/set-start].InputGesture}" Command="{Binding Actions[timing/set-start]}" />
 <MenuItem Header="Set end to current time" InputGesture="{Binding Actions[timing/set-end].InputGesture}" Command="{Binding Actions[timing/set-end]}" />
 <MenuItem Header="Jump to line start" InputGesture="{Binding Actions[timing/jump-start].InputGesture}" Command="{Binding Actions[timing/jump-start]}" />
@@ -305,6 +312,15 @@
 <ListBox Name="SubtitleRows" controls:SubtitleGridText.TagDisplayMode="{Binding GridTagDisplay}" Grid.Row="1" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
 <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,0" /><Setter Property="Height" Value="26" /><Setter Property="MinHeight" Value="26" /><Setter Property="MaxHeight" Value="26" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style><Style Selector="Grid.subtitle-row TextBlock"><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" /></Style><Style Selector="Grid.subtitle-row.comment TextBlock"><Setter Property="Foreground" Value="{DynamicResource AssSyntaxUnknown}" /></Style><Style Selector="ListBoxItem:selected Grid.subtitle-row TextBlock"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style></ListBox.Styles>
 <ListBox.ContextMenu><ContextMenu>
+<MenuItem Header="Timing">
+<MenuItem Header="Shift Times…" InputGesture="{Binding Actions[time/shift].InputGesture}" Command="{Binding Actions[time/shift]}" />
+<MenuItem Header="Make starts continuous" Command="{Binding Actions[time/continuous/start]}" />
+<MenuItem Header="Make ends continuous" Command="{Binding Actions[time/continuous/end]}" />
+<MenuItem Header="Snap starts to video" InputGesture="{Binding Actions[time/snap/start_video].InputGesture}" Command="{Binding Actions[time/snap/start_video]}" />
+<MenuItem Header="Snap ends to video" InputGesture="{Binding Actions[time/snap/end_video].InputGesture}" Command="{Binding Actions[time/snap/end_video]}" />
+<MenuItem Header="Snap to scene" InputGesture="{Binding Actions[time/snap/scene].InputGesture}" Command="{Binding Actions[time/snap/scene]}" />
+<MenuItem Header="Shift to current frame" InputGesture="{Binding Actions[time/frame/current].InputGesture}" Command="{Binding Actions[time/frame/current]}" />
+</MenuItem>
 <MenuItem Header="Insert before" InputGesture="{Binding Actions[grid/insert/before].InputGesture}" Command="{Binding Actions[grid/insert/before]}" />
 <MenuItem Header="Insert after" InputGesture="{Binding Actions[grid/insert/after].InputGesture}" Command="{Binding Actions[grid/insert/after]}" />
 <MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />

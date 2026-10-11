@@ -27,6 +27,7 @@ public interface IEditorDialogs
     Task ShowScriptInfoAsync(Yoake.Core.Subtitles.SubtitleEditor editor);
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model);
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model,bool focusReplacement)=>ShowFindAsync(model);
+    Task ShowShiftTimesAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>throw new NotSupportedException("Shift Times is unavailable.");
 }
 public interface IAutomationProgressSession
 {

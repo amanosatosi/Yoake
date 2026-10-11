@@ -11,3 +11,5 @@ The bottom pane reserves 140 DIP for subtitle rows in addition to its header, bo
 The background job service provides cancellation and lifetime tracking without a UI dependency. Expensive future work must run through equivalent cancellation-aware infrastructure; never hold a lock while calling back into the UI.
 
 Logging is intentionally small and dependency-free in M0. If a richer logger is proposed later, its NativeAOT/trimming behavior and cost must be justified first.
+
+Shift Times preferences and bounded reusable history use the same source-generated settings record. Malformed preference/history entries recover independently and enum/range validation restores safe defaults. Timing results use the existing document-owned background edit lifetime and revision checks, with cancellation available through the semantic editor cancel command.

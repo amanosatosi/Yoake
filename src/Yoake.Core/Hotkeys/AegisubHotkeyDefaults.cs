@@ -16,7 +16,6 @@ public static partial class AegisubHotkeyDefaults
         "video/frame/prev" => "video/frame/previous",
         "video/frame/next/keyframe" => "video/frame/next-keyframe", "video/frame/prev/keyframe" => "video/frame/previous-keyframe",
         "video/jump/start" => "timing/jump-start", "video/jump/end" => "timing/jump-end",
-        "time/snap/start_video" => "timing/set-start", "time/snap/end_video" => "timing/set-end",
         "video/tool/cross" => "video/tool/crosshair", "video/tool/drag" => "video/tool/position",
         "video/tool/rotate/z" => "video/tool/rotatez", "video/tool/rotate/xy" => "video/tool/rotatexy",
         "video/tool/vector_clip" => "video/tool/vectorclip",

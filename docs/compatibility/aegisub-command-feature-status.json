@@ -2370,32 +2370,54 @@
     },
     {
       "id": "time/continuous/end",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Change end times of lines to the next line's start time",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/continuous/end",
+      "status": "partially implemented",
+      "backend": "Implemented: single-row previous/next neighbor semantics and internal contiguous-block boundary adjustment; immutable revision-checked snapshot, cancellable calculation, one rollback-capable undo. Non-contiguous selections disabled. CI pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Timing menu and grid context menu; exact Default hotkeys where shipped",
+        "Context-aware remappable hotkey profile"
+      ],
+      "tests": [
+        "SubtitleTimingTests.AdjoinOneLineUsesItsOutsideNeighborWhileBlocksChangeOnlyInternalBoundaries",
+        "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability"
+      ],
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "time/continuous/start",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Change start times of lines to the previous line's end time",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/continuous/start",
+      "status": "partially implemented",
+      "backend": "Implemented: single-row previous/next neighbor semantics and internal contiguous-block boundary adjustment; immutable revision-checked snapshot, cancellable calculation, one rollback-capable undo. Non-contiguous selections disabled. CI pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Timing menu and grid context menu; exact Default hotkeys where shipped",
+        "Context-aware remappable hotkey profile"
+      ],
+      "tests": [
+        "SubtitleTimingTests.AdjoinOneLineUsesItsOutsideNeighborWhileBlocksChangeOnlyInternalBoundaries",
+        "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability"
+      ],
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "time/frame/current",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Shift selection so that the active line starts at current frame",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/frame/current",
+      "status": "partially implemented",
+      "backend": "Implemented: shift all selected endpoints by the delta between the active start and current VFR START boundary, with audited centisecond rounding and zero clamp. Document/frame context captured before cancellable calculation; one undo transaction; video absence disabled. CI pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Timing menu and grid context menu; exact Default hotkeys where shipped",
+        "Context-aware remappable hotkey profile"
+      ],
+      "tests": [
+        "SubtitleTimingTests",
+        "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
+        "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
+      ],
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-6"
@@ -2540,12 +2562,21 @@
     },
     {
       "id": "time/shift",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Shift subtitles by time or frames",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/shift",
+      "status": "partially implemented",
+      "backend": "Implemented: immutable revision-checked timing snapshots, cancellable background calculation, and one rollback-capable undo transaction. Shift Times includes time/frame units, start/end/both, all/selected/selection-onward scopes, persisted preferences and reusable 50-entry history. Continuous timing matches single-neighbor/contiguous-block semantics. Snaps use selected rows and the central VFR START/END boundaries. CI acceptance pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Timing menu and grid context menu; exact Default hotkeys where shipped",
+        "Actual Shift Times dialog with shared Apply/Cancel/history commands"
+      ],
+      "tests": [
+        "SubtitleTimingTests",
+        "SubtitleShiftSettingsTests",
+        "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
+        "TimingUiAcceptanceVerification (separate real-window timing workflow; fresh/restored processes)"
+      ],
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-I"
@@ -2554,19 +2585,20 @@
     },
     {
       "id": "time/snap/end_video",
-      "yoake_command": "timing/set-end",
+      "yoake_command": "time/snap/end_video",
       "status": "partially implemented",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Set end of selected subtitles to current video frame",
+      "backend": "Implemented: all selected rows snap through central VFR START/END boundaries; extends the other endpoint when needed to include the frame. Disabled without video/frame data. Revision-checked cancellable calculation and one undo transaction. CI pending.",
       "exposure": [
-        "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Shared semantic CommandRegistry actions",
+        "Timing menu and grid context menu; exact Default hotkeys where shipped",
+        "Context-aware remappable hotkey profile"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "SubtitleTimingTests",
+        "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
+        "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Current millisecond-time command affects active line only; selection and VFR END semantics need completion.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-4"
@@ -2575,12 +2607,20 @@
     },
     {
       "id": "time/snap/scene",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Set start and end of subtitles to the keyframes around current video frame",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/snap/scene",
+      "status": "partially implemented",
+      "backend": "Implemented: selected rows span the current scene from its keyframe through the frame before the next cut, with first/last scene edges. Central provider keyframes and VFR START/END boundaries; one undo transaction; video/keyframe absence disabled. External keyframes remain a separate missing cluster. CI pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Timing menu and grid context menu; exact Default hotkeys where shipped",
+        "Context-aware remappable hotkey profile"
+      ],
+      "tests": [
+        "SubtitleTimingTests",
+        "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
+        "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
+      ],
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-5"
@@ -2589,19 +2629,20 @@
     },
     {
       "id": "time/snap/start_video",
-      "yoake_command": "timing/set-start",
+      "yoake_command": "time/snap/start_video",
       "status": "partially implemented",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Set start of selected subtitles to current video frame",
+      "backend": "Implemented: all selected rows snap through central VFR START/END boundaries; extends the other endpoint when needed to include the frame. Disabled without video/frame data. Revision-checked cancellable calculation and one undo transaction. CI pending.",
       "exposure": [
-        "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Shared semantic CommandRegistry actions",
+        "Timing menu and grid context menu; exact Default hotkeys where shipped",
+        "Context-aware remappable hotkey profile"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "SubtitleTimingTests",
+        "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
+        "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Current millisecond-time command affects active line only; selection and VFR START semantics need completion.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-3"
