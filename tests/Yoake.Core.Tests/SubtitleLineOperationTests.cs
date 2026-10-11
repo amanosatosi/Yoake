@@ -20,11 +20,11 @@ public sealed class SubtitleLineOperationTests
     }
     [Fact] public void OutsideRangeAndUnrepresentableEdgeSplitsMakeUsefulOneFrameCopiesWithoutChangingOriginals()
     {
-        var editor=Fixture();var row=editor.Document.Events[1];var original=row.Fields.ToArray();
-        var copy=editor.SplitAtFrame([row],new([0,.04,.1,.18],25),2,true).Single();Assert.Equal(original,row.Fields);
+        var editor=Fixture();var row=editor.Document.Events[1];var original=row.FieldNames.Select(row.Get).ToArray();
+        var copy=editor.SplitAtFrame([row],new([0,.04,.1,.18],25),2,true).Single();Assert.Equal(original,row.FieldNames.Select(row.Get).ToArray());
         Assert.Equal(70,copy.StartMilliseconds);Assert.Equal(140,copy.EndMilliseconds);editor.Undo.Undo();
-        var first=editor.Document.Events[0];original=first.Fields.ToArray();copy=editor.SplitAtFrame([first],new([0,.001,.003,.005],1000),0,true).Single();
-        Assert.Equal(original,first.Fields);Assert.True(copy.EndMilliseconds>copy.StartMilliseconds);
+        var first=editor.Document.Events[0];original=first.FieldNames.Select(first.Get).ToArray();copy=editor.SplitAtFrame([first],new([0,.001,.003,.005],1000),0,true).Single();
+        Assert.Equal(original,first.FieldNames.Select(first.Get).ToArray());Assert.True(copy.EndMilliseconds>copy.StartMilliseconds);
         var unchanged=editor.Document.Serialize();Assert.Throws<ArgumentOutOfRangeException>(()=>editor.SplitAtFrame([first],new([0,.04],25),2,false));Assert.Equal(unchanged,editor.Document.Serialize());
     }
     [Fact] public void DuplicationHandlesSeparateSelectedBlocksAndRetainsCopyOrder()
