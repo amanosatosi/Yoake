@@ -166,6 +166,12 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
     private void Click(string name)=>InOptions<Button>(name).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
     {
+        if(control is ListBox list)
+        {
+            var row=list.ContainerFromIndex(Math.Max(0,list.SelectedIndex)) as Control;
+            Require(row is {Bounds.Height:>0},"A realized grid row must exist before keyboard input.");control=row!;
+        }
+        (TopLevel.GetTopLevel(control) as Window)?.Activate();
         Require(control.Focus()&&control.IsKeyboardFocusWithin,"Shipping control must own focus before keyboard input: "+control.Name);
         control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});
     }
