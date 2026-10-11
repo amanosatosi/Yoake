@@ -167,9 +167,24 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Require(KeyframeFile.Load(_savedKeys).SequenceEqual(new[]{model.FrameTimes.Count+8}),"Export must retain out-of-video metadata even when no cuts are navigable.");Press(Grid,Key.F12);return;
                 case 27:
                     Require(ReferenceEquals(_providerKeys,model.Keyframes)&&ReferenceEquals(_providerTimes,model.FrameTimes)&&model.CurrentFrame==_frame,"Closing an entirely out-of-video list must restore provider metadata and retain its frame map/position.");
+                    window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen=true;return;
+                case 28:
+                    window.FindControl<MenuItem>("KeyframesMenu")!.IsSubMenuOpen=true;return;
+                case 29:
+                    window.FindControl<MenuItem>("RecentKeyframesMenu")!.IsSubMenuOpen=true;return;
+                case 30:
+                    var recent=window.FindControl<MenuItem>("RecentKeyframesMenu")!.Items.OfType<MenuItem>().First();
+                    Require(recent.Bounds.Width>0&&recent.Bounds.Width<540&&recent.Command is Yoake.UI.Commands.RegistryCommand,"Recent files must be usable native menu items with bounded text and semantic command adapters.");
+                    Press(recent,Key.Enter);return;
+                case 31:
+                    if(model.HasKeyframeOperation){_stage--;return;}
+                    Require(model.ExternalKeyframePath==_savedKeys&&model.Keyframes.Count==0&&model.Actions["keyframe/save"].CanExecute(null),"Real Enter on the recent menu must reopen its fixed file through keyframe/open.");
+                    Press(Grid,Key.F12);return;
+                case 32:
+                    Require(ReferenceEquals(_providerKeys,model.Keyframes)&&ReferenceEquals(_providerTimes,model.FrameTimes)&&model.CurrentFrame==_frame&&_editor!.Document.Serialize()==_source&&!_editor.Undo.CanUndo,"Recent-item routing must retain provider, frame and document/history state.");
                     await Invoke("settings/hotkeys/reset-command",new HotkeyCommandReset(Yoake.Core.Hotkeys.HotkeyContext.Default,"keyframe/close"));
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Keyframe menu workflow must have no binding/framework errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window timing acceptance; Ctrl-I; actual time/frame Shift Times controls and reusable persisted history; IME Enter and Escape; non-destructive validation; real Ctrl-3/Ctrl-4 multi-selection VFR snaps, Ctrl-5 scene boundaries and Ctrl-6 selection shift; exact transactional undo and unknown/Mangetsu/Unicode source; provider/frame retention; two-process settings restoration; actual keyframe menu keyboard loading/export, WWXD and Aegisub formats, live remapped close/provider fallback, semantic recents, pre-video metadata/empty-ruler behavior, export of entirely out-of-video lists, source/history/provider/frame retention.\n");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window timing acceptance; Ctrl-I; actual time/frame Shift Times controls and reusable persisted history; IME Enter and Escape; non-destructive validation; real Ctrl-3/Ctrl-4 multi-selection VFR snaps, Ctrl-5 scene boundaries and Ctrl-6 selection shift; exact transactional undo and unknown/Mangetsu/Unicode source; provider/frame retention; two-process settings restoration; actual keyframe menu keyboard loading/export, WWXD and Aegisub formats, live remapped close/provider fallback, actual bounded recent-menu Enter routing, pre-video metadata/empty-ruler behavior, export of entirely out-of-video lists, source/history/provider/frame retention.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }

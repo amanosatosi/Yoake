@@ -52,6 +52,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is not null){_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
+        RefreshRecentKeyframes();
         if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
@@ -153,9 +154,26 @@ public partial class MainWindow : Window, IEditorDialogs
         var clamped=Math.Clamp(height,160,maximum);if(Math.Abs(height-clamped)>0.1)row.Height=new GridLength(clamped);
     }
     private void FrameReady(object? sender,EventArgs e)=>VideoImage.InvalidateVisual();
+    private void RefreshRecentKeyframes()
+    {
+        // Presentation only. Every entry invokes keyframe/open with its fixed
+        // path through the shared semantic command adapter.
+        RecentKeyframesMenu.Items.Clear();
+        var entries=_model?.RecentKeyframeItems??[];RecentKeyframesMenu.IsEnabled=entries.Count>0;
+        foreach(var entry in entries)
+        {
+            var separator=entry.Path.LastIndexOfAny(['\\','/']);
+            var label=separator>=0?entry.Path[(separator+1)..]+" · "+entry.Path[..separator]:entry.Path;
+            var item=new MenuItem{Header=new TextBlock{Text=label,TextTrimming=Avalonia.Media.TextTrimming.CharacterEllipsis,MaxWidth=420},Command=entry.Command,InputGesture=entry.Command.InputGesture};
+            ToolTip.SetTip(item,entry.Path);
+            entry.Command.PropertyChanged+=(_,args)=>{if(args.PropertyName==nameof(Yoake.UI.Commands.RegistryCommand.InputGesture))item.InputGesture=entry.Command.InputGesture;};
+            RecentKeyframesMenu.Items.Add(item);
+        }
+    }
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
         if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();
+        if(e.PropertyName==nameof(MainWindowViewModel.RecentKeyframeItems))Dispatcher.UIThread.Post(RefreshRecentKeyframes);
         if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight))UpdateAudioBounds();
         if(e.PropertyName==nameof(MainWindowViewModel.ViewMode))UpdateWorkspaceView();
         if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
