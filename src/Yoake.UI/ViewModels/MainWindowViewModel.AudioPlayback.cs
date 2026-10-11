@@ -62,7 +62,7 @@ public sealed partial class MainWindowViewModel
         {
             var command=id;var mode=kind;
             _registry.Register(new(new(command,label,mode is AudioPlaybackKind.Selection or AudioPlaybackKind.End?
-                "Preview audio, following selection end changes without committing edits":"Preview a captured audio interval without committing edits","Audio"),(_,token)=>
+                "Preview audio, following selection end changes without committing edits":"Preview a captured audio interval without committing edits","Audio"),(invocation,token)=>
             {
                 token.ThrowIfCancellationRequested();var plan=PlanAudioPlayback(mode);
                 if(plan is not null)_=RunPlaybackAsync(null,plan,command);
@@ -70,7 +70,7 @@ public sealed partial class MainWindowViewModel
             },context=>Applies(context)&&PlanAudioPlayback(mode) is not null));
             Actions[command]=new RegistryCommand(_registry,command,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
-        _registry.Register(new(new("audio/play/toggle","Play selection or stop","Play selection, or stop existing media playback","Audio"),(_,token)=>
+        _registry.Register(new(new("audio/play/toggle","Play selection or stop","Play selection, or stop existing media playback","Audio"),(invocation,token)=>
         {
             token.ThrowIfCancellationRequested();if(IsPlaying)StopPlayback();
             else if(PlanAudioPlayback(AudioPlaybackKind.Selection) is {} plan)_=RunPlaybackAsync(null,plan,"audio/play/toggle");
