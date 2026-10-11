@@ -70,6 +70,7 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.Equal("Search canceled.",tool.Status);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
         _model.Draft!.Text="unfinished é";var draft=_model.Draft;
         Assert.False(await _model.Registry.InvokeAsync("search/next",new(first),new SubtitleSearchRequest(new(){Query="[",RegularExpression=true})));
+        Assert.StartsWith("Invalid regular expression:",tool.Status);
         Assert.Same(draft,_model.Draft);Assert.True(draft.IsChanged);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
         await Command(CommandIds.EditCancel);await Command(CommandIds.SubtitleNew);var second=_model.ActiveDocumentId!.Value;
         Assert.NotSame(tool,_model.SearchState(second));Assert.False(_model.Registry.CanExecute("search/next",new(first)));

@@ -24,8 +24,17 @@ public sealed class SubtitleSearch
         if(options.Query.Length>16384)throw new ArgumentException("Search text is too long.");
         if(!Enum.IsDefined(options.Field))throw new ArgumentException("Unknown search field.");
         _options=options;
-        _regex=new(options.RegularExpression?options.Query:Regex.Escape(options.Query),
-            RegexOptions.CultureInvariant|(options.MatchCase?RegexOptions.None:RegexOptions.IgnoreCase),TimeSpan.FromMilliseconds(250));
+        try
+        {
+            _regex=new(options.RegularExpression?options.Query:Regex.Escape(options.Query),
+                RegexOptions.CultureInvariant|(options.MatchCase?RegexOptions.None:RegexOptions.IgnoreCase),TimeSpan.FromMilliseconds(250));
+        }
+        catch(RegexParseException exception)
+        {
+            // Search owns the validation contract; callers must not need to
+            // understand a provider-specific parser exception to report input.
+            throw new ArgumentException("Invalid regular expression: "+exception.Message,nameof(options),exception);
+        }
     }
     // Capture primitive fields on the owning thread. Background work reads only
     // these strings and metadata, never live editor fields or another document.

@@ -46,7 +46,11 @@ public sealed class SubtitleSearchTests
         Assert.Equal(1,new SubtitleSearch(new("é")).ReplaceAll(editor,[line],"$& $1"));Assert.StartsWith("$& $1",line.Text);editor.Undo.Undo();
         Assert.Throws<ArgumentException>(()=>new SubtitleSearch(new("(.){2}",RegularExpression:true)).ReplaceAll(editor,[line],"$1"));Assert.Equal(source,editor.Document.Serialize());
         var groups=new SubtitleSearch(new("(é)",RegularExpression:true));groups.ReplaceAll(editor,[line],"<$1>");Assert.StartsWith("<é>",line.Text);editor.Undo.Undo();Assert.Equal(source,editor.Document.Serialize());
-        Assert.Throws<ArgumentException>(()=>new SubtitleSearch(new("[",RegularExpression:true)));
+        var history=editor.Undo.NextUndoName;
+        var error=Assert.Throws<ArgumentException>(()=>new SubtitleSearch(new("[",RegularExpression:true)));
+        Assert.Equal("options",error.ParamName);Assert.StartsWith("Invalid regular expression:",error.Message);
+        Assert.IsType<System.Text.RegularExpressions.RegexParseException>(error.InnerException);
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
     }
     [Fact] public void SnapshotsCannotApplyToChangedOrForeignDocumentsAndCancellationLeavesHistoryUntouched()
     {
