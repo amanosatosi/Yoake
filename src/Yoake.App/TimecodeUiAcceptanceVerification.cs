@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
+using KeyModifiers = Avalonia.Input.KeyModifiers;
 using Avalonia.Threading;
 using Yoake.Core.Commands;
 using Yoake.Core.Hotkeys;
