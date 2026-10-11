@@ -1,3 +1,5 @@
+using Avalonia;
+using Yoake.Core.Logging;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Presenters;
