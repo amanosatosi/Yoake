@@ -168,6 +168,9 @@
 <MenuItem Header="Clip tool" InputGesture="{Binding Actions[video/tool/clip].InputGesture}" Command="{Binding Actions[video/tool/clip]}" />
 </MenuItem>
 <MenuItem Name="AudioMenu" Header="Audio">
+<MenuItem Name="SaveAudioClipMenu" Header="Save selected-line audio clip…" Command="{Binding Actions[audio/save/clip]}" InputGesture="{Binding Actions[audio/save/clip].InputGesture}" />
+<MenuItem Header="Cancel audio clip export" Command="{Binding Actions[audio/save/cancel]}" InputGesture="{Binding Actions[audio/save/cancel].InputGesture}" />
+<Separator />
 <MenuItem Name="AudioWaveformMenu" Header="Waveform" ToggleType="Radio" IsChecked="{Binding Actions[audio/view/waveform].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/view/waveform]}" InputGesture="{Binding Actions[audio/view/waveform].InputGesture}" />
 <MenuItem Name="AudioSpectrumMenu" Header="Spectrum" ToggleType="Radio" IsChecked="{Binding Actions[audio/view/spectrum].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/view/spectrum]}" InputGesture="{Binding Actions[audio/view/spectrum].InputGesture}" />
 <MenuItem Name="AudioAutoScrollMenu" Header="Autoscroll to selected line" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/opt/autoscroll].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autoscroll]}" InputGesture="{Binding Actions[audio/opt/autoscroll].InputGesture}" />
@@ -337,6 +340,7 @@
 <ListBox Name="SubtitleRows" controls:SubtitleGridText.TagDisplayMode="{Binding GridTagDisplay}" Grid.Row="1" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
 <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,0" /><Setter Property="Height" Value="26" /><Setter Property="MinHeight" Value="26" /><Setter Property="MaxHeight" Value="26" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style><Style Selector="Grid.subtitle-row TextBlock"><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" /></Style><Style Selector="Grid.subtitle-row.comment TextBlock"><Setter Property="Foreground" Value="{DynamicResource AssSyntaxUnknown}" /></Style><Style Selector="ListBoxItem:selected Grid.subtitle-row TextBlock"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style></ListBox.Styles>
 <ListBox.ContextMenu><ContextMenu>
+<MenuItem Header="Save selected-line audio clip…" Command="{Binding Actions[audio/save/clip]}" InputGesture="{Binding Actions[audio/save/clip].InputGesture}" />
 <MenuItem Name="SelectLinesContextMenu" Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" />
 <MenuItem Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" />
 <MenuItem Header="Timing">

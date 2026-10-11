@@ -22,6 +22,7 @@ public interface IEditorDialogs
     Task<string?> OpenTimecodesAsync()=>Task.FromResult<string?>(null);
     Task<string?> SaveTimecodesAsync(string suggestedName)=>Task.FromResult<string?>(null);
     Task<string?> SaveKeyframesAsync(string suggestedName)=>Task.FromResult<string?>(null);
+    Task<string?> SaveAudioClipAsync(string suggestedName)=>Task.FromResult<string?>(null);
     Task<string?> SaveSubtitleAsync(string suggestedName);
     Task<UnsavedChoice> ConfirmUnsavedAsync(string title);
     Task<bool> ConfirmRevertAsync();

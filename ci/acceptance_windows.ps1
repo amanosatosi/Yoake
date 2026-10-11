@@ -122,3 +122,23 @@ foreach ($case in @('fresh', 'restored')) {
     $process.Dispose()
   }
 }
+# Audio export exercises the real menu/input path in a separate native process.
+$clipRoot = Join-Path $root ('audio-clip-' + [Guid]::NewGuid().ToString('N'))
+$clipProfile = Join-Path $clipRoot 'profile'
+New-Item -ItemType Directory -Force -Path $clipProfile | Out-Null
+$logs = Join-Path $clipRoot 'logs'
+$report = Join-Path $clipRoot 'acceptance.txt'
+$arguments = @('--verify-ui-audio-clip', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $clipProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged audio clip acceptance timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged audio clip acceptance failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}

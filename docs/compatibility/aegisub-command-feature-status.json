@@ -781,12 +781,21 @@
     },
     {
       "id": "audio/save/clip",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Save an audio clip of the selected line",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/save/clip",
+      "status": "partially implemented",
+      "backend": "Bounded background PCM16 WAV export of one min-start/max-end selected-row span, stored timings including comments; ceiling sample boundaries and 3.5 EOF/empty-range behavior; native provider decoding, atomic output and document-owned cancellation.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio menu and grid context menu",
+        "Native WAV save picker",
+        "Live configurable contextual hotkeys; no release default"
+      ],
+      "tests": [
+        "AudioClipFileTests",
+        "EditorVerification native decode/export",
+        "AudioClipUiAcceptanceVerification (real native menu Enter and contextual cancel key)"
+      ],
+      "notes": "Exact src/command/audio.cpp and libaegisub/audio/provider.cpp plus tests/tests/audio.cpp from both releases inspected. 3.5 clamps to EOF and emits a 44-byte WAV for an empty interval; 3.2 returned without writing on empty ranges. Yoake retains source channels/rate rather than Aegisub's provider downmix limitation, uses safe saturated PCM16 conversion independent of playback gain/mute, prevents overwriting opened media, and adds atomic cancellation/error handling. No subtitle draft commit or undo mutation. Pending CI validation; do not count complete yet.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2490,7 +2499,7 @@
     {
       "id": "subtitle/select/visible",
       "yoake_command": "subtitle/select/visible",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Document-local immutable selection snapshots; shared structured/grapheme-safe search with exact/contains/regex and text/style/actor/effect fields, filters/inversion and true replace/add/subtract/intersect sets; central VFR inclusive START/END visibility; cancellation/revision/selection validation before publication.",
       "exposure": [
         "CommandRegistry",
@@ -2503,7 +2512,7 @@
         "EditorWorkflowTests.SelectLinesOwnsSetOperationsEmptySelectionPendingDraftValidationCancellationAndSettings",
         "SelectionUiAcceptanceVerification (separate two-process packaged acceptance)"
       ],
-      "notes": "Both exact release dialog_selection.cpp / command/subtitle.cpp inspected: matching/set operations and visible frame semantics unchanged. Yoake deliberately defaults to structured visible text with explicit raw ASS, keeps validation errors visible, saves successful criteria only, and retains the examined video frame despite autoseek for visible selection. Empty selection retains active; invalid pending draft cannot change active. No subtitle mutation/undo entry except the normal valid draft commit when changing active. Implementation awaits CI; do not count complete yet.",
+      "notes": "Both exact release dialog_selection.cpp / command/subtitle.cpp inspected: matching/set operations and visible frame semantics unchanged. Yoake deliberately defaults to structured visible text with explicit raw ASS, keeps validation errors visible, saves successful criteria only, and retains the examined video frame despite autoseek for visible selection. Empty selection retains active; invalid pending draft cannot change active. No subtitle mutation/undo entry except the normal valid draft commit when changing active. Verified at f6189b7d4ce4c321bfe2b7cb9272dea432c9f751; all jobs green: https://github.com/amanosatosi/Yoake/actions/runs/38169118635 . Select Visible activates the first visible row; criteria selection retains an included active row. Both packaged launches passed real menu/dropdown Enter and Grid F9/F11, IME/error/draft/empty-selection paths and retained examined frame.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2932,7 +2941,7 @@
     {
       "id": "tool/line/select",
       "yoake_command": "tool/line/select",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Document-local immutable selection snapshots; shared structured/grapheme-safe search with exact/contains/regex and text/style/actor/effect fields, filters/inversion and true replace/add/subtract/intersect sets; central VFR inclusive START/END visibility; cancellation/revision/selection validation before publication.",
       "exposure": [
         "CommandRegistry",
@@ -2945,7 +2954,7 @@
         "EditorWorkflowTests.SelectLinesOwnsSetOperationsEmptySelectionPendingDraftValidationCancellationAndSettings",
         "SelectionUiAcceptanceVerification (separate two-process packaged acceptance)"
       ],
-      "notes": "Both exact release dialog_selection.cpp / command/subtitle.cpp inspected: matching/set operations and visible frame semantics unchanged. Yoake deliberately defaults to structured visible text with explicit raw ASS, keeps validation errors visible, saves successful criteria only, and retains the examined video frame despite autoseek for visible selection. Empty selection retains active; invalid pending draft cannot change active. No subtitle mutation/undo entry except the normal valid draft commit when changing active. Implementation awaits CI; do not count complete yet.",
+      "notes": "Both exact release dialog_selection.cpp / command/subtitle.cpp inspected: matching/set operations and visible frame semantics unchanged. Yoake deliberately defaults to structured visible text with explicit raw ASS, keeps validation errors visible, saves successful criteria only, and retains the examined video frame despite autoseek for visible selection. Empty selection retains active; invalid pending draft cannot change active. No subtitle mutation/undo entry except the normal valid draft commit when changing active. Verified at f6189b7d4ce4c321bfe2b7cb9272dea432c9f751; all jobs green: https://github.com/amanosatosi/Yoake/actions/runs/38169118635 . Select Visible activates the first visible row; criteria selection retains an included active row. Both packaged launches passed real menu/dropdown Enter and Grid F9/F11, IME/error/draft/empty-selection paths and retained examined frame.",
       "yoake_default_hotkeys": {}
     },
     {

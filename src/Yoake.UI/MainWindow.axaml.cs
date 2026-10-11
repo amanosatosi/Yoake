@@ -325,6 +325,10 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         var file=await StorageProvider.SaveFilePickerAsync(new(){Title="Save subtitle",SuggestedFileName=suggestedName,DefaultExtension="ass",ShowOverwritePrompt=true,FileTypeChoices=[SubtitleFiles]});return file is null?null:LocalPath(file);
     }
+    public async Task<string?> SaveAudioClipAsync(string suggestedName)
+    {
+        var file=await StorageProvider.SaveFilePickerAsync(new(){Title="Save selected-line audio clip",SuggestedFileName=suggestedName,DefaultExtension="wav",ShowOverwritePrompt=true,FileTypeChoices=[new FilePickerFileType("PCM audio"){Patterns=["*.wav"]}]});return file is null?null:LocalPath(file);
+    }
     public async Task<UnsavedChoice> ConfirmUnsavedAsync(string title)
     {
         var result=await AskAsync("Unsaved changes",$"Save changes to {title}?",["Save","Discard","Cancel"]);return result==0?UnsavedChoice.Save:result==1?UnsavedChoice.Discard:UnsavedChoice.Cancel;

@@ -22,6 +22,14 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task AudioClipExportRequiresLoadedAudioAndActualSelectedRows()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)}日本語 é";await Command(CommandIds.EditCommit);var editor=_model.ActiveEditor!;
+        var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;_model.Draft.Start="unfinished";var draft=_model.Draft;
+        Assert.False(_model.Actions["audio/save/clip"].CanExecute(null));Assert.False(_model.Actions["audio/save/cancel"].CanExecute(null));Assert.False(_model.HasAudioExportOperation);
+        Assert.False(await _model.Registry.InvokeAsync("audio/save/clip",new(),Path.Combine(_root,"clip.wav")));Assert.False(await _model.Registry.InvokeAsync("audio/save/clip",new(Guid.NewGuid()),Path.Combine(_root,"clip.wav")));
+        Assert.Same(draft,_model.Draft);Assert.Equal("unfinished",_model.Draft.Start);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(File.Exists(Path.Combine(_root,"clip.wav")));
+    }
     [Fact] public async Task SelectLinesOwnsSetOperationsEmptySelectionPendingDraftValidationCancellationAndSettings()
     {
         var path=Path.Combine(_root,"selection.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+
