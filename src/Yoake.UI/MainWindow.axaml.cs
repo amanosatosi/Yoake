@@ -198,7 +198,9 @@ public partial class MainWindow : Window, IEditorDialogs
         if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Alt))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Alt;
         if(e.KeyModifiers.HasFlag(Avalonia.Input.KeyModifiers.Meta))modifiers|=Yoake.Core.Hotkeys.KeyModifiers.Meta;
         // Enter in metadata commits, without advancing while a dropdown is open.
-        var binding=_model.Hotkeys.Resolve(new(Yoake.UI.Commands.EditorKeyNames.FromKey(e.Key),modifiers),[HotkeyContext.Default,context]);
+        var gesture=new HotkeyGesture(Yoake.UI.Commands.EditorKeyNames.FromEvent(e),modifiers);
+        var binding=_model.Hotkeys.Resolve(gesture,[HotkeyContext.Default,context],_model.GlobalTimingHotkeys);
+        if(binding is not null&&!HotkeyInputPolicy.MayRoute(binding,gesture,ancestors.Any(input=>input is TextBox or AutoCompleteBox)))return;
         var commandId=e.Key==Key.Escape&&_model.HasGesture?CommandIds.EditCancel:binding?.CommandId;
         if(commandId is null)return;
         if(commandId==CommandIds.TextHardNewline&&!SubtitleText.IsKeyboardFocusWithin)return;
@@ -206,7 +208,7 @@ public partial class MainWindow : Window, IEditorDialogs
         _model.TextCursor=SubtitleText.CaretIndex;
         _model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;
         e.Handled=true;
-        await _model.Registry.InvokeAsync(commandId,new(FocusContext:context.ToString()));
+        await _model.Registry.InvokeAsync(commandId,new(_model.ActiveDocumentId,FocusContext:context.ToString()));
     }
     private async void HandleClosing(object? sender,WindowClosingEventArgs e)
     {

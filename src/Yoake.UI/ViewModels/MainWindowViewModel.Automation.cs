@@ -46,7 +46,7 @@ public sealed partial class MainWindowViewModel
     public IReadOnlyList<AutomationScriptItem> AutomationScripts => _automationEntries.Where(e => e.DocumentId is null || e.DocumentId == _activeId).ToArray();
     public IReadOnlyList<AutomationMenuEntry> AutomationMacros => _activeId is { } id
         ? _automationCatalog.Macros(id).Select(b => new AutomationMenuEntry(b.CommandId, b.Macro.Name, b.Validation.Help ?? b.Macro.Description,
-            new RegistryCommand(_registry, b.CommandId, CurrentContext), b.Macro.HasToggle, b.Validation.Active)).ToArray() : [];
+            new RegistryCommand(_registry, b.CommandId, CurrentContext, hotkeys:()=>HotkeyProfile), b.Macro.HasToggle, b.Validation.Active)).ToArray() : [];
 
     private void InitializeAutomationCommands()
     {
@@ -56,7 +56,7 @@ public sealed partial class MainWindowViewModel
         void Register(string id, string label, Func<CommandInvocation, CancellationToken, ValueTask> execute, Func<CommandContext, bool>? available = null)
         {
             _registry.Register(new(new(id, label, label, "Automation"), execute, available));
-            Actions[id] = new RegistryCommand(_registry, id, CurrentContext);
+            Actions[id] = new RegistryCommand(_registry, id, CurrentContext, hotkeys:()=>HotkeyProfile);
         }
         Register(CommandIds.AutomationManager, "Automation Manager…", async (_, _) => { if (Dialogs is not null) await Dialogs.ShowAutomationManagerAsync(this); });
         Register(CommandIds.AutomationLoad, "Add script…", async (invocation, token) =>

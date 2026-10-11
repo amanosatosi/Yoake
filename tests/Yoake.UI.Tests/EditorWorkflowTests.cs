@@ -22,6 +22,70 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public void KeyAliasesAndModifierBitsMatchTheShippingInputProtocol()
+    {
+        foreach(var key in new[]{Avalonia.Input.Key.Return,Avalonia.Input.Key.Enter})Assert.Equal("Enter",Yoake.UI.Commands.EditorKeyNames.FromKey(key));
+        Assert.Equal("Backspace",Yoake.UI.Commands.EditorKeyNames.FromKey(Avalonia.Input.Key.Back));
+        Assert.Equal("OEM1",Yoake.UI.Commands.EditorKeyNames.FromKey(Avalonia.Input.Key.OemSemicolon));
+        Assert.Equal("KP_2",Yoake.UI.Commands.EditorKeyNames.FromKey(Avalonia.Input.Key.NumPad2));
+        Assert.Equal("KP_Enter",Yoake.UI.Commands.EditorKeyNames.FromEvent(new(){Key=Avalonia.Input.Key.Enter,PhysicalKey=Avalonia.Input.PhysicalKey.NumPadEnter}));
+        var modifiers=Yoake.UI.Commands.EditorKeyNames.FromModifiers(Avalonia.Input.KeyModifiers.Control|Avalonia.Input.KeyModifiers.Alt);
+        Assert.Equal(Yoake.Core.Hotkeys.KeyModifiers.Control|Yoake.Core.Hotkeys.KeyModifiers.Alt,modifiers);
+        Assert.Equal(Avalonia.Input.KeyModifiers.Control|Avalonia.Input.KeyModifiers.Alt,Yoake.UI.Commands.EditorKeyNames.ToGesture(new("K",modifiers))!.KeyModifiers);
+    }
+    [Fact] public async Task HotkeySettingsCommandsUpdateAdaptersAndPersistenceWithoutChangingTheEditor()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="日本語 {\\future(1,2)}";
+        var editor=_model.ActiveEditor;var draft=_model.Draft;var line=_model.SelectedEvent;
+        var command=_model.Actions[CommandIds.SubtitleNew];Assert.Equal("Ctrl-N",command.Shortcut);
+        await Command("settings/hotkeys/set",new HotkeyChange(Yoake.Core.Hotkeys.HotkeyContext.Default,CommandIds.SubtitleNew,["F10","Ctrl-Alt-N"]));
+        Assert.Equal("F10",command.Shortcut);Assert.Equal(Avalonia.Input.Key.F10,command.InputGesture!.Key);
+        Assert.Contains("F10",command.Tooltip);
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Same(line,_model.SelectedEvent);
+        var persisted=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Single(persisted.HotkeyOverrides!);
+        await Command("settings/hotkeys/set",new HotkeyChange(Yoake.Core.Hotkeys.HotkeyContext.Default,CommandIds.SubtitleNew,[]));
+        Assert.Equal("",command.Shortcut);Assert.Null(command.InputGesture);
+        await Command("settings/hotkeys/reset-command",new HotkeyCommandReset(Yoake.Core.Hotkeys.HotkeyContext.Default,CommandIds.SubtitleNew));
+        Assert.Equal("Ctrl-N",command.Shortcut);
+    }
+    [Fact] public async Task CommandAdapterHistoryLabelsFollowDraftUndoRedoAndActiveDocument()
+    {
+        var undo = _model.Actions[CommandIds.EditUndo]; var redo = _model.Actions[CommandIds.EditRedo];
+        Assert.Equal("Nothing to undo", undo.Label); Assert.Equal("Nothing to redo", redo.Label);
+        await Command(CommandIds.GridInsertAfter);
+        _model.Draft!.Text = "日本語 draft";
+        Assert.Equal("Undo draft", undo.Label);
+        await Command(CommandIds.EditUndo); Assert.Equal("", _model.Draft.Text);
+        Assert.Equal("Undo " + _model.ActiveEditor!.Undo.NextUndoName, undo.Label);
+        await Command(CommandIds.EditUndo); Assert.Equal("Nothing to undo", undo.Label);
+        Assert.Equal("Redo " + _model.ActiveEditor.Undo.NextRedoName, redo.Label);
+        Assert.True(redo.CanExecute(null));
+        var first = _workspace.ActiveDocument!.Id;
+        await Command(CommandIds.SubtitleNew);
+        Assert.Equal("Nothing to redo", redo.Label); Assert.False(redo.CanExecute(null));
+        await Command(CommandIds.WorkspaceActivateTab, first);
+        Assert.StartsWith("Redo ", redo.Label); Assert.True(redo.CanExecute(null));
+    }
+
+    [Fact] public async Task VisualRadioStateIsOwnedBySemanticCommandsIncludingDirectVectorModeSelection()
+    {
+        foreach (var tool in MainWindowViewModel.VisualToolNames)
+        {
+            var id = "video/tool/" + (tool == "Position" ? "position" : tool.ToLowerInvariant());
+            await Command(id);
+            Assert.Equal(tool, _model.ActiveVisualTool);
+            Assert.Single(MainWindowViewModel.VisualToolNames.Where(name => _model.Actions["video/tool/" + (name == "Position" ? "position" : name.ToLowerInvariant())].IsChecked));
+        }
+        foreach (var mode in MainWindowViewModel.VectorModes)
+        {
+            await Command("video/vector/" + mode.ToLowerInvariant());
+            Assert.True(_model.IsVectorClipTool); Assert.Equal(mode, _model.VectorMode);
+            Assert.Single(MainWindowViewModel.VectorModes.Where(name => _model.Actions["video/vector/" + name.ToLowerInvariant()].IsChecked));
+        }
+        await Command("video/tool/crosshair");
+        Assert.DoesNotContain(MainWindowViewModel.VectorModes, name => _model.Actions["video/vector/" + name.ToLowerInvariant()].IsChecked);
+    }
+
     [Fact] public async Task ViewCommandsOnlyChangePresentationAndRestoreOnNextLaunch()
     {
         await Command(CommandIds.GridInsertAfter);

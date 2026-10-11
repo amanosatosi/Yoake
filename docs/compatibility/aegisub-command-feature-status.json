@@ -163,7 +163,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-Q"
+        ]
+      }
     },
     {
       "id": "app/hide",
@@ -237,13 +241,25 @@
     },
     {
       "id": "app/options",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Window lifetime or normal application settings; no global current document. Required action: Configure Aegisub",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_command": "app/options",
+      "status": "partially implemented",
+      "backend": "Usable live contextual keyboard settings window with add/change/remove/multiple bindings, capture, conflicts, command/context/all resets and persisted user overrides. Other application preferences still need consolidation.",
+      "exposure": [
+        "Edit > Options",
+        "Default: Alt-O",
+        "CommandRegistry"
+      ],
+      "tests": [
+        "HotkeyProfileTests",
+        "EditorWorkflowTests",
+        "HotkeyUiAcceptanceVerification"
+      ],
+      "notes": "Actual workflow implemented; this does not claim completion of every application setting.",
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Alt-O"
+        ]
+      }
     },
     {
       "id": "app/show_all",
@@ -257,13 +273,24 @@
     },
     {
       "id": "app/toggle/global_hotkeys",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Window lifetime or normal application settings; no global current document. Required action: Toggle global hotkey overrides (Medusa Mode)",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_command": "app/toggle/global_hotkeys",
+      "status": "partially implemented",
+      "backend": "Persisted Medusa option and checked command; resolver applies enabled Always overrides first. Corresponding incomplete audio/timing action backends remain pending.",
+      "exposure": [
+        "Options > Keyboard shortcuts",
+        "Audio: Ctrl-KP_Multiply",
+        "CommandRegistry"
+      ],
+      "tests": [
+        "HotkeyProfileTests",
+        "HotkeyUiAcceptanceVerification"
+      ],
+      "notes": "Always is opt-in, never an implicit fallback. Same-context conflicts are rejected with owner information; cross-context duplicates are supported.",
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "Ctrl-KP_Multiply"
+        ]
+      }
     },
     {
       "id": "app/toggle/toolbar",
@@ -303,7 +330,15 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_Enter"
+        ],
+        "Audio": [
+          "Enter",
+          "G"
+        ]
+      }
     },
     {
       "id": "audio/commit/default",
@@ -313,7 +348,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "Shift-G"
+        ]
+      }
     },
     {
       "id": "audio/commit/next",
@@ -519,10 +558,20 @@
       ],
       "notes": "Actual current-line playback exists; separate audio-only semantics and defaults need integration.",
       "yoake_default_hotkeys": {
-        "Video": [
-          "R"
+        "Always": [
+          "KP_5"
         ],
         "Audio": [
+          "S",
+          "Space"
+        ],
+        "Styling Assistant": [
+          "End"
+        ],
+        "Translation Assistant": [
+          "End"
+        ],
+        "Video": [
           "R"
         ],
         "Subtitle Grid": [
@@ -546,10 +595,20 @@
       ],
       "notes": "Current line interval plays; editable timing/syllable selection is not yet equivalent.",
       "yoake_default_hotkeys": {
-        "Video": [
-          "R"
+        "Always": [
+          "KP_5"
         ],
         "Audio": [
+          "S",
+          "Space"
+        ],
+        "Styling Assistant": [
+          "End"
+        ],
+        "Translation Assistant": [
+          "End"
+        ],
+        "Video": [
           "R"
         ],
         "Subtitle Grid": [
@@ -565,7 +624,14 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_3"
+        ],
+        "Audio": [
+          "W"
+        ]
+      }
     },
     {
       "id": "audio/play/selection/before",
@@ -575,7 +641,14 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_1"
+        ],
+        "Audio": [
+          "Q"
+        ]
+      }
     },
     {
       "id": "audio/play/selection/begin",
@@ -585,7 +658,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "E"
+        ]
+      }
     },
     {
       "id": "audio/play/selection/end",
@@ -595,7 +672,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "D"
+        ]
+      }
     },
     {
       "id": "audio/play/to_end",
@@ -605,7 +686,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "T"
+        ]
+      }
     },
     {
       "id": "audio/play/toggle",
@@ -615,7 +700,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "B"
+        ]
+      }
     },
     {
       "id": "audio/save/clip",
@@ -635,7 +724,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "A"
+        ]
+      }
     },
     {
       "id": "audio/scroll/right",
@@ -645,7 +738,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "F"
+        ]
+      }
     },
     {
       "id": "audio/stop",
@@ -661,12 +758,16 @@
         "EditorWorkflowTests",
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
-      "notes": "",
+      "notes": " Audio H/Escape and Medusa KP_8 share the existing central playback stop command; no second playback clock.",
       "yoake_default_hotkeys": {
-        "Video": [
-          "Escape"
+        "Always": [
+          "KP_8"
         ],
         "Audio": [
+          "H",
+          "Escape"
+        ],
+        "Video": [
           "Escape"
         ]
       }
@@ -726,7 +827,11 @@
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
       "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Edit Box": [
+          "Alt-3"
+        ]
+      }
     },
     {
       "id": "edit/color/primary",
@@ -743,7 +848,11 @@
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
       "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Edit Box": [
+          "Alt-1"
+        ]
+      }
     },
     {
       "id": "edit/color/secondary",
@@ -760,7 +869,11 @@
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
       "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Edit Box": [
+          "Alt-2"
+        ]
+      }
     },
     {
       "id": "edit/color/shadow",
@@ -777,7 +890,11 @@
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
       "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Edit Box": [
+          "Alt-4"
+        ]
+      }
     },
     {
       "id": "edit/find_replace",
@@ -795,7 +912,7 @@
       ],
       "notes": "Regex/literal raw Text search and replace exist; field/scope/skip-tags and persistent Find Next are missing.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-F"
         ]
       }
@@ -843,7 +960,7 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Subtitle Grid": [
+        "Default": [
           "Ctrl-C"
         ]
       }
@@ -864,7 +981,7 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Subtitle Grid": [
+        "Default": [
           "Ctrl-X"
         ]
       }
@@ -885,6 +1002,9 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-Delete"
+        ],
         "Subtitle Grid": [
           "Delete"
         ]
@@ -906,8 +1026,8 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Always": [
-          "Ctrl-D"
+        "Default": [
+          "Ctrl-Alt-D"
         ]
       }
     },
@@ -964,7 +1084,7 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Subtitle Grid": [
+        "Default": [
           "Ctrl-V"
         ]
       }
@@ -977,7 +1097,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-Shift-V"
+        ]
+      }
     },
     {
       "id": "edit/line/recombine",
@@ -996,8 +1120,12 @@
       "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the current frame and a line which starts on the next frame",
       "exposure": [],
       "tests": [],
-      "notes": "",
-      "yoake_default_hotkeys": {}
+      "notes": "Modern Ctrl-D/Ctrl-Shift-D defaults are reserved for these semantic actions; the frame-split backend remains pending. Existing plain duplicate and text-cursor split use Ctrl-Alt-D and Ctrl-Alt-Shift-D.",
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-Shift-D"
+        ]
+      }
     },
     {
       "id": "edit/line/split/before",
@@ -1006,8 +1134,12 @@
       "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the previous frame and a line which starts on the current frame",
       "exposure": [],
       "tests": [],
-      "notes": "",
-      "yoake_default_hotkeys": {}
+      "notes": "Modern Ctrl-D/Ctrl-Shift-D defaults are reserved for these semantic actions; the frame-split backend remains pending. Existing plain duplicate and text-cursor split use Ctrl-Alt-D and Ctrl-Alt-Shift-D.",
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-D"
+        ]
+      }
     },
     {
       "id": "edit/line/split/by_karaoke",
@@ -1035,8 +1167,8 @@
       ],
       "notes": "Existing cursor split is grapheme-safe; compare its duration estimate and tag inheritance with upstream.",
       "yoake_default_hotkeys": {
-        "Always": [
-          "Ctrl-Shift-D"
+        "Default": [
+          "Ctrl-Alt-Shift-D"
         ]
       }
     },
@@ -1076,7 +1208,7 @@
       ],
       "notes": "Logical redo works; contextual action labels and defaults need integration.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-Y",
           "Ctrl-Shift-Z"
         ]
@@ -1098,7 +1230,7 @@
       ],
       "notes": "Draft/gesture cancel exists; actual edit-text reset and active-line behavior need parity tests.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Escape"
         ]
       }
@@ -1199,7 +1331,7 @@
       ],
       "notes": "Logical history and draft cancellation work; contextual action labels and defaults need integration.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-Z"
         ]
       }
@@ -1220,8 +1352,12 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Always": [
-          "Alt-Down"
+        "Default": [
+          "Ctrl-KP_2",
+          "Alt-PageDown"
+        ],
+        "Styling Assistant": [
+          "PageDown"
         ]
       }
     },
@@ -1242,7 +1378,8 @@
       "notes": "Commit + next creates a line at EOF; retain invalid-draft and IME protections.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
-          "Enter"
+          "Enter",
+          "KP_Enter"
         ],
         "Subtitle Grid": [
           "Enter"
@@ -1265,8 +1402,12 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Always": [
-          "Alt-Up"
+        "Default": [
+          "Ctrl-KP_8",
+          "Alt-PageUp"
+        ],
+        "Styling Assistant": [
+          "PageUp"
         ]
       }
     },
@@ -1286,7 +1427,8 @@
       ],
       "notes": "Row move exists; current Alt-Shift-Down differs from shipped Alt-Down.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
+          "Alt-Down",
           "Alt-Shift-Down"
         ]
       }
@@ -1307,7 +1449,8 @@
       ],
       "notes": "Row move exists; current Alt-Shift-Up differs from shipped Alt-Up.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
+          "Alt-Up",
           "Alt-Shift-Up"
         ]
       }
@@ -1500,7 +1643,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "F1"
+        ]
+      }
     },
     {
       "id": "help/forums",
@@ -1608,7 +1755,7 @@
       ],
       "notes": "Persisted subtitle MRU exists; generated menu uses direct input handler rather than a typed semantic recent action.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-O"
         ]
       }
@@ -1659,7 +1806,7 @@
       ],
       "notes": "Yoake closes one independent tab with unsaved prompt; Aegisub 3.5 command closes its project window.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-W"
         ]
       }
@@ -1680,7 +1827,7 @@
       ],
       "notes": "Existing Find/Replace combines both entries; production scope/options and Find Next need completion.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-F"
         ]
       }
@@ -1693,7 +1840,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "F3"
+        ]
+      }
     },
     {
       "id": "subtitle/insert/after",
@@ -1773,7 +1924,7 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-N"
         ]
       }
@@ -1794,7 +1945,7 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-O"
         ]
       }
@@ -1862,8 +2013,9 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Always": [
-          "Ctrl-S"
+        "Default": [
+          "Ctrl-S",
+          "F2"
         ]
       }
     },
@@ -1883,7 +2035,7 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-Shift-S"
         ]
       }
@@ -1957,7 +2109,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-6"
+        ]
+      }
     },
     {
       "id": "time/lead/both",
@@ -1977,7 +2133,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "C"
+        ]
+      }
     },
     {
       "id": "time/lead/out",
@@ -1987,7 +2147,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "V"
+        ]
+      }
     },
     {
       "id": "time/length/decrease",
@@ -1997,7 +2161,14 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_7"
+        ],
+        "Audio": [
+          "KP_Subtract"
+        ]
+      }
     },
     {
       "id": "time/length/decrease/shift",
@@ -2007,7 +2178,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "Shift-KP_Subtract"
+        ]
+      }
     },
     {
       "id": "time/length/increase",
@@ -2017,7 +2192,14 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_9"
+        ],
+        "Audio": [
+          "KP_Add"
+        ]
+      }
     },
     {
       "id": "time/length/increase/shift",
@@ -2027,7 +2209,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Audio": [
+          "Shift-KP_Add"
+        ]
+      }
     },
     {
       "id": "time/next",
@@ -2037,7 +2223,15 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_2"
+        ],
+        "Audio": [
+          "Right",
+          "X"
+        ]
+      }
     },
     {
       "id": "time/prev",
@@ -2047,7 +2241,15 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_0"
+        ],
+        "Audio": [
+          "Left",
+          "Z"
+        ]
+      }
     },
     {
       "id": "time/shift",
@@ -2057,7 +2259,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-I"
+        ]
+      }
     },
     {
       "id": "time/snap/end_video",
@@ -2075,7 +2281,7 @@
       ],
       "notes": "Current millisecond-time command affects active line only; selection and VFR END semantics need completion.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-4"
         ]
       }
@@ -2088,7 +2294,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-5"
+        ]
+      }
     },
     {
       "id": "time/snap/start_video",
@@ -2106,7 +2316,7 @@
       ],
       "notes": "Current millisecond-time command affects active line only; selection and VFR START semantics need completion.",
       "yoake_default_hotkeys": {
-        "Always": [
+        "Default": [
           "Ctrl-3"
         ]
       }
@@ -2119,7 +2329,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_4"
+        ]
+      }
     },
     {
       "id": "time/start/increase",
@@ -2129,7 +2343,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Always": [
+          "KP_6"
+        ]
+      }
     },
     {
       "id": "timecode/close",
@@ -2172,7 +2390,11 @@
         "VisualUiVerification"
       ],
       "notes": "External ASSDraw launcher removed in 3.5; Yoake retains its integrated structured vector-clip tools.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Video": [
+          "J"
+        ]
+      }
     },
     {
       "id": "tool/export",
@@ -2255,7 +2477,12 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Styling Assistant": [
+          "Enter",
+          "KP_Enter"
+        ]
+      }
     },
     {
       "id": "tool/styling_assistant/preview",
@@ -2265,7 +2492,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Styling Assistant": [
+          "F8"
+        ]
+      }
     },
     {
       "id": "tool/time/kanji",
@@ -2305,7 +2536,12 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Translation Assistant": [
+          "Enter",
+          "KP_Enter"
+        ]
+      }
     },
     {
       "id": "tool/translation_assistant/insert_original",
@@ -2315,7 +2551,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Translation Assistant": [
+          "Insert"
+        ]
+      }
     },
     {
       "id": "tool/translation_assistant/next",
@@ -2325,7 +2565,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Translation Assistant": [
+          "PageDown"
+        ]
+      }
     },
     {
       "id": "tool/translation_assistant/prev",
@@ -2335,7 +2579,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Translation Assistant": [
+          "PageUp"
+        ]
+      }
     },
     {
       "id": "tool/translation_assistant/preview",
@@ -2345,7 +2593,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Translation Assistant": [
+          "F8"
+        ]
+      }
     },
     {
       "id": "video/aspect/cinematic",
@@ -2445,7 +2697,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-Space"
+        ]
+      }
     },
     {
       "id": "video/frame/copy",
@@ -2493,6 +2749,12 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-KP_6"
+        ],
+        "Subtitle Grid": [
+          "Right"
+        ],
         "Video": [
           "Right"
         ]
@@ -2506,7 +2768,14 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Ctrl-Right"
+        ],
+        "Video": [
+          "Ctrl-Right"
+        ]
+      }
     },
     {
       "id": "video/frame/next/keyframe",
@@ -2523,7 +2792,14 @@
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
       "notes": "Central frame navigation exists; default Grid/Video routing and boundary cases need coverage.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Shift-Right"
+        ],
+        "Video": [
+          "Shift-Right"
+        ]
+      }
     },
     {
       "id": "video/frame/next/large",
@@ -2533,7 +2809,14 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Alt-Right"
+        ],
+        "Video": [
+          "Alt-Right"
+        ]
+      }
     },
     {
       "id": "video/frame/prev",
@@ -2551,6 +2834,12 @@
       ],
       "notes": "",
       "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-KP_4"
+        ],
+        "Subtitle Grid": [
+          "Left"
+        ],
         "Video": [
           "Left"
         ]
@@ -2564,7 +2853,14 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Ctrl-Left"
+        ],
+        "Video": [
+          "Ctrl-Left"
+        ]
+      }
     },
     {
       "id": "video/frame/prev/keyframe",
@@ -2581,7 +2877,14 @@
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
       "notes": "Central frame navigation exists; default Grid/Video routing and boundary cases need coverage.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Shift-Left"
+        ],
+        "Video": [
+          "Shift-Left"
+        ]
+      }
     },
     {
       "id": "video/frame/prev/large",
@@ -2591,7 +2894,14 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Subtitle Grid": [
+          "Alt-Left"
+        ],
+        "Video": [
+          "Alt-Left"
+        ]
+      }
     },
     {
       "id": "video/frame/save",
@@ -2655,7 +2965,11 @@
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-2"
+        ]
+      }
     },
     {
       "id": "video/jump/start",
@@ -2672,7 +2986,11 @@
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-1"
+        ]
+      }
     },
     {
       "id": "video/open",
@@ -2727,10 +3045,10 @@
       ],
       "notes": "Real central-clock playback exists; exact defaults and media-specific availability need integration.",
       "yoake_default_hotkeys": {
-        "Video": [
-          "Space"
+        "Default": [
+          "Ctrl-P"
         ],
-        "Audio": [
+        "Video": [
           "Space"
         ],
         "Subtitle Grid": [
@@ -2754,10 +3072,20 @@
       ],
       "notes": "Shared line playback exists; needs explicit video command and correct media-specific availability.",
       "yoake_default_hotkeys": {
-        "Video": [
-          "R"
+        "Always": [
+          "KP_5"
         ],
         "Audio": [
+          "S",
+          "Space"
+        ],
+        "Styling Assistant": [
+          "End"
+        ],
+        "Translation Assistant": [
+          "End"
+        ],
+        "Video": [
           "R"
         ],
         "Subtitle Grid": [
@@ -2801,10 +3129,14 @@
       ],
       "notes": "Real playback stop exists; Audio/Video default routing remains incomplete.",
       "yoake_default_hotkeys": {
-        "Video": [
-          "Escape"
+        "Always": [
+          "KP_8"
         ],
         "Audio": [
+          "H",
+          "Escape"
+        ],
+        "Video": [
           "Escape"
         ]
       }
@@ -2833,7 +3165,11 @@
         "VisualUiVerification"
       ],
       "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Video": [
+          "H"
+        ]
+      }
     },
     {
       "id": "video/tool/cross",
@@ -2849,7 +3185,11 @@
         "VisualUiVerification"
       ],
       "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Video": [
+          "A"
+        ]
+      }
     },
     {
       "id": "video/tool/drag",
@@ -2865,7 +3205,11 @@
         "VisualUiVerification"
       ],
       "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Video": [
+          "S"
+        ]
+      }
     },
     {
       "id": "video/tool/rotate/xy",
@@ -2881,7 +3225,11 @@
         "VisualUiVerification"
       ],
       "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Video": [
+          "F"
+        ]
+      }
     },
     {
       "id": "video/tool/rotate/z",
@@ -2897,7 +3245,11 @@
         "VisualUiVerification"
       ],
       "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Video": [
+          "D"
+        ]
+      }
     },
     {
       "id": "video/tool/scale",
@@ -2913,7 +3265,11 @@
         "VisualUiVerification"
       ],
       "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Video": [
+          "G"
+        ]
+      }
     },
     {
       "id": "video/tool/vclip/bicubic",
@@ -3057,7 +3413,11 @@
         "VisualUiVerification"
       ],
       "notes": "Usable gestures and controls exist, including Mangetsu distort. Registry radio/availability and full default Video hotkeys need integration.",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Video": [
+          "J"
+        ]
+      }
     },
     {
       "id": "video/zoom/100",
@@ -3097,7 +3457,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-KP_Add"
+        ]
+      }
     },
     {
       "id": "video/zoom/out",
@@ -3107,7 +3471,11 @@
       "exposure": [],
       "tests": [],
       "notes": "",
-      "yoake_default_hotkeys": {}
+      "yoake_default_hotkeys": {
+        "Default": [
+          "Ctrl-KP_Subtract"
+        ]
+      }
     }
   ],
   "dynamic_automation": {
@@ -3124,5 +3492,6 @@
       "AutomationUiVerification"
     ],
     "notes": "Dynamic command IDs are not individual static parity features. Do not upgrade Lua profile or DependencyControl."
-  }
+  },
+  "hotkey_implementation": "Full 3.5 common defaults generated from pinned evidence; context-aware persisted overrides and usable live settings; menu/tooltips update. Reserved missing backends stay missing. CI for this implementation pending."
 }

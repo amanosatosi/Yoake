@@ -74,12 +74,14 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private CancellationTokenSource? _editBurstDelay;
     public IEditorDialogs? Dialogs { get; set; }
     public SubtitleEditor? ActiveEditor => _activeId is { } id && _documents.TryGetValue(id,out var state) ? state.Editor : null;
+    public Guid? ActiveDocumentId => _activeId;
     public CommandRegistry Registry => _registry;
     public (double Start,double Span) AudioViewport=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?(state.AudioStart,state.AudioSpan):(0,20);
     public void RememberAudioViewport(double start,double span){if(_activeId is {} id&&_documents.TryGetValue(id,out var state)){state.AudioStart=start;state.AudioSpan=span;}}
-    public HotkeyResolver Hotkeys { get; } = new();
+    public HotkeyProfile HotkeyProfile { get; private set; } = null!;
+    public HotkeyResolver Hotkeys => HotkeyProfile.Resolver;
     public ObservableCollection<DocumentTabViewModel> Tabs { get; } = [];
-    public Dictionary<string,ICommand> Actions { get; } = [];
+    public Dictionary<string,RegistryCommand> Actions { get; } = [];
     public IReadOnlyList<string> RecentFiles => _settings.RecentFiles;
     private readonly EventSelection _selection=[];
     public IList<AssEvent> SelectedEvents=>_selection;
@@ -168,6 +170,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public MainWindowViewModel(CommandRegistry registry, WorkspaceManager workspace, UndoManager undo, IThemeService theme, SettingsStore settingsStore, AppSettings settings)
     {
         _registry=registry; _workspace=workspace; _theme=theme; _settingsStore=settingsStore; _settings=settings.Normalize();
+        InitializeHotkeyCommands();
         RegisterEditorCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;

@@ -6,6 +6,27 @@ namespace Yoake.Core.Tests;
 public sealed class CommandRegistryTests
 {
     [Fact]
+    public void ContextualMetadataUsesExplicitDocumentContextAndKeepsStaticFallbacks()
+    {
+        var first = Guid.NewGuid(); var second = Guid.NewGuid();
+        var names = new Dictionary<Guid, string> { [first] = "Edit text", [second] = "Move lines" };
+        var command = new AppCommand(new("edit/undo", "Undo", "Undo last action", "Edit"),
+            (_, _) => ValueTask.CompletedTask,
+            label: context => context.DocumentId is {} id ? "Undo " + names[id] : "Nothing to undo",
+            description: context => context.DocumentId is {} id ? "Revert " + names[id] : "No history");
+        Assert.Equal("Undo Edit text", command.GetLabel(new(first)));
+        Assert.Equal("Undo Move lines", command.GetLabel(new(second)));
+        names[first] = "Format 日本語";
+        Assert.Equal("Undo Format 日本語", command.GetLabel(new(first)));
+        Assert.Equal("Revert Move lines", command.GetDescription(new(second)));
+        Assert.Equal("Nothing to undo", command.GetLabel(new()));
+        Assert.Equal("Undo", command.Metadata.Label);
+        var plain = new AppCommand(new("file/open", "Open", "Open a file", "File"), (_, _) => ValueTask.CompletedTask);
+        Assert.Equal("Open", plain.GetLabel(new(first)));
+        Assert.Equal("Open a file", plain.GetDescription(new(second)));
+    }
+
+    [Fact]
     public async Task RegisteredCommandInvokesThroughStableId()
     {
         var registry = new CommandRegistry();

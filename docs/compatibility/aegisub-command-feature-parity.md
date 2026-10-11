@@ -56,7 +56,7 @@ Exact implementation and tests were inspected in both releases: `libaegisub/comm
 
 Upstream reads user `hotkey.json` instead of defaults when available, recognizes legacy object-form modifiers/key bindings, backs up old format as `.3_1`, writes atomically through `io::Save`, and emits change notifications after map replacement. Addition migrations only fill unoccupied context/gesture pairs; duplicate-to-split migrations preserve custom bindings. Key normalization in `src/hotkey.cpp` distinguishes keypad keys and orders Ctrl/Alt/Shift, with platform command-modifier mapping.
 
-Yoake baseline gaps: defaults currently live in view-model registration code, Always is a last fallback, user overrides/settings UI are absent, and menu shortcuts are static labels or absent. Context resolution already exists; extend it, do not flatten it into a global gesture dictionary. Source preedit/dropdown protections exist, but representative real key routing must test text typing, IME Enter, tool-local Enter, Audio/Grid/Video conflicts, keypad naming, disabled actions and exclusive modes. The new implementation must update menus immediately after remapping, without restart, and support add/remove/multiple gestures/reset command/context/all and conflict reporting. 39 Mode and other exclusive input routes must suppress ordinary routing explicitly.
+Yoake now generates the full 3.5 common default table outside controls and command constructors. Persisted user overrides support multiple gestures, explicit removals and command/context/all resets. The live Options window captures real keys and reports conflicts without partial replacement; menu shortcut display and command tooltips update immediately. Enabled Always overrides resolve before local contexts, then Default; exclusive modes suppress ordinary fallback. Native text input, caret/clipboard/word deletion, AltGr and IME preedit retain ownership. Dynamic Automation adapters share the profile and document context without changing Lua compatibility. Plain duplicate and text-cursor split move to unoccupied Ctrl-Alt-D and Ctrl-Alt-Shift-D defaults; Ctrl-D/Ctrl-Shift-D reserve the modern frame split actions. Explicit edit-box Ctrl-I remains Yoake italic formatting while Default Ctrl-I remains Shift Times. All missing action backends below remain missing/partial even though their exact defaults are now imported. Assistant context tables do not substitute for functioning assistant workflows. Core/adapter tests and a separate packaged keyboard/settings acceptance launch cover this implementation; its CI result is pending.
 
 Tables below record exact defaults including unbound commands. `—` means no shipped/effective binding, not a guessed accelerator. Yoake defaults are the inspected **pre-pass baseline**, so differences are gaps unless the notes explicitly justify a lasting deviation. Ctrl-I formatting in Subtitle Edit Box is an existing intentional context-local Yoake extension; Shift Times must still be available in Default elsewhere. Ctrl-D plain duplicate and Ctrl-Shift-D estimated cursor split are current conflicts requiring replacement by the modern frame-split defaults.
 
@@ -65,7 +65,7 @@ Tables below record exact defaults including unbound commands. `—` means no sh
 Each row links to exact source presence. Version delta is lexical command/helper evidence; consult the behavior delta above for called backends. The source JSON records exact upstream menu/context/toolbar locations and validation/radio flags. Test names in partial rows are existing supporting coverage, **not** a claim of full parity. Missing rows have no workflow test until implemented. Completion of a backend does not waive the separate hotkey/menu/settings acceptance requirements.
 
 
-Baseline source-record assessment: already complete: 21; deliberately not applicable: 13; missing: 143; partially implemented: 58; superseded by better Yoake behavior: 2. Dynamic macros are assessed separately.
+Baseline source-record assessment: already complete: 21; deliberately not applicable: 13; missing: 141; partially implemented: 60; superseded by better Yoake behavior: 2. Dynamic macros are assessed separately.
 
 
 ### am
@@ -104,9 +104,9 @@ Default hotkeys by context:
 | `app/maximize` / Zoom | no | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L279); added | —; deliberately not applicable | Native platform behavior; no Windows clone of macOS application menu. | Missing | None yet | 3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior. |
 | `app/minimize` / Minimize | no | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L268); added | —; deliberately not applicable | Native platform behavior; no Windows clone of macOS application menu. | Missing | None yet | 3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior. |
 | `app/new_window` / New Window | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/app.cpp#L191) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L189); source changed | —; missing | Window lifetime or normal application settings; no global current document. Required action: Open a new application window | Missing | None yet | — |
-| `app/options` / Options | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/app.cpp#L203) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L201); source changed | —; missing | Window lifetime or normal application settings; no global current document. Required action: Configure Aegisub | Missing | None yet | — |
+| `app/options` / Options | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/app.cpp#L203) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L201); source changed | `app/options`; partially implemented | Usable live contextual keyboard settings window with add/change/remove/multiple bindings, capture, conflicts, command/context/all resets and persisted user overrides. Other application preferences still need consolidation. | Edit > Options; Default: Alt-O; CommandRegistry | HotkeyProfileTests; EditorWorkflowTests; HotkeyUiAcceptanceVerification | Actual workflow implemented; this does not claim completion of every application setting. |
 | `app/show_all` / Show all | no | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L323); added | —; deliberately not applicable | Native platform behavior; no Windows clone of macOS application menu. | Missing | None yet | 3.5 registration is macOS-only. Yoake Windows retains native window controls and taskbar behavior. |
-| `app/toggle/global_hotkeys` / Toggle global hotkey overrides | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/app.cpp#L219) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L217); source changed | —; missing | Window lifetime or normal application settings; no global current document. Required action: Toggle global hotkey overrides (Medusa Mode) | Missing | None yet | — |
+| `app/toggle/global_hotkeys` / Toggle global hotkey overrides | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/app.cpp#L219) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L217); source changed | `app/toggle/global_hotkeys`; partially implemented | Persisted Medusa option and checked command; resolver applies enabled Always overrides first. Corresponding incomplete audio/timing action backends remain pending. | Options > Keyboard shortcuts; Audio: Ctrl-KP_Multiply; CommandRegistry | HotkeyProfileTests; HotkeyUiAcceptanceVerification | Always is opt-in, never an implicit fallback. Same-context conflicts are rejected with owner information; cross-context duplicates are supported. |
 | `app/toggle/toolbar` / App/Show Toolbar / Hide Toolbar / Show Toolbar | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/app.cpp#L237) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L235); source changed | —; missing | Window lifetime or normal application settings; no global current document. Required action: Toggle the main toolbar | Missing | None yet | — |
 | `app/updates` / Check for Updates | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/app.cpp#L258) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/app.cpp#L256); source changed | —; missing | Window lifetime or normal application settings; no global current document. Required action: Check to see if there is a new version of Aegisub available | Missing | None yet | — |
 
@@ -120,7 +120,7 @@ Default hotkeys by context:
 | `app/display/full` | — | — | no | — |
 | `app/display/subs` | — | — | no | — |
 | `app/display/video_subs` | — | — | no | — |
-| `app/exit` | Default: Ctrl-Q | Default: Ctrl-Q | no | — |
+| `app/exit` | Default: Ctrl-Q | Default: Ctrl-Q | no | Default: Ctrl-Q |
 | `app/hide` | — | — | no | — |
 | `app/hide_others` | — | — | no | — |
 | `app/language` | — | — | no | — |
@@ -128,9 +128,9 @@ Default hotkeys by context:
 | `app/maximize` | — | — | no | — |
 | `app/minimize` | — | — | no | — |
 | `app/new_window` | — | — | no | — |
-| `app/options` | Default: Alt-O | Default: Alt-O | no | — |
+| `app/options` | Default: Alt-O | Default: Alt-O | no | Default: Alt-O |
 | `app/show_all` | — | — | no | — |
-| `app/toggle/global_hotkeys` | Audio: Ctrl-KP_Multiply | Audio: Ctrl-KP_Multiply | no | — |
+| `app/toggle/global_hotkeys` | Audio: Ctrl-KP_Multiply | Audio: Ctrl-KP_Multiply | no | Audio: Ctrl-KP_Multiply |
 | `app/toggle/toolbar` | — | — | no | — |
 | `app/updates` | — | — | no | — |
 
@@ -168,7 +168,7 @@ Default hotkeys by context:
 | `audio/save/clip` / Create audio clip | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/audio.cpp#L162) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/audio.cpp#L162); source changed | —; missing | Independent audio provider ownership, timing controller and central playback timeline. Required action: Save an audio clip of the selected line | Missing | None yet | — |
 | `audio/scroll/left` / Scroll left | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/audio.cpp#L406) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/audio.cpp#L428); same command source | —; missing | Independent audio provider ownership, timing controller and central playback timeline. Required action: Scroll the audio display left | Missing | None yet | — |
 | `audio/scroll/right` / Scroll right | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/audio.cpp#L417) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/audio.cpp#L439); same command source | —; missing | Independent audio provider ownership, timing controller and central playback timeline. Required action: Scroll the audio display right | Missing | None yet | — |
-| `audio/stop` / Stop playing | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/audio.cpp#L246) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/audio.cpp#L246); same command source | `video/stop`; partially implemented | Independent audio provider ownership, timing controller and central playback timeline. Required action: Stop audio and video playback | CommandRegistry; MainWindow menu/control (see implementation evidence) | SubtitleEditorTests; EditorWorkflowTests; AuthoringUiVerification (representative workflows; add per-command parity coverage) | — |
+| `audio/stop` / Stop playing | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/audio.cpp#L246) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/audio.cpp#L246); same command source | `video/stop`; partially implemented | Independent audio provider ownership, timing controller and central playback timeline. Required action: Stop audio and video playback | CommandRegistry; MainWindow menu/control (see implementation evidence) | SubtitleEditorTests; EditorWorkflowTests; AuthoringUiVerification (representative workflows; add per-command parity coverage) |  Audio H/Escape and Medusa KP_8 share the existing central playback stop command; no second playback clock. |
 | `audio/view/spectrum` / Spectrum Display | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/audio.cpp#L130) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/audio.cpp#L130); same command source | —; missing | Independent audio provider ownership, timing controller and central playback timeline. Required action: Display audio as a frequency-power spectrograph | Missing | None yet | — |
 | `audio/view/waveform` / Waveform Display | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/audio.cpp#L146) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/audio.cpp#L146); same command source | —; missing | Independent audio provider ownership, timing controller and central playback timeline. Required action: Display audio as a linear amplitude graph | Missing | None yet | — |
 
@@ -177,8 +177,8 @@ Default hotkeys by context:
 | Aegisub command | 3.2.2 defaults | 3.5.0 defaults | Changed? | Yoake defaults |
 | --- | --- | --- | --- | --- |
 | `audio/close` | — | — | no | — |
-| `audio/commit` | Always: KP_Enter; Audio: Enter, G | Always: KP_Enter; Audio: Enter, G | no | — |
-| `audio/commit/default` | Audio: Shift-G | Audio: Shift-G | no | — |
+| `audio/commit` | Always: KP_Enter; Audio: Enter, G | Always: KP_Enter; Audio: Enter, G | no | Always: KP_Enter; Audio: Enter, G |
+| `audio/commit/default` | Audio: Shift-G | Audio: Shift-G | no | Audio: Shift-G |
 | `audio/commit/next` | — | — | no | — |
 | `audio/commit/stay` | — | — | no | — |
 | `audio/go_to` | — | — | no | — |
@@ -195,18 +195,18 @@ Default hotkeys by context:
 | `audio/opt/spectrum` | — | — | no | — |
 | `audio/opt/vertical_link` | — | — | no | — |
 | `audio/play/current` | — | — | no | — |
-| `audio/play/line` | Audio: R | Audio: R | no | Video: R; Audio: R; Subtitle Grid: R |
-| `audio/play/selection` | Always: KP_5; Audio: S, Space; Styling Assistant: End; Translation Assistant: End | Always: KP_5; Audio: S, Space; Styling Assistant: End; Translation Assistant: End | no | Video: R; Audio: R; Subtitle Grid: R |
-| `audio/play/selection/after` | Always: KP_3; Audio: W | Always: KP_3; Audio: W | no | — |
-| `audio/play/selection/before` | Always: KP_1; Audio: Q | Always: KP_1; Audio: Q | no | — |
-| `audio/play/selection/begin` | Audio: E | Audio: E | no | — |
-| `audio/play/selection/end` | Audio: D | Audio: D | no | — |
-| `audio/play/to_end` | Audio: T | Audio: T | no | — |
-| `audio/play/toggle` | Audio: B | Audio: B | no | — |
+| `audio/play/line` | Audio: R | Audio: R | no | Always: KP_5; Audio: S, Space; Styling Assistant: End; Translation Assistant: End; Video: R; Subtitle Grid: R |
+| `audio/play/selection` | Always: KP_5; Audio: S, Space; Styling Assistant: End; Translation Assistant: End | Always: KP_5; Audio: S, Space; Styling Assistant: End; Translation Assistant: End | no | Always: KP_5; Audio: S, Space; Styling Assistant: End; Translation Assistant: End; Video: R; Subtitle Grid: R |
+| `audio/play/selection/after` | Always: KP_3; Audio: W | Always: KP_3; Audio: W | no | Always: KP_3; Audio: W |
+| `audio/play/selection/before` | Always: KP_1; Audio: Q | Always: KP_1; Audio: Q | no | Always: KP_1; Audio: Q |
+| `audio/play/selection/begin` | Audio: E | Audio: E | no | Audio: E |
+| `audio/play/selection/end` | Audio: D | Audio: D | no | Audio: D |
+| `audio/play/to_end` | Audio: T | Audio: T | no | Audio: T |
+| `audio/play/toggle` | Audio: B | Audio: B | no | Audio: B |
 | `audio/save/clip` | — | — | no | — |
-| `audio/scroll/left` | Audio: A | Audio: A | no | — |
-| `audio/scroll/right` | Audio: F | Audio: F | no | — |
-| `audio/stop` | Always: KP_8; Audio: H | Always: KP_8; Audio: H | no | Video: Escape; Audio: Escape |
+| `audio/scroll/left` | Audio: A | Audio: A | no | Audio: A |
+| `audio/scroll/right` | Audio: F | Audio: F | no | Audio: F |
+| `audio/stop` | Always: KP_8; Audio: H | Always: KP_8; Audio: H | no | Always: KP_8; Audio: H, Escape; Video: Escape |
 | `audio/view/spectrum` | — | — | no | — |
 | `audio/view/waveform` | — | — | no | — |
 
@@ -233,8 +233,8 @@ Default hotkeys by context:
 | `edit/line/paste` / Paste Lines | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L837) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L850); source changed | `grid/paste`; partially implemented | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Paste subtitles | CommandRegistry; MainWindow menu/control (see implementation evidence) | SubtitleEditorTests; EditorWorkflowTests; AuthoringUiVerification (representative workflows; add per-command parity coverage) | — |
 | `edit/line/paste/over` / Paste Lines Over | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L869) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L882); source changed | —; missing | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Paste subtitles over others | Missing | None yet | — |
 | `edit/line/recombine` / Recombine Lines | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L954) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L966); same command source | —; missing | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Recombine subtitles which have been split and merged | Missing | None yet | — |
-| `edit/line/split/after` / Split lines after current frame | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L724) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L732); same command source | —; missing | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the current frame and a line which starts on the next frame | Missing | None yet | — |
-| `edit/line/split/before` / Split lines before current frame | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L736) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L744); same command source | —; missing | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the previous frame and a line which starts on the current frame | Missing | None yet | — |
+| `edit/line/split/after` / Split lines after current frame | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L724) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L732); same command source | —; missing | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the current frame and a line which starts on the next frame | Missing | None yet | Modern Ctrl-D/Ctrl-Shift-D defaults are reserved for these semantic actions; the frame-split backend remains pending. Existing plain duplicate and text-cursor split use Ctrl-Alt-D and Ctrl-Alt-Shift-D. |
+| `edit/line/split/before` / Split lines before current frame | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L736) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L744); same command source | —; missing | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line into a line which ends on the previous frame and a line which starts on the current frame | Missing | None yet | Modern Ctrl-D/Ctrl-Shift-D defaults are reserved for these semantic actions; the frame-split backend remains pending. Existing plain duplicate and text-cursor split use Ctrl-Alt-D and Ctrl-Alt-Shift-D. |
 | `edit/line/split/by_karaoke` / Split Lines (by karaoke) | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L1032) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L1044); source changed | —; missing | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Use karaoke timing to split line into multiple smaller lines | Missing | None yet | — |
 | `edit/line/split/estimate` / Split at cursor (estimate times) | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L1096) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L1112); same command source | `grid/split`; partially implemented | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line at the cursor, dividing the original line's duration between the new ones | CommandRegistry; MainWindow menu/control (see implementation evidence) | SubtitleEditorTests; EditorWorkflowTests; AuthoringUiVerification (representative workflows; add per-command parity coverage) | Existing cursor split is grapheme-safe; compare its duration estimate and tag inheritance with upstream. |
 | `edit/line/split/preserve` / Split at cursor (preserve times) | [yes](https://github.com/Aegisub/Aegisub/blob/f743d1411e09cbb2bd34ddd2d4b6738101fab710/src/command/edit.cpp#L1112) | [yes](https://github.com/TypesettingTools/Aegisub/blob/43af875ea01e80052cc6c44f24fc8c5258261c6d/src/command/edit.cpp#L1128); same command source | —; missing | Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Split the current line at the cursor, setting both lines to the original line's times | Missing | None yet | — |
@@ -253,36 +253,36 @@ Default hotkeys by context:
 | --- | --- | --- | --- | --- |
 | `edit/clear` | — | — | no | — |
 | `edit/clear/text` | — | — | no | — |
-| `edit/color/outline` | Subtitle Edit Box: Alt-3 | Subtitle Edit Box: Alt-3 | no | — |
-| `edit/color/primary` | Subtitle Edit Box: Alt-1 | Subtitle Edit Box: Alt-1 | no | — |
-| `edit/color/secondary` | Subtitle Edit Box: Alt-2 | Subtitle Edit Box: Alt-2 | no | — |
-| `edit/color/shadow` | Subtitle Edit Box: Alt-4 | Subtitle Edit Box: Alt-4 | no | — |
-| `edit/find_replace` | Default: Ctrl-H | Default: Ctrl-H | no | Always: Ctrl-F |
+| `edit/color/outline` | Subtitle Edit Box: Alt-3 | Subtitle Edit Box: Alt-3 | no | Subtitle Edit Box: Alt-3 |
+| `edit/color/primary` | Subtitle Edit Box: Alt-1 | Subtitle Edit Box: Alt-1 | no | Subtitle Edit Box: Alt-1 |
+| `edit/color/secondary` | Subtitle Edit Box: Alt-2 | Subtitle Edit Box: Alt-2 | no | Subtitle Edit Box: Alt-2 |
+| `edit/color/shadow` | Subtitle Edit Box: Alt-4 | Subtitle Edit Box: Alt-4 | no | Subtitle Edit Box: Alt-4 |
+| `edit/find_replace` | Default: Ctrl-H | Default: Ctrl-H | no | Default: Ctrl-F |
 | `edit/font` | — | — | no | — |
 | `edit/insert_original` | — | — | no | — |
-| `edit/line/copy` | Default: Ctrl-C | Default: Ctrl-C | no | Subtitle Grid: Ctrl-C |
-| `edit/line/cut` | Default: Ctrl-X | Default: Ctrl-X | no | Subtitle Grid: Ctrl-X |
-| `edit/line/delete` | Default: Ctrl-Delete | Default: Ctrl-Delete | no | Subtitle Grid: Delete |
-| `edit/line/duplicate` | — | — | no | Always: Ctrl-D |
+| `edit/line/copy` | Default: Ctrl-C | Default: Ctrl-C | no | Default: Ctrl-C |
+| `edit/line/cut` | Default: Ctrl-X | Default: Ctrl-X | no | Default: Ctrl-X |
+| `edit/line/delete` | Default: Ctrl-Delete | Default: Ctrl-Delete | no | Default: Ctrl-Delete; Subtitle Grid: Delete |
+| `edit/line/duplicate` | — | — | no | Default: Ctrl-Alt-D |
 | `edit/line/join/as_karaoke` | — | — | no | — |
 | `edit/line/join/concatenate` | — | — | no | — |
 | `edit/line/join/keep_first` | — | — | no | — |
-| `edit/line/paste` | Default: Ctrl-V | Default: Ctrl-V | no | Subtitle Grid: Ctrl-V |
-| `edit/line/paste/over` | Default: Ctrl-Shift-V | Default: Ctrl-Shift-V | no | — |
+| `edit/line/paste` | Default: Ctrl-V | Default: Ctrl-V | no | Default: Ctrl-V |
+| `edit/line/paste/over` | Default: Ctrl-Shift-V | Default: Ctrl-Shift-V | no | Default: Ctrl-Shift-V |
 | `edit/line/recombine` | — | — | no | — |
-| `edit/line/split/after` | — | Default: Ctrl-Shift-D | yes | — |
-| `edit/line/split/before` | — | Default: Ctrl-D | yes | — |
+| `edit/line/split/after` | — | Default: Ctrl-Shift-D | yes | Default: Ctrl-Shift-D |
+| `edit/line/split/before` | — | Default: Ctrl-D | yes | Default: Ctrl-D |
 | `edit/line/split/by_karaoke` | — | — | no | — |
-| `edit/line/split/estimate` | — | — | no | Always: Ctrl-Shift-D |
+| `edit/line/split/estimate` | — | — | no | Default: Ctrl-Alt-Shift-D |
 | `edit/line/split/preserve` | — | — | no | — |
 | `edit/line/split/video` | — | — | no | — |
-| `edit/redo` | Default: Ctrl-Y | Default: Ctrl-Y | no | Always: Ctrl-Y, Ctrl-Shift-Z |
-| `edit/revert` | — | — | no | Always: Escape |
+| `edit/redo` | Default: Ctrl-Y | Default: Ctrl-Y | no | Default: Ctrl-Y, Ctrl-Shift-Z |
+| `edit/revert` | — | — | no | Default: Escape |
 | `edit/style/bold` | — | — | no | Subtitle Edit Box: Ctrl-B |
 | `edit/style/italic` | — | — | no | Subtitle Edit Box: Ctrl-I |
 | `edit/style/strikeout` | — | — | no | — |
 | `edit/style/underline` | — | — | no | Subtitle Edit Box: Ctrl-U |
-| `edit/undo` | Default: Ctrl-Z | Default: Ctrl-Z | no | Always: Ctrl-Z |
+| `edit/undo` | Default: Ctrl-Z | Default: Ctrl-Z | no | Default: Ctrl-Z |
 
 ### grid
 
@@ -315,11 +315,11 @@ Default hotkeys by context:
 
 | Aegisub command | 3.2.2 defaults | 3.5.0 defaults | Changed? | Yoake defaults |
 | --- | --- | --- | --- | --- |
-| `grid/line/next` | Default: Ctrl-KP_2; Styling Assistant: PageDown | Default: Ctrl-KP_2; Styling Assistant: PageDown | no | Always: Alt-Down |
-| `grid/line/next/create` | Subtitle Edit Box: Enter, KP_Enter | Subtitle Edit Box: Enter, KP_Enter | no | Subtitle Edit Box: Enter; Subtitle Grid: Enter |
-| `grid/line/prev` | Default: Ctrl-KP_8; Styling Assistant: PageUp | Default: Ctrl-KP_8; Styling Assistant: PageUp | no | Always: Alt-Up |
-| `grid/move/down` | Default: Alt-Down | Default: Alt-Down | no | Always: Alt-Shift-Down |
-| `grid/move/up` | Default: Alt-Up | Default: Alt-Up | no | Always: Alt-Shift-Up |
+| `grid/line/next` | Default: Ctrl-KP_2; Styling Assistant: PageDown | Default: Ctrl-KP_2; Styling Assistant: PageDown | no | Default: Ctrl-KP_2, Alt-PageDown; Styling Assistant: PageDown |
+| `grid/line/next/create` | Subtitle Edit Box: Enter, KP_Enter | Subtitle Edit Box: Enter, KP_Enter | no | Subtitle Edit Box: Enter, KP_Enter; Subtitle Grid: Enter |
+| `grid/line/prev` | Default: Ctrl-KP_8; Styling Assistant: PageUp | Default: Ctrl-KP_8; Styling Assistant: PageUp | no | Default: Ctrl-KP_8, Alt-PageUp; Styling Assistant: PageUp |
+| `grid/move/down` | Default: Alt-Down | Default: Alt-Down | no | Default: Alt-Down, Alt-Shift-Down |
+| `grid/move/up` | Default: Alt-Up | Default: Alt-Up | no | Default: Alt-Up, Alt-Shift-Up |
 | `grid/sort/actor` | — | — | no | — |
 | `grid/sort/actor/selected` | — | — | no | — |
 | `grid/sort/effect` | — | — | no | — |
@@ -354,7 +354,7 @@ Default hotkeys by context:
 | Aegisub command | 3.2.2 defaults | 3.5.0 defaults | Changed? | Yoake defaults |
 | --- | --- | --- | --- | --- |
 | `help/bugs` | — | — | no | — |
-| `help/contents` | Default: F1 | Default: F1 | no | — |
+| `help/contents` | Default: F1 | Default: F1 | no | Default: F1 |
 | `help/forums` | — | — | no | — |
 | `help/irc` | — | — | no | — |
 | `help/video` | — | — | no | — |
@@ -392,7 +392,7 @@ Default hotkeys by context:
 | --- | --- | --- | --- | --- |
 | `recent/audio` | — | — | no | — |
 | `recent/keyframe` | — | — | no | — |
-| `recent/subtitle` | — | — | no | Always: Ctrl-O |
+| `recent/subtitle` | — | — | no | Default: Ctrl-O |
 | `recent/timecodes` | — | — | no | — |
 | `recent/video` | — | — | no | — |
 
@@ -425,21 +425,21 @@ Default hotkeys by context:
 | Aegisub command | 3.2.2 defaults | 3.5.0 defaults | Changed? | Yoake defaults |
 | --- | --- | --- | --- | --- |
 | `subtitle/attachment` | — | — | no | — |
-| `subtitle/close` | — | — | no | Always: Ctrl-W |
-| `subtitle/find` | Default: Ctrl-F | Default: Ctrl-F | no | Always: Ctrl-F |
-| `subtitle/find/next` | Default: F3 | Default: F3 | no | — |
+| `subtitle/close` | — | — | no | Default: Ctrl-W |
+| `subtitle/find` | Default: Ctrl-F | Default: Ctrl-F | no | Default: Ctrl-F |
+| `subtitle/find/next` | Default: F3 | Default: F3 | no | Default: F3 |
 | `subtitle/insert/after` | — | — | no | Subtitle Grid: Insert |
 | `subtitle/insert/after/videotime` | — | — | no | — |
 | `subtitle/insert/before` | — | — | no | Subtitle Grid: Ctrl-Insert |
 | `subtitle/insert/before/videotime` | — | — | no | — |
-| `subtitle/new` | Default: Ctrl-N | Default: Ctrl-N | no | Always: Ctrl-N |
-| `subtitle/open` | Default: Ctrl-O | Default: Ctrl-O | no | Always: Ctrl-O |
+| `subtitle/new` | Default: Ctrl-N | Default: Ctrl-N | no | Default: Ctrl-N |
+| `subtitle/open` | Default: Ctrl-O | Default: Ctrl-O | no | Default: Ctrl-O |
 | `subtitle/open/autosave` | — | — | no | — |
 | `subtitle/open/charset` | — | — | no | — |
 | `subtitle/open/video` | — | — | no | — |
 | `subtitle/properties` | — | — | no | — |
-| `subtitle/save` | Default: Ctrl-S, F2 | Default: Ctrl-S, F2 | no | Always: Ctrl-S |
-| `subtitle/save/as` | Default: Ctrl-Shift-S | Default: Ctrl-Shift-S | no | Always: Ctrl-Shift-S |
+| `subtitle/save` | Default: Ctrl-S, F2 | Default: Ctrl-S, F2 | no | Default: Ctrl-S, F2 |
+| `subtitle/save/as` | Default: Ctrl-Shift-S | Default: Ctrl-Shift-S | no | Default: Ctrl-Shift-S |
 | `subtitle/select/all` | Subtitle Grid: Ctrl-A | Subtitle Grid: Ctrl-A | no | Subtitle Grid: Ctrl-A |
 | `subtitle/select/visible` | — | — | no | — |
 | `subtitle/spellcheck` | — | — | no | — |
@@ -473,22 +473,22 @@ Default hotkeys by context:
 | --- | --- | --- | --- | --- |
 | `time/continuous/end` | — | — | no | — |
 | `time/continuous/start` | — | — | no | — |
-| `time/frame/current` | Default: Ctrl-6 | Default: Ctrl-6 | no | — |
+| `time/frame/current` | Default: Ctrl-6 | Default: Ctrl-6 | no | Default: Ctrl-6 |
 | `time/lead/both` | — | — | no | — |
-| `time/lead/in` | Audio: C | Audio: C | no | — |
-| `time/lead/out` | Audio: V | Audio: V | no | — |
-| `time/length/decrease` | Always: KP_7; Audio: KP_Subtract | Always: KP_7; Audio: KP_Subtract | no | — |
-| `time/length/decrease/shift` | Audio: Shift-KP_Subtract | Audio: Shift-KP_Subtract | no | — |
-| `time/length/increase` | Always: KP_9; Audio: KP_Add | Always: KP_9; Audio: KP_Add | no | — |
-| `time/length/increase/shift` | Audio: Shift-KP_Add | Audio: Shift-KP_Add | no | — |
-| `time/next` | Always: KP_2; Audio: Right, X | Always: KP_2; Audio: Right, X | no | — |
-| `time/prev` | Always: KP_0; Audio: Left, Z | Always: KP_0; Audio: Left, Z | no | — |
-| `time/shift` | Default: Ctrl-I | Default: Ctrl-I | no | — |
-| `time/snap/end_video` | Default: Ctrl-4 | Default: Ctrl-4 | no | Always: Ctrl-4 |
-| `time/snap/scene` | Default: Ctrl-5 | Default: Ctrl-5 | no | — |
-| `time/snap/start_video` | Default: Ctrl-3 | Default: Ctrl-3 | no | Always: Ctrl-3 |
-| `time/start/decrease` | Always: KP_4 | Always: KP_4 | no | — |
-| `time/start/increase` | Always: KP_6 | Always: KP_6 | no | — |
+| `time/lead/in` | Audio: C | Audio: C | no | Audio: C |
+| `time/lead/out` | Audio: V | Audio: V | no | Audio: V |
+| `time/length/decrease` | Always: KP_7; Audio: KP_Subtract | Always: KP_7; Audio: KP_Subtract | no | Always: KP_7; Audio: KP_Subtract |
+| `time/length/decrease/shift` | Audio: Shift-KP_Subtract | Audio: Shift-KP_Subtract | no | Audio: Shift-KP_Subtract |
+| `time/length/increase` | Always: KP_9; Audio: KP_Add | Always: KP_9; Audio: KP_Add | no | Always: KP_9; Audio: KP_Add |
+| `time/length/increase/shift` | Audio: Shift-KP_Add | Audio: Shift-KP_Add | no | Audio: Shift-KP_Add |
+| `time/next` | Always: KP_2; Audio: Right, X | Always: KP_2; Audio: Right, X | no | Always: KP_2; Audio: Right, X |
+| `time/prev` | Always: KP_0; Audio: Left, Z | Always: KP_0; Audio: Left, Z | no | Always: KP_0; Audio: Left, Z |
+| `time/shift` | Default: Ctrl-I | Default: Ctrl-I | no | Default: Ctrl-I |
+| `time/snap/end_video` | Default: Ctrl-4 | Default: Ctrl-4 | no | Default: Ctrl-4 |
+| `time/snap/scene` | Default: Ctrl-5 | Default: Ctrl-5 | no | Default: Ctrl-5 |
+| `time/snap/start_video` | Default: Ctrl-3 | Default: Ctrl-3 | no | Default: Ctrl-3 |
+| `time/start/decrease` | Always: KP_4 | Always: KP_4 | no | Always: KP_4 |
+| `time/start/increase` | Always: KP_6 | Always: KP_6 | no | Always: KP_6 |
 
 ### timecode
 
@@ -532,23 +532,23 @@ Default hotkeys by context:
 
 | Aegisub command | 3.2.2 defaults | 3.5.0 defaults | Changed? | Yoake defaults |
 | --- | --- | --- | --- | --- |
-| `tool/assdraw` | — | — | no | — |
+| `tool/assdraw` | — | — | no | Video: J |
 | `tool/export` | — | — | no | — |
 | `tool/font_collector` | — | — | no | — |
 | `tool/line/select` | — | — | no | — |
 | `tool/resampleres` | — | — | no | — |
 | `tool/style/assistant` | — | — | no | — |
 | `tool/style/manager` | — | — | no | — |
-| `tool/styling_assistant/commit` | Styling Assistant: Enter, KP_Enter | Styling Assistant: Enter, KP_Enter | no | — |
-| `tool/styling_assistant/preview` | Styling Assistant: F8 | Styling Assistant: F8 | no | — |
+| `tool/styling_assistant/commit` | Styling Assistant: Enter, KP_Enter | Styling Assistant: Enter, KP_Enter | no | Styling Assistant: Enter, KP_Enter |
+| `tool/styling_assistant/preview` | Styling Assistant: F8 | Styling Assistant: F8 | no | Styling Assistant: F8 |
 | `tool/time/kanji` | — | — | no | — |
 | `tool/time/postprocess` | — | — | no | — |
 | `tool/translation_assistant` | — | — | no | — |
-| `tool/translation_assistant/commit` | Translation Assistant: Enter, KP_Enter | Translation Assistant: Enter, KP_Enter | no | — |
-| `tool/translation_assistant/insert_original` | Translation Assistant: Insert | Translation Assistant: Insert | no | — |
-| `tool/translation_assistant/next` | Translation Assistant: PageDown | Translation Assistant: PageDown | no | — |
-| `tool/translation_assistant/prev` | Translation Assistant: PageUp | Translation Assistant: PageUp | no | — |
-| `tool/translation_assistant/preview` | Translation Assistant: F8 | Translation Assistant: F8 | no | — |
+| `tool/translation_assistant/commit` | Translation Assistant: Enter, KP_Enter | Translation Assistant: Enter, KP_Enter | no | Translation Assistant: Enter, KP_Enter |
+| `tool/translation_assistant/insert_original` | Translation Assistant: Insert | Translation Assistant: Insert | no | Translation Assistant: Insert |
+| `tool/translation_assistant/next` | Translation Assistant: PageDown | Translation Assistant: PageDown | no | Translation Assistant: PageDown |
+| `tool/translation_assistant/prev` | Translation Assistant: PageUp | Translation Assistant: PageUp | no | Translation Assistant: PageUp |
+| `tool/translation_assistant/preview` | Translation Assistant: F8 | Translation Assistant: F8 | no | Translation Assistant: F8 |
 
 ### video
 
@@ -624,39 +624,39 @@ Default hotkeys by context:
 | `video/copy_coordinates` | — | — | no | — |
 | `video/detach` | — | — | no | — |
 | `video/details` | — | — | no | — |
-| `video/focus_seek` | Default: Ctrl-Space | Default: Ctrl-Space | no | — |
+| `video/focus_seek` | Default: Ctrl-Space | Default: Ctrl-Space | no | Default: Ctrl-Space |
 | `video/frame/copy` | — | — | no | — |
 | `video/frame/copy/raw` | — | — | no | — |
 | `video/frame/copy/subs` | — | — | no | — |
-| `video/frame/next` | Default: Ctrl-KP_6; Subtitle Grid: Right; Video: Right | Default: Ctrl-KP_6; Subtitle Grid: Right; Video: Right | no | Video: Right |
-| `video/frame/next/boundary` | Subtitle Grid: Ctrl-Right; Video: Ctrl-Right | Subtitle Grid: Ctrl-Right; Video: Ctrl-Right | no | — |
-| `video/frame/next/keyframe` | Subtitle Grid: Shift-Right; Video: Shift-Right | Subtitle Grid: Shift-Right; Video: Shift-Right | no | — |
-| `video/frame/next/large` | Subtitle Grid: Alt-Right; Video: Alt-Right | Subtitle Grid: Alt-Right; Video: Alt-Right | no | — |
-| `video/frame/prev` | Default: Ctrl-KP_4; Subtitle Grid: Left; Video: Left | Default: Ctrl-KP_4; Subtitle Grid: Left; Video: Left | no | Video: Left |
-| `video/frame/prev/boundary` | Subtitle Grid: Ctrl-Left; Video: Ctrl-Left | Subtitle Grid: Ctrl-Left; Video: Ctrl-Left | no | — |
-| `video/frame/prev/keyframe` | Subtitle Grid: Shift-Left; Video: Shift-Left | Subtitle Grid: Shift-Left; Video: Shift-Left | no | — |
-| `video/frame/prev/large` | Subtitle Grid: Alt-Left; Video: Alt-Left | Subtitle Grid: Alt-Left; Video: Alt-Left | no | — |
+| `video/frame/next` | Default: Ctrl-KP_6; Subtitle Grid: Right; Video: Right | Default: Ctrl-KP_6; Subtitle Grid: Right; Video: Right | no | Default: Ctrl-KP_6; Subtitle Grid: Right; Video: Right |
+| `video/frame/next/boundary` | Subtitle Grid: Ctrl-Right; Video: Ctrl-Right | Subtitle Grid: Ctrl-Right; Video: Ctrl-Right | no | Subtitle Grid: Ctrl-Right; Video: Ctrl-Right |
+| `video/frame/next/keyframe` | Subtitle Grid: Shift-Right; Video: Shift-Right | Subtitle Grid: Shift-Right; Video: Shift-Right | no | Subtitle Grid: Shift-Right; Video: Shift-Right |
+| `video/frame/next/large` | Subtitle Grid: Alt-Right; Video: Alt-Right | Subtitle Grid: Alt-Right; Video: Alt-Right | no | Subtitle Grid: Alt-Right; Video: Alt-Right |
+| `video/frame/prev` | Default: Ctrl-KP_4; Subtitle Grid: Left; Video: Left | Default: Ctrl-KP_4; Subtitle Grid: Left; Video: Left | no | Default: Ctrl-KP_4; Subtitle Grid: Left; Video: Left |
+| `video/frame/prev/boundary` | Subtitle Grid: Ctrl-Left; Video: Ctrl-Left | Subtitle Grid: Ctrl-Left; Video: Ctrl-Left | no | Subtitle Grid: Ctrl-Left; Video: Ctrl-Left |
+| `video/frame/prev/keyframe` | Subtitle Grid: Shift-Left; Video: Shift-Left | Subtitle Grid: Shift-Left; Video: Shift-Left | no | Subtitle Grid: Shift-Left; Video: Shift-Left |
+| `video/frame/prev/large` | Subtitle Grid: Alt-Left; Video: Alt-Left | Subtitle Grid: Alt-Left; Video: Alt-Left | no | Subtitle Grid: Alt-Left; Video: Alt-Left |
 | `video/frame/save` | — | — | no | — |
 | `video/frame/save/raw` | — | — | no | — |
 | `video/frame/save/subs` | — | — | no | — |
 | `video/jump` | Default: Ctrl-G | Default: Ctrl-G | no | — |
-| `video/jump/end` | Default: Ctrl-2 | Default: Ctrl-2 | no | — |
-| `video/jump/start` | Default: Ctrl-1 | Default: Ctrl-1 | no | — |
+| `video/jump/end` | Default: Ctrl-2 | Default: Ctrl-2 | no | Default: Ctrl-2 |
+| `video/jump/start` | Default: Ctrl-1 | Default: Ctrl-1 | no | Default: Ctrl-1 |
 | `video/open` | — | — | no | — |
 | `video/open/dummy` | — | — | no | — |
 | `video/opt/autoscroll` | — | — | no | — |
-| `video/play` | Default: Ctrl-P | Default: Ctrl-P | no | Video: Space; Audio: Space; Subtitle Grid: Space |
-| `video/play/line` | Styling Assistant: Home; Translation Assistant: Home | Styling Assistant: Home; Translation Assistant: Home | no | Video: R; Audio: R; Subtitle Grid: R |
+| `video/play` | Default: Ctrl-P | Default: Ctrl-P | no | Default: Ctrl-P; Video: Space; Subtitle Grid: Space |
+| `video/play/line` | Styling Assistant: Home; Translation Assistant: Home | Styling Assistant: Home; Translation Assistant: Home | no | Always: KP_5; Audio: S, Space; Styling Assistant: End; Translation Assistant: End; Video: R; Subtitle Grid: R |
 | `video/reset_pan` | — | — | no | — |
 | `video/show_overscan` | — | — | no | — |
-| `video/stop` | — | — | no | Video: Escape; Audio: Escape |
+| `video/stop` | — | — | no | Always: KP_8; Audio: H, Escape; Video: Escape |
 | `video/subtitles_provider/cycle` | — | — | no | — |
-| `video/tool/clip` | Video: H | Video: H | no | — |
-| `video/tool/cross` | Video: A | Video: A | no | — |
-| `video/tool/drag` | Video: S | Video: S | no | — |
-| `video/tool/rotate/xy` | Video: F | Video: F | no | — |
-| `video/tool/rotate/z` | Video: D | Video: D | no | — |
-| `video/tool/scale` | Video: G | Video: G | no | — |
+| `video/tool/clip` | Video: H | Video: H | no | Video: H |
+| `video/tool/cross` | Video: A | Video: A | no | Video: A |
+| `video/tool/drag` | Video: S | Video: S | no | Video: S |
+| `video/tool/rotate/xy` | Video: F | Video: F | no | Video: F |
+| `video/tool/rotate/z` | Video: D | Video: D | no | Video: D |
+| `video/tool/scale` | Video: G | Video: G | no | Video: G |
 | `video/tool/vclip/bicubic` | — | — | no | — |
 | `video/tool/vclip/convert` | — | — | no | — |
 | `video/tool/vclip/drag` | — | — | no | — |
@@ -665,12 +665,12 @@ Default hotkeys by context:
 | `video/tool/vclip/insert` | — | — | no | — |
 | `video/tool/vclip/line` | — | — | no | — |
 | `video/tool/vclip/remove` | — | — | no | — |
-| `video/tool/vector_clip` | Video: J | Video: J | no | — |
+| `video/tool/vector_clip` | Video: J | Video: J | no | Video: J |
 | `video/zoom/100` | — | — | no | — |
 | `video/zoom/200` | — | — | no | — |
 | `video/zoom/50` | — | — | no | — |
-| `video/zoom/in` | Default: Ctrl-KP_Add | Default: Ctrl-KP_Add | no | — |
-| `video/zoom/out` | Default: Ctrl-KP_Subtract | Default: Ctrl-KP_Subtract | no | — |
+| `video/zoom/in` | Default: Ctrl-KP_Add | Default: Ctrl-KP_Add | no | Default: Ctrl-KP_Add |
+| `video/zoom/out` | Default: Ctrl-KP_Subtract | Default: Ctrl-KP_Subtract | no | Default: Ctrl-KP_Subtract |
 
 ### Dynamic Automation macro feature
 
@@ -694,7 +694,7 @@ No default hardcoded macro gestures exist in either common table. Runtime regist
 
 Every implemented mutation must cover enable state, undo/redo, multi-selection, Unicode and unknown/Mangetsu preservation as applicable. Media actions additionally cover absence/presence, VFR and cancellation/error paths. Hotkey tests send representative real key gestures through shipped routing; direct command invocation is only backend coverage. Settings tests cover round trip, removal/reset and damaged members. Never weaken existing packaged assertions.
 
-CI baseline: [f07a69f passing managed/native Automation/NativeAOT/packaged verification](https://github.com/amanosatosi/Yoake/actions/runs/38093286199), including all five startup profiles and the four view modes with empty and loaded media. New parity work must get its own green run; no local compilation/publishing/native builds are allowed.
+CI baseline: [f07a69f passing managed/native Automation/NativeAOT/packaged verification](https://github.com/amanosatosi/Yoake/actions/runs/38093286199), including all five startup profiles and the four view modes with empty and loaded media. [3307526 source audit passed all jobs](https://github.com/amanosatosi/Yoake/actions/runs/38128974024). New hotkey implementation must get its own green run; no local compilation/publishing/native builds are allowed.
 
 Remaining manual QA: physical audio devices and playback latency, clipboard alpha interoperability, IME composition on Japanese/Burmese and other complex scripts, DPI/multi-monitor/native chrome, modifier/keypad keyboard layouts, and detached-video behavior. These do not replace CI acceptance.
 

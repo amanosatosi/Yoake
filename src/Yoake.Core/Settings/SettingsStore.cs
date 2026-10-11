@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Globalization;
+using Yoake.Core.Hotkeys;
 
 namespace Yoake.Core.Settings;
 
@@ -53,8 +54,10 @@ public sealed class SettingsStore(string path)
         var defaults = new AppSettings();
         var theme = defaults.Theme; var schema = defaults.SchemaVersion;
         var viewMode = WorkspaceViewMode.Default;
+        var globalTiming=false; List<HotkeyOverride> hotkeys=[];
         var ratio = defaults.MainSplitRatio; var height = defaults.GridHeight;
-        double? volume=null,audioHeight=null,intensity=null;var muted=false;double[]? compact=null,styleSplit=null;
+        double? volume=null,audioHeight=null,intensity=null,audioSpan=null;var muted=false;var linked=false;double[]? compact=null,styleSplit=null;
+        string[]? autoload=null,includes=null;
         double[]? widths = null; string[]? recent = null;
         Dictionary<string, JsonElement> future = [];
         foreach (var member in root.EnumerateObject())
@@ -64,12 +67,23 @@ public sealed class SettingsStore(string path)
                 case "schemaVersion": if (TryReadInt(member.Value, out var version)) schema = version; break;
                 case "theme": if (TryReadInt(member.Value, out var value)) theme = (ThemePreference)value; break;
                 case "viewMode": if (TryReadInt(member.Value, out var mode)) viewMode = (WorkspaceViewMode)mode; break;
+                case "globalTimingHotkeys":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)globalTiming=member.Value.GetBoolean();break;
+                case "hotkeyOverrides":
+                    if(member.Value.ValueKind==JsonValueKind.Array)
+                        foreach(var item in member.Value.EnumerateArray())
+                            try { if(JsonSerializer.Deserialize(item,SettingsJsonContext.Default.HotkeyOverride) is {} binding)hotkeys.Add(binding); }
+                            catch(JsonException){ /* Keep other recoverable settings/bindings. */ }
+                    break;
                 case "mainSplitRatio": ratio = ReadNumber(member.Value); break;
                 case "gridHeight": height = ReadNumber(member.Value); break;
                 case "playbackVolume":volume=ReadNumber(member.Value);break;
                 case "playbackMuted":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)muted=member.Value.GetBoolean();break;
                 case "audioDisplayHeight":audioHeight=ReadNumber(member.Value);break;
                 case "audioIntensity":intensity=ReadNumber(member.Value);break;
+                case "audioWindowSeconds":audioSpan=ReadNumber(member.Value);break;
+                case "audioVolumeLinked":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)linked=member.Value.GetBoolean();break;
+                case "automationAutoloadDirectories":autoload=ReadPaths(member.Value);break;
+                case "automationIncludeDirectories":includes=ReadPaths(member.Value);break;
                 case "styleSplitWeights":if(member.Value.ValueKind==JsonValueKind.Array)styleSplit=member.Value.EnumerateArray().Take(4).Select(ReadNumber).ToArray();break;
                 case "compactGridColumnWidths":if(member.Value.ValueKind==JsonValueKind.Array)compact=member.Value.EnumerateArray().Take(8).Select(ReadNumber).ToArray();break;
                 case "gridColumnWidths":
@@ -82,9 +96,14 @@ public sealed class SettingsStore(string path)
             }
         }
         return new AppSettings { Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
+            HotkeyOverrides=hotkeys.ToArray(),GlobalTimingHotkeys=globalTiming,
             GridColumnWidths = widths!, RecentFiles = recent!, FutureSettings = future,
-            PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };
+            PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,
+            AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };
     }
+
+    private static string[]? ReadPaths(JsonElement value) => value.ValueKind==JsonValueKind.Array
+        ? value.EnumerateArray().Where(item=>item.ValueKind==JsonValueKind.String).Select(item=>item.GetString()!).ToArray():null;
 
     private static double ReadNumber(JsonElement value)
     {

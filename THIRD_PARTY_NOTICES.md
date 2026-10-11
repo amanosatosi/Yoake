@@ -20,6 +20,18 @@ Windows portable packages may include only the x64 Visual C++ runtime DLLs that 
 
 ## Aegisub
 
+The contextual default keyboard table is adapted from
+`TypesettingTools/Aegisub`, `src/libresrc/default_hotkey.json`, at exact
+3.5.0 release commit `43af875ea01e80052cc6c44f24fc8c5258261c6d`.
+`tools/generate_aegisub_hotkeys.py` preserves all common-platform bindings and
+contexts in a C# source table. Separate mapping normalizes key names and
+existing Yoake command IDs; Yoake additions and user overrides remain separate.
+The exact 3.2.2 table at `f743d1411e09cbb2bd34ddd2d4b6738101fab710`
+is retained in the source-derived compatibility inventory for the delta audit.
+Copyright (c) 2004-2012, Aegisub Project; BSD 3-Clause. The upstream `LICENCE`
+applies this license to headerless files. The existing full BSD text below is
+also included in portable distributions for this adaptation.
+
 Yoake adapts five functional style-list SVG paths from
 https://github.com/amanosatosi/Aegisub_Toshi-ban at commit
 `b20d63af149568cbef00f3a22742217ecd915990`:

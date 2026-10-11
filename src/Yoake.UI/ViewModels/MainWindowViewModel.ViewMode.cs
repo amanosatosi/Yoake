@@ -26,7 +26,7 @@ public sealed partial class MainWindowViewModel
         {
             _registry.Register(new AppCommand(new(id, label, "Select workspace view: " + label, "view"),
                 (_, _) => { SelectViewMode(mode); return ValueTask.CompletedTask; }, isChecked: _ => ViewMode == mode));
-            Actions[id] = new RegistryCommand(_registry, id, CurrentContext);
+            Actions[id] = new RegistryCommand(_registry, id, CurrentContext, hotkeys:()=>HotkeyProfile);
         }
     }
 

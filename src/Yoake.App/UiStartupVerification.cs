@@ -89,6 +89,10 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             }
             if (!_authoringCompleted)
             {
+            Require(window.FindControl<MenuItem>("UndoMenu")!.Header as string==model.Actions[CommandIds.EditUndo].Label,
+                "Shipping undo menu must display the contextual command label after history changes.");
+            Require(window.FindControl<MenuItem>("RedoMenu")!.Header as string==model.Actions[CommandIds.EditRedo].Label,
+                "Shipping redo menu must display the contextual command label after history changes.");
             if (!_emptyViewsCompleted)
             {
                 _emptyViews ??= new(window, model, options.VerificationReport!, false);

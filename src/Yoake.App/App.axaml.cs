@@ -87,7 +87,11 @@ public partial class App : Application
                     if (_startup.VerificationReport is null) StartupDiagnostics.Complete();
                 }, DispatcherPriority.Background);
             };
-            if (_startup.VerificationReport is not null) new UiStartupVerification(desktop, window, viewModel, _startup).Start();
+            if (_startup.VerificationReport is not null)
+            {
+                if (_startup.HotkeyAcceptance) new HotkeyUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else new UiStartupVerification(desktop, window, viewModel, _startup).Start();
+            }
             desktop.MainWindow = window;
             StartupDiagnostics.Checkpoint("MainWindow assigned");
             desktop.Exit += (_, _) => _backgroundJobs?.CancelAll();

@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Avalonia.Interactivity;
+using Yoake.UI.Commands;
 using Yoake.Core.Automation;
 using Yoake.Core.Commands;
 using Yoake.UI.Controls;
@@ -69,6 +70,7 @@ public partial class MainWindow
                 parent.Items.Add(created); _automationMenuItems.Add(entry.CommandId, created);
             }
             var item = _automationMenuItems[entry.CommandId];
+            item.InputGesture=(entry.Command as RegistryCommand)?.InputGesture;
             item.ToggleType = entry.Toggle ? MenuItemToggleType.CheckBox : MenuItemToggleType.None;
             item.IsChecked = entry.Active;
             ToolTip.SetTip(item, entry.Help);

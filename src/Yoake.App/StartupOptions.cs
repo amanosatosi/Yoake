@@ -7,6 +7,7 @@ internal sealed class StartupOptions
     public string? ProfileDirectory { get; private set; }
     public string? DiagnosticsDirectory { get; private set; }
     public bool NonInteractive { get; private set; }
+    public bool HotkeyAcceptance { get; private set; }
     private int _verificationFinished;
     private int _startupVerified;
     public bool VerificationFinished => Volatile.Read(ref _verificationFinished) != 0;
@@ -14,10 +15,10 @@ internal sealed class StartupOptions
 
     public static StartupOptions Parse(string[] args)
     {
-        var options = new StartupOptions { NonInteractive = args.Contains("--verify-editor") || args.Contains("--verify-ui-startup") };
+        var options = new StartupOptions { NonInteractive = args.Contains("--verify-editor") || args.Contains("--verify-ui-startup") || args.Contains("--verify-ui-hotkeys") };
         for (var i = 0; i < args.Length; i++)
         {
-            if (args[i] is not ("--verify-ui-startup" or "--profile-directory" or "--diagnostics-directory" or "--verification-media")) continue;
+            if (args[i] is not ("--verify-ui-startup" or "--verify-ui-hotkeys" or "--profile-directory" or "--diagnostics-directory" or "--verification-media")) continue;
             var flag = args[i];
             if (++i >= args.Length || string.IsNullOrWhiteSpace(args[i])) throw new ArgumentException($"{flag} requires a path.");
             var path = Path.GetFullPath(args[i]);
@@ -25,6 +26,7 @@ internal sealed class StartupOptions
             {
                 case "--verification-media":options.VerificationMedia=path;break;
                 case "--verify-ui-startup": options.VerificationReport = path; break;
+                case "--verify-ui-hotkeys": options.VerificationReport=path; options.HotkeyAcceptance=true; break;
                 case "--profile-directory": options.ProfileDirectory = path; break;
                 case "--diagnostics-directory": options.DiagnosticsDirectory = path; break;
             }
