@@ -100,5 +100,7 @@ public sealed class SubtitleSelectionResult
     public int MatchCount {get;}
     internal SubtitleSelectionResult(SubtitleSelectionSnapshot snapshot,AssEvent[] lines,int matches)
     {_snapshot=snapshot;Lines=Array.AsReadOnly(lines);MatchCount=matches;}
+    public AssEvent? ActiveLine(AssEvent? previous,bool firstVisible=false)
+        =>Lines.Count==0||!firstVisible&&previous is not null&&Lines.Contains(previous)?previous:Lines[0];
     public void Validate(SubtitleEditor editor)=>_snapshot.Validate(editor);
 }

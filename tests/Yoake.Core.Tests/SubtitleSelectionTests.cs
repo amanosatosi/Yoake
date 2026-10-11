@@ -49,7 +49,11 @@ public sealed class SubtitleSelectionTests
         var editor=Fixture();var rows=editor.Document.Events.ToArray();var timing=new FrameTiming([0,.04,.11,.17],25);
         var snapshot=SubtitleSelectionSnapshot.Capture(editor,[],new());
         Assert.Equal(new[]{rows[0],rows[1],rows[2]},snapshot.Visible(timing,2).Lines);
+        Assert.Same(rows[0],snapshot.Visible(timing,2).ActiveLine(rows[2],firstVisible:true));
+        Assert.Same(rows[2],snapshot.Visible(timing,2).ActiveLine(rows[2]));
         Assert.Equal(new[]{rows[1],rows[2]},snapshot.Visible(timing,3).Lines);
+        Assert.Same(rows[1],snapshot.Visible(timing,3).ActiveLine(rows[2],firstVisible:true));
+        Assert.Same(rows[2],snapshot.Visible(timing,10).ActiveLine(rows[2],firstVisible:true));
         Assert.Empty(snapshot.Visible(timing,10).Lines);Assert.False(editor.Undo.CanUndo);
     }
 }

@@ -51,7 +51,9 @@ public sealed partial class MainWindowViewModel
             if(_disposed||_activeId!=document||!_documents.TryGetValue(document,out var live)||!ReferenceEquals(live,state)||_gesture is not null)return;
             result!.Validate(state.Editor);
             if(!SelectedEvents.SequenceEqual(oldSelection)||!ReferenceEquals(SelectedEvent,oldActive))throw new InvalidOperationException("Current selection changed; apply again.");
-            var active=result.Lines.Count==0||oldActive is not null&&result.Lines.Contains(oldActive)?oldActive:result.Lines[0];
+            // Select Visible activates the first visible row in both releases.
+            // Criteria matching instead retains an already-selected active row.
+            var active=result.ActiveLine(oldActive,firstVisible:visible);
             if(!ReferenceEquals(active,oldActive)&&!CommitDraft()){SetSelectionStatus(state,"Complete the current line's draft before changing the active line.");return;}
             var suppress=_suppressSelectionSeek;var syncing=IsSynchronizingSelection;IsSynchronizingSelection=true;_suppressSelectionSeek=visible;
             try{SetSelectedEvents(result.Lines);SelectedEvent=active;}finally{IsSynchronizingSelection=syncing;_suppressSelectionSeek=suppress;}
