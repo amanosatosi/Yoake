@@ -115,4 +115,15 @@ public sealed partial class EditorWorkflowTests
         await Command("time/prev");Assert.True(_model.BeginAudioTimingGesture());Assert.False(_model.BeginAudioTimingGesture());_model.UpdateAudioTimingGesture(1,.2);_model.CancelGesture();
         Assert.Equal(new AudioClipInterval(200,1400),_model.PrimaryAudioRange);await Command("audio/timing/revert");Assert.Equal(new AudioClipInterval(300,1400),_model.PrimaryAudioRange);Assert.False(_model.HasPendingAudioTiming);Assert.False(_model.ActiveEditor!.Undo.CanUndo);
     }
+    [Fact] public async Task DisabledTimingOptionsKeepTheirPersistedCheckedStateDuringBackgroundEditing()
+    {
+        await TimingRows();await Command("audio/opt/autocommit");var observed=false;var checkedState=false;var disabled=false;
+        System.ComponentModel.PropertyChangedEventHandler observer=(_,args)=>
+        {
+            if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)
+            {observed=true;checkedState=_model.Actions["audio/opt/autocommit"].IsChecked&&_model.Actions["audio/opt/autonext"].IsChecked;disabled=!_model.Actions["audio/opt/autocommit"].CanExecute(null);}
+        };
+        _model.PropertyChanged+=observer;try{await Command("time/continuous/end");}finally{_model.PropertyChanged-=observer;}
+        Assert.True(observed);Assert.True(disabled);Assert.True(checkedState);Assert.True(_model.AudioAutoCommit);Assert.True(_model.AudioAutoNext);
+    }
 }

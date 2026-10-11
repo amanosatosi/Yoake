@@ -159,7 +159,7 @@ public sealed partial class MainWindowViewModel
         void Register(string id,string label,Action<CommandInvocation,CancellationToken> action,Func<bool>? available=null,Func<bool>? check=null)
         {
             _registry.Register(new(new(id,label,label,"Audio timing"),(i,t)=>{t.ThrowIfCancellationRequested();action(i,t);return ValueTask.CompletedTask;},
-                c=>Applies(c)&&(available?.Invoke()??true),check is null?null:c=>Applies(c)&&check()));
+                c=>Applies(c)&&(available?.Invoke()??true),check is null?null:c=>_activeId is not null&&(c.DocumentId is null||c.DocumentId==_activeId)&&check()));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
         foreach(var (id,label,mode) in new[]{("audio/commit","Commit timing",AudioTimingCommitMode.Preference),
