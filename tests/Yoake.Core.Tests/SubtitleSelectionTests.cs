@@ -42,7 +42,7 @@ public sealed class SubtitleSelectionTests
         Assert.Throws<ArgumentException>(()=>SubtitleSelectionSnapshot.Capture(editor,[],new(){IncludeDialogue=false,IncludeComments=false}));Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
         var snapshot=SubtitleSelectionSnapshot.Capture(editor,[],new(){Query="pending"},rows[0],new Dictionary<string,string>{{"Text","pending 日本語"}});Assert.Single(snapshot.Match().Lines);
         using var cancellation=new CancellationTokenSource();cancellation.Cancel();Assert.ThrowsAny<OperationCanceledException>(()=>snapshot.Match(cancellation.Token));
-        var result=snapshot.Match();Assert.Throws<InvalidOperationException>(()=>result.Validate(Fixture()));editor.SetField(rows[0],"Actor","changed","Edit actor");Assert.Throws<InvalidOperationException>(()=>result.Validate(editor));
+        var result=snapshot.Match();Assert.Throws<InvalidOperationException>(()=>result.Validate(Fixture()));editor.SetField(rows[0],"Name","changed","Edit actor");Assert.Throws<InvalidOperationException>(()=>result.Validate(editor));
     }
     [Fact] public void VisibleSelectionUsesInclusiveReleaseVfrBoundariesAndIncludesTimedCommentRows()
     {
