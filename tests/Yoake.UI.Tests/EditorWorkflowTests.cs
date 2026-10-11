@@ -22,6 +22,29 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task SelectLinesOwnsSetOperationsEmptySelectionPendingDraftValidationCancellationAndSettings()
+    {
+        var path=Path.Combine(_root,"selection.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,Actor,0,0,0,,{\\future(x)\\distort(0,0,1,1)}日本語 é\n"+
+            "Comment: 0,0:00:01.00,0:00:02.00,Default,Other,0,0,0,,日本語\n"+
+            "Dialogue: 0,0:00:02.00,0:00:03.00,Default,Actor,0,0,0,,မြန်မာ\n");
+        Assert.True(_model.OpenSubtitle(path));var editor=_model.ActiveEditor!;var rows=_model.Events.ToArray();var source=editor.Document.Serialize();var document=_model.ActiveDocumentId;
+        Assert.False(_model.Actions["subtitle/select/visible"].CanExecute(null));Assert.False(await _model.Registry.InvokeAsync("selection/apply",new(Guid.NewGuid()),new SubtitleSelectionRequest(new())));
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="日本語",IncludeComments=true}));Assert.Equal(new[]{rows[0],rows[1]},_model.SelectedEvents);Assert.Same(rows[0],_model.SelectedEvent);
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="Actor",Field=SubtitleSearchField.Actor,Action=SubtitleSelectionAction.Intersect}));Assert.Equal(new[]{rows[0]},_model.SelectedEvents);
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="no matches"}));Assert.Empty(_model.SelectedEvents);Assert.Same(rows[0],_model.SelectedEvent);
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="မြန်မာ",Action=SubtitleSelectionAction.Add}));Assert.Equal(new[]{rows[2]},_model.SelectedEvents);Assert.Same(rows[2],_model.SelectedEvent);
+        _model.Draft!.Start="unfinished";var draft=_model.Draft;var selected=_model.SelectedEvents.ToArray();var position=_model.CurrentTimeSeconds;
+        Assert.False(await _model.Registry.InvokeAsync("selection/apply",new(),new SubtitleSelectionRequest(new(){Query="[",Mode=SubtitleSelectionMode.RegularExpression})));
+        Assert.Same(draft,_model.Draft);Assert.Equal(selected,_model.SelectedEvents);Assert.Equal(position,_model.CurrentTimeSeconds);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="日本語"}));Assert.Equal(selected,_model.SelectedEvents);Assert.Same(rows[2],_model.SelectedEvent);Assert.Contains("draft",_model.SelectionStatus);
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)_=_model.Registry.InvokeAsync("selection/close",new(document));};
+        _model.PropertyChanged+=cancel;await Command("selection/apply",new SubtitleSelectionRequest(new()));_model.PropertyChanged-=cancel;Assert.Equal(selected,_model.SelectedEvents);Assert.False(editor.Undo.CanUndo);
+        _model.Draft.Start=rows[2].Start;await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="Actor",Field=SubtitleSearchField.Actor}));Assert.Equal(new[]{rows[0],rows[2]},_model.SelectedEvents);Assert.Same(rows[2],_model.SelectedEvent);
+        Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);var restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal("Actor",restored.SelectionPreferences!.Query);Assert.Equal(SubtitleSearchField.Actor,restored.SelectionPreferences.Field);
+        File.WriteAllText(Path.Combine(_root,"settings.json"),"""{"selectionPreferences":{"query":null,"field":999,"mode":999,"action":999,"includeDialogue":false,"includeComments":false},"toolbarVisible":false}""");
+        restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal("",restored.SelectionPreferences!.Query);Assert.Equal(SubtitleSearchField.Text,restored.SelectionPreferences.Field);Assert.True(restored.SelectionPreferences.IncludeDialogue);Assert.False(restored.ToolbarVisible);
+    }
     [Fact] public async Task AudioPresentationCommandsShareOneCheckedSettingAndPreserveDraftDocumentSelectionAndHistory()
     {
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é";await Command(CommandIds.EditCommit);

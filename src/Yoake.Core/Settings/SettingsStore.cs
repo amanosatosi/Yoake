@@ -57,6 +57,7 @@ public sealed class SettingsStore(string path)
         var viewMode = WorkspaceViewMode.Default;
         GridTagDisplayMode? tagDisplay=null;
         SubtitleSearchPreferences? search=null;
+        SubtitleSelectionOptions? selection=null;
         bool? videoAutoSeek=null;
         SubtitleShiftPreferences? shift=null;List<SubtitleShiftHistoryEntry> shiftHistory=[];
         var globalTiming=false;bool? toolbar=null; List<HotkeyOverride> hotkeys=[];
@@ -73,6 +74,7 @@ public sealed class SettingsStore(string path)
                 case "toolbarVisible":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)toolbar=member.Value.GetBoolean();break;
                 case "gridTagDisplay":if(TryReadInt(member.Value,out var tags))tagDisplay=(GridTagDisplayMode)tags;break;
                 case "searchPreferences":try{search=JsonSerializer.Deserialize(member.Value,SettingsJsonContext.Default.SubtitleSearchPreferences);}catch(JsonException){}break;
+                case "selectionPreferences":try{selection=JsonSerializer.Deserialize(member.Value,SettingsJsonContext.Default.SubtitleSelectionOptions);}catch(JsonException){}break;
                 case "videoAutoSeek":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)videoAutoSeek=member.Value.GetBoolean();break;
                 case "shiftPreferences":try{shift=JsonSerializer.Deserialize(member.Value,SettingsJsonContext.Default.SubtitleShiftPreferences);}catch(JsonException){}break;
                 case "shiftHistory":if(member.Value.ValueKind==JsonValueKind.Array)foreach(var item in member.Value.EnumerateArray().Take(50))try{if(JsonSerializer.Deserialize(item,SettingsJsonContext.Default.SubtitleShiftHistoryEntry) is {} entry)shiftHistory.Add(entry);}catch(JsonException){}break;
@@ -112,7 +114,7 @@ public sealed class SettingsStore(string path)
             }
         }
         return new AppSettings { Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
-            HotkeyOverrides=hotkeys.ToArray(),GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,VideoAutoSeek=videoAutoSeek,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
+            HotkeyOverrides=hotkeys.ToArray(),GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,SelectionPreferences=selection,VideoAutoSeek=videoAutoSeek,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
             GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, FutureSettings = future,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,AudioSpectrum=audioSpectrum,AudioAutoScroll=audioAutoScroll,
             AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };

@@ -34,6 +34,7 @@ public sealed record AppSettings
     public bool? ToolbarVisible { get; init; }
     public GridTagDisplayMode? GridTagDisplay { get; init; }
     public SubtitleSearchPreferences? SearchPreferences {get;init;}
+    public SubtitleSelectionOptions? SelectionPreferences {get;init;}
     public bool? VideoAutoSeek {get;init;}
     public SubtitleShiftPreferences? ShiftPreferences {get;init;}
     public SubtitleShiftHistoryEntry[]? ShiftHistory {get;init;}
@@ -83,6 +84,7 @@ public sealed record AppSettings
             ToolbarVisible=ToolbarVisible??true,
             GridTagDisplay=GridTagDisplay is {} tags&&Enum.IsDefined(tags)?tags:GridTagDisplayMode.Simplified,
             SearchPreferences=SearchPreferences?.Normalize()??new SubtitleSearchPreferences(),
+            SelectionPreferences=SelectionPreferences?.Normalize()??new SubtitleSelectionOptions(),
             VideoAutoSeek=VideoAutoSeek??true,
             ShiftPreferences=ShiftPreferences?.Normalize()??new SubtitleShiftPreferences(),
             ShiftHistory=(ShiftHistory??[]).Where(entry=>entry is not null&&entry.Preferences is not null&&entry.Document is {Length:<=512}&&entry.Rows is {Length:<=4096}).Take(50).Select(entry=>entry with{Preferences=entry.Preferences.Normalize()}).ToArray(),
@@ -104,6 +106,7 @@ public sealed record AppSettings
 [JsonSerializable(typeof(AppSettings))]
 [JsonSerializable(typeof(HotkeyOverride))]
 [JsonSerializable(typeof(SubtitleSearchPreferences))]
+[JsonSerializable(typeof(SubtitleSelectionOptions))]
 [JsonSerializable(typeof(SubtitleShiftPreferences))]
 [JsonSerializable(typeof(SubtitleShiftHistoryEntry))]
 internal partial class SettingsJsonContext : JsonSerializerContext

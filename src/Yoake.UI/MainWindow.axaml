@@ -63,7 +63,7 @@
 <MenuItem Header="Exit" InputGesture="{Binding Actions[app/exit].InputGesture}" Command="{Binding Actions[app/exit]}" />
 <MenuItem Header="Close tab" InputGesture="{Binding Actions[subtitle/close].InputGesture}" Command="{Binding Actions[subtitle/close]}" />
 </MenuItem>
-<MenuItem Header="Edit">
+<MenuItem Name="EditMenu" Header="Edit">
 <MenuItem Name="OptionsMenu" Header="Options…" InputGesture="{Binding Actions[app/options].InputGesture}" Command="{Binding Actions[app/options]}" />
 <MenuItem Name="UndoMenu" Header="{Binding Actions[edit/undo].Label}" InputGesture="{Binding Actions[edit/undo].InputGesture}" Command="{Binding Actions[edit/undo]}" />
 <MenuItem Name="RedoMenu" Header="{Binding Actions[edit/redo].Label}" InputGesture="{Binding Actions[edit/redo].InputGesture}" Command="{Binding Actions[edit/redo]}" />
@@ -71,6 +71,8 @@
 <MenuItem Header="Cut lines" InputGesture="{Binding Actions[grid/cut].InputGesture}" Command="{Binding Actions[grid/cut]}" />
 <MenuItem Header="Paste lines" InputGesture="{Binding Actions[grid/paste].InputGesture}" Command="{Binding Actions[grid/paste]}" />
 <MenuItem Header="Select all lines" InputGesture="{Binding Actions[grid/select-all].InputGesture}" Command="{Binding Actions[grid/select-all]}" />
+<MenuItem Name="SelectLinesMenu" Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" />
+<MenuItem Name="SelectVisibleMenu" Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" />
 <MenuItem Header="Clear line text" InputGesture="{Binding Actions[edit/clear].InputGesture}" Command="{Binding Actions[edit/clear]}" />
 <MenuItem Header="Clear visible text" InputGesture="{Binding Actions[edit/clear/text].InputGesture}" Command="{Binding Actions[edit/clear/text]}" />
 <MenuItem Header="Find…" InputGesture="{Binding Actions[edit/find].InputGesture}" Command="{Binding Actions[edit/find]}" />
@@ -118,6 +120,8 @@
 <MenuItem Header="Move up" InputGesture="{Binding Actions[grid/move/up].InputGesture}" Command="{Binding Actions[grid/move/up]}" />
 <MenuItem Header="Move down" InputGesture="{Binding Actions[grid/move/down].InputGesture}" Command="{Binding Actions[grid/move/down]}" />
 <MenuItem Header="Styles Manager…" InputGesture="{Binding Actions[styles/manage].InputGesture}" Command="{Binding Actions[styles/manage]}" />
+<MenuItem Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" />
+<MenuItem Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" />
 <MenuItem Header="Script Info…" InputGesture="{Binding Actions[script-info/edit].InputGesture}" Command="{Binding Actions[script-info/edit]}" />
 </MenuItem>
 <MenuItem Header="Automation" SubmenuOpened="AutomationMenuOpened">
@@ -333,6 +337,8 @@
 <ListBox Name="SubtitleRows" controls:SubtitleGridText.TagDisplayMode="{Binding GridTagDisplay}" Grid.Row="1" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
 <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,0" /><Setter Property="Height" Value="26" /><Setter Property="MinHeight" Value="26" /><Setter Property="MaxHeight" Value="26" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style><Style Selector="Grid.subtitle-row TextBlock"><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" /></Style><Style Selector="Grid.subtitle-row.comment TextBlock"><Setter Property="Foreground" Value="{DynamicResource AssSyntaxUnknown}" /></Style><Style Selector="ListBoxItem:selected Grid.subtitle-row TextBlock"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style></ListBox.Styles>
 <ListBox.ContextMenu><ContextMenu>
+<MenuItem Name="SelectLinesContextMenu" Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" />
+<MenuItem Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" />
 <MenuItem Header="Timing">
 <MenuItem Header="Shift Times…" InputGesture="{Binding Actions[time/shift].InputGesture}" Command="{Binding Actions[time/shift]}" />
 <MenuItem Header="Make starts continuous" Command="{Binding Actions[time/continuous/start]}" />

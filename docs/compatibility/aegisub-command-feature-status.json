@@ -397,8 +397,8 @@
     {
       "id": "audio/go_to",
       "yoake_command": "audio/go_to",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -411,14 +411,14 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "audio/go_to/end",
       "yoake_command": "audio/go_to/end",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -431,14 +431,14 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "audio/go_to/start",
       "yoake_command": "audio/go_to/start",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -451,7 +451,7 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -541,8 +541,8 @@
     {
       "id": "audio/opt/autoscroll",
       "yoake_command": "audio/opt/autoscroll",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -555,14 +555,14 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "audio/opt/spectrum",
       "yoake_command": "audio/opt/spectrum",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -575,14 +575,14 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "audio/opt/vertical_link",
       "yoake_command": "audio/opt/vertical_link",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -595,7 +595,7 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -792,8 +792,8 @@
     {
       "id": "audio/scroll/left",
       "yoake_command": "audio/scroll/left",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -806,7 +806,7 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {
         "Audio": [
           "A"
@@ -816,8 +816,8 @@
     {
       "id": "audio/scroll/right",
       "yoake_command": "audio/scroll/right",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -830,7 +830,7 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {
         "Audio": [
           "F"
@@ -868,8 +868,8 @@
     {
       "id": "audio/view/spectrum",
       "yoake_command": "audio/view/spectrum",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -882,14 +882,14 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "audio/view/waveform",
       "yoake_command": "audio/view/waveform",
-      "status": "partially implemented",
-      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: one persisted semantic waveform/spectrum state shared by radio menus, the existing selector and native-backed cancellable viewport renderer; persisted selected-line autoscroll and linked amplitude/volume checked options; release range/endpoint visibility and 128-display-pixel scrolling at current zoom over the existing document viewport.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Audio native radio/check/action menus with effective hotkeys",
@@ -902,7 +902,7 @@
         "AuthoringUiVerification existing selector/panner/provider coverage",
         "AudioDisplayUiAcceptanceVerification actual A/F, native menu Enter, real spectrum tile and two-process settings"
       ],
-      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "Exact audio.cpp, audio_box.cpp, audio_display.cpp and shipped defaults reviewed in both pinned releases; this cluster has no release behavior delta. Yoake retains its existing Waveform first-launch default (Aegisub defaults to Spectrum), explicit independent tab viewport, bounded linear-frequency spectrum tiles, and normalized provider attenuation for linked volume. Go-to uses actual 5% visibility gutters rather than forcing a centered range already in view; center-start/end are explicit actions. Autoscroll preference controls selected-line scrolling; existing playback following is retained. Audio timing-unit/karaoke/commit/ownership/playback/export remain separate incomplete clusters. Verified all managed/source/native Automation/NativeAOT startup/provider and both separate real-input audio display acceptance processes at 91a043982620a6ef9b115e216644ef2e9817de26: https://github.com/amanosatosi/Yoake/actions/runs/38157581141.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2489,12 +2489,21 @@
     },
     {
       "id": "subtitle/select/visible",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Select all dialogue lines that are visible on the current video frame",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "subtitle/select/visible",
+      "status": "partially implemented",
+      "backend": "Document-local immutable selection snapshots; shared structured/grapheme-safe search with exact/contains/regex and text/style/actor/effect fields, filters/inversion and true replace/add/subtract/intersect sets; central VFR inclusive START/END visibility; cancellation/revision/selection validation before publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit menu and subtitle grid context menu",
+        "Live context-aware configurable hotkeys (neither release ships a default)",
+        "Actual Select Lines dialog Apply/Confirm/Cancel commands"
+      ],
+      "tests": [
+        "SubtitleSelectionTests",
+        "EditorWorkflowTests.SelectLinesOwnsSetOperationsEmptySelectionPendingDraftValidationCancellationAndSettings",
+        "SelectionUiAcceptanceVerification (separate two-process packaged acceptance)"
+      ],
+      "notes": "Both exact release dialog_selection.cpp / command/subtitle.cpp inspected: matching/set operations and visible frame semantics unchanged. Yoake deliberately defaults to structured visible text with explicit raw ASS, keeps validation errors visible, saves successful criteria only, and retains the examined video frame despite autoseek for visible selection. Empty selection retains active; invalid pending draft cannot change active. No subtitle mutation/undo entry except the normal valid draft commit when changing active. Implementation awaits CI; do not count complete yet.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2922,12 +2931,21 @@
     },
     {
       "id": "tool/line/select",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Select lines based on defined criteria",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "tool/line/select",
+      "status": "partially implemented",
+      "backend": "Document-local immutable selection snapshots; shared structured/grapheme-safe search with exact/contains/regex and text/style/actor/effect fields, filters/inversion and true replace/add/subtract/intersect sets; central VFR inclusive START/END visibility; cancellation/revision/selection validation before publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Edit menu and subtitle grid context menu",
+        "Live context-aware configurable hotkeys (neither release ships a default)",
+        "Actual Select Lines dialog Apply/Confirm/Cancel commands"
+      ],
+      "tests": [
+        "SubtitleSelectionTests",
+        "EditorWorkflowTests.SelectLinesOwnsSetOperationsEmptySelectionPendingDraftValidationCancellationAndSettings",
+        "SelectionUiAcceptanceVerification (separate two-process packaged acceptance)"
+      ],
+      "notes": "Both exact release dialog_selection.cpp / command/subtitle.cpp inspected: matching/set operations and visible frame semantics unchanged. Yoake deliberately defaults to structured visible text with explicit raw ASS, keeps validation errors visible, saves successful criteria only, and retains the examined video frame despite autoseek for visible selection. Empty selection retains active; invalid pending draft cannot change active. No subtitle mutation/undo entry except the normal valid draft commit when changing active. Implementation awaits CI; do not count complete yet.",
       "yoake_default_hotkeys": {}
     },
     {

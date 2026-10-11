@@ -107,6 +107,7 @@ public partial class MainWindow : Window, IEditorDialogs
         });
     }
     public async Task ShowShiftTimesAsync(MainWindowViewModel model)=>await new ShiftTimesWindow(model).ShowDialog(this);
+    public async Task ShowSelectLinesAsync(MainWindowViewModel model)=>await new SelectLinesWindow(model).ShowDialog(this);
     public Task<AssColor?> ChooseColorAsync(AssColor color)=>new AssColorDialog(color,_model?.RecentColorsPath).ShowDialog<AssColor?>(this);
     public async Task<FontChoice?> ChooseFontAsync(string family,string size)
     {
@@ -200,7 +201,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null)return;
         if(SubtitleRows.SelectedItems.OfType<AssEvent>().SequenceEqual(_model.SelectedEvents))return;
         _selectionSync=true;
-        try{SubtitleRows.SelectedItems=_model.SelectedEvents.Where(_model.Events.Contains).ToList();}
+        try{var owned=_model.Events.ToHashSet();SubtitleRows.SelectedItems=_model.SelectedEvents.Where(owned.Contains).ToList();}
         finally{_selectionSync=false;}
     }
     private void GridSelectionChanged(object? sender,SelectionChangedEventArgs e)

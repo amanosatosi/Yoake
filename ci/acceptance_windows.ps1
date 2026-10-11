@@ -100,3 +100,25 @@ foreach ($case in @('fresh', 'restored')) {
     $process.Dispose()
   }
 }
+# Select Lines/visible-selection workflows have an independent process/profile.
+$selectionRoot = Join-Path $root ('selection-' + [Guid]::NewGuid().ToString('N'))
+$selectionProfile = Join-Path $selectionRoot 'profile'
+New-Item -ItemType Directory -Force -Path $selectionProfile | Out-Null
+foreach ($case in @('fresh', 'restored')) {
+  $logs = Join-Path $selectionRoot ($case + '-logs')
+  $report = Join-Path $selectionRoot ($case + '.txt')
+  $arguments = @('--verify-ui-selection', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $selectionProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+  $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+  try {
+    if (-not $process.WaitForExit(150000)) { throw "Packaged selection acceptance timed out: $case" }
+    $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+    if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged selection acceptance failed for $case (exit $($process.ExitCode)):`n$text" }
+    Write-Host $text
+  } catch {
+    Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+    throw
+  } finally {
+    if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+    $process.Dispose()
+  }
+}

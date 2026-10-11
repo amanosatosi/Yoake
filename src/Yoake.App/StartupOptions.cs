@@ -11,6 +11,7 @@ internal sealed class StartupOptions
     public bool TimingAcceptance {get;private set;}
     public bool TimecodeAcceptance {get;private set;}
     public bool AudioDisplayAcceptance {get;private set;}
+    public bool SelectionAcceptance {get;private set;}
     private int _verificationFinished;
     private int _startupVerified;
     public bool VerificationFinished => Volatile.Read(ref _verificationFinished) != 0;
@@ -18,10 +19,10 @@ internal sealed class StartupOptions
 
     public static StartupOptions Parse(string[] args)
     {
-        var options = new StartupOptions { NonInteractive = args.Contains("--verify-editor") || args.Contains("--verify-ui-startup") || args.Contains("--verify-ui-hotkeys") || args.Contains("--verify-ui-timing") || args.Contains("--verify-ui-timecodes") || args.Contains("--verify-ui-audio-display") };
+        var options = new StartupOptions { NonInteractive = args.Contains("--verify-editor") || args.Contains("--verify-ui-startup") || args.Contains("--verify-ui-hotkeys") || args.Contains("--verify-ui-timing") || args.Contains("--verify-ui-timecodes") || args.Contains("--verify-ui-audio-display") || args.Contains("--verify-ui-selection") };
         for (var i = 0; i < args.Length; i++)
         {
-            if (args[i] is not ("--verify-ui-startup" or "--verify-ui-hotkeys" or "--verify-ui-timing" or "--verify-ui-timecodes" or "--verify-ui-audio-display" or "--profile-directory" or "--diagnostics-directory" or "--verification-media")) continue;
+            if (args[i] is not ("--verify-ui-startup" or "--verify-ui-hotkeys" or "--verify-ui-timing" or "--verify-ui-timecodes" or "--verify-ui-audio-display" or "--verify-ui-selection" or "--profile-directory" or "--diagnostics-directory" or "--verification-media")) continue;
             var flag = args[i];
             if (++i >= args.Length || string.IsNullOrWhiteSpace(args[i])) throw new ArgumentException($"{flag} requires a path.");
             var path = Path.GetFullPath(args[i]);
@@ -33,6 +34,7 @@ internal sealed class StartupOptions
                 case "--verify-ui-timing": options.VerificationReport=path;options.TimingAcceptance=true;break;
                 case "--verify-ui-timecodes":options.VerificationReport=path;options.TimecodeAcceptance=true;break;
                 case "--verify-ui-audio-display":options.VerificationReport=path;options.AudioDisplayAcceptance=true;break;
+                case "--verify-ui-selection":options.VerificationReport=path;options.SelectionAcceptance=true;break;
                 case "--profile-directory": options.ProfileDirectory = path; break;
                 case "--diagnostics-directory": options.DiagnosticsDirectory = path; break;
             }

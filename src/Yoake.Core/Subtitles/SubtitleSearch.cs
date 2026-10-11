@@ -69,6 +69,7 @@ public sealed class SubtitleSearch
                 {OriginalSource=input.Source,FieldName=input.FieldName});
         }
     }
+    public bool HasMatchSnapshot(SubtitleSearchInput input,CancellationToken token=default)=>Matches(input,token).Any();
     public SubtitleSearchMatch? Find(IReadOnlyList<AssEvent> lines,AssEvent? current,int offset,bool backwards,CancellationToken token=default)
         =>FindSnapshot(CaptureInputs(lines,token),current,offset,backwards,token);
     public SubtitleSearchMatch? FindSnapshot(IReadOnlyList<SubtitleSearchInput> inputs,AssEvent? current,int offset,bool backwards,CancellationToken token=default)
