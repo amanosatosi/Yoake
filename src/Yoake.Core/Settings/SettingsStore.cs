@@ -63,7 +63,7 @@ public sealed class SettingsStore(string path)
         var ratio = defaults.MainSplitRatio; var height = defaults.GridHeight;
         double? volume=null,audioHeight=null,intensity=null,audioSpan=null;var muted=false;var linked=false;double[]? compact=null,styleSplit=null;
         string[]? autoload=null,includes=null;
-        double[]? widths = null; string[]? recent = null;string[]? recentKeyframes=null;
+        double[]? widths = null; string[]? recent = null;string[]? recentKeyframes=null;string[]? recentTimecodes=null;
         Dictionary<string, JsonElement> future = [];
         foreach (var member in root.EnumerateObject())
         {
@@ -101,6 +101,7 @@ public sealed class SettingsStore(string path)
                     if (member.Value.ValueKind == JsonValueKind.Array) widths = member.Value.EnumerateArray().Take(9).Select(ReadNumber).ToArray();
                     break;
                 case "recentKeyframes":recentKeyframes=ReadPaths(member.Value);break;
+                case "recentTimecodes":recentTimecodes=ReadPaths(member.Value);break;
                 case "recentFiles":
                     if (member.Value.ValueKind == JsonValueKind.Array) recent = member.Value.EnumerateArray().Take(24).Select(v => v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "").ToArray();
                     break;
@@ -109,7 +110,7 @@ public sealed class SettingsStore(string path)
         }
         return new AppSettings { Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
             HotkeyOverrides=hotkeys.ToArray(),GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,VideoAutoSeek=videoAutoSeek,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
-            GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, FutureSettings = future,
+            GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, FutureSettings = future,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,
             AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };
     }

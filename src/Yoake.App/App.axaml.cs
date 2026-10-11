@@ -91,6 +91,7 @@ public partial class App : Application
             {
                 if (_startup.HotkeyAcceptance) new HotkeyUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.TimingAcceptance)new TimingUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.TimecodeAcceptance)new TimecodeUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else new UiStartupVerification(desktop, window, viewModel, _startup).Start();
             }
             desktop.MainWindow = window;

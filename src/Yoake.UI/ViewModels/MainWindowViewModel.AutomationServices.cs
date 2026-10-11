@@ -31,12 +31,13 @@ public sealed partial class MainWindowViewModel
             ["video_position"] = id == _activeId && media?.HasVideo == true ? CurrentFrame : IntProperty("Video Position"),
             ["audio_file"] = media?.HasAudio == true ? media.SourcePath : AbsoluteProperty("Audio File"),
             ["video_file"] = media?.HasVideo == true ? media.SourcePath : AbsoluteProperty("Video File"),
-            ["timecodes_file"] = AbsoluteProperty("Timecodes File"), ["keyframes_file"] = AbsoluteProperty("Keyframes File")
+            ["timecodes_file"] = state.TimecodePath??AbsoluteProperty("Timecodes File"), ["keyframes_file"] = state.KeyframePath??AbsoluteProperty("Keyframes File")
         };
-        var timecodes = media?.HasVideo == true && media.FrameTimes.Count > 0 ? new AutomationTimecodeView(media.FrameTimes, media.Info.FramesPerSecond) : null;
+        var timecodes = state.ExternalTimecodes is {} external?new AutomationTimecodeView(external)
+            :media?.HasVideo == true && media.FrameTimes.Count > 0 ? new AutomationTimecodeView(media.FrameTimes, media.Info.FramesPerSecond) : null;
         var size = media?.HasVideo == true ? new AutomationVideoSize(media.Info.Width, media.Info.Height, (double)properties["ar_value"]!, (int)properties["ar_mode"]!) : null;
         return new EditorAutomationServices(session.Path is null ? null : Path.GetFileName(session.Path), properties, timecodes, size,
-            media?.Keyframes.ToArray() ?? [], new AutomationPathResolver(Path.Combine(AppContext.BaseDirectory, "context.lua"), [], AutomationTokens(id)),
+            (state.ExternalKeyframes??media?.Keyframes)?.ToArray() ?? [], new AutomationPathResolver(Path.Combine(AppContext.BaseDirectory, "context.lua"), [], AutomationTokens(id)),
             Dialogs, progress, _automationLog, interactive);
     }
 

@@ -22,6 +22,42 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task TimecodesAreDocumentLocalMetadataWithAtomicValidationCancellationExportAndPersistedRecents()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é မြန်မာ";await Command(CommandIds.EditCommit);
+        var document=_model.ActiveDocumentId;var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        _model.CurrentTimeSeconds=.7;var originalStart=_model.Draft!.Start;_model.Draft.Start="unfinished";var draft=_model.Draft;var selection=_model.SelectedEvents.ToArray();
+        var input=Path.Combine(_root,"日本語.tc.txt");File.WriteAllText(input,"# timecode format v1\nAssume 25\n0,1,50\n");
+        Assert.False(_model.CanShiftByFrames);Assert.False(_model.Actions["timecode/close"].CanExecute(null));Assert.False(_model.Actions["timecode/save"].CanExecute(null));
+        Assert.False(await _model.Registry.InvokeAsync("timecode/open",new(Guid.NewGuid()),input));
+        await Command("timecode/open",input);Assert.Equal(input,_model.ExternalTimecodePath);Assert.True(_model.CanShiftByFrames);Assert.Empty(_model.FrameTimes);
+        Assert.True(_model.Actions["timecode/save"].CanExecute(null));Assert.False(_model.Actions["time/snap/start_video"].CanExecute(null));Assert.False(_model.Actions["edit/line/split/before"].CanExecute(null));
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Equal(selection,_model.SelectedEvents);Assert.Equal(.7,_model.CurrentTimeSeconds);
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        var exported=Path.Combine(_root,"export.tc.txt");await Command("timecode/save",exported);Assert.Equal(new long[]{0,20,40},Yoake.Core.Media.TimecodeFile.Load(exported).Milliseconds);
+        Assert.Equal(exported,_model.RecentTimecodeItems[0].Path);Assert.Equal("timecode/open",_model.RecentTimecodeItems[0].Command.CommandId);
+        var bad=Path.Combine(_root,"bad.tc.txt");File.WriteAllText(bad,"# timecode format v2\n0\nNaN");
+        Assert.False(await _model.Registry.InvokeAsync("timecode/open",new(),bad));Assert.Equal(input,_model.ExternalTimecodePath);Assert.Same(draft,_model.Draft);Assert.Equal(source,editor.Document.Serialize());
+        _model.Draft.Start=originalStart;await Command(CommandIds.SubtitleNew);Assert.False(_model.CanShiftByFrames);Assert.Null(_model.ExternalTimecodePath);
+        await Command(CommandIds.WorkspaceActivateTab,document);Assert.True(_model.CanShiftByFrames);Assert.Equal(input,_model.ExternalTimecodePath);
+        await Command("timecode/close");Assert.False(_model.CanShiftByFrames);Assert.False(_model.Actions["timecode/save"].CanExecute(null));
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasTimecodeOperation)&&_model.HasTimecodeOperation)_=_model.Registry.InvokeAsync("timecode/close",new());};
+        _model.PropertyChanged+=cancel;await Command("timecode/open",input);_model.PropertyChanged-=cancel;Assert.Null(_model.ExternalTimecodePath);Assert.False(_model.CanShiftByFrames);
+        File.Delete(exported);Assert.False(await _model.Registry.InvokeAsync("timecode/open",new(),exported));Assert.DoesNotContain(_model.RecentTimecodeItems,item=>item.Path==exported);
+        var restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Contains(input,restored.RecentTimecodes!);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        File.WriteAllText(Path.Combine(_root,"settings.json"),"""{"recentTimecodes":[null,7,"日本語.tc.txt","日本語.tc.txt"],"toolbarVisible":false}""");
+        restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal(new[]{"日本語.tc.txt"},restored.RecentTimecodes);Assert.False(restored.ToolbarVisible);
+    }
+    [Fact] public async Task ExternalTimecodesEnableUndoableFrameShiftingWithoutVideoAndCloseDisablesIt()
+    {
+        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;var editor=_model.ActiveEditor!;
+        editor.SetTiming(line,40,120);editor.SetField(line,"Text","{\\future(x)\\distort(0,0,1,1)}é 日本語","Set text");
+        var source=editor.Document.Serialize();var path=Path.Combine(_root,"frames.tc.txt");File.WriteAllText(path,"Assume 25\n0,1,50");await Command("timecode/open",path);
+        await Command("time/shift/apply",new SubtitleShiftToolRequest(new(){ByFrames=true,Frames=1},_model.SelectedEvents.ToArray()));
+        Assert.NotEqual(source,editor.Document.Serialize());Assert.Contains("\\future(x)\\distort(0,0,1,1)",line.Text);await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+        await Command("timecode/close");Assert.False(await _model.Registry.InvokeAsync("time/shift/apply",new(),new SubtitleShiftToolRequest(new(){ByFrames=true,Frames=1},_model.SelectedEvents.ToArray())));
+        Assert.Equal(source,editor.Document.Serialize());
+    }
     [Fact] public async Task KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents()
     {
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é";await Command(CommandIds.EditCommit);

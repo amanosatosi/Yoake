@@ -1966,8 +1966,8 @@
     {
       "id": "keyframe/close",
       "yoake_command": "keyframe/close",
-      "status": "partially implemented",
-      "backend": "Implemented: Cancel pending metadata I/O and return to the same existing media provider keyframes without seeking, reindexing, draft commits or undo changes. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Cancel pending metadata I/O and return to the same existing media provider keyframes without seeking, reindexing, draft commits or undo changes.",
       "exposure": [
         "CommandRegistry",
         "Video > Keyframes menu and native file pickers",
@@ -1979,14 +1979,14 @@
         "EditorWorkflowTests.KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents",
         "TimingUiAcceptanceVerification actual menu Enter and remapped close with native media"
       ],
-      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Verified all managed/source/native Automation/NativeAOT startup and both timing acceptance processes, including real native recent-menu Enter and out-of-video export at 1d0a65579b40cc8857f55fa0e5893e607c8780f6: https://github.com/amanosatosi/Yoake/actions/runs/38153622192.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "keyframe/open",
       "yoake_command": "keyframe/open",
-      "status": "partially implemented",
-      "backend": "Implemented: Cancellable background loading of exact release keyframe/log formats, including 3.5 WWXD; immutable sorted metadata, document ownership and existing-provider override. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Cancellable background loading of exact release keyframe/log formats, including 3.5 WWXD; immutable sorted metadata, document ownership and existing-provider override.",
       "exposure": [
         "CommandRegistry",
         "Video > Keyframes menu and native file pickers",
@@ -1998,14 +1998,14 @@
         "EditorWorkflowTests.KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents",
         "TimingUiAcceptanceVerification actual menu Enter and remapped close with native media"
       ],
-      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Verified all managed/source/native Automation/NativeAOT startup and both timing acceptance processes, including real native recent-menu Enter and out-of-video export at 1d0a65579b40cc8857f55fa0e5893e607c8780f6: https://github.com/amanosatosi/Yoake/actions/runs/38153622192.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "keyframe/save",
       "yoake_command": "keyframe/save",
-      "status": "partially implemented",
-      "backend": "Implemented: Cancellable atomic Aegisub v1 export of the full external list or existing provider list; real picker and semantic recent support. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Cancellable atomic Aegisub v1 export of the full external list or existing provider list; real picker and semantic recent support.",
       "exposure": [
         "CommandRegistry",
         "Video > Keyframes menu and native file pickers",
@@ -2017,7 +2017,7 @@
         "EditorWorkflowTests.KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents",
         "TimingUiAcceptanceVerification actual menu Enter and remapped close with native media"
       ],
-      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Verified all managed/source/native Automation/NativeAOT startup and both timing acceptance processes, including real native recent-menu Enter and out-of-video export at 1d0a65579b40cc8857f55fa0e5893e607c8780f6: https://github.com/amanosatosi/Yoake/actions/runs/38153622192.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2033,8 +2033,8 @@
     {
       "id": "recent/keyframe",
       "yoake_command": "keyframe/open",
-      "status": "partially implemented",
-      "backend": "Implemented: Bounded persisted semantic recent-keyframe menu adapters invoking keyframe/open; missing/malformed paths removed without discarding existing metadata. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Bounded persisted semantic recent-keyframe menu adapters invoking keyframe/open; missing/malformed paths removed without discarding existing metadata.",
       "exposure": [
         "CommandRegistry",
         "Video > Keyframes menu and native file pickers",
@@ -2046,7 +2046,7 @@
         "EditorWorkflowTests.KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents",
         "TimingUiAcceptanceVerification actual menu Enter and remapped close with native media"
       ],
-      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Completion awaits relevant managed/NativeAOT packaged CI.",
+      "notes": "WWXD is source-derived 3.5 behavior; the other supported formats and provider fallback exist in both releases. Yoake rejects malformed indices rather than silently truncating input, normalizes unordered/duplicate cuts, and filters out-of-video cuts for navigation while retaining full metadata for export. No automatic reopening or ASS source rewriting. Verified all managed/source/native Automation/NativeAOT startup and both timing acceptance processes, including real native recent-menu Enter and out-of-video export at 1d0a65579b40cc8857f55fa0e5893e607c8780f6: https://github.com/amanosatosi/Yoake/actions/runs/38153622192.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2072,12 +2072,22 @@
     },
     {
       "id": "recent/timecodes",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent timecodes",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "timecode/open (parameterized MRU entries)",
+      "status": "partially implemented",
+      "backend": "Implemented: cancellable v1/v2 parsing and atomic V2 export; immutable file rate/anchor metadata; background preparation and atomic existing-provider frame-map override; indexed native decoding, central navigation/timing/split/scene boundaries and original-provider fallback; independent bounded persisted recents. Relevant CI pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Video > Timecodes native menu/pickers and bounded semantic recents",
+        "Live context-aware user hotkeys (no shipped upstream default binding)"
+      ],
+      "tests": [
+        "TimecodeFileTests",
+        "EditorWorkflowTests.TimecodesAreDocumentLocalMetadataWithAtomicValidationCancellationExportAndPersistedRecents",
+        "EditorWorkflowTests.ExternalTimecodesEnableUndoableFrameShiftingWithoutVideoAndCloseDisablesIt",
+        "EditorVerification native indexed-frame decode/fallback",
+        "TimecodeUiAcceptanceVerification separate real-window menu/key workflows and two-process persistence"
+      ],
+      "notes": "Exact release timecode.cpp, project.cpp, libaegisub/common/vfr.cpp and tests/vfr.cpp inspected in both pinned versions. V1 retains Assume extrapolation and fractional anchor; V2 normalizes origin and uses average extrapolation. Export extends short files for video and retains longer external lists. Yoake rejects malformed numeric tails, nonfinite/overflowing data and overlapping ranges before publication rather than silently dropping lines. No automatic media reopening, subtitle-source rewriting or second clock/session. Existing frozen Automation START conversion is unchanged; only an external-file rate/anchor input constructor and document-host metadata hook were added so macros observe the same timeline without a runtime profile change. Completion awaits relevant managed/NativeAOT packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2408,7 +2418,7 @@
       "id": "time/continuous/end",
       "yoake_command": "time/continuous/end",
       "status": "already complete",
-      "backend": "Implemented: single-row previous/next neighbor semantics and internal contiguous-block boundary adjustment; immutable revision-checked snapshot, cancellable calculation, one rollback-capable undo. Non-contiguous selections disabled. CI pending.",
+      "backend": "Implemented: single-row previous/next neighbor semantics and internal contiguous-block boundary adjustment; immutable revision-checked snapshot, cancellable calculation, one rollback-capable undo. Non-contiguous selections disabled. ",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Timing menu and grid context menu; exact Default hotkeys where shipped",
@@ -2425,7 +2435,7 @@
       "id": "time/continuous/start",
       "yoake_command": "time/continuous/start",
       "status": "already complete",
-      "backend": "Implemented: single-row previous/next neighbor semantics and internal contiguous-block boundary adjustment; immutable revision-checked snapshot, cancellable calculation, one rollback-capable undo. Non-contiguous selections disabled. CI pending.",
+      "backend": "Implemented: single-row previous/next neighbor semantics and internal contiguous-block boundary adjustment; immutable revision-checked snapshot, cancellable calculation, one rollback-capable undo. Non-contiguous selections disabled. ",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Timing menu and grid context menu; exact Default hotkeys where shipped",
@@ -2442,7 +2452,7 @@
       "id": "time/frame/current",
       "yoake_command": "time/frame/current",
       "status": "already complete",
-      "backend": "Implemented: shift all selected endpoints by the delta between the active start and current VFR START boundary, with audited centisecond rounding and zero clamp. Document/frame context captured before cancellable calculation; one undo transaction; video absence disabled. CI pending.",
+      "backend": "Implemented: shift all selected endpoints by the delta between the active start and current VFR START boundary, with audited centisecond rounding and zero clamp. Document/frame context captured before cancellable calculation; one undo transaction; video absence disabled. ",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Timing menu and grid context menu; exact Default hotkeys where shipped",
@@ -2600,7 +2610,7 @@
       "id": "time/shift",
       "yoake_command": "time/shift",
       "status": "already complete",
-      "backend": "Implemented: immutable revision-checked timing snapshots, cancellable background calculation, and one rollback-capable undo transaction. Shift Times includes time/frame units, start/end/both, all/selected/selection-onward scopes, persisted preferences and reusable 50-entry history. Continuous timing matches single-neighbor/contiguous-block semantics. Snaps use selected rows and the central VFR START/END boundaries. CI acceptance pending.",
+      "backend": "Implemented: immutable revision-checked timing snapshots, cancellable background calculation, and one rollback-capable undo transaction. Shift Times includes time/frame units, start/end/both, all/selected/selection-onward scopes, persisted preferences and reusable 50-entry history. Continuous timing matches single-neighbor/contiguous-block semantics. Snaps use selected rows and the central VFR START/END boundaries.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Timing menu and grid context menu; exact Default hotkeys where shipped",
@@ -2623,7 +2633,7 @@
       "id": "time/snap/end_video",
       "yoake_command": "time/snap/end_video",
       "status": "already complete",
-      "backend": "Implemented: all selected rows snap through central VFR START/END boundaries; extends the other endpoint when needed to include the frame. Disabled without video/frame data. Revision-checked cancellable calculation and one undo transaction. CI pending.",
+      "backend": "Implemented: all selected rows snap through central VFR START/END boundaries; extends the other endpoint when needed to include the frame. Disabled without video/frame data. Revision-checked cancellable calculation and one undo transaction. ",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Timing menu and grid context menu; exact Default hotkeys where shipped",
@@ -2645,7 +2655,7 @@
       "id": "time/snap/scene",
       "yoake_command": "time/snap/scene",
       "status": "already complete",
-      "backend": "Implemented: selected rows span the current scene from its keyframe through the frame before the next cut, with first/last scene edges. Central provider keyframes and VFR START/END boundaries; one undo transaction; video/keyframe absence disabled. External keyframes remain a separate missing cluster. CI pending.",
+      "backend": "Implemented: selected rows span the current scene from its keyframe through the frame before the next cut, with first/last scene edges. Central provider keyframes and VFR START/END boundaries; one undo transaction; video/keyframe absence disabled. External keyframes remain a separate missing cluster. ",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Timing menu and grid context menu; exact Default hotkeys where shipped",
@@ -2667,7 +2677,7 @@
       "id": "time/snap/start_video",
       "yoake_command": "time/snap/start_video",
       "status": "already complete",
-      "backend": "Implemented: all selected rows snap through central VFR START/END boundaries; extends the other endpoint when needed to include the frame. Disabled without video/frame data. Revision-checked cancellable calculation and one undo transaction. CI pending.",
+      "backend": "Implemented: all selected rows snap through central VFR START/END boundaries; extends the other endpoint when needed to include the frame. Disabled without video/frame data. Revision-checked cancellable calculation and one undo transaction. ",
       "exposure": [
         "Shared semantic CommandRegistry actions",
         "Timing menu and grid context menu; exact Default hotkeys where shipped",
@@ -2715,32 +2725,62 @@
     },
     {
       "id": "timecode/close",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Document-local central frame map; validated v1/v2 import/export and provider fallback. Required action: Close the currently open timecodes file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "timecode/close",
+      "status": "partially implemented",
+      "backend": "Implemented: cancellable v1/v2 parsing and atomic V2 export; immutable file rate/anchor metadata; background preparation and atomic existing-provider frame-map override; indexed native decoding, central navigation/timing/split/scene boundaries and original-provider fallback; independent bounded persisted recents. Relevant CI pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Video > Timecodes native menu/pickers and bounded semantic recents",
+        "Live context-aware user hotkeys (no shipped upstream default binding)"
+      ],
+      "tests": [
+        "TimecodeFileTests",
+        "EditorWorkflowTests.TimecodesAreDocumentLocalMetadataWithAtomicValidationCancellationExportAndPersistedRecents",
+        "EditorWorkflowTests.ExternalTimecodesEnableUndoableFrameShiftingWithoutVideoAndCloseDisablesIt",
+        "EditorVerification native indexed-frame decode/fallback",
+        "TimecodeUiAcceptanceVerification separate real-window menu/key workflows and two-process persistence"
+      ],
+      "notes": "Exact release timecode.cpp, project.cpp, libaegisub/common/vfr.cpp and tests/vfr.cpp inspected in both pinned versions. V1 retains Assume extrapolation and fractional anchor; V2 normalizes origin and uses average extrapolation. Export extends short files for video and retains longer external lists. Yoake rejects malformed numeric tails, nonfinite/overflowing data and overlapping ranges before publication rather than silently dropping lines. No automatic media reopening, subtitle-source rewriting or second clock/session. Existing frozen Automation START conversion is unchanged; only an external-file rate/anchor input constructor and document-host metadata hook were added so macros observe the same timeline without a runtime profile change. Completion awaits relevant managed/NativeAOT packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "timecode/open",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Document-local central frame map; validated v1/v2 import/export and provider fallback. Required action: Open a VFR timecodes v1 or v2 file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "timecode/open",
+      "status": "partially implemented",
+      "backend": "Implemented: cancellable v1/v2 parsing and atomic V2 export; immutable file rate/anchor metadata; background preparation and atomic existing-provider frame-map override; indexed native decoding, central navigation/timing/split/scene boundaries and original-provider fallback; independent bounded persisted recents. Relevant CI pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Video > Timecodes native menu/pickers and bounded semantic recents",
+        "Live context-aware user hotkeys (no shipped upstream default binding)"
+      ],
+      "tests": [
+        "TimecodeFileTests",
+        "EditorWorkflowTests.TimecodesAreDocumentLocalMetadataWithAtomicValidationCancellationExportAndPersistedRecents",
+        "EditorWorkflowTests.ExternalTimecodesEnableUndoableFrameShiftingWithoutVideoAndCloseDisablesIt",
+        "EditorVerification native indexed-frame decode/fallback",
+        "TimecodeUiAcceptanceVerification separate real-window menu/key workflows and two-process persistence"
+      ],
+      "notes": "Exact release timecode.cpp, project.cpp, libaegisub/common/vfr.cpp and tests/vfr.cpp inspected in both pinned versions. V1 retains Assume extrapolation and fractional anchor; V2 normalizes origin and uses average extrapolation. Export extends short files for video and retains longer external lists. Yoake rejects malformed numeric tails, nonfinite/overflowing data and overlapping ranges before publication rather than silently dropping lines. No automatic media reopening, subtitle-source rewriting or second clock/session. Existing frozen Automation START conversion is unchanged; only an external-file rate/anchor input constructor and document-host metadata hook were added so macros observe the same timeline without a runtime profile change. Completion awaits relevant managed/NativeAOT packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "timecode/save",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Document-local central frame map; validated v1/v2 import/export and provider fallback. Required action: Save a VFR timecodes v2 file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "timecode/save",
+      "status": "partially implemented",
+      "backend": "Implemented: cancellable v1/v2 parsing and atomic V2 export; immutable file rate/anchor metadata; background preparation and atomic existing-provider frame-map override; indexed native decoding, central navigation/timing/split/scene boundaries and original-provider fallback; independent bounded persisted recents. Relevant CI pending.",
+      "exposure": [
+        "Shared semantic CommandRegistry actions",
+        "Video > Timecodes native menu/pickers and bounded semantic recents",
+        "Live context-aware user hotkeys (no shipped upstream default binding)"
+      ],
+      "tests": [
+        "TimecodeFileTests",
+        "EditorWorkflowTests.TimecodesAreDocumentLocalMetadataWithAtomicValidationCancellationExportAndPersistedRecents",
+        "EditorWorkflowTests.ExternalTimecodesEnableUndoableFrameShiftingWithoutVideoAndCloseDisablesIt",
+        "EditorVerification native indexed-frame decode/fallback",
+        "TimecodeUiAcceptanceVerification separate real-window menu/key workflows and two-process persistence"
+      ],
+      "notes": "Exact release timecode.cpp, project.cpp, libaegisub/common/vfr.cpp and tests/vfr.cpp inspected in both pinned versions. V1 retains Assume extrapolation and fractional anchor; V2 normalizes origin and uses average extrapolation. Export extends short files for video and retains longer external lists. Yoake rejects malformed numeric tails, nonfinite/overflowing data and overlapping ranges before publication rather than silently dropping lines. No automatic media reopening, subtitle-source rewriting or second clock/session. Existing frozen Automation START conversion is unchanged; only an external-file rate/anchor input constructor and document-host metadata hook were added so macros observe the same timeline without a runtime profile change. Completion awaits relevant managed/NativeAOT packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3385,12 +3425,19 @@
     },
     {
       "id": "video/opt/autoscroll",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Toggle automatically seeking video to the start time of selected lines",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/autoseek",
+      "status": "already complete",
+      "backend": "Persisted checked preference for automatically seeking loaded video to the start of the selected line; uses the existing central seek operation and leaves draft/history/provider state unchanged when toggled.",
+      "exposure": [
+        "CommandRegistry",
+        "Video > Autoseek to selected line",
+        "Live configurable contextual hotkeys (no upstream default)"
+      ],
+      "tests": [
+        "EditorWorkflowTests.VideoAutoseekIsPersistedCheckedStateWithoutChangingDraftHistoryOrPosition",
+        "HotkeyUiAcceptanceVerification loaded-video selection and persisted option"
+      ],
+      "notes": "Exact 3.2.2 and 3.5 command source calls this autoscroll, but its help and Video/Subtitle Sync option implement video autoseek, not audio viewport autoscroll. Yoake names the action for that behavior. Verified all relevant jobs at 4deb4d4: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {

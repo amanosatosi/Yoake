@@ -12,7 +12,7 @@ public sealed partial class SubtitleEditor
     {
         Require(line);SetField(line,"Text",preserveTags?AssTextOperations.ClearVisibleText(line.Text):"",preserveTags?"Clear visible text":"Clear line text");
     }
-    public AssEvent SplitAtCursor(AssEvent line,int cursor,CursorSplitTiming mode,FrameTiming? timing=null,int frame=0)
+    public AssEvent SplitAtCursor(AssEvent line,int cursor,CursorSplitTiming mode,FrameTiming? timing=null,int frame=0,int? videoFrameCount=null)
     {
         Require(line);if(!Enum.IsDefined(mode))throw new ArgumentException("Unknown split timing.",nameof(mode));
         var text=line.Text;cursor=AssText.SafeSplitIndex(text,cursor);
@@ -29,7 +29,7 @@ public sealed partial class SubtitleEditor
         else if(mode==CursorSplitTiming.VideoFrame)
         {
             ArgumentNullException.ThrowIfNull(timing);
-            if(frame<0||frame>=timing.Count)throw new ArgumentOutOfRangeException(nameof(frame));
+            if(frame<0||frame>=(videoFrameCount??timing.Count))throw new ArgumentOutOfRangeException(nameof(frame));
             var first=timing.FrameAtMilliseconds(start,FrameTimeKind.Start);var last=timing.FrameAtMilliseconds(end,FrameTimeKind.End);
             split=Math.Clamp(timing.SubtitleBoundary(Math.Clamp(frame,Math.Min(first,last),Math.Max(first,last)),FrameTimeKind.End),start,end);
         }
@@ -40,10 +40,10 @@ public sealed partial class SubtitleEditor
         var before=Document.Events.ElementAtOrDefault(Document.Events.IndexOf(line)+1);
         Structure("Insert split line",()=>Document.Insert(second,before));transaction.Commit();return second;
     }
-    public IReadOnlyList<AssEvent> SplitAtFrame(IEnumerable<AssEvent> selection,FrameTiming timing,int frame,bool beforeFrame)
+    public IReadOnlyList<AssEvent> SplitAtFrame(IEnumerable<AssEvent> selection,FrameTiming timing,int frame,bool beforeFrame,int? videoFrameCount=null)
     {
         ArgumentNullException.ThrowIfNull(timing);
-        if(frame<0||frame>=timing.Count)throw new ArgumentOutOfRangeException(nameof(frame));
+        if(frame<0||frame>=(videoFrameCount??timing.Count))throw new ArgumentOutOfRangeException(nameof(frame));
         var lines=Ordered(selection);if(lines.Length==0)return [];
         var plans=lines.Select(line=>
         {

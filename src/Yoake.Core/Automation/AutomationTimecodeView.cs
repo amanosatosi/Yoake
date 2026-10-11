@@ -6,6 +6,14 @@ public sealed class AutomationTimecodeView
     private readonly int[] _times;
     private const long Denominator = 1_000_000_000;
     private readonly Int128 _numerator, _last;
+    // Input integration only: external files supply the release's V1 assumed
+    // extrapolation rate/anchor. The frozen START conversion below is unchanged.
+    public AutomationTimecodeView(Yoake.Core.Media.ExternalTimecodes external)
+    {
+        ArgumentNullException.ThrowIfNull(external);
+        _times=external.Milliseconds.Select(value=>checked((int)value)).ToArray();
+        _numerator=external.Numerator;_last=external.Last;
+    }
     public AutomationTimecodeView(IReadOnlyList<double> seconds, double framesPerSecond)
     {
         if (!double.IsFinite(framesPerSecond) || framesPerSecond <= 0) throw new ArgumentException("Frame rate must be positive.");

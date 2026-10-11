@@ -29,7 +29,7 @@ public sealed partial class MainWindowViewModel
             {
                 var raw=Draft?.Text??"";var cursor=raw[..Math.Clamp(TextCursor,0,raw.Length)].Replace("\r\n","\\N").Replace("\r","\\N").Replace("\n","\\N").Length;
                 var timing=_activeId is {} document&&_documents.TryGetValue(document,out var state)?state.FrameTiming:null;
-                RunEdit(editor=>Select(editor.SplitAtCursor(SelectedEvent!,cursor,mode,timing,CurrentFrame)));return ValueTask.CompletedTask;
+                RunEdit(editor=>Select(editor.SplitAtCursor(SelectedEvent!,cursor,mode,timing,CurrentFrame,FrameTimes.Count)));return ValueTask.CompletedTask;
             },context=>Applies(context)&&_gesture is null&&CanSplitAtCursor()&&(mode!=CursorSplitTiming.VideoFrame||HasFrameBoundaryTiming)));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
@@ -38,7 +38,7 @@ public sealed partial class MainWindowViewModel
             _registry.Register(new(new(id,label,label,"Edit"),(_,_)=>
             {
                 if(_activeId is {} document&&_documents.TryGetValue(document,out var state)&&state.FrameTiming is {} timing)
-                    RunEdit(editor=>SelectCopies(editor.SplitAtFrame(Selection(),timing,CurrentFrame,before)));
+                    RunEdit(editor=>SelectCopies(editor.SplitAtFrame(Selection(),timing,CurrentFrame,before,FrameTimes.Count)));
                 return ValueTask.CompletedTask;
             },context=>Applies(context)&&_gesture is null&&SelectedEvent is not null&&HasFrameBoundaryTiming));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);

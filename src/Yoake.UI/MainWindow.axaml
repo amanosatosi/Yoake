@@ -142,6 +142,12 @@
 <MenuItem Header="Next subtitle" InputGesture="{Binding Actions[grid/line/next].InputGesture}" Command="{Binding Actions[grid/line/next]}" />
 </MenuItem>
 <MenuItem Name="VideoMenu" Header="Video">
+<MenuItem Name="TimecodesMenu" Header="Timecodes">
+<MenuItem Name="OpenTimecodesMenu" Header="Open timecodes…" Command="{Binding Actions[timecode/open]}" InputGesture="{Binding Actions[timecode/open].InputGesture}" />
+<MenuItem Name="SaveTimecodesMenu" Header="Save timecodes…" Command="{Binding Actions[timecode/save]}" InputGesture="{Binding Actions[timecode/save].InputGesture}" />
+<MenuItem Name="CloseTimecodesMenu" Header="Close external timecodes" Command="{Binding Actions[timecode/close]}" InputGesture="{Binding Actions[timecode/close].InputGesture}" />
+<MenuItem Name="RecentTimecodesMenu" Header="Recent timecodes" />
+</MenuItem>
 <MenuItem Name="KeyframesMenu" Header="Keyframes">
 <MenuItem Name="OpenKeyframesMenu" Header="Open keyframes…" Command="{Binding Actions[keyframe/open]}" InputGesture="{Binding Actions[keyframe/open].InputGesture}" />
 <MenuItem Name="SaveKeyframesMenu" Header="Save keyframes…" Command="{Binding Actions[keyframe/save]}" InputGesture="{Binding Actions[keyframe/save].InputGesture}" />

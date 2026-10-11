@@ -29,6 +29,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
         public FfmsMediaSession? Media;
         public FrameTiming? FrameTiming;
+        public FrameTiming? ProviderFrameTiming;
+        public ExternalTimecodes? ExternalTimecodes;
+        public string? TimecodePath;
+        public CancellationTokenSource? TimecodeLoading;
         public IReadOnlyList<int>? ExternalKeyframes;
         public string? KeyframePath;
         public CancellationTokenSource? KeyframeLoading;
@@ -187,6 +191,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterSearchCommands();
         RegisterTimingCommands();
         RegisterKeyframeCommands();
+        RegisterTimecodeCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
@@ -292,7 +297,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             var choice=Dialogs is null ? UnsavedChoice.Cancel : await Dialogs.ConfirmUnsavedAsync(_workspace.ActiveDocument!.Title);
             if (choice==UnsavedChoice.Cancel || choice==UnsavedChoice.Save && !await SaveAsync()) return false;
         }
-        CancelGesture(); StopPlayback(); state.Editing?.Cancel();state.KeyframeLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
+        CancelGesture(); StopPlayback(); state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
         var media=state.Media; state.Media=null; if (media is not null) _=Task.Run(media.Dispose);
         SearchWindowCloseRequested?.Invoke(this,new(id));
         CloseAutomationDocument(id); _documents.Remove(id); _workspace.Close(id); if (_workspace.Documents.Count==0) CreateNewDocument(); return true;
@@ -318,7 +323,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
             _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft(); VideoFrame=null; WaveformSamples=state?.Waveform; MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
             _currentTimeSeconds=state?.Time ?? 0;
-            foreach(var name in new[]{nameof(HasEditOperation),nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(ExternalKeyframePath),nameof(HasKeyframeOperation),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds)}) OnPropertyChanged(name);
+            foreach(var name in new[]{nameof(HasEditOperation),nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(ExternalKeyframePath),nameof(HasKeyframeOperation),nameof(ExternalTimecodePath),nameof(HasTimecodeOperation),nameof(CanShiftByFrames),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds)}) OnPropertyChanged(name);
             MediaStatus=_media?.SourcePath ?? "Open video/audio"; InvalidateSubtitlePreview(true); _registry.NotifyStateChanged();
         }
         finally{IsSynchronizingSelection=false;}
@@ -326,18 +331,19 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public async Task<bool> OpenMediaAsync(string path)
     {
         if (_activeId is not { } id || !_documents.TryGetValue(id,out var state)) return false;
-        CancelGesture(); StopPlayback(); state.Editing?.Cancel();state.KeyframeLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
+        CancelGesture(); StopPlayback(); state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
         MediaStatus=$"FFMS2 indexing {Path.GetFileName(path)}窶ｦ";
         FfmsMediaSession? opened=null;FrameTiming? frameTiming=null;Exception? boundaryError=null;
         try
         {
-            var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>FfmsMediaSession.Open(path,ct),ct);if(opened.HasVideo)try{frameTiming=new(opened.FrameTimes,opened.Info.FramesPerSecond,ct);}catch(Exception exception)when(exception is ArgumentException or OverflowException){boundaryError=exception;} },token); await job.Completion;
+            var external=state.ExternalTimecodes;
+            var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>FfmsMediaSession.Open(path,ct),ct);if(opened.HasVideo){try{frameTiming=new(opened.FrameTimes,opened.Info.FramesPerSecond,ct);}catch(Exception exception)when(exception is ArgumentException or OverflowException){boundaryError=exception;}if(external is not null)opened.SetExternalTimecodes(external.ForVideoMap(opened.Info.FrameCount,ct));} },token); await job.Completion;
             token.ThrowIfCancellationRequested();
             if(boundaryError is not null)_registry.ReportFailure("media/frame-boundaries",boundaryError);
             if (_disposed || !_documents.ContainsKey(id)) { opened?.Dispose(); return false; }
             if(_activeId==id){CancelGesture();CancelVisualBounds();}
             opened!.SetExternalKeyframes(state.ExternalKeyframes);
-            var old=state.Media; state.Media=opened;state.FrameTiming=frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
+            var old=state.Media; state.Media=opened;state.ProviderFrameTiming=frameTiming;state.FrameTiming=state.ExternalTimecodes?.Timing??frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
             if (_activeId==id) { _media=state.Media;if(!_media!.HasVideo)VideoFrame=null; MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
             _registry.NotifyStateChanged();
             var media=state.Media!; WaveformData? peaks=null;
@@ -348,6 +354,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         }
         catch(OperationCanceledException) { opened?.Dispose(); return false; }
         catch(Exception e) { opened?.Dispose(); if (_activeId==id) MediaStatus=e.Message; return false; }
+        finally {if(ReferenceEquals(state.Loading,cts))state.Loading=null;cts.Dispose();OnPropertyChanged(nameof(CanShiftByFrames));_registry.NotifyStateChanged();}
     }
     private async Task RefreshVideoFrameAsync(double seconds)
     {
@@ -387,7 +394,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public void Dispose()
     {
         if (!_disposed) DisposeAutomation();
-        if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); foreach(var state in _documents.Values)state.KeyframeLoading?.Cancel(); _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
+        if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); foreach(var state in _documents.Values){state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();} _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
         foreach(var state in _documents.Values) { state.Editing?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
         foreach(var tab in Tabs) tab.Dispose(); Tabs.Clear(); DisposeSubtitleRenderer(); VideoFrame=null;
     }

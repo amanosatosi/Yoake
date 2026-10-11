@@ -12,7 +12,7 @@ public sealed partial class MainWindowViewModel
 {
     public SubtitleShiftPreferences ShiftPreferences=>_settings.ShiftPreferences??new();
     public IReadOnlyList<SubtitleShiftHistoryEntry> ShiftHistory=>_settings.ShiftHistory??[];
-    public bool CanShiftByFrames=>HasFrameBoundaryTiming;
+    public bool CanShiftByFrames=>_activeId is {} id&&_documents.TryGetValue(id,out var state)&&state.FrameTiming is not null;
     public event EventHandler<TimingWindowCloseEventArgs>? TimingWindowCloseRequested;
     private void RegisterTimingCommands()
     {
@@ -27,7 +27,7 @@ public sealed partial class MainWindowViewModel
         foreach(var (id,label,start) in new[]{("time/snap/start_video","Snap starts to video",true),("time/snap/end_video","Snap ends to video",false)})
             Register(id,label,()=>{var timing=ActiveFrameTiming();var frame=CurrentFrame;return(snapshot,token)=>snapshot.Snap(timing,frame,start,token);},()=>SelectedEvent is not null&&HasFrameBoundaryTiming);
         Register("time/frame/current","Shift selection to current frame",()=>{var active=SelectedEvent!;var timing=ActiveFrameTiming();var frame=CurrentFrame;return(snapshot,token)=>snapshot.ShiftToFrame(active,timing,frame,token);},()=>SelectedEvent is not null&&HasFrameBoundaryTiming);
-        Register("time/snap/scene","Snap selection to scene",()=>{var timing=ActiveFrameTiming();var frame=CurrentFrame;var keys=Keyframes.ToArray();return(snapshot,token)=>snapshot.SnapScene(timing,frame,keys,token);},()=>SelectedEvent is not null&&HasFrameBoundaryTiming&&Keyframes.Count>0);
+        Register("time/snap/scene","Snap selection to scene",()=>{var timing=ActiveFrameTiming();var frame=CurrentFrame;var keys=Keyframes.ToArray();var count=FrameTimes.Count;return(snapshot,token)=>snapshot.SnapScene(timing,frame,keys,token,count);},()=>SelectedEvent is not null&&HasFrameBoundaryTiming&&Keyframes.Count>0);
         _registry.Register(new(new("time/shift","Shift Times…","Shift subtitle start/end times by time or frames","Timing"),async(_,_)=>
         {if(Dialogs is not null)await Dialogs.ShowShiftTimesAsync(this);},context=>Applies(context)&&Events.Count>0));
         Actions["time/shift"]=new RegistryCommand(_registry,"time/shift",CurrentContext,hotkeys:()=>HotkeyProfile);
@@ -66,7 +66,7 @@ public sealed partial class MainWindowViewModel
         Actions["time/shift/close"]=new RegistryCommand(_registry,"time/shift/close",CurrentContext,hotkeys:()=>HotkeyProfile);
     }
     private Yoake.Core.Media.FrameTiming ActiveFrameTiming()=>_activeId is {} document&&_documents.TryGetValue(document,out var state)&&state.FrameTiming is {} timing
-        ?timing:throw new InvalidOperationException("Load video with a valid frame map to shift or snap by frames.");
+        ?timing:throw new InvalidOperationException("Load video or external timecodes to shift by frames.");
     private bool CanAdjoinTiming()
     {
         var rows=Selection();if(rows.Length==0)return false;if(rows.Length==1||rows.Length==Events.Count)return true;

@@ -1,4 +1,5 @@
 using Yoake.Core.Subtitles;
+using Yoake.Core.Media;
 using Yoake.Native;
 
 namespace Yoake.App;
@@ -25,6 +26,12 @@ internal static class EditorVerification
             {
                 if(!video.HasVideo||video.Info.FrameCount!=10)throw new InvalidOperationException("FFMS2 did not decode the video fixture.");
                 var next=video.AdjacentFrameTime(0,1);if(next<=0||video.AdjacentFrameTime(next,-1)>=next)throw new InvalidOperationException("FFMS2 frame stepping failed.");
+                var originalTimes=video.FrameTimes;var originalInfo=video.Info;var originalKeys=video.Keyframes;
+                var expected=video.GetFrameAtTime(originalTimes[2]).Pixels;
+                var retimed=TimecodeFile.Read(new StringReader("Assume 25\n0,1,50"));video.SetExternalTimecodes(retimed.ForVideoMap(video.Info.FrameCount));
+                if(!video.GetFrameAtTime(.04).Pixels.AsSpan().SequenceEqual(expected)||video.AdjacentFrameTime(.02,1)!=.04||!ReferenceEquals(originalKeys,video.Keyframes))throw new InvalidOperationException("External timecodes must decode the indexed frame without rebuilding providers.");
+                video.SetExternalTimecodes(null);
+                if(!ReferenceEquals(originalTimes,video.FrameTimes)||!ReferenceEquals(originalInfo,video.Info)||!video.GetFrameAtTime(originalTimes[2]).Pixels.AsSpan().SequenceEqual(expected))throw new InvalidOperationException("Closing timecodes must restore original metadata and decoding.");
                 var frame=video.GetFrameAtTime(0.7);var before=(byte[])frame.Pixels.Clone();
                 alphaVerification=MangetsuAlphaVerification.Run(frame);
                 using var renderer=new MangetsuSubtitleRenderer(document.Serialize(),frame.Width,frame.Height);

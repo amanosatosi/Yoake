@@ -37,6 +37,20 @@ public sealed class FrameTiming
         }
         if(_numerator<=0)throw new ArgumentException("Frame rate is too small.",nameof(framesPerSecond));
     }
+    // External files carry their own extrapolation rate/anchor. V1 assumed
+    // rates must not be replaced by the stored timestamps' average rate.
+    internal static FrameTiming FromExternal(IReadOnlyList<long> milliseconds,Int128 numerator,Int128 last,CancellationToken token)
+    {
+        if(milliseconds.Count==0||numerator<=0||last<0)throw new ArgumentException("Invalid external frame map.");
+        var times=new long[milliseconds.Count];var origin=milliseconds[0];
+        for(var index=0;index<times.Length;index++)
+        {
+            token.ThrowIfCancellationRequested();times[index]=checked(milliseconds[index]-origin);
+            if(index>0&&times[index]<times[index-1])throw new ArgumentException("Frame timestamps must be ordered.");
+        }
+        return new(times,numerator,last);
+    }
+    private FrameTiming(long[] times,Int128 numerator,Int128 last){_times=times;_numerator=numerator;_last=last;_origin=0;}
     public long MillisecondsAtFrame(int frame,FrameTimeKind kind=FrameTimeKind.Exact)
     {
         var current=Exact(frame);

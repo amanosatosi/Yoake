@@ -98,16 +98,18 @@ public sealed class SubtitleTimingSnapshot
         var amount=checked(Math.Max(0,timing.MillisecondsAtFrame(frame,FrameTimeKind.Start))-Read(row).Start);
         return Shift(new(amount),token:token);
     }
-    public SubtitleTimingPlan SnapScene(FrameTiming timing,int frame,IReadOnlyList<int> keyframes,CancellationToken token=default)
+    public SubtitleTimingPlan SnapScene(FrameTiming timing,int frame,IReadOnlyList<int> keyframes,CancellationToken token=default,int? videoFrameCount=null)
     {
         ArgumentNullException.ThrowIfNull(timing);ArgumentNullException.ThrowIfNull(keyframes);token.ThrowIfCancellationRequested();
         if(keyframes.Count==0)throw new ArgumentException("No keyframes are available.");
-        var previous=0;var next=timing.Count;
+        var count=videoFrameCount??timing.Count;
+        if(count<=0||frame<0||frame>=count)throw new ArgumentException("Frame must be inside the video.");
+        var previous=0;var next=count;
         for(var index=0;index<keyframes.Count;index++)
         {
             token.ThrowIfCancellationRequested();var key=keyframes[index];
-            if(key<0||key>=timing.Count||index>0&&key<=keyframes[index-1])throw new ArgumentException("Keyframes must be ordered, unique and inside the video.");
-            if(key<=frame)previous=key;else if(next==timing.Count)next=key;
+            if(key<0||key>=count||index>0&&key<=keyframes[index-1])throw new ArgumentException("Keyframes must be ordered, unique and inside the video.");
+            if(key<=frame)previous=key;else if(next==count)next=key;
         }
         var start=timing.SubtitleBoundary(previous,FrameTimeKind.Start);var end=timing.SubtitleBoundary(next-1,FrameTimeKind.End);
         return Plan("Snap subtitles to scene",_rows.Where(row=>row.Selected).Select(row=>(row,start,end)),token);

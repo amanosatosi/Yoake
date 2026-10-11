@@ -4,6 +4,8 @@ param(
   [Parameter(Mandatory = $true)][string]$VerificationRoot
 )
 $ErrorActionPreference = 'Stop'
+# Timecode acceptance is a separate process below; existing startup, keyboard
+# and timing verification remain independent requirements.
 $exe = (Resolve-Path -LiteralPath $Executable).Path
 $root = [IO.Path]::GetFullPath($VerificationRoot)
 $caseRoot = Join-Path $root ('hotkeys-' + [Guid]::NewGuid().ToString('N'))
@@ -44,6 +46,29 @@ foreach ($case in @('fresh', 'restored')) {
     if (-not $process.WaitForExit(150000)) { throw "Packaged timing acceptance timed out: $case" }
     $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
     if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged timing acceptance failed for $case (exit $($process.ExitCode)):`n$text" }
+    Write-Host $text
+  } catch {
+    Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+    throw
+  } finally {
+    if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+    $process.Dispose()
+  }
+}
+
+# External timecode metadata has its own bounded real-window acceptance path.
+$timecodeRoot = Join-Path $root ('timecodes-' + [Guid]::NewGuid().ToString('N'))
+$timecodeProfile = Join-Path $timecodeRoot 'profile'
+New-Item -ItemType Directory -Force -Path $timecodeProfile | Out-Null
+foreach ($case in @('fresh', 'restored')) {
+  $logs = Join-Path $timecodeRoot ($case + '-logs')
+  $report = Join-Path $timecodeRoot ($case + '.txt')
+  $arguments = @('--verify-ui-timecodes', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $timecodeProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+  $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+  try {
+    if (-not $process.WaitForExit(150000)) { throw "Packaged timecode acceptance timed out: $case" }
+    $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+    if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged timecode acceptance failed for $case (exit $($process.ExitCode)):`n$text" }
     Write-Host $text
   } catch {
     Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }

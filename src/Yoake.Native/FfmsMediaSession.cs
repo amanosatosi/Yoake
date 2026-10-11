@@ -1,4 +1,5 @@
 using Yoake.Core.Audio;
+using Yoake.Core.Media;
 using System.Runtime.InteropServices;
 
 namespace Yoake.Native;
@@ -38,7 +39,19 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     private bool _disposed;
     private double[] _frameTimes = [];
     private int[] _keyframes=[];
-    public IReadOnlyList<double> FrameTimes=>_frameTimes;
+    private sealed record EffectiveTiming(VideoTimecodeMap Map,MediaInfo Info);
+    private EffectiveTiming? _externalTiming;
+    public IReadOnlyList<double> FrameTimes=>Volatile.Read(ref _externalTiming)?.Map.FrameTimes??_frameTimes;
+    public void SetExternalTimecodes(VideoTimecodeMap? map)
+    {
+        lock(_videoGate)
+        {
+            ThrowIfDisposed();
+            if(map is not null&&(!HasVideo||map.FrameTimes.Count!=_providerInfo.FrameCount))throw new ArgumentException("Timecodes must be prepared for this video's frame count.");
+            var duration=map is null?0:Math.Max(map.DurationSeconds,HasAudio&&_providerInfo.SampleRate>0?_providerInfo.AudioSamples/(double)_providerInfo.SampleRate:0);
+            Volatile.Write(ref _externalTiming,map is null?null:new(map,_providerInfo with{DurationSeconds=duration}));
+        }
+    }
     private IReadOnlyList<int>? _externalKeyframes;
     public IReadOnlyList<int> Keyframes=>Volatile.Read(ref _externalKeyframes)??_keyframes;
     // Managed metadata override only. Decoder handles, clocks and native
@@ -61,11 +74,12 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         SourcePath = path;
         _videoSource = videoSource;
         _audioSource = audioSource;
-        Info = info;
+        _providerInfo = info;
     }
 
     public string SourcePath { get; }
-    public MediaInfo Info { get; private set; }
+    private MediaInfo _providerInfo;
+    public MediaInfo Info=>Volatile.Read(ref _externalTiming)?.Info??_providerInfo;
     public bool HasVideo => _videoSource != 0;
     public bool HasAudio => _audioSource != 0;
 
@@ -222,7 +236,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             {
                 var last=session._frameTimes[^1];
                 var frameDuration=session._frameTimes.Length>1?last-session._frameTimes[^2]:fps>0?1/fps:0;
-                session.Info=info with{DurationSeconds=Math.Max(audioDuration,last+Math.Max(0,frameDuration))};
+                session._providerInfo=info with{DurationSeconds=Math.Max(audioDuration,last+Math.Max(0,frameDuration))};
             }
             return session;
         }
@@ -251,7 +265,9 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             byte* errorBuffer = stackalloc byte[ErrorBufferSize];
             var error = CreateErrorInfo(errorBuffer);
             var time = Info.DurationSeconds > 0 ? Math.Clamp(seconds, 0, Info.DurationSeconds) : Math.Max(0, seconds);
-            var framePointer = Native.FFMS_GetFrameByTime(_videoSource, time, &error);
+            var timing=Volatile.Read(ref _externalTiming);
+            var framePointer = timing is null?Native.FFMS_GetFrameByTime(_videoSource,time,&error)
+                :Native.FFMS_GetFrame(_videoSource,FrameNavigation.AtTime(timing.Map.FrameTimes,time),&error);
             if (framePointer == 0)
                 throw CreateException($"FFMS_GetFrameByTime({time:0.###})", errorBuffer);
 
@@ -308,10 +324,8 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     }
     public double AdjacentFrameTime(double seconds, int direction)
     {
-        if (_frameTimes.Length == 0) return 0;
-        var index = Array.BinarySearch(_frameTimes, seconds + 0.000001);
-        if (index < 0) index = Math.Max(0, ~index - 1);
-        return _frameTimes[Math.Clamp(index + Math.Sign(direction), 0, _frameTimes.Length - 1)];
+        var times=FrameTimes;if(times.Count==0)return 0;
+        return times[Math.Clamp(FrameNavigation.AtTime(times,seconds)+Math.Sign(direction),0,times.Count-1)];
     }
     [UnmanagedCallersOnly]
     private static int IndexProgress(long current, long total, nint state)
