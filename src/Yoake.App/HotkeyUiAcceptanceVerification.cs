@@ -24,7 +24,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
     MainWindow window,MainWindowViewModel model,StartupOptions options)
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
-    private bool _opened,_loaded;private int _layouts,_stage;
+    private bool _opened,_loaded,_ticking;private int _layouts,_stage;
     private OptionsWindow? _options;private LogWindow? _log;private Task<bool>? _media;
     private Guid? _document;private AssEvent? _line;private SubtitleEditor? _editor;
     private int _frame;private string _savedPath="";
@@ -40,9 +40,10 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
         window.Opened+=(_,_)=>_opened=true;window.Loaded+=(_,_)=>_loaded=true;window.LayoutUpdated+=(_,_)=>_layouts++;
         _timer.Tick+=Tick;_timer.Start();
     }
-    private void Tick(object? sender,EventArgs args)
+    private async void Tick(object? sender,EventArgs args)
     {
-        if(!_opened||!_loaded||_layouts==0)return;
+        if(!_opened||!_loaded||_layouts==0||_ticking)return;
+        _ticking=true;
         options.MarkStartupVerified();
         try
         {
@@ -63,17 +64,17 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     _options=window.OwnedWindows.OfType<OptionsWindow>().Single();
                     Require(_options.IsVisible&&_options.ClientSize.Width>=650&&_options.ClientSize.Height>=460,"Keyboard settings must have usable real-window geometry.");
                     Require(InOptions<ComboBox>("HotkeyContext").Items.Count==Enum.GetValues<HotkeyContext>().Length,"All reference and Yoake contexts must be selectable.");
-                    Choose(CommandIds.SubtitleNew);Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");return;
+                    await Choose(CommandIds.SubtitleNew);Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");return;
                 case 3:
                     Require(model.Actions[CommandIds.SubtitleNew].Shortcut=="Ctrl-Alt-K","Change must replace the command binding immediately.");
                     Capture(Key.F10);Click("AddHotkey");return;
                 case 4:
                     Require(model.HotkeyProfile.EffectiveGestures(CommandIds.SubtitleNew,HotkeyContext.Default).SequenceEqual(new[]{"Ctrl-Alt-K","F10"}),"Settings must retain multiple bindings.");
-                    Choose(CommandIds.SubtitleOpen);Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");return;
+                    await Choose(CommandIds.SubtitleOpen);Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");return;
                 case 5:
                     Require(InOptions<TextBlock>("HotkeyStatus").Text!.Contains("already bound",StringComparison.OrdinalIgnoreCase),"A conflicting binding must identify its owner.");
                     Require(model.Actions[CommandIds.SubtitleOpen].Shortcut=="Ctrl-O"&&model.Actions[CommandIds.SubtitleNew].Shortcut=="Ctrl-Alt-K","Conflict must leave both commands unchanged.");
-                    Choose(CommandIds.SubtitleNew);InOptions<ListBox>("EffectiveHotkeys").SelectedItem="F10";Click("RemoveHotkey");return;
+                    await Choose(CommandIds.SubtitleNew);InOptions<ListBox>("EffectiveHotkeys").SelectedItem="F10";Click("RemoveHotkey");return;
                 case 6:
                     Require(model.HotkeyProfile.EffectiveGestures(CommandIds.SubtitleNew,HotkeyContext.Default).SequenceEqual(new[]{"Ctrl-Alt-K"}),"Remove must affect only the selected binding.");
                     Click("ClearHotkeys");Require(model.Actions[CommandIds.SubtitleNew].InputGesture is null,"An explicitly cleared command must have no displayed shortcut.");
@@ -86,7 +87,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     // Route the same physical Right key to a real different action
                     // in Audio, using the shipping customization workflow.
                     InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
-                    Choose("time/next");Click("ClearHotkeys");Choose(CommandIds.GridLineNext);Capture(Key.Right);Click("AddHotkey");return;
+                    Choose("time/next");Click("ClearHotkeys");await Choose(CommandIds.GridLineNext);Capture(Key.Right);Click("AddHotkey");return;
                 case 7:
                     Require(model.Hotkeys.Resolve(new("Right"),[HotkeyContext.Audio])?.CommandId==CommandIds.GridLineNext,"Audio customization must remain context-local.");
                     Require(ReferenceEquals(_editor,model.ActiveEditor)&&ReferenceEquals(_line,model.SelectedEvent)&&model.SelectedEvent!.Text==Source,"Settings must preserve the active editor and source.");
@@ -132,10 +133,10 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 13:
                     _options=window.OwnedWindows.OfType<OptionsWindow>().Single();InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
                     Click("ResetContextHotkeys");InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Default;
-                    Choose(CommandIds.AppToggleToolbar);Capture(Key.F12);Click("AddHotkey");
+                    await Choose(CommandIds.AppToggleToolbar);Capture(Key.F12);Click("AddHotkey");
                     InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.SubtitleGrid;
-                    Choose("grid/sort/start");Capture(Key.F10);Click("AddHotkey");
-                    Choose("grid/tag/cycle_hiding");Capture(Key.F11);Click("AddHotkey");_options.Close();return;
+                    await Choose("grid/sort/start");Capture(Key.F10);Click("AddHotkey");
+                    await Choose("grid/tag/cycle_hiding");Capture(Key.F11);Click("AddHotkey");_options.Close();return;
                 case 14:
                     Require(model.Hotkeys.Resolve(new("Right"),[HotkeyContext.Audio])?.CommandId=="time/next","Audio reset must restore its exact default action.");
                     Press(Grid,Key.F12);return;
@@ -199,12 +200,21 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
-        catch(Exception exception){_timer.Stop();Program.Fatal("Packaged contextual keyboard acceptance",exception);desktop.Shutdown(1);}
+        catch(Exception exception){_timer.Stop();Program.Fatal("Packaged contextual keyboard acceptance at stage "+(_stage-1),exception);desktop.Shutdown(1);}
+        finally{_ticking=false;}
     }
-    private void Choose(string command)
+    private async Task Choose(string command)
     {
         InOptions<TextBox>("HotkeyFilter").Text=command;
-        var list=InOptions<ListBox>("HotkeyCommands");list.SelectedItem=list.Items.Cast<object>().Single(item=>item.ToString()!.EndsWith(" · "+command,StringComparison.Ordinal)||item.ToString()!.EndsWith(" · "+command+"  (backend not available)",StringComparison.Ordinal));
+        // TextBox delivers TextChanged asynchronously; select only after the
+        // shipping filter handler has updated the actual command list.
+        await Dispatcher.UIThread.InvokeAsync(()=>
+        {
+            var list=InOptions<ListBox>("HotkeyCommands");
+            var choice=list.Items.Cast<object>().SingleOrDefault(item=>item.ToString()!.EndsWith(" · "+command,StringComparison.Ordinal)||item.ToString()!.EndsWith(" · "+command+"  (backend not available)",StringComparison.Ordinal));
+            Require(choice is not null,"Filtered command is missing: "+command+"; items: "+string.Join("; ",list.Items.Cast<object>()));
+            list.SelectedItem=choice;
+        },DispatcherPriority.Background);
     }
     private void Capture(Key key,KeyModifiers modifiers=KeyModifiers.None)
     {
