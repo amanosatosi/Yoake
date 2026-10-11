@@ -131,12 +131,12 @@ public sealed class AudioWaveformControl : Control
         base.OnPointerPressed(e);Focus();if(Model is not {} model)return;
         var point=e.GetCurrentPoint(this);if(!point.Properties.IsLeftButtonPressed)return;
         _pointerTime=Time(point.Position.X);
-        var line=model.SelectedEvent;var start=(line?.StartMilliseconds??0)/1000d;var end=(line?.EndMilliseconds??0)/1000d;
+        var line=model.SelectedEvent;var range=model.PrimaryAudioRange;var start=(range?.StartMilliseconds??0)/1000d;var end=(range?.EndMilliseconds??0)/1000d;
         var nearStart=Math.Abs(X(start)-point.Position.X)<=7;var nearEnd=Math.Abs(X(end)-point.Position.X)<=7;
         if(line is not null && (nearStart||nearEnd||e.KeyModifiers.HasFlag(KeyModifiers.Shift)&&_pointerTime>=start&&_pointerTime<=end))
         {
             _part=nearStart?0:nearEnd?1:2;
-            if(model.BeginGesture("Drag line timing")){model.StopPlayback();_drag=true;e.Pointer.Capture(this);}
+            if(model.BeginGesture("Drag line timing")){_drag=true;e.Pointer.Capture(this);}
         }
         else _=model.Registry.InvokeAsync(CommandIds.VideoSeek,new(),AssTime.Format((long)(_pointerTime*1000)));
         e.Handled=true;

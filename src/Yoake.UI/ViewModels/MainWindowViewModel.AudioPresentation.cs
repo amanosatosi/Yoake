@@ -35,14 +35,14 @@ public sealed partial class MainWindowViewModel
         {_settings=_settings with{AudioAutoScroll=!AudioAutoScroll};_settingsStore.Save(_settings);OnPropertyChanged(nameof(AudioAutoScroll));},check:()=>AudioAutoScroll);
         Register("audio/opt/vertical_link","Link amplitude and volume",()=>SaveAudioSetting("audio/volume/link",!AudioVolumeLinked),check:()=>AudioVolumeLinked);
         bool Audio()=>_media?.HasAudio==true;
-        bool Line()=>Audio()&&SelectedEvent?.StartMilliseconds is {} begin&&SelectedEvent.EndMilliseconds is {} end&&begin>=0&&end>=begin;
+        bool Line()=>Audio()&&PrimaryAudioRange is not null;
         void Move(double start)
         {var viewport=AudioViewport;RememberAudioViewport(start,viewport.Span);OnPropertyChanged(nameof(AudioViewport));}
         foreach(var (id,label,distance) in new[]{("audio/scroll/left","Scroll left",-128d),("audio/scroll/right","Scroll right",128d)})
             Register(id,label,()=>{var viewport=AudioViewport;Move(AudioViewportMath.ScrollPixels(viewport.Start,viewport.Span,_audioViewportWidth,distance,MediaDurationSeconds));},Audio);
         Register("audio/go_to","Go to audio selection",()=>
-        {var viewport=AudioViewport;Move(AudioViewportMath.RangeInView(viewport.Start,viewport.Span,SelectedEvent!.StartMilliseconds!.Value/1000d,SelectedEvent.EndMilliseconds!.Value/1000d,MediaDurationSeconds));},Line);
-        Register("audio/go_to/start","Center selection start",()=>Move(AudioViewportMath.Center(SelectedEvent!.StartMilliseconds!.Value/1000d,AudioViewport.Span,MediaDurationSeconds)),Line);
-        Register("audio/go_to/end","Center selection end",()=>Move(AudioViewportMath.Center(SelectedEvent!.EndMilliseconds!.Value/1000d,AudioViewport.Span,MediaDurationSeconds)),Line);
+        {var viewport=AudioViewport;var range=PrimaryAudioRange!.Value;Move(AudioViewportMath.RangeInView(viewport.Start,viewport.Span,range.StartMilliseconds/1000d,range.EndMilliseconds/1000d,MediaDurationSeconds));},Line);
+        Register("audio/go_to/start","Center selection start",()=>Move(AudioViewportMath.Center(PrimaryAudioRange!.Value.StartMilliseconds/1000d,AudioViewport.Span,MediaDurationSeconds)),Line);
+        Register("audio/go_to/end","Center selection end",()=>Move(AudioViewportMath.Center(PrimaryAudioRange!.Value.EndMilliseconds/1000d,AudioViewport.Span,MediaDurationSeconds)),Line);
     }
 }

@@ -1,6 +1,8 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
+using Avalonia.Input.Raw;
 using Avalonia.Threading;
 using Yoake.Core.Audio;
 using Yoake.Core.Commands;
@@ -61,6 +63,7 @@ internal sealed class AudioPlaybackUiAcceptanceVerification(IClassicDesktopStyle
                     var captured=model.ActiveAudioPlayback!;model.Draft!.End="0:00:01.70";
                     Require(model.ActiveAudioPlayback==captured,"Captured selection playback must ignore endpoint edits.");Press(Audio,Key.H);model.Draft.End="0:00:01.40";Preserved();return;
                 case 5:
+                    CheckPlayingTimingDrag();
                     _lastPlan=null;Press(window.FindControl<AssTextBox>("SubtitleText")!,Key.Q);
                     Require(_lastPlan is null&&!model.IsPlaying,"Ordinary editor Q must not invoke the Audio preview command.");
                     Press(window.FindControl<VisualOverlayControl>("VisualOverlay")!,Key.D);
@@ -80,6 +83,21 @@ internal sealed class AudioPlaybackUiAcceptanceVerification(IClassicDesktopStyle
         finally{_ticking=false;}
     }
     private Control Audio=>window.FindControl<AudioWaveformControl>("AudioDisplay")!;
+    private void CheckPlayingTimingDrag()
+    {
+        model.Draft!.Start="0:00:00.30";model.AudioWindowSeconds=2;var audio=(AudioWaveformControl)Audio;
+        Require(audio.Bounds.Width>100&&audio.Bounds.Height>40,"The real waveform must have usable pointer geometry.");
+        Press(audio,Key.S);Require(model.IsPlaying,"Timing drag starts with active selection playback.");
+        var point=audio.TranslatePoint(new Point((1.4-audio.ViewportStart)/audio.VisibleSeconds*audio.Bounds.Width,audio.Bounds.Height/2),window)!.Value;
+        var pointer=new Pointer(816,PointerType.Mouse,true);var moved=point+new Vector(.2/audio.VisibleSeconds*audio.Bounds.Width,0);
+        audio.RaiseEvent(new PointerPressedEventArgs(audio,pointer,window,point,0,new(RawInputModifiers.LeftMouseButton,PointerUpdateKind.LeftButtonPressed),KeyModifiers.None));
+        Require(model.HasGesture&&model.IsPlaying,"Actual marker press must begin a transaction without stopping selection playback.");
+        audio.RaiseEvent(new PointerEventArgs(InputElement.PointerMovedEvent,audio,pointer,window,moved,0,new(RawInputModifiers.LeftMouseButton,PointerUpdateKind.Other),KeyModifiers.None));
+        Require(model.PrimaryAudioRange!.Value.EndMilliseconds==1600&&model.ActiveAudioPlayback!.EndFrame==76800,"Real marker movement must update the displayed and following playback endpoint.");
+        pointer.Capture(null);
+        Require(!model.HasGesture&&model.IsPlaying&&model.PrimaryAudioRange!.Value.EndMilliseconds==1400&&model.ActiveAudioPlayback!.EndFrame==67200&&_editor!.Document.Serialize()==_source&&!_editor.Undo.CanUndo,"Capture loss must roll back timing and playback endpoint without stopping the activity or adding undo history.");
+        Press(audio,Key.H);_draft=model.Draft;_draft!.Start="unfinished timing";Preserved();
+    }
     private void Play(Key key,AudioPlaybackKind kind,long start,long end,bool follow=false)
     {
         _lastPlan=null;Press(Audio,key);
