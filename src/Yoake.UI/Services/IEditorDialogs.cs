@@ -6,6 +6,7 @@ public enum UnsavedChoice { Cancel, Discard, Save }
 public interface IEditorDialogs
 {
     Task ShowOptionsAsync(Yoake.UI.ViewModels.MainWindowViewModel model) => throw new NotSupportedException("Options are unavailable.");
+    Task ShowLogAsync(string path)=>throw new NotSupportedException("Log window is unavailable.");
     Task<string?> OpenAutomationScriptAsync() => Task.FromResult<string?>(null);
     Task ShowAutomationManagerAsync(Yoake.UI.ViewModels.MainWindowViewModel model) => Task.CompletedTask;
     Task<AutomationSearchPaths?> EditAutomationPathsAsync(IReadOnlyList<string> autoload, IReadOnlyList<string> includes) => Task.FromResult<AutomationSearchPaths?>(null);

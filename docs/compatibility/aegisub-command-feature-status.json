@@ -157,12 +157,20 @@
     },
     {
       "id": "app/exit",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Window lifetime or normal application settings; no global current document. Required action: Exit the application",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "app/exit",
+      "status": "partially implemented",
+      "backend": "Semantic Exit runs the existing per-document unsaved save/discard/cancel workflow and requests native window closure only after success. Native OS close uses the same command.",
+      "exposure": [
+        "File > Exit",
+        "Default: Ctrl-Q",
+        "Native window close"
+      ],
+      "tests": [
+        "EditorWorkflowTests.ExitCommandHonorsUnsavedCancellationAndRequestsNativeCloseAfterSuccess",
+        "UiStartupVerification",
+        "HotkeyUiAcceptanceVerification"
+      ],
+      "notes": "Yoake retains one workspace with independent document tabs. Closing remains the established tab/session lifetime, not a new global current-document model. Implementation and regression/packaged coverage are prepared; its CI validation is pending.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Q"
@@ -201,12 +209,18 @@
     },
     {
       "id": "app/log",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Window lifetime or normal application settings; no global current document. Required action: View the event log",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "app/log",
+      "status": "partially implemented",
+      "backend": "Usable application log viewer reads a bounded UTF-8 tail asynchronously, refreshes on demand/automatically, copies actual log text, reports errors through the app registry and cancels reading on close.",
+      "exposure": [
+        "View > Log window",
+        "CommandRegistry"
+      ],
+      "tests": [
+        "LogTailReaderTests",
+        "HotkeyUiAcceptanceVerification"
+      ],
+      "notes": "Latest log is bounded to 1 MiB instead of holding an unbounded history in UI memory. Original log file remains untouched; no UI-blocking whole-log scan. Implementation and regression/packaged coverage are prepared; its CI validation is pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -294,12 +308,18 @@
     },
     {
       "id": "app/toggle/toolbar",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Window lifetime or normal application settings; no global current document. Required action: Toggle the main toolbar",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "app/toggle/toolbar",
+      "status": "partially implemented",
+      "backend": "Persisted checked command hides/shows the existing toolbar and its command-bar row; editor/media providers and drafts are retained.",
+      "exposure": [
+        "View > Toolbar",
+        "User-configurable context hotkeys"
+      ],
+      "tests": [
+        "EditorWorkflowTests.ToolbarVisibilityIsCheckedPersistedPresentationAndRecoversIndependently",
+        "HotkeyUiAcceptanceVerification"
+      ],
+      "notes": "Concise checked Toolbar menu replaces the upstream dynamic Show/Hide label. Toolbar buttons show effective customized shortcuts. Implementation and regression/packaged coverage are prepared; its CI validation is pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3493,5 +3513,5 @@
     ],
     "notes": "Dynamic command IDs are not individual static parity features. Do not upgrade Lua profile or DependencyControl."
   },
-  "hotkey_implementation": "Full 3.5 common defaults generated from pinned evidence; context-aware persisted overrides and usable live settings; menu/tooltips update. Reserved missing backends stay missing. CI for this implementation pending."
+  "hotkey_implementation": "Full generated 3.5 common defaults with contextual live overrides/settings and effective shortcut displays; managed/source/native Automation checks passed at 9f04304, packaged CI pending. Application lifetime/toolbar/log extension awaiting its own CI."
 }

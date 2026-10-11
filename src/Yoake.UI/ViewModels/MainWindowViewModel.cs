@@ -171,6 +171,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         _registry=registry; _workspace=workspace; _theme=theme; _settingsStore=settingsStore; _settings=settings.Normalize();
         InitializeHotkeyCommands();
+        RegisterApplicationCommands();
         RegisterEditorCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;

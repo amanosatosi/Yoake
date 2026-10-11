@@ -19,7 +19,7 @@
   </Window.Styles>
   <Grid>
     <!-- Reserve 140 DIP for actual rows, plus the 24-DIP header, borders and margins. -->
-    <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="54" /><RowDefinition Height="3*" MinHeight="444" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="178" /></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="{Binding ToolbarRowHeight}" /><RowDefinition Height="3*" MinHeight="444" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="178" /></Grid.RowDefinitions>
     <Border Grid.Row="0" Name="TitleTabStrip" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <ScrollViewer Name="TabScroll" Grid.Column="0" MaxWidth="980" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
@@ -60,6 +60,7 @@
 <MenuItem Header="Save As…" InputGesture="{Binding Actions[subtitle/save-as].InputGesture}" Command="{Binding Actions[subtitle/save-as]}" />
 <MenuItem Header="Export subtitles…" InputGesture="{Binding Actions[automation/export].InputGesture}" Command="{Binding Actions[automation/export]}" />
 <MenuItem Header="Reload from disk…" InputGesture="{Binding Actions[subtitle/revert].InputGesture}" Command="{Binding Actions[subtitle/revert]}" />
+<MenuItem Header="Exit" InputGesture="{Binding Actions[app/exit].InputGesture}" Command="{Binding Actions[app/exit]}" />
 <MenuItem Header="Close tab" InputGesture="{Binding Actions[subtitle/close].InputGesture}" Command="{Binding Actions[subtitle/close]}" />
 </MenuItem>
 <MenuItem Header="Edit">
@@ -120,11 +121,13 @@
 <MenuItem Name="ViewVideo" Header="Video" ToggleType="Radio" IsChecked="{Binding Actions[view/video].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[view/video].InputGesture}" Command="{Binding Actions[view/video]}" />
 <MenuItem Name="ViewAudioVideo" Header="Audio + Video" ToggleType="Radio" IsChecked="{Binding Actions[view/audio-video].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[view/audio-video].InputGesture}" Command="{Binding Actions[view/audio-video]}" />
 <Separator />
+<MenuItem Name="ToolbarMenu" Header="Toolbar" ToggleType="CheckBox" IsChecked="{Binding Actions[app/toggle/toolbar].IsChecked, Mode=OneWay}" Command="{Binding Actions[app/toggle/toolbar]}" />
+<MenuItem Header="Log window…" Command="{Binding Actions[app/log]}" />
 <MenuItem Header="Cycle theme" InputGesture="{Binding Actions[view/theme/cycle].InputGesture}" Command="{Binding Actions[view/theme/cycle]}" />
 </MenuItem>
-</Menu><Grid Grid.Row="1" Margin="6,2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><TextBlock Grid.Column="2" MaxWidth="360" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Name="VisualToolStatus" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="10" VerticalAlignment="Center" /><StackPanel Orientation="Horizontal" Spacing="4">
-<Button Content="New" Command="{Binding NewDocumentCommand}" Padding="6,1" ToolTip.Tip="Ctrl+N" /><Button Content="Open ASS" Command="{Binding Actions[subtitle/open]}" Padding="6,1" ToolTip.Tip="{Binding Actions[subtitle/open].Tooltip}" /><Button Content="Save" Command="{Binding Actions[subtitle/save]}" Padding="6,1" ToolTip.Tip="{Binding Actions[subtitle/save].Tooltip}" /><Button Content="Open media" Command="{Binding Actions[media/open]}" Padding="6,1" />
-<Button Command="{Binding UndoCommand}" Padding="6,1" ToolTip.Tip="Undo (Ctrl+Z)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Undo}" /></Button><Button Command="{Binding RedoCommand}" Padding="6,1" ToolTip.Tip="Redo (Ctrl+Y)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Redo}" /></Button>
+</Menu><Grid Name="MainToolbar" IsVisible="{Binding ToolbarVisible}" Grid.Row="1" Margin="6,2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><TextBlock Grid.Column="2" MaxWidth="360" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Name="VisualToolStatus" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="10" VerticalAlignment="Center" /><StackPanel Orientation="Horizontal" Spacing="4">
+<Button Content="New" Command="{Binding NewDocumentCommand}" Padding="6,1" ToolTip.Tip="{Binding Actions[subtitle/new].Tooltip}" /><Button Content="Open ASS" Command="{Binding Actions[subtitle/open]}" Padding="6,1" ToolTip.Tip="{Binding Actions[subtitle/open].Tooltip}" /><Button Content="Save" Command="{Binding Actions[subtitle/save]}" Padding="6,1" ToolTip.Tip="{Binding Actions[subtitle/save].Tooltip}" /><Button Content="Open media" Command="{Binding Actions[media/open]}" Padding="6,1" />
+<Button Command="{Binding UndoCommand}" Padding="6,1" ToolTip.Tip="{Binding Actions[edit/undo].Tooltip}"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Undo}" /></Button><Button Command="{Binding RedoCommand}" Padding="6,1" ToolTip.Tip="{Binding Actions[edit/redo].Tooltip}"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Redo}" /></Button>
 </StackPanel></Grid></Grid></Border>
 <Grid Grid.Row="2" Name="UpperWorkspace">
   <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>

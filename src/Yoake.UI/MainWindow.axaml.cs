@@ -50,14 +50,14 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private void AttachModel()
     {
-        if(_model is not null){_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.PropertyChanged-=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        if(_model is not null){_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
         if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
             UpdateWorkspaceView();
-            _model.PropertyChanged+=ModelChanged;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
+            _model.PropertyChanged+=ModelChanged;_model.WindowCloseRequested+=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
             RefreshAutomationMenu(); StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
     }
     private int _resizeColumn=-1;
@@ -213,9 +213,14 @@ public partial class MainWindow : Window, IEditorDialogs
     private async void HandleClosing(object? sender,WindowClosingEventArgs e)
     {
         if(_closingAllowed||_model is null)return;e.Cancel=true;if(_closingPending)return;_closingPending=true;
-        try{if(await _model.CloseWindowAsync()){_closingAllowed=true;Close();}}
+        try{await _model.Registry.InvokeAsync(CommandIds.AppExit,new(_model.ActiveDocumentId));}
         catch(Exception exception){_model.Registry.ReportFailure("window/close",exception);}
         finally{_closingPending=false;}
+    }
+    private void CloseRequested(object? sender,EventArgs args)
+    {
+        if(!Dispatcher.UIThread.CheckAccess()){Dispatcher.UIThread.Post(()=>CloseRequested(sender,args));return;}
+        _closingAllowed=true;Close();
     }
     public bool RedundantCaptionHidden {get;private set;}
     private void UpdateChrome()

@@ -24,7 +24,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
     private bool _opened,_loaded;private int _layouts,_stage;
-    private OptionsWindow? _options;private Task<bool>? _media;
+    private OptionsWindow? _options;private LogWindow? _log;private Task<bool>? _media;
     private Guid? _document;private AssEvent? _line;private SubtitleEditor? _editor;
     private int _frame;private string _savedPath="";
     private const string Source=@"{\future(opaque)\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦";
@@ -128,11 +128,26 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Press(Grid,Key.O,KeyModifiers.Alt);return;
                 case 13:
                     _options=window.OwnedWindows.OfType<OptionsWindow>().Single();InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
-                    Click("ResetContextHotkeys");_options.Close();return;
+                    Click("ResetContextHotkeys");InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Default;
+                    Choose(CommandIds.AppToggleToolbar);Capture(Key.F12);Click("AddHotkey");_options.Close();return;
                 case 14:
                     Require(model.Hotkeys.Resolve(new("Right"),[HotkeyContext.Audio])?.CommandId=="time/next","Audio reset must restore its exact default action.");
+                    Press(Grid,Key.F12);return;
+                case 15:
+                    Require(!model.ToolbarVisible&&!window.FindControl<Grid>("MainToolbar")!.IsVisible&&!window.FindControl<MenuItem>("ToolbarMenu")!.IsChecked,"Toolbar hotkey must hide the actual region and clear its checked menu state.");
+                    Require(window.FindControl<ListBox>("SubtitleRows")!.Bounds.Height>=140&&ReferenceEquals(_editor,model.ActiveEditor),"Hiding the toolbar must retain editor identity and useful grid geometry.");
+                    Press(Grid,Key.F12);return;
+                case 16:
+                    Require(model.ToolbarVisible&&window.FindControl<Grid>("MainToolbar")!.Bounds.Height>=24&&window.FindControl<MenuItem>("ToolbarMenu")!.IsChecked,"Toolbar hotkey must restore usable geometry and checked state.");
+                    _=model.Registry.InvokeAsync(CommandIds.AppLog,new(model.ActiveDocumentId));return;
+                case 17:
+                    _log=window.OwnedWindows.OfType<LogWindow>().Single();
+                    if(_log.FindControl<TextBox>("ApplicationLog")?.Text is not {Length:>0}){_stage--;return;}
+                    Require(_log.IsVisible&&_log.FindControl<TextBox>("ApplicationLog")!.Text!.Contains("[INFO]",StringComparison.Ordinal),"Log action must show actual application records in the shipping window.");
+                    _log.Close();return;
+                case 18:
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes.\n");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }

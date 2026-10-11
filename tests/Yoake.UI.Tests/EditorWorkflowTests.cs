@@ -22,6 +22,28 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task ToolbarVisibilityIsCheckedPersistedPresentationAndRecoversIndependently()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="unfinished 日本語";
+        var editor=_model.ActiveEditor;var line=_model.SelectedEvent;var draft=_model.Draft;var undo=editor!.Undo.NextUndoName;
+        Assert.True(_model.ToolbarVisible);Assert.True(_model.Actions[CommandIds.AppToggleToolbar].IsChecked);
+        await Command(CommandIds.AppToggleToolbar);
+        Assert.False(_model.ToolbarVisible);Assert.False(_model.Actions[CommandIds.AppToggleToolbar].IsChecked);
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(line,_model.SelectedEvent);Assert.Same(draft,_model.Draft);Assert.Equal(undo,editor.Undo.NextUndoName);
+        var store=new SettingsStore(Path.Combine(_root,"settings.json"));Assert.False(store.Load().ToolbarVisible);
+        File.WriteAllText(store.Path,"""{"toolbarVisible":false,"viewMode":"corrupt"}""");
+        Assert.False(store.Load().ToolbarVisible);Assert.Equal(WorkspaceViewMode.Default,store.Load().ViewMode);
+        File.WriteAllText(store.Path,"""{"toolbarVisible":"corrupt","viewMode":2}""");Assert.True(store.Load().ToolbarVisible);Assert.Equal(WorkspaceViewMode.Video,store.Load().ViewMode);
+        await Command(CommandIds.AppToggleToolbar);Assert.True(_model.ToolbarVisible);
+    }
+
+    [Fact] public async Task ExitCommandHonorsUnsavedCancellationAndRequestsNativeCloseAfterSuccess()
+    {
+        await Command(CommandIds.GridInsertAfter);var document=_workspace.ActiveDocument!.Id;var editor=_model.ActiveEditor;var requests=0;
+        _model.WindowCloseRequested+=(_,_)=>requests++;
+        await Command(CommandIds.AppExit);Assert.Equal(0,requests);Assert.Same(editor,_model.ActiveEditor);Assert.Equal(document,_workspace.ActiveDocument.Id);Assert.True(editor!.Undo.CanUndo);
+        _dialogs.Choice=UnsavedChoice.Discard;await Command(CommandIds.AppExit);Assert.Equal(1,requests);Assert.DoesNotContain(_workspace.Documents,item=>item.Id==document);
+    }
     [Fact] public void KeyAliasesAndModifierBitsMatchTheShippingInputProtocol()
     {
         foreach(var key in new[]{Avalonia.Input.Key.Return,Avalonia.Input.Key.Enter})Assert.Equal("Enter",Yoake.UI.Commands.EditorKeyNames.FromKey(key));

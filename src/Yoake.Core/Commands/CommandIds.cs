@@ -2,6 +2,7 @@ namespace Yoake.Core.Commands;
 
 public static class CommandIds
 {
+    public const string AppExit="app/exit",AppOptions="app/options",AppLog="app/log",AppToggleToolbar="app/toggle/toolbar";
     public const string ViewDefault = "view/default";
     public const string ViewAudio = "view/audio";
     public const string ViewVideo = "view/video";
