@@ -14,6 +14,7 @@ internal sealed class StartupOptions
     public bool SelectionAcceptance {get;private set;}
     public bool AudioClipAcceptance {get;private set;}
     public bool AudioPlaybackAcceptance {get;private set;}
+    public bool AudioTimingAcceptance {get;private set;}
     private int _verificationFinished;
     private int _startupVerified;
     public bool VerificationFinished => Volatile.Read(ref _verificationFinished) != 0;
@@ -21,10 +22,10 @@ internal sealed class StartupOptions
 
     public static StartupOptions Parse(string[] args)
     {
-        var options = new StartupOptions { NonInteractive = args.Contains("--verify-editor") || args.Contains("--verify-ui-startup") || args.Contains("--verify-ui-hotkeys") || args.Contains("--verify-ui-timing") || args.Contains("--verify-ui-timecodes") || args.Contains("--verify-ui-audio-display") || args.Contains("--verify-ui-selection") || args.Contains("--verify-ui-audio-clip") || args.Contains("--verify-ui-audio-playback") };
+        var options = new StartupOptions { NonInteractive = args.Contains("--verify-editor") || args.Contains("--verify-ui-startup") || args.Contains("--verify-ui-hotkeys") || args.Contains("--verify-ui-timing") || args.Contains("--verify-ui-timecodes") || args.Contains("--verify-ui-audio-display") || args.Contains("--verify-ui-selection") || args.Contains("--verify-ui-audio-clip") || args.Contains("--verify-ui-audio-playback") || args.Contains("--verify-ui-audio-timing") };
         for (var i = 0; i < args.Length; i++)
         {
-            if (args[i] is not ("--verify-ui-startup" or "--verify-ui-hotkeys" or "--verify-ui-timing" or "--verify-ui-timecodes" or "--verify-ui-audio-display" or "--verify-ui-selection" or "--verify-ui-audio-clip" or "--verify-ui-audio-playback" or "--profile-directory" or "--diagnostics-directory" or "--verification-media")) continue;
+            if (args[i] is not ("--verify-ui-startup" or "--verify-ui-hotkeys" or "--verify-ui-timing" or "--verify-ui-timecodes" or "--verify-ui-audio-display" or "--verify-ui-selection" or "--verify-ui-audio-clip" or "--verify-ui-audio-playback" or "--verify-ui-audio-timing" or "--profile-directory" or "--diagnostics-directory" or "--verification-media")) continue;
             var flag = args[i];
             if (++i >= args.Length || string.IsNullOrWhiteSpace(args[i])) throw new ArgumentException($"{flag} requires a path.");
             var path = Path.GetFullPath(args[i]);
@@ -39,6 +40,7 @@ internal sealed class StartupOptions
                 case "--verify-ui-selection":options.VerificationReport=path;options.SelectionAcceptance=true;break;
                 case "--verify-ui-audio-clip":options.VerificationReport=path;options.AudioClipAcceptance=true;break;
                 case "--verify-ui-audio-playback":options.VerificationReport=path;options.AudioPlaybackAcceptance=true;break;
+                case "--verify-ui-audio-timing":options.VerificationReport=path;options.AudioTimingAcceptance=true;break;
                 case "--profile-directory": options.ProfileDirectory = path; break;
                 case "--diagnostics-directory": options.DiagnosticsDirectory = path; break;
             }

@@ -16,6 +16,14 @@ public sealed class EventEditDraft : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
     public IReadOnlyDictionary<string,string> Values => _values;
     public bool IsChanged => _values.Any(p => _line.Get(p.Key) != p.Value);
+    // The audio controller owns endpoints once its markers are committed.
+    // Keep the same draft and all text/metadata edits, rebasing only timing.
+    public void SynchronizeTiming()
+    {
+        _values["Start"]=_line.Start;_values["End"]=_line.End;
+        PropertyChanged?.Invoke(this,new(nameof(Start)));PropertyChanged?.Invoke(this,new(nameof(End)));
+        PropertyChanged?.Invoke(this,new(nameof(Duration)));PropertyChanged?.Invoke(this,new(nameof(IsChanged)));
+    }
     private string Read(string name) => _values.GetValueOrDefault(name, "");
     private void Write(string value, string name, [CallerMemberName] string? property = null) { if (!_values.ContainsKey(name) || Read(name) == value) return; _values[name] = value; PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(property)); PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(IsChanged))); if(name is "Start" or "End")PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Duration))); }
     public string Layer { get => Read(_line.FieldNames.Any(n=>n.Equals("Layer",StringComparison.OrdinalIgnoreCase)) ? "Layer" : "Marked"); set => Write(value,_line.FieldNames.Any(n=>n.Equals("Layer",StringComparison.OrdinalIgnoreCase)) ? "Layer" : "Marked"); }

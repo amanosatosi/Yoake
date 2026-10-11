@@ -168,6 +168,32 @@
 <MenuItem Header="Clip tool" InputGesture="{Binding Actions[video/tool/clip].InputGesture}" Command="{Binding Actions[video/tool/clip]}" />
 </MenuItem>
 <MenuItem Name="AudioMenu" Header="Audio">
+<MenuItem Name="AudioTimingMenu" Header="Timing">
+<MenuItem Name="AudioCommitMenu" Header="Commit timing" Command="{Binding Actions[audio/commit]}" InputGesture="{Binding Actions[audio/commit].InputGesture}" />
+<MenuItem Name="AudioCommitStayMenu" Header="Commit and stay" Command="{Binding Actions[audio/commit/stay]}" InputGesture="{Binding Actions[audio/commit/stay].InputGesture}" />
+<MenuItem Header="Commit and next" Command="{Binding Actions[audio/commit/next]}" InputGesture="{Binding Actions[audio/commit/next].InputGesture}" />
+<MenuItem Header="Commit and default next" Command="{Binding Actions[audio/commit/default]}" InputGesture="{Binding Actions[audio/commit/default].InputGesture}" />
+<MenuItem Header="Revert pending timing" Command="{Binding Actions[audio/timing/revert]}" InputGesture="{Binding Actions[audio/timing/revert].InputGesture}" />
+<Separator />
+<MenuItem Name="AudioAutoCommitMenu" Header="Auto-commit timing" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/opt/autocommit].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autocommit]}" InputGesture="{Binding Actions[audio/opt/autocommit].InputGesture}" />
+<MenuItem Name="AudioAutoNextMenu" Header="Next line on commit" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/opt/autonext].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autonext]}" InputGesture="{Binding Actions[audio/opt/autonext].InputGesture}" />
+<MenuItem Header="Timing preferences…" Command="{Binding Actions[audio/timing/options]}" />
+<Separator />
+<MenuItem Header="Previous timing line" Command="{Binding Actions[time/prev]}" InputGesture="{Binding Actions[time/prev].InputGesture}" />
+<MenuItem Header="Next timing line" Command="{Binding Actions[time/next]}" InputGesture="{Binding Actions[time/next].InputGesture}" />
+<MenuItem Header="Add lead-in" Command="{Binding Actions[time/lead/in]}" InputGesture="{Binding Actions[time/lead/in].InputGesture}" />
+<MenuItem Header="Add lead-out" Command="{Binding Actions[time/lead/out]}" InputGesture="{Binding Actions[time/lead/out].InputGesture}" />
+<MenuItem Header="Add lead-in and out" Command="{Binding Actions[time/lead/both]}" InputGesture="{Binding Actions[time/lead/both].InputGesture}" />
+<MenuItem Header="Adjust markers">
+<MenuItem Header="Start −10 ms" Command="{Binding Actions[time/start/decrease]}" InputGesture="{Binding Actions[time/start/decrease].InputGesture}" />
+<MenuItem Header="Start +10 ms" Command="{Binding Actions[time/start/increase]}" InputGesture="{Binding Actions[time/start/increase].InputGesture}" />
+<MenuItem Header="Length −10 ms" Command="{Binding Actions[time/length/decrease]}" InputGesture="{Binding Actions[time/length/decrease].InputGesture}" />
+<MenuItem Header="Length +10 ms" Command="{Binding Actions[time/length/increase]}" InputGesture="{Binding Actions[time/length/increase].InputGesture}" />
+<MenuItem Header="Length −10 ms and shift syllables" Command="{Binding Actions[time/length/decrease/shift]}" InputGesture="{Binding Actions[time/length/decrease/shift].InputGesture}" />
+<MenuItem Header="Length +10 ms and shift syllables" Command="{Binding Actions[time/length/increase/shift]}" InputGesture="{Binding Actions[time/length/increase/shift].InputGesture}" />
+</MenuItem>
+</MenuItem>
+<Separator />
 <MenuItem Name="SaveAudioClipMenu" Header="Save selected-line audio clip…" Command="{Binding Actions[audio/save/clip]}" InputGesture="{Binding Actions[audio/save/clip].InputGesture}" />
 <MenuItem Header="Cancel audio clip export" Command="{Binding Actions[audio/save/cancel]}" InputGesture="{Binding Actions[audio/save/cancel].InputGesture}" />
 <Separator />

@@ -56,6 +56,8 @@ public sealed partial class SubtitleEditor(AssDocument document)
             if (probe.Index(field) >= 0 && (!int.TryParse(probe.Get(field), out var number) || field != "Layer" && number < 0)) throw new ArgumentException($"{field} must be an integer (margins must be non-negative).");
         return probe;
     }
+    public static void ValidateEventDraftValues(AssEvent line,IReadOnlyDictionary<string,string> values)
+    {ArgumentNullException.ThrowIfNull(line);ArgumentNullException.ThrowIfNull(values);ValidateEventValues(line,values);}
     public void SetTiming(AssEvent line, long start, long end)
     {
         if (start < 0 || end < start) throw new ArgumentException("Invalid timing range.");
@@ -81,6 +83,19 @@ public sealed partial class SubtitleEditor(AssDocument document)
         var index = reference is null ? Document.Events.Count : Document.Events.IndexOf(reference) + (after ? 1 : 0);
         var before = Document.Events.ElementAtOrDefault(index);
         Structure("Insert subtitle", () => Document.Insert(line, before)); return line;
+    }
+    // Audio commit-next uses the audited timing workflow, independently of
+    // generic Insert's deliberate two-second, cloned-metadata policy.
+    public AssEvent InsertTimingSuccessor(AssEvent reference,long duration)
+    {
+        Require(reference);
+        var start=reference.EndMilliseconds??throw new ArgumentException("The preceding line has no valid end time.");
+        var end=checked(start+duration);
+        if(duration<=0||!AssTime.TryParse(AssTime.Format(end),out _))throw new ArgumentException("Invalid default timing duration.");
+        var line=Document.NewEvent();line.Style=reference.Style;
+        line.Start=AssTime.Format(start);line.End=AssTime.Format(end);
+        var before=Document.Events.ElementAtOrDefault(Document.Events.IndexOf(reference)+1);
+        Structure("Insert timed subtitle",()=>Document.Insert(line,before));return line;
     }
     private AssEvent[] Ordered(IEnumerable<AssEvent> selection)
     {

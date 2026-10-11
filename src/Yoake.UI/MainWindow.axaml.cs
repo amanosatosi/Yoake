@@ -107,6 +107,7 @@ public partial class MainWindow : Window, IEditorDialogs
         });
     }
     public async Task ShowShiftTimesAsync(MainWindowViewModel model)=>await new ShiftTimesWindow(model).ShowDialog(this);
+    public async Task ShowAudioTimingOptionsAsync(MainWindowViewModel model)=>await new AudioTimingOptionsWindow(model).ShowDialog(this);
     public async Task ShowSelectLinesAsync(MainWindowViewModel model)=>await new SelectLinesWindow(model).ShowDialog(this);
     public Task<AssColor?> ChooseColorAsync(AssColor color)=>new AssColorDialog(color,_model?.RecentColorsPath).ShowDialog<AssColor?>(this);
     public async Task<FontChoice?> ChooseFontAsync(string family,string size)

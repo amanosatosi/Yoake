@@ -30,6 +30,7 @@ public sealed class AudioWaveformControl : Control
     private double _pointerTime;
     private int _part;
     private bool _drag;
+    private IPointer? _timingPointer;
     private AssEvent? _lastLine;
     private Guid? _lastDocument;private bool _restoringDocument;
     private WriteableBitmap? _spectrum;
@@ -43,8 +44,8 @@ public sealed class AudioWaveformControl : Control
         base.OnPropertyChanged(change);
         if(change.Property==ModelProperty)
         {
-            if(change.OldValue is MainWindowViewModel old){old.PropertyChanged-=ModelChanged;old.AudioZoomChanged-=ZoomChanged;}
-            if(Model is {} model){model.PropertyChanged+=ModelChanged;model.AudioZoomChanged+=ZoomChanged;_lastDocument=model.ActiveDocumentId;_lastLine=model.SelectedEvent;}
+            if(change.OldValue is MainWindowViewModel old){old.PropertyChanged-=ModelChanged;old.AudioZoomChanged-=ZoomChanged;old.GestureEnded-=TimingGestureEnded;}
+            if(Model is {} model){model.PropertyChanged+=ModelChanged;model.AudioZoomChanged+=ZoomChanged;model.GestureEnded+=TimingGestureEnded;_lastDocument=model.ActiveDocumentId;_lastLine=model.SelectedEvent;}
         }
         if(change.Property==BoundsProperty)Model?.ReportAudioViewportWidth(Bounds.Width);
         if(change.Property==SamplesProperty||change.Property==ViewportStartProperty||change.Property==VisibleSecondsProperty||change.Property==BoundsProperty)
@@ -69,6 +70,8 @@ public sealed class AudioWaveformControl : Control
         InvalidateVisual();
     }
     private double? _zoomAnchor;
+    private void TimingGestureEnded(object? sender,EventArgs args)
+    {if(!_drag)return;_drag=false;var pointer=_timingPointer;_timingPointer=null;pointer?.Capture(null);InvalidateVisual();}
     private void ZoomChanged(object? sender,EventArgs e)
     {
         if(Model is not {} model)return;
@@ -136,7 +139,7 @@ public sealed class AudioWaveformControl : Control
         if(line is not null && (nearStart||nearEnd||e.KeyModifiers.HasFlag(KeyModifiers.Shift)&&_pointerTime>=start&&_pointerTime<=end))
         {
             _part=nearStart?0:nearEnd?1:2;
-            if(model.BeginGesture("Drag line timing")){_drag=true;e.Pointer.Capture(this);}
+            if(model.BeginAudioTimingGesture()){_drag=true;_timingPointer=e.Pointer;e.Pointer.Capture(this);}
         }
         else _=model.Registry.InvokeAsync(CommandIds.VideoSeek,new(),AssTime.Format((long)(_pointerTime*1000)));
         e.Handled=true;
@@ -144,12 +147,12 @@ public sealed class AudioWaveformControl : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);if(!_drag)return;
-        try{Model?.UpdateTimingGesture(_part,Time(e.GetPosition(this).X)-_pointerTime);InvalidateVisual();}
+        try{Model?.UpdateAudioTimingGesture(_part,Time(e.GetPosition(this).X)-_pointerTime);InvalidateVisual();}
         catch(Exception exception){Model?.Registry.ReportFailure("timing/drag",exception);Cancel();}
     }
-    protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(_drag){_drag=false;Model?.EndGesture();e.Pointer.Capture(null);e.Handled=true;}}
+    protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(_drag){_drag=false;_timingPointer=null;Model?.EndAudioTimingGesture();e.Pointer.Capture(null);e.Handled=true;}}
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);Cancel();}
-    private void Cancel(){if(_drag){_drag=false;Model?.CancelGesture();InvalidateVisual();}}
+    private void Cancel(){if(_drag){_drag=false;_timingPointer=null;Model?.CancelGesture();InvalidateVisual();}}
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);

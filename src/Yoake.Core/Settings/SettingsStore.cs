@@ -66,6 +66,8 @@ public sealed class SettingsStore(string path)
         double? volume=null,audioHeight=null,intensity=null,audioSpan=null;var muted=false;var linked=false;double[]? compact=null,styleSplit=null;
         string[]? autoload=null,includes=null;
         bool? audioSpectrum=null,audioAutoScroll=null;
+        bool? audioAutoCommit=null,audioAutoNext=null;
+        int? audioDefaultDuration=null,audioLeadIn=null,audioLeadOut=null;
         double[]? widths = null; string[]? recent = null;string[]? recentKeyframes=null;string[]? recentTimecodes=null;
         Dictionary<string, JsonElement> future = [];
         foreach (var member in root.EnumerateObject())
@@ -100,6 +102,11 @@ public sealed class SettingsStore(string path)
                 case "audioVolumeLinked":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)linked=member.Value.GetBoolean();break;
                 case "audioSpectrum":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)audioSpectrum=member.Value.GetBoolean();break;
                 case "audioAutoScroll":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)audioAutoScroll=member.Value.GetBoolean();break;
+                case "audioAutoCommit":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)audioAutoCommit=member.Value.GetBoolean();break;
+                case "audioAutoNext":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)audioAutoNext=member.Value.GetBoolean();break;
+                case "audioDefaultDuration":if(TryReadInt(member.Value,out var duration))audioDefaultDuration=duration;break;
+                case "audioLeadIn":if(TryReadInt(member.Value,out var leadIn))audioLeadIn=leadIn;break;
+                case "audioLeadOut":if(TryReadInt(member.Value,out var leadOut))audioLeadOut=leadOut;break;
                 case "automationAutoloadDirectories":autoload=ReadPaths(member.Value);break;
                 case "automationIncludeDirectories":includes=ReadPaths(member.Value);break;
                 case "styleSplitWeights":if(member.Value.ValueKind==JsonValueKind.Array)styleSplit=member.Value.EnumerateArray().Take(4).Select(ReadNumber).ToArray();break;
@@ -119,6 +126,7 @@ public sealed class SettingsStore(string path)
             HotkeyOverrides=hotkeys.ToArray(),AudioStopHotkeysMigrated=audioStopMigrated,GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,SelectionPreferences=selection,VideoAutoSeek=videoAutoSeek,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
             GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, FutureSettings = future,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,AudioSpectrum=audioSpectrum,AudioAutoScroll=audioAutoScroll,
+            AudioAutoCommit=audioAutoCommit,AudioAutoNext=audioAutoNext,AudioDefaultDuration=audioDefaultDuration,AudioLeadIn=audioLeadIn,AudioLeadOut=audioLeadOut,
             AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };
     }
 

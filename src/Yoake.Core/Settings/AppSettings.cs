@@ -50,6 +50,11 @@ public sealed record AppSettings
     public bool AudioVolumeLinked {get;init;}
     public bool? AudioSpectrum {get;init;}
     public bool? AudioAutoScroll {get;init;}
+    public bool? AudioAutoCommit {get;init;}
+    public bool? AudioAutoNext {get;init;}
+    public int? AudioDefaultDuration {get;init;}
+    public int? AudioLeadIn {get;init;}
+    public int? AudioLeadOut {get;init;}
     public double[]? StyleSplitWeights {get;init;}
     public string[]? AutomationAutoloadDirectories { get; init; }
     public string[]? AutomationIncludeDirectories { get; init; }
@@ -98,6 +103,10 @@ public sealed record AppSettings
             AudioIntensity=AudioIntensity is {} intensity&&double.IsFinite(intensity)?Math.Clamp(intensity,0.008,8):1,
             AudioWindowSeconds=AudioWindowSeconds is {} audioSpan&&double.IsFinite(audioSpan)?Math.Clamp(audioSpan,0.02,3600):20,
             AudioSpectrum=AudioSpectrum??false,AudioAutoScroll=AudioAutoScroll??true,
+            AudioAutoCommit=AudioAutoCommit??false,AudioAutoNext=AudioAutoNext??true,
+            AudioDefaultDuration=AudioDefaultDuration is >=10 and <=600000?AudioDefaultDuration:3000,
+            AudioLeadIn=AudioLeadIn is >=0 and <=60000?AudioLeadIn:100,
+            AudioLeadOut=AudioLeadOut is >=0 and <=60000?AudioLeadOut:350,
             MainSplitRatio = ratio, GridHeight = height, SchemaVersion = SchemaVersion > 0 ? SchemaVersion : defaults.SchemaVersion };
     }
     private static string[]? NormalizePaths(string[]? paths) => paths?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();

@@ -22,6 +22,7 @@ public sealed partial class MainWindowViewModel
             if(SelectedEvent is not {} line)return null;
             if(line.StartMilliseconds is not {} left||line.EndMilliseconds is not {} right||left<0||right<left)return null;
             if(_gesture is not null)return new(left,right);
+            if(AudioTiming?.Get(line) is {} pending)return pending;
             var start=Draft is {} draft&&AssTime.TryParse(draft.Start,out var draftStart)?draftStart:left;
             var end=Draft is {} endDraft&&AssTime.TryParse(endDraft.End,out var draftEnd)?draftEnd:right;
             if(start>=0&&end>=start)return new(start,end);
@@ -30,7 +31,7 @@ public sealed partial class MainWindowViewModel
     }
     private AudioPlaybackPlan? PlanAudioPlayback(AudioPlaybackKind kind)
     {
-        if(_media?.HasAudio!=true||_gesture is not null)return null;
+        if(_media?.HasAudio!=true||HasGesture)return null;
         var range=PrimaryAudioRange;
         if(kind!=AudioPlaybackKind.Cursor&&range is null)return null;
         var info=_media.Info;
@@ -39,6 +40,7 @@ public sealed partial class MainWindowViewModel
     }
     private void UpdateAudioPlaybackEnd()
     {
+        if(_publishingAudioTiming)return;
         OnPropertyChanged(nameof(PrimaryAudioRange));
         if(ActiveAudioPlayback is {FollowsSelectionEnd:true} playing&&PrimaryAudioRange is {} primary)
         {var updated=playing.WithSelectionEnd(primary.EndMilliseconds);ActiveAudioPlayback=updated;_audioPlayer?.SetEndFrame(updated.EndFrame);}

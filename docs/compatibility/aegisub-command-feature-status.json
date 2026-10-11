@@ -344,12 +344,24 @@
     },
     {
       "id": "audio/commit",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Commit any pending audio timing changes",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/commit",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_Enter"
@@ -362,12 +374,24 @@
     },
     {
       "id": "audio/commit/default",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Commit any pending audio timing changes and reset the next line's times to the default",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/commit/default",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Audio": [
           "Shift-G"
@@ -376,22 +400,46 @@
     },
     {
       "id": "audio/commit/next",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Commit any pending audio timing changes and move to the next line",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/commit/next",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "audio/commit/stay",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Commit any pending audio timing changes and stay on the current line",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/commit/stay",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -520,22 +568,46 @@
     },
     {
       "id": "audio/opt/autocommit",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Automatically commit all changes",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/opt/autocommit",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "audio/opt/autonext",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Automatically go to next line on commit",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/opt/autonext",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1671,7 +1743,7 @@
         "EditorWorkflowTests",
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
       ],
-      "notes": "Commit + next creates a line at EOF; retain invalid-draft and IME protections.",
+      "notes": "Commit + next creates a line at EOF; retain invalid-draft and IME protections. The shared edit/commit-next adapter now commits pending audio markers and creates a stored successor at current End with the timing default (3000 ms) and current style. Generic Insert remains unchanged.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Enter",
@@ -2665,22 +2737,46 @@
     },
     {
       "id": "time/lead/both",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Add both lead in and out to the selected lines",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/lead/both",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "time/lead/in",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Add the lead in time to the selected lines",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/lead/in",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Audio": [
           "C"
@@ -2689,12 +2785,24 @@
     },
     {
       "id": "time/lead/out",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Add the lead out time to the selected lines",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/lead/out",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Audio": [
           "V"
@@ -2703,12 +2811,24 @@
     },
     {
       "id": "time/length/decrease",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Decrease the length of the current timing unit",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/length/decrease",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_7"
@@ -2720,12 +2840,24 @@
     },
     {
       "id": "time/length/decrease/shift",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Decrease the length of the current timing unit and shift the following items",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/length/decrease/shift",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Audio": [
           "Shift-KP_Subtract"
@@ -2734,12 +2866,24 @@
     },
     {
       "id": "time/length/increase",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Increase the length of the current timing unit",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/length/increase",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_9"
@@ -2751,12 +2895,24 @@
     },
     {
       "id": "time/length/increase/shift",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Increase the length of the current timing unit and shift the following items",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/length/increase/shift",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Audio": [
           "Shift-KP_Add"
@@ -2765,12 +2921,24 @@
     },
     {
       "id": "time/next",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Next line or syllable",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/next",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_2"
@@ -2783,12 +2951,24 @@
     },
     {
       "id": "time/prev",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Previous line or syllable",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/prev",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_0"
@@ -2890,12 +3070,24 @@
     },
     {
       "id": "time/start/decrease",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Shift the start time of the current timing unit backward",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/start/decrease",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_4"
@@ -2904,12 +3096,24 @@
     },
     {
       "id": "time/start/increase",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Transactional line/syllable timing using the central timeline and frame START/END semantics. Required action: Shift the start time of the current timing unit forward",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "time/start/increase",
+      "status": "partially implemented",
+      "backend": "Document-owned PendingAudioTiming and the shared dialogue commit/navigation/gesture controller; one central playback range and one lossless timing undo publication.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio > Timing menu",
+        "Exact contextual Aegisub hotkeys where shipped",
+        "Waveform marker gesture",
+        "Audio timing preferences window"
+      ],
+      "tests": [
+        "PendingAudioTimingTests",
+        "AudioTimingWorkflowTests",
+        "AudioTimingUiAcceptanceVerification",
+        "AudioPlaybackUiAcceptanceVerification",
+        "HotkeyProfileTests"
+      ],
+      "notes": "Implemented dialogue workflow awaiting managed/NativeAOT/packaged CI verification. Markers survive navigation/document switching; no implicit timing commit. Auto-commit applies markers without auto-next; bare commit honors auto-next; explicit next/default/stay override it. Defaults: 100/350 ms leads, 10 ms adjustments, 3000 ms timing successors; generic Insert remains 2000 ms with cloned metadata. Timing authoring is also usable without media. Karaoke timing-unit navigation and shift-following remain unfinished.",
       "yoake_default_hotkeys": {
         "Always": [
           "KP_6"
@@ -2978,15 +3182,12 @@
     },
     {
       "id": "tool/assdraw",
-      "yoake_command": "video/tool/vectorclip",
-      "status": "superseded by better Yoake behavior",
-      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Launch the ASSDraw3 tool for vector drawing",
+      "yoake_command": null,
+      "status": "missing",
+      "backend": "Deferred external ASSDraw3.exe launcher; no bundling, compilation or CI build of ASSDraw.",
       "exposure": [],
-      "tests": [
-        "VisualTypesettingTests",
-        "VisualUiVerification"
-      ],
-      "notes": "External ASSDraw launcher removed in 3.5; Yoake retains its integrated structured vector-clip tools.",
+      "tests": [],
+      "notes": "Not superseded by current vector-clip tools. Implement near the end of parity: launch external ASSDraw3.exe; when absent show exactly \"ASSDraw3.exe doesn't exist.\" Future integrated ASS shape drawing may supersede the launcher. No ASSDraw implementation in the timing cluster.",
       "yoake_default_hotkeys": {
         "Video": [
           "J"

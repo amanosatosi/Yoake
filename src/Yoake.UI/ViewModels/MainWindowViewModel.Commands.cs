@@ -72,7 +72,7 @@ public sealed partial class MainWindowViewModel
     }
     private void GestureChanged(){InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();}
     private void EndGestureCore() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); _visualBaseline=[]; ReloadDraft(); GestureEnded?.Invoke(this,EventArgs.Empty); } }
-    private void CancelGestureCore() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); _visualBaseline=[]; if(gesture is not null){ReloadDraft();GestureEnded?.Invoke(this,EventArgs.Empty);} }
+    private void CancelGestureCore() { FinishAudioTimingGesture(false);var gesture=_gesture; _gesture=null; gesture?.Dispose(); _visualBaseline=[]; if(gesture is not null){ReloadDraft();GestureEnded?.Invoke(this,EventArgs.Empty);} }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
     private AssEvent[] Selection() => SelectedEvents.Where(Events.Contains).DefaultIfEmpty(SelectedEvent).OfType<AssEvent>().Distinct().ToArray();
     private void Select(AssEvent? line) { SetSelectedEvents(line is null?Array.Empty<AssEvent>():new[]{line}); SelectedEvent=line; }
@@ -117,7 +117,7 @@ public sealed partial class MainWindowViewModel
             {_settings=(_settings with{StyleSplitWeights=(double[])weights.Clone()}).Normalize();_settingsStore.Save(_settings);}
             return ValueTask.CompletedTask;
         });
-        bool HasLine()=>HasSelectedEvent && _gesture is null;
+        bool HasLine()=>HasSelectedEvent && !HasGesture;
         foreach(var setting in new[]{"audio/volume","audio/mute","audio/display/height","audio/display/intensity","audio/display/zoom","audio/volume/link"})
         {var id=setting;R(id,id,i=>{SaveAudioSetting(id,i.Parameter);return ValueTask.CompletedTask;});}
         S(CommandIds.TextHardNewline,"Insert ASS hard newline",InsertHardNewline,HasLine);
@@ -152,12 +152,12 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.SubtitleClose,"Close tab",async i=>{if(i.Parameter is Guid id)await CloseDocumentAsync(id);else if(_activeId is {} active)await CloseDocumentAsync(active);});
         R(CommandIds.SubtitleRevert,"Reload from disk…",async _=>{if(!CommitDraft() || ActiveSubtitlePath is not {} path || Dialogs is null || !await Dialogs.ConfirmRevertAsync())return; var doc=AssDocument.Load(path); var session=_workspace.ActiveDocument!; var state=_documents[session.Id]; Attach(session,doc); var replacement=_documents[session.Id]; replacement.Media=state.Media; replacement.Waveform=state.Waveform; replacement.Time=state.Time; state.Loading?.Cancel(); _activeId=null; SynchronizeActiveDocument();},()=>ActiveSubtitlePath is not null);
         R(CommandIds.WorkspaceActivateTab,"Activate tab",i=>{CancelGesture();if(i.Parameter is Guid id && CommitDraft())_workspace.Activate(id);return ValueTask.CompletedTask;});
-        S(CommandIds.EditUndo,"Undo",()=>{var wasGesture=_gesture is not null;CancelGesture();if(wasGesture)return; if(Draft?.IsChanged==true){ReloadDraft();return;} ApplyHistory(false);},()=>Draft?.IsChanged==true || _undo.CanUndo || _gesture is not null,
+        S(CommandIds.EditUndo,"Undo",()=>{var wasGesture=HasGesture;CancelGesture();if(wasGesture)return; if(Draft?.IsChanged==true){ReloadDraft();return;} ApplyHistory(false);},()=>Draft?.IsChanged==true || _undo.CanUndo || HasGesture,
             ()=>_gesture is not null?"Undo gesture":Draft?.IsChanged==true?"Undo draft":_undo.NextUndoName is {} name?"Undo "+name:"Nothing to undo");
         S(CommandIds.EditRedo,"Redo",()=>{CancelGesture(); if(CommitDraft())ApplyHistory(true);},()=>_undo.CanRedo,
             ()=>_undo.NextRedoName is {} name?"Redo "+name:"Nothing to redo");
         S(CommandIds.EditCommit,"Commit line",()=>CommitDraft(),HasLine);
-        S(CommandIds.EditCommitNext,"Commit and next",()=>{if(CommitDraft()){if(SelectedEvent==Events.LastOrDefault())RunEdit(e=>Select(e.Insert(SelectedEvent,true,SelectedEvent?.EndMilliseconds??0)));else Navigate(1);}},HasLine);
+        S(CommandIds.EditCommitNext,"Commit and next",CommitEditingNext,HasLine);
         S(CommandIds.EditCancel,"Cancel edit / gesture",()=>{CancelGesture(); ReloadDraft();});
         S(CommandIds.GridLineNext,"Next subtitle",()=>Navigate(1));
         S(CommandIds.GridLinePrevious,"Previous subtitle",()=>Navigate(-1));

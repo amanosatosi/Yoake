@@ -9,7 +9,7 @@ using Yoake.UI.ViewModels;
 
 namespace Yoake.UI.Tests;
 
-public sealed class EditorWorkflowTests : IDisposable
+public sealed partial class EditorWorkflowTests : IDisposable
 {
     private readonly string _root=Path.Combine(Path.GetTempPath(),"Yoake-tests-"+Guid.NewGuid());
     private readonly WorkspaceManager _workspace=new();

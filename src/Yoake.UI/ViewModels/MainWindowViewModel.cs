@@ -26,6 +26,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private sealed class DocumentState(SubtitleEditor editor)
     {
         public SubtitleEditor Editor { get; } = editor;
+        public PendingAudioTiming AudioTiming {get;}=new(editor);
         public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
         public FfmsMediaSession? Media;
         public FrameTiming? FrameTiming;
@@ -74,7 +75,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public string? PreviewSource()
     {
         var revision=PreviewRevision;if(_previewSourceRevision==revision)return _previewSource;
-        try{_previewSource=_activeSubtitleDocument?.SerializePreview(SelectedEvent,_gesture is null&&Draft?.IsChanged==true?Draft.Values:null);}
+        try{_previewSource=_activeSubtitleDocument?.SerializePreview(SelectedEvent,AudioPreviewValues());}
         catch(ArgumentException){_previewSource=_activeSubtitleDocument?.Serialize();}
         _previewSourceRevision=revision;return _previewSource;
     }
@@ -115,7 +116,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     private void DraftChanged(object? sender,PropertyChangedEventArgs e)
     {
+        if(_publishingAudioTiming)return;
         if(e.PropertyName is nameof(EventEditDraft.IsChanged) or nameof(EventEditDraft.Duration))return;
+        if((e.PropertyName is nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))&&SelectedEvent is {} timed)AudioTiming?.Clear(timed);
         if(_activeId is {} editingId&&_documents.TryGetValue(editingId,out var editingState))editingState.Editing?.Cancel();
         try{SelectedEvent?.ShowDraft(Draft?.Values);}catch(ArgumentException){/* Invalid metadata remains editable, never saved. */}
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));
@@ -201,6 +204,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterSelectionCommands();
         RegisterAudioExportCommands();
         RegisterAudioPlaybackCommands();
+        RegisterAudioTimingCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
@@ -208,7 +212,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public bool CommitDraft()
     {
-        if(_gesture is not null){SubtitleStatus="Finish or cancel the current gesture first.";return false;}
+        if(HasGesture){SubtitleStatus="Finish or cancel the current gesture first.";return false;}
         if (Draft?.IsChanged!=true || SelectedEvent is null || ActiveEditor is null) return true;
         try { ActiveEditor.EditEvent(SelectedEvent,Draft.Values); ReloadDraft(); return true; }
         catch(Exception e) { SubtitleStatus=e.Message; return false; }
@@ -232,7 +236,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         if(_documents.TryGetValue(session.Id,out var previous))previous.AudioExport?.Cancel();
         var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds,Search=new(_settings.SearchPreferences??new())}; _documents[session.Id]=state;
-        document.Changed+=(_,_)=> { state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision)); ScheduleAutomationValidation(); } };
+        document.Changed+=(_,_)=> { state.AudioTiming.Reconcile();state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
             session.IsDirty=state.Editor.IsDirty;
@@ -243,7 +247,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                 // Refresh choices before the draft binding selects the renamed
                 // style. Otherwise ComboBox retains an absent/blank selection.
                 if(namesChanged)OnPropertyChanged(nameof(StyleNames));
-                ReloadDraft();_registry.NotifyStateChanged();
+                if(!_publishingAudioTiming)ReloadDraft();_registry.NotifyStateChanged();
             }
         };
         state.Editor.MarkSaved();

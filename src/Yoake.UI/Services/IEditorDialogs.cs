@@ -33,6 +33,7 @@ public interface IEditorDialogs
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model);
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model,bool focusReplacement)=>ShowFindAsync(model);
     Task ShowShiftTimesAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>throw new NotSupportedException("Shift Times is unavailable.");
+    Task ShowAudioTimingOptionsAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>throw new NotSupportedException("Audio timing options are unavailable.");
     Task ShowSelectLinesAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>throw new NotSupportedException("Select Lines is unavailable.");
 }
 public interface IAutomationProgressSession
