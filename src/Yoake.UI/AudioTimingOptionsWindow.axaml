@@ -8,9 +8,9 @@
       <TextBlock Text="Default duration (ms)" VerticalAlignment="Center" />
       <NumericUpDown Grid.Column="1" Name="DefaultDuration" Minimum="10" Maximum="600000" Increment="10" FormatString="0" Value="{Binding AudioTimingDefaultDuration, Mode=TwoWay}" />
       <TextBlock Grid.Row="1" Text="Lead-in (ms)" VerticalAlignment="Center" />
-      <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="0" Maximum="60000" Increment="10" FormatString="0" Value="{Binding AudioTimingLeadIn, Mode=TwoWay}" />
+      <NumericUpDown Grid.Row="1" Grid.Column="1" Name="LeadIn" Minimum="0" Maximum="60000" Increment="10" FormatString="0" Value="{Binding AudioTimingLeadIn, Mode=TwoWay}" />
       <TextBlock Grid.Row="2" Text="Lead-out (ms)" VerticalAlignment="Center" />
-      <NumericUpDown Grid.Row="2" Grid.Column="1" Minimum="0" Maximum="60000" Increment="10" FormatString="0" Value="{Binding AudioTimingLeadOut, Mode=TwoWay}" />
+      <NumericUpDown Grid.Row="2" Grid.Column="1" Name="LeadOut" Minimum="0" Maximum="60000" Increment="10" FormatString="0" Value="{Binding AudioTimingLeadOut, Mode=TwoWay}" />
     </Grid>
     <TextBlock Text="Applies to the audio timing workflow. Generic line insertion keeps its existing two-second policy." TextWrapping="Wrap" FontSize="11" />
     <Button Name="CloseOptions" Content="Close" HorizontalAlignment="Right" />

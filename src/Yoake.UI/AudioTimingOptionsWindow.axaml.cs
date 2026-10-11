@@ -6,9 +6,10 @@ namespace Yoake.UI;
 
 public sealed partial class AudioTimingOptionsWindow : Window
 {
-    public AudioTimingOptionsWindow(MainWindowViewModel model)
+    public AudioTimingOptionsWindow()
     {
-        AvaloniaXamlLoader.Load(this);DataContext=model;
+        AvaloniaXamlLoader.Load(this);
         this.FindControl<Button>("CloseOptions")!.Click+=(_,_)=>Close();
     }
+    public AudioTimingOptionsWindow(MainWindowViewModel model):this(){DataContext=model;}
 }

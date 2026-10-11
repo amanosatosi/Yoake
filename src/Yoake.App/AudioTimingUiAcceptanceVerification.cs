@@ -77,8 +77,19 @@ internal sealed class AudioTimingUiAcceptanceVerification(IClassicDesktopStyleAp
                     var count=model.Events.Count;Press(text,Key.C);Require(model.Events.Count==count&&_editor.Document.Serialize()==before,"Text C must not invoke Audio lead-in.");
                     Require(ReferenceEquals(_samples,model.WaveformSamples)&&ReferenceEquals(_times,model.FrameTimes)&&ReferenceEquals(_keys,model.Keyframes)&&ReferenceEquals(_editor,model.ActiveEditor),"Timing must retain the providers, frame map and editor.");
                     var settings=new Yoake.Core.Settings.SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();Require(settings.AudioAutoCommit==true&&settings.AudioAutoNext==false,"Options must persist through the real settings store.");
+                    _=model.Registry.InvokeAsync("audio/timing/options",new(model.ActiveDocumentId));return;
+                case 9:
+                    var preferences=window.OwnedWindows.OfType<AudioTimingOptionsWindow>().Single();Require(preferences.IsVisible&&preferences.Bounds.Width>=360,"Timing preferences must open as a usable native dialog.");
+                    Require(preferences.FindControl<NumericUpDown>("DefaultDuration")!.Value==3000m&&preferences.FindControl<NumericUpDown>("LeadIn")!.Value==100m&&preferences.FindControl<NumericUpDown>("LeadOut")!.Value==350m,"The actual preferences controls must display audited defaults.");
+                    preferences.FindControl<NumericUpDown>("DefaultDuration")!.SetCurrentValue(NumericUpDown.ValueProperty,4000m);
+                    preferences.FindControl<NumericUpDown>("LeadIn")!.SetCurrentValue(NumericUpDown.ValueProperty,120m);
+                    preferences.FindControl<NumericUpDown>("LeadOut")!.SetCurrentValue(NumericUpDown.ValueProperty,400m);
+                    Press(preferences.FindControl<Button>("CloseOptions")!,Key.Enter);return;
+                case 10:
+                    Require(!window.OwnedWindows.OfType<AudioTimingOptionsWindow>().Any(),"Real preferences Close button must dismiss the dialog.");
+                    var saved=new Yoake.Core.Settings.SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();Require(saved.AudioDefaultDuration==4000&&saved.AudioLeadIn==120&&saved.AudioLeadOut==400,"Actual numeric controls must route through the shared preferences command and persist immediately.");
                     Require(Audio.Bounds.Width>100&&Audio.Bounds.Height>40&&StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Ordinary CI-size layout/input must remain valid.");
-                    _timer.Stop();options.FinishVerification("PASS: separate audio timing acceptance; real Audio C/V/X/Z/Enter/G/Shift-G; native commit/auto-option menu Enter and checked state; waveform drag/release/capture-loss; one-operation Ctrl-Z; transient versus stored timing; default successor; auto-commit/auto-next precedence; IME/text isolation; retained document/media/timeline; persisted preferences.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    _timer.Stop();options.FinishVerification("PASS: separate audio timing acceptance; real Audio C/V/X/Z/Enter/G/Shift-G; native commit/auto-option menu Enter and checked state; waveform drag/release/capture-loss; one-operation Ctrl-Z; transient versus stored timing; default successor; auto-commit/auto-next precedence; IME/text isolation; retained document/media/timeline; real preferences dialog/numeric-control routing and persisted settings.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception exception){_timer.Stop();Program.Fatal("Packaged audio timing acceptance at stage "+(_stage-1),exception);desktop.Shutdown(1);}
