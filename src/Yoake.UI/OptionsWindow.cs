@@ -13,7 +13,7 @@ public sealed class OptionsWindow : Window
 {
     private sealed record CommandChoice(string Id,string Label,bool Registered)
     {
-        public override string ToString()=>Label+"  ·  "+Id+(Registered?"":"  (backend not available)");
+        public override string ToString()=>Label+" · "+Id+(Registered?"":"  (backend not available)");
     }
     private readonly MainWindowViewModel _model;
     private readonly ComboBox _context=new(){Name="HotkeyContext",MinWidth=200};
@@ -31,6 +31,8 @@ public sealed class OptionsWindow : Window
     public OptionsWindow(MainWindowViewModel model)
     {
         _model=model;Title="Options — Keyboard shortcuts";Name="OptionsDialog";Width=860;Height=620;MinWidth=650;MinHeight=460;
+        var names=new NameScope();NameScope.SetNameScope(this,names);
+        foreach(var control in new Control[]{_context,_filter,_commands,_bindings,_gesture,_capture,_status,_global})names.Register(control.Name!,control);
         WindowStartupLocation=WindowStartupLocation.CenterOwner;
         var root=new Grid{Margin=new Thickness(12),RowDefinitions=new("Auto,Auto,*,Auto,Auto"),RowSpacing=8};Content=root;
         var heading=new StackPanel{Orientation=Orientation.Horizontal,Spacing=12};root.Children.Add(heading);
@@ -45,6 +47,7 @@ public sealed class OptionsWindow : Window
         Button Action(string text,string name,Func<Task> action)
         {
             var button=new Button{Content=text,Name=name,Margin=new Thickness(0,0,5,5)};
+            names.Register(name,button);
             button.Click+=async(_,_)=>{await action();};row.Children.Add(button);return button;
         }
         Action("Add","AddHotkey",()=>Modify("add"));Action("Change","ChangeHotkey",()=>Modify("change"));Action("Remove","RemoveHotkey",()=>Modify("remove"));
@@ -66,6 +69,7 @@ public sealed class OptionsWindow : Window
         _model.HotkeyProfile.Changed+=ProfileChanged;_model.Registry.StateChanged+=CommandStateChanged;
         Closed+=(_,_)=>{_model.HotkeyProfile.Changed-=ProfileChanged;_model.Registry.StateChanged-=CommandStateChanged;};
         RefreshCommands();
+        names.Complete();
     }
 
     private static void At(Grid parent,Control child,int row){Grid.SetRow(child,row);parent.Children.Add(child);}

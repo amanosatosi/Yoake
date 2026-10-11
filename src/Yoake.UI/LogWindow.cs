@@ -22,6 +22,7 @@ public sealed class LogWindow : Window
     public LogWindow(string path,Action<Exception> report)
     {
         _path=path;Name="ApplicationLogDialog";Title="Yoake log";Width=880;Height=550;MinWidth=500;MinHeight=300;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        var names=new NameScope();NameScope.SetNameScope(this,names);names.Register(_text.Name!,_text);names.Register(_status.Name!,_status);
         var root=new Grid{Margin=new Thickness(10),RowDefinitions=new("Auto,*,Auto"),RowSpacing=8};Content=root;
         root.Children.Add(new TextBlock{Text=path,TextWrapping=Avalonia.Media.TextWrapping.Wrap});Grid.SetRow(_text,1);root.Children.Add(_text);
         var bottom=new DockPanel{LastChildFill=true};Grid.SetRow(bottom,2);root.Children.Add(bottom);
@@ -29,7 +30,8 @@ public sealed class LogWindow : Window
         void Register(string id,string label,Func<Task> action,Func<bool>? enabled=null)
         {
             _registry.Register(new(new(id,label,label,"Log"),async(_,_)=>await action(),_=>enabled?.Invoke()??true));
-            actions.Children.Add(new Button{Name=id.Replace('/','-'),Content=label,Command=new RegistryCommand(_registry,id,()=>new())});
+            var button=new Button{Name=id.Replace('/','-'),Content=label,Command=new RegistryCommand(_registry,id,()=>new())};
+            names.Register(button.Name!,button);actions.Children.Add(button);
         }
         Register("log/refresh","Refresh",ReadAsync,()=>!_reading&&!_lifetime.IsCancellationRequested);
         Register("log/copy","Copy",async()=>
@@ -42,6 +44,7 @@ public sealed class LogWindow : Window
         Opened+=async(_,_)=>{await _registry.InvokeAsync("log/refresh",new());_timer.Start();};
         _timer.Tick+=async(_,_)=>{if(_follow.IsChecked==true)await _registry.InvokeAsync("log/refresh",new());};
         Closed+=(_,_)=>{_timer.Stop();_lifetime.Cancel();};
+        names.Complete();
     }
     private async Task ReadAsync()
     {
