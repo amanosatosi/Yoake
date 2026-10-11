@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Yoake.Core.Hotkeys;
+using Yoake.Core.Subtitles;
 
 namespace Yoake.Core.Settings;
 
@@ -29,6 +30,7 @@ public sealed record AppSettings
     public HotkeyOverride[]? HotkeyOverrides { get; init; }
     public bool GlobalTimingHotkeys { get; init; }
     public bool? ToolbarVisible { get; init; }
+    public GridTagDisplayMode? GridTagDisplay { get; init; }
     public double MainSplitRatio { get; init; } = 0.5;
     public double GridHeight { get; init; } = 230;
     public double[]? CompactGridColumnWidths {get;init;}
@@ -71,6 +73,7 @@ public sealed record AppSettings
         return this with { GridColumnWidths = widths, RecentFiles = recent, Theme = theme, ViewMode = viewMode,
             HotkeyOverrides=HotkeyProfile.Normalize(HotkeyOverrides, report),
             ToolbarVisible=ToolbarVisible??true,
+            GridTagDisplay=GridTagDisplay is {} tags&&Enum.IsDefined(tags)?tags:GridTagDisplayMode.Simplified,
             AutomationAutoloadDirectories=NormalizePaths(AutomationAutoloadDirectories), AutomationIncludeDirectories=NormalizePaths(AutomationIncludeDirectories),
             CompactGridColumnWidths=CompactGridColumnWidths is {Length:7} compact&&compact.All(w=>double.IsFinite(w)&&w>=24&&w<=600)?compact:null,
             StyleSplitWeights=StyleSplitWeights is {Length:3} split&&split.All(w=>double.IsFinite(w)&&w>0)?split.Select(w=>Math.Clamp(w,0.1,10)).ToArray():null,

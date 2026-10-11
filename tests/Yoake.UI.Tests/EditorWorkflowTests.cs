@@ -22,6 +22,60 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Theory]
+    [InlineData(SubtitleSortKey.Start)][InlineData(SubtitleSortKey.End)][InlineData(SubtitleSortKey.Style)]
+    [InlineData(SubtitleSortKey.Actor)][InlineData(SubtitleSortKey.Effect)][InlineData(SubtitleSortKey.Layer)]
+    public async Task SortingCommandsOwnStableSelectionAndOneUndoOperation(SubtitleSortKey key)
+    {
+        var path=Path.Combine(_root,"sort.ass");
+        File.WriteAllText(path,"[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Extra,Text\n"+
+            string.Concat(new[]{4,2,3,1}.Select(n=>$"Dialogue: {n},0:00:0{n}.00,0:00:0{n+4}.00,{n},{n},0,0,0,{n},opaque,{n}日本語 {{\\future(opaque)\\distort(0,0,1,1)}}\n")));
+        Assert.True(_model.OpenSubtitle(path));var editor=_model.ActiveEditor!;var rows=_model.Events.ToArray();var source=editor.Document.Serialize();
+        _model.SelectedEvent=rows[0];_model.SetSelectedEvents([rows[0],rows[1],rows[3]]);
+        var id="grid/sort/"+key.ToString().ToLowerInvariant();
+        Assert.True(_model.Actions[id+"/selected"].CanExecute(null));
+        Assert.False(_model.Registry.CanExecute(id,new(Guid.NewGuid())));
+        await Command(id+"/selected");Assert.Equal(new[]{rows[1],rows[0],rows[2],rows[3]},_model.Events);
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(rows[0],_model.SelectedEvent);Assert.Equal(new[]{rows[0],rows[1],rows[3]},_model.SelectedEvents);
+        Assert.Equal("Sort subtitles",editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        await Command(CommandIds.EditRedo);Assert.Equal(new[]{rows[1],rows[0],rows[2],rows[3]},_model.Events);
+        await Command(id);Assert.Equal(new[]{rows[3],rows[1],rows[2],rows[0]},_model.Events);Assert.Same(rows[0],_model.SelectedEvent);
+        Assert.Equal("opaque",rows[0].Get("Extra"));Assert.Contains("\\future(opaque)\\distort(0,0,1,1)",rows[0].Text);
+    }
+    [Fact] public async Task SwapAndCanceledSortRespectAvailabilityAndPreserveHistory()
+    {
+        Assert.False(_model.Actions["grid/swap"].CanExecute(null));Assert.False(_model.Actions["grid/sort/start"].CanExecute(null));
+        await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridInsertAfter);var editor=_model.ActiveEditor!;var rows=_model.Events.ToArray();
+        editor.SetTiming(rows[0],4000,6000);editor.SetTiming(rows[1],2000,3000);_model.SelectedEvent=rows[0];_model.SetSelectedEvents(rows);
+        Assert.True(_model.Actions["grid/swap"].CanExecute(null));var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        using var cancellation=new CancellationTokenSource();cancellation.Cancel();
+        Assert.False(await _model.Registry.InvokeAsync("grid/sort/start",new(),cancellationToken:cancellation.Token));
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)_=_model.Registry.InvokeAsync("editor/cancel-operation",new());};
+        _model.PropertyChanged+=cancel;
+        await Command("grid/sort/start");_model.PropertyChanged-=cancel;
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
+        await Command("grid/swap");Assert.Equal(new[]{rows[1],rows[0]},_model.Events);Assert.Same(rows[0],_model.SelectedEvent);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+        _model.SetSelectedEvents([rows[0]]);Assert.False(_model.Actions["grid/swap"].CanExecute(null));Assert.False(_model.Actions["grid/sort/start/selected"].CanExecute(null));
+    }
+    [Fact] public async Task TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(opaque)}日本語 unfinished";
+        var editor=_model.ActiveEditor!;var draft=_model.Draft;var line=_model.SelectedEvent;var history=editor.Undo.NextUndoName;
+        var ids=new[]{"grid/tags/show","grid/tags/simplify","grid/tags/hide"};
+        foreach(var mode in Enum.GetValues<GridTagDisplayMode>())
+        {
+            await Command(ids[(int)mode]);Assert.Equal(mode,_model.GridTagDisplay);
+            Assert.Equal(1,ids.Count(id=>_model.Actions[id].IsChecked));Assert.True(_model.Actions[ids[(int)mode]].IsChecked);
+            Assert.Same(draft,_model.Draft);Assert.Same(line,_model.SelectedEvent);Assert.Same(editor,_model.ActiveEditor);Assert.Equal(history,editor.Undo.NextUndoName);
+            Assert.True(draft.IsChanged);Assert.Equal(mode,new SettingsStore(Path.Combine(_root,"settings.json")).Load().GridTagDisplay);
+        }
+        await Command("grid/tag/cycle_hiding");Assert.Equal(GridTagDisplayMode.Full,_model.GridTagDisplay);
+        await Command("grid/tag/cycle_hiding");Assert.Equal(GridTagDisplayMode.Simplified,_model.GridTagDisplay);
+    }
+
     [Fact] public async Task ToolbarVisibilityIsCheckedPersistedPresentationAndRecoversIndependently()
     {
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="unfinished 日本語";

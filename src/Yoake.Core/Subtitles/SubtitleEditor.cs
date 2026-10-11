@@ -4,7 +4,7 @@ using Yoake.Core.Undo;
 namespace Yoake.Core.Subtitles;
 
 // One editor and undo history per document. UI drafts and gestures call this boundary.
-public sealed class SubtitleEditor(AssDocument document)
+public sealed partial class SubtitleEditor(AssDocument document)
 {
     public AssDocument Document { get; } = document;
     public UndoManager Undo { get; } = new();

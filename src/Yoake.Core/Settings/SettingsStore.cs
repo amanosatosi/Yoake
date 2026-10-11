@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Globalization;
 using Yoake.Core.Hotkeys;
+using Yoake.Core.Subtitles;
 
 namespace Yoake.Core.Settings;
 
@@ -54,6 +55,7 @@ public sealed class SettingsStore(string path)
         var defaults = new AppSettings();
         var theme = defaults.Theme; var schema = defaults.SchemaVersion;
         var viewMode = WorkspaceViewMode.Default;
+        GridTagDisplayMode? tagDisplay=null;
         var globalTiming=false;bool? toolbar=null; List<HotkeyOverride> hotkeys=[];
         var ratio = defaults.MainSplitRatio; var height = defaults.GridHeight;
         double? volume=null,audioHeight=null,intensity=null,audioSpan=null;var muted=false;var linked=false;double[]? compact=null,styleSplit=null;
@@ -65,6 +67,7 @@ public sealed class SettingsStore(string path)
             switch (member.Name)
             {
                 case "toolbarVisible":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)toolbar=member.Value.GetBoolean();break;
+                case "gridTagDisplay":if(TryReadInt(member.Value,out var tags))tagDisplay=(GridTagDisplayMode)tags;break;
                 case "schemaVersion": if (TryReadInt(member.Value, out var version)) schema = version; break;
                 case "theme": if (TryReadInt(member.Value, out var value)) theme = (ThemePreference)value; break;
                 case "viewMode": if (TryReadInt(member.Value, out var mode)) viewMode = (WorkspaceViewMode)mode; break;
@@ -97,7 +100,7 @@ public sealed class SettingsStore(string path)
             }
         }
         return new AppSettings { Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
-            HotkeyOverrides=hotkeys.ToArray(),GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,
+            HotkeyOverrides=hotkeys.ToArray(),GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,
             GridColumnWidths = widths!, RecentFiles = recent!, FutureSettings = future,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,
             AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };

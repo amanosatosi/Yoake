@@ -27,6 +27,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
     private OptionsWindow? _options;private LogWindow? _log;private Task<bool>? _media;
     private Guid? _document;private AssEvent? _line;private SubtitleEditor? _editor;
     private int _frame;private string _savedPath="";
+    private AssEvent[]? _sortRows;private string _sortSource="";private double _sortTime;
     private const string Source=@"{\future(opaque)\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦";
     private AssTextBox Text=>window.FindControl<AssTextBox>("SubtitleText")!;
     private ListBox Grid=>window.FindControl<ListBox>("SubtitleRows")!;
@@ -129,7 +130,10 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 13:
                     _options=window.OwnedWindows.OfType<OptionsWindow>().Single();InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
                     Click("ResetContextHotkeys");InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Default;
-                    Choose(CommandIds.AppToggleToolbar);Capture(Key.F12);Click("AddHotkey");_options.Close();return;
+                    Choose(CommandIds.AppToggleToolbar);Capture(Key.F12);Click("AddHotkey");
+                    InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.SubtitleGrid;
+                    Choose("grid/sort/start");Capture(Key.F10);Click("AddHotkey");
+                    Choose("grid/tag/cycle_hiding");Capture(Key.F11);Click("AddHotkey");_options.Close();return;
                 case 14:
                     Require(model.Hotkeys.Resolve(new("Right"),[HotkeyContext.Audio])?.CommandId=="time/next","Audio reset must restore its exact default action.");
                     Press(Grid,Key.F12);return;
@@ -146,8 +150,34 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Require(_log.IsVisible&&_log.FindControl<TextBox>("ApplicationLog")!.Text!.Contains("[INFO]",StringComparison.Ordinal),"Log action must show actual application records in the shipping window.");
                     _log.Close();return;
                 case 18:
+                    _sortRows=model.Events.ToArray();_editor!.SetTiming(_sortRows[0],4000,6000);_editor.SetTiming(_sortRows[1],2000,3000);
+                    model.SelectedEvent=_sortRows[0];model.SetSelectedEvents(_sortRows);_sortSource=_editor.Document.Serialize();_sortTime=model.CurrentTimeSeconds;
+                    Invoke("grid/tags/show");Press(Grid,Key.F10);return;
+                case 19:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(model.Events.SequenceEqual(new[]{_sortRows![1],_sortRows[0]})&&ReferenceEquals(_sortRows[0],model.SelectedEvent),"The real Grid F10 gesture must sort without replacing the active line.");
+                    Require(Grid.SelectedItems!.Cast<AssEvent>().ToHashSet().SetEquals(_sortRows)&&model.SelectedEvents.Count==2,"A collection reset during sorting must retain the actual grid multi-selection.");
+                    Require(ReferenceEquals(_editor,model.ActiveEditor)&&model.CurrentTimeSeconds==_sortTime,"Sorting must retain the editor and central media position.");
+                    Press(Grid,Key.Z,KeyModifiers.Control);return;
+                case 20:
+                    Require(_editor!.Document.Serialize()==_sortSource&&Grid.SelectedItems!.Count==2,"Grid Ctrl-Z must restore exact source and multi-selection after a background sort.");
+                    Press(Grid,Key.Y,KeyModifiers.Control);return;
+                case 21:
+                    Require(ReferenceEquals(model.Events[0],_sortRows![1]),"Grid Ctrl-Y must redo the same stable sort.");
+                    Press(Grid,Key.F11);return;
+                case 22:
+                    Require(model.GridTagDisplay==GridTagDisplayMode.Simplified&&window.FindControl<MenuItem>("SimplifiedTagsMenu")!.IsChecked,"Cycle hotkey must update the radio menu.");
+                    Require(Grid.GetVisualDescendants().OfType<SubtitleGridText>().Any(row=>row.SourceText!.Contains("\\future",StringComparison.Ordinal)&&row.Text!.Contains('☀')),"The realized grid must simplify tags from the unchanged source.");
+                    Press(Grid,Key.F11);return;
+                case 23:
+                    Require(model.GridTagDisplay==GridTagDisplayMode.Hidden&&window.FindControl<MenuItem>("HideTagsMenu")!.IsChecked,"Cycle must select hidden tags.");
+                    Require(Grid.GetVisualDescendants().OfType<SubtitleGridText>().Where(row=>row.SourceText!.Contains("\\future",StringComparison.Ordinal)).All(row=>!row.Text!.Contains("\\future",StringComparison.Ordinal)),"The shipping grid must hide override blocks.");
+                    Require(_sortRows![0].Text.Contains("\\future(opaque)",StringComparison.Ordinal)&&_sortRows[0].Text.Contains("\\distort",StringComparison.Ordinal),"Grid display must preserve unknown and Mangetsu source.");
+                    Press(Grid,Key.F11);return;
+                case 24:
+                    Require(model.GridTagDisplay==GridTagDisplayMode.Full&&Grid.GetVisualDescendants().OfType<SubtitleGridText>().Any(row=>row.Text==row.SourceText&&row.Text!.Contains("\\future",StringComparison.Ordinal)),"Cycle must restore full exact source in the actual grid.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer.\n");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }

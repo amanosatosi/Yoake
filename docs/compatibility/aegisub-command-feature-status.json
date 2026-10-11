@@ -1477,172 +1477,334 @@
     },
     {
       "id": "grid/sort/actor",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their actor names",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/actor",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/actor/selected",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their actor names",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/actor/selected",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/effect",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their effects",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/effect",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/effect/selected",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their effects",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/effect/selected",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/end",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their end times",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/end",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/end/selected",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their end times",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/end/selected",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/layer",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their layer number",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/layer",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/layer/selected",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their layer number",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/layer/selected",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/start",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their start times",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/start",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/start/selected",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their start times",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/start/selected",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/style",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort all subtitles by their style names",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/style",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/style/selected",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Sort selected subtitles by their style names",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/sort/style/selected",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/swap",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Swap the two selected lines",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/swap",
+      "status": "partially implemented",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Selected-sort and swap grid context menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "SubtitleSortingTests",
+        "EditorWorkflowTests.SortingCommandsOwnStableSelectionAndOneUndoOperation",
+        "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
+        "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
+      ],
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/tag/cycle_hiding",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Cycle through tag hiding modes",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/tag/cycle_hiding",
+      "status": "partially implemented",
+      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "View > Grid tag display radio menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "AssGridTextTests",
+        "EditorWorkflowTests.TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory",
+        "HotkeyUiAcceptanceVerification real Grid F11 and actual projected row text"
+      ],
+      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/tags/hide",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Hide override tags in the subtitle grid",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/tags/hide",
+      "status": "partially implemented",
+      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "View > Grid tag display radio menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "AssGridTextTests",
+        "EditorWorkflowTests.TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory",
+        "HotkeyUiAcceptanceVerification real Grid F11 and actual projected row text"
+      ],
+      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/tags/show",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Show full override tags in the subtitle grid",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/tags/show",
+      "status": "partially implemented",
+      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "View > Grid tag display radio menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "AssGridTextTests",
+        "EditorWorkflowTests.TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory",
+        "HotkeyUiAcceptanceVerification real Grid F11 and actual projected row text"
+      ],
+      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/tags/simplify",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Identity-preserving event ordering/selection; display-only ASS projection for tag modes. Required action: Replace override tags in the subtitle grid with a simplified placeholder",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "grid/tags/simplify",
+      "status": "partially implemented",
+      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references. Relevant CI pending.",
+      "exposure": [
+        "CommandRegistry",
+        "View > Grid tag display radio menu",
+        "Live configurable contextual hotkeys"
+      ],
+      "tests": [
+        "AssGridTextTests",
+        "EditorWorkflowTests.TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory",
+        "HotkeyUiAcceptanceVerification real Grid F11 and actual projected row text"
+      ],
+      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document. Completion awaits managed and packaged CI.",
       "yoake_default_hotkeys": {}
     },
     {
