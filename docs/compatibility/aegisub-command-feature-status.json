@@ -158,7 +158,7 @@
     {
       "id": "app/exit",
       "yoake_command": "app/exit",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Semantic Exit runs the existing per-document unsaved save/discard/cancel workflow and requests native window closure only after success. Native OS close uses the same command.",
       "exposure": [
         "File > Exit",
@@ -170,7 +170,7 @@
         "UiStartupVerification",
         "HotkeyUiAcceptanceVerification"
       ],
-      "notes": "Yoake retains one workspace with independent document tabs. Closing remains the established tab/session lifetime, not a new global current-document model. Implementation and regression/packaged coverage are prepared; its CI validation is pending.",
+      "notes": "Yoake retains one workspace with independent document tabs. Closing remains the established tab/session lifetime, not a new global current-document model. Implementation and regression/packaged coverage are prepared; its CI validation is pending. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Q"
@@ -210,7 +210,7 @@
     {
       "id": "app/log",
       "yoake_command": "app/log",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Usable application log viewer reads a bounded UTF-8 tail asynchronously, refreshes on demand/automatically, copies actual log text, reports errors through the app registry and cancels reading on close.",
       "exposure": [
         "View > Log window",
@@ -220,7 +220,7 @@
         "LogTailReaderTests",
         "HotkeyUiAcceptanceVerification"
       ],
-      "notes": "Latest log is bounded to 1 MiB instead of holding an unbounded history in UI memory. Original log file remains untouched; no UI-blocking whole-log scan. Implementation and regression/packaged coverage are prepared; its CI validation is pending.",
+      "notes": "Latest log is bounded to 1 MiB instead of holding an unbounded history in UI memory. Original log file remains untouched; no UI-blocking whole-log scan. Implementation and regression/packaged coverage are prepared; its CI validation is pending. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -309,7 +309,7 @@
     {
       "id": "app/toggle/toolbar",
       "yoake_command": "app/toggle/toolbar",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Persisted checked command hides/shows the existing toolbar and its command-bar row; editor/media providers and drafts are retained.",
       "exposure": [
         "View > Toolbar",
@@ -319,7 +319,7 @@
         "EditorWorkflowTests.ToolbarVisibilityIsCheckedPersistedPresentationAndRecoversIndependently",
         "HotkeyUiAcceptanceVerification"
       ],
-      "notes": "Concise checked Toolbar menu replaces the upstream dynamic Show/Hide label. Toolbar buttons show effective customized shortcuts. Implementation and regression/packaged coverage are prepared; its CI validation is pending.",
+      "notes": "Concise checked Toolbar menu replaces the upstream dynamic Show/Hide label. Toolbar buttons show effective customized shortcuts. Implementation and regression/packaged coverage are prepared; its CI validation is pending. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -815,8 +815,8 @@
     {
       "id": "edit/clear",
       "yoake_command": "edit/clear",
-      "status": "partially implemented",
-      "backend": "Implemented: Clear the active line text through an undoable editor operation. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Clear the active line text through an undoable editor operation.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -829,14 +829,14 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "No unrelated metadata or other selected lines are changed. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "No unrelated metadata or other selected lines are changed. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/clear/text",
       "yoake_command": "edit/clear/text",
-      "status": "partially implemented",
-      "backend": "Implemented: Clear visible text, retaining exact override/comment blocks and drawing sections. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Clear visible text, retaining exact override/comment blocks and drawing sections.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -849,7 +849,7 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Incomplete blocks are deliberately retained for repair; escaped braces in ordinary text are removed as text, rather than misclassified as tags. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Incomplete blocks are deliberately retained for repair; escaped braces in ordinary text are removed as text, rather than misclassified as tags. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -939,8 +939,8 @@
     {
       "id": "edit/find_replace",
       "yoake_command": "edit/find_replace",
-      "status": "partially implemented",
-      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings.",
       "exposure": [
         "CommandRegistry shared by menus, buttons and hotkeys",
         "Edit menu with effective Ctrl-F / F3 / Ctrl-H",
@@ -953,7 +953,7 @@
         "EditorWorkflowTests.SearchIsDocumentLocalAndCancellationOrInvalidRegexCannotCommitAnUnfinishedDraft",
         "HotkeyUiAcceptanceVerification real Ctrl-H/F3 in find window and grid, focus retention, exact tag-preserving replacement and undo"
       ],
-      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied. Completion awaits managed and packaged CI.",
+      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-F"
@@ -1056,8 +1056,8 @@
     {
       "id": "edit/line/duplicate",
       "yoake_command": "grid/duplicate",
-      "status": "partially implemented",
-      "backend": "Implemented: Duplicate every contiguous selected block immediately after itself and select all copies. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Duplicate every contiguous selected block immediately after itself and select all copies.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1070,7 +1070,7 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Structured cloning retains unknown fields and exact syntax; copy order and first active copy follow upstream. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Structured cloning retains unknown fields and exact syntax; copy order and first active copy follow upstream. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Alt-D"
@@ -1080,8 +1080,8 @@
     {
       "id": "edit/line/join/as_karaoke",
       "yoake_command": "edit/line/join/as_karaoke",
-      "status": "partially implemented",
-      "backend": "Implemented: Join with 3.5 duration-based karaoke tags for the first and each subsequent line. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Join with 3.5 duration-based karaoke tags for the first and each subsequent line.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1094,14 +1094,14 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Uses the researched 3.5 behavior rather than resurrecting earlier gap-based karaoke semantics; exact input tag text follows each new duration tag. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Uses the researched 3.5 behavior rather than resurrecting earlier gap-based karaoke semantics; exact input tag text follows each new duration tag. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/line/join/concatenate",
       "yoake_command": "edit/line/join/concatenate",
-      "status": "partially implemented",
-      "backend": "Implemented: Join selected lines with spaces, retain first line identity/start/fields and extend end to the largest selected end. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Join selected lines with spaces, retain first line identity/start/fields and extend end to the largest selected end.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1114,14 +1114,14 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Yoake also retains its explicit join-with-line-breaks command; the Aegisub command has its own accurate semantics. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Yoake also retains its explicit join-with-line-breaks command; the Aegisub command has its own accurate semantics. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/line/join/keep_first",
       "yoake_command": "edit/line/join/keep_first",
-      "status": "partially implemented",
-      "backend": "Implemented: Join timing/records while keeping the first line text. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Join timing/records while keeping the first line text.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1134,7 +1134,7 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Discarding other selected text is intentional; undo restores every exact removed record. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Discarding other selected text is intentional; undo restores every exact removed record. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1185,8 +1185,8 @@
     {
       "id": "edit/line/split/after",
       "yoake_command": "edit/line/split/after",
-      "status": "partially implemented",
-      "backend": "Implemented: Split every selected line after the current frame, using the central provider timeline and exact release midpoint/centisecond rules. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Split every selected line after the current frame, using the central provider timeline and exact release midpoint/centisecond rules.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1199,7 +1199,7 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Imported Ctrl-Shift-D and legacy user aliases resolve here. Very short frames get at least one ASS centisecond in fallback copies; no invalid negative duration is published. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Imported Ctrl-Shift-D and legacy user aliases resolve here. Very short frames get at least one ASS centisecond in fallback copies; no invalid negative duration is published. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Shift-D"
@@ -1209,8 +1209,8 @@
     {
       "id": "edit/line/split/before",
       "yoake_command": "edit/line/split/before",
-      "status": "partially implemented",
-      "backend": "Implemented: Split every selected line before the current frame, using the central provider timeline and exact release midpoint/centisecond rules. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Split every selected line before the current frame, using the central provider timeline and exact release midpoint/centisecond rules.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1223,7 +1223,7 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Imported Ctrl-D and legacy user aliases resolve to this modern command. Outside the interval or at an unusable split edge, create a useful one-frame copy while leaving the original unchanged. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Imported Ctrl-D and legacy user aliases resolve to this modern command. Outside the interval or at an unusable split edge, create a useful one-frame copy while leaving the original unchanged. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-D"
@@ -1243,8 +1243,8 @@
     {
       "id": "edit/line/split/estimate",
       "yoake_command": "edit/line/split/estimate",
-      "status": "partially implemented",
-      "backend": "Implemented: Split at a safe cursor position and divide duration using visible grapheme counts. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Split at a safe cursor position and divide duration using visible grapheme counts.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1257,7 +1257,7 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Works without video when subtitle timing exists. Unicode graphemes, not upstream UTF-8 byte length, determine the estimate; drawing and furigana annotation text do not inflate the count. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Works without video when subtitle timing exists. Unicode graphemes, not upstream UTF-8 byte length, determine the estimate; drawing and furigana annotation text do not inflate the count. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Alt-Shift-D"
@@ -1267,8 +1267,8 @@
     {
       "id": "edit/line/split/preserve",
       "yoake_command": "edit/line/split/preserve",
-      "status": "partially implemented",
-      "backend": "Implemented: Split at a safe grapheme/escape/override boundary while both lines retain their timing. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Split at a safe grapheme/escape/override boundary while both lines retain their timing.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1281,14 +1281,14 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Preserve whitespace rather than silently trim it; carry prior opaque/known/Mangetsu override state into the new segment, excluding earlier karaoke timing tags. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Preserve whitespace rather than silently trim it; carry prior opaque/known/Mangetsu override state into the new segment, excluding earlier karaoke timing tags. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/line/split/video",
       "yoake_command": "edit/line/split/video",
-      "status": "partially implemented",
-      "backend": "Implemented: Split text at the cursor and divide timing at the current VFR frame end boundary. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented: Split text at the cursor and divide timing at the current VFR frame end boundary.",
       "exposure": [
         "CommandRegistry",
         "Edit/Subtitle menu and split/join grid context menus where applicable",
@@ -1301,7 +1301,7 @@
         "EditorWorkflowTests.JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo",
         "HotkeyUiAcceptanceVerification real default Ctrl-D/Ctrl-Shift-D with native media and one-step undo"
       ],
-      "notes": "Clamp the split to the original line duration to avoid invalid edge timing; exact source and opaque fields survive. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched. Completion awaits managed and packaged CI.",
+      "notes": "Clamp the split to the original line duration to avoid invalid edge timing; exact source and opaque fields survive. Frame calculations are immutable derived data, never another clock; frozen Automation time conversions are untouched.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1570,8 +1570,8 @@
     {
       "id": "grid/sort/actor",
       "yoake_command": "grid/sort/actor",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1584,14 +1584,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/actor/selected",
       "yoake_command": "grid/sort/actor/selected",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1604,14 +1604,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/effect",
       "yoake_command": "grid/sort/effect",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1624,14 +1624,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/effect/selected",
       "yoake_command": "grid/sort/effect/selected",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1644,14 +1644,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/end",
       "yoake_command": "grid/sort/end",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1664,14 +1664,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/end/selected",
       "yoake_command": "grid/sort/end/selected",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1684,14 +1684,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/layer",
       "yoake_command": "grid/sort/layer",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1704,14 +1704,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/layer/selected",
       "yoake_command": "grid/sort/layer/selected",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1724,14 +1724,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/start",
       "yoake_command": "grid/sort/start",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1744,14 +1744,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/start/selected",
       "yoake_command": "grid/sort/start/selected",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1764,14 +1764,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/style",
       "yoake_command": "grid/sort/style",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1784,14 +1784,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/sort/style/selected",
       "yoake_command": "grid/sort/style/selected",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1804,14 +1804,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/swap",
       "yoake_command": "grid/swap",
-      "status": "partially implemented",
-      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented stable sorting by all six keys; selected sorts process contiguous selected blocks independently. Immutable revision-checked snapshots calculate in a cancellable background job; one undo operation moves existing records, retaining raw source slots and format metadata. Exactly-two-line swap uses the same editor undo model.",
       "exposure": [
         "CommandRegistry",
         "Subtitle menu",
@@ -1824,14 +1824,14 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits. Completion awaits managed and packaged CI.",
+      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/tag/cycle_hiding",
       "yoake_command": "grid/tag/cycle_hiding",
-      "status": "partially implemented",
-      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references.",
       "exposure": [
         "CommandRegistry",
         "View > Grid tag display radio menu",
@@ -1842,14 +1842,14 @@
         "EditorWorkflowTests.TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory",
         "HotkeyUiAcceptanceVerification real Grid F11 and actual projected row text"
       ],
-      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document. Completion awaits managed and packaged CI.",
+      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/tags/hide",
       "yoake_command": "grid/tags/hide",
-      "status": "partially implemented",
-      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references.",
       "exposure": [
         "CommandRegistry",
         "View > Grid tag display radio menu",
@@ -1860,14 +1860,14 @@
         "EditorWorkflowTests.TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory",
         "HotkeyUiAcceptanceVerification real Grid F11 and actual projected row text"
       ],
-      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document. Completion awaits managed and packaged CI.",
+      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/tags/show",
       "yoake_command": "grid/tags/show",
-      "status": "partially implemented",
-      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references.",
       "exposure": [
         "CommandRegistry",
         "View > Grid tag display radio menu",
@@ -1878,14 +1878,14 @@
         "EditorWorkflowTests.TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory",
         "HotkeyUiAcceptanceVerification real Grid F11 and actual projected row text"
       ],
-      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document. Completion awaits managed and packaged CI.",
+      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "grid/tags/simplify",
       "yoake_command": "grid/tags/simplify",
-      "status": "partially implemented",
-      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented persisted Full/Simplified/Hidden radio modes and cycle. Realized grid rows project structured ASS syntax without mutating source, drafts, history or renderer state; default Simplified and ☀ match both references.",
       "exposure": [
         "CommandRegistry",
         "View > Grid tag display radio menu",
@@ -1896,7 +1896,7 @@
         "EditorWorkflowTests.TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory",
         "HotkeyUiAcceptanceVerification real Grid F11 and actual projected row text"
       ],
-      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document. Completion awaits managed and packaged CI.",
+      "notes": "Yoake deliberately retains escaped braces and incomplete override blocks visibly and preserves Mangetsu/furigana text. Display changes never reserialize the document.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2124,8 +2124,8 @@
     {
       "id": "subtitle/find",
       "yoake_command": "edit/find",
-      "status": "partially implemented",
-      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings.",
       "exposure": [
         "CommandRegistry shared by menus, buttons and hotkeys",
         "Edit menu with effective Ctrl-F / F3 / Ctrl-H",
@@ -2138,7 +2138,7 @@
         "EditorWorkflowTests.SearchIsDocumentLocalAndCancellationOrInvalidRegexCannotCommitAnUnfinishedDraft",
         "HotkeyUiAcceptanceVerification real Ctrl-H/F3 in find window and grid, focus retention, exact tag-preserving replacement and undo"
       ],
-      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied. Completion awaits managed and packaged CI.",
+      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-F"
@@ -2148,8 +2148,8 @@
     {
       "id": "subtitle/find/next",
       "yoake_command": "subtitle/find/next",
-      "status": "partially implemented",
-      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings. Relevant CI pending.",
+      "status": "already complete",
+      "backend": "Implemented document-local, modeless Find/Find Next/Find-Replace with all/selected scope, text/style/actor/effect fields, case/regex/whole-field/comment options and explicit raw-source mode. Immutable snapshots search in cancellable jobs; single and replace-all mutations are transactional. Preferences persist through real settings.",
       "exposure": [
         "CommandRegistry shared by menus, buttons and hotkeys",
         "Edit menu with effective Ctrl-F / F3 / Ctrl-H",
@@ -2162,7 +2162,7 @@
         "EditorWorkflowTests.SearchIsDocumentLocalAndCancellationOrInvalidRegexCannotCommitAnUnfinishedDraft",
         "HotkeyUiAcceptanceVerification real Ctrl-H/F3 in find window and grid, focus retention, exact tag-preserving replacement and undo"
       ],
-      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied. Completion awaits managed and packaged CI.",
+      "notes": "Deliberate improvements: visible-text search is the UI default; raw ASS editing is explicit. Match fragments of graphemes/surrogate pairs are excluded, invalid capture replacement is rejected, protected tag/drawing/furigana spans survive cross-tag replacements, and search never normalizes or mutates source merely to find it. A one-row selected scope remains explicitly selected rather than upstream single-selection expansion. Exact source normalization side effects are not copied.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "F3"
@@ -2407,7 +2407,7 @@
     {
       "id": "time/continuous/end",
       "yoake_command": "time/continuous/end",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Implemented: single-row previous/next neighbor semantics and internal contiguous-block boundary adjustment; immutable revision-checked snapshot, cancellable calculation, one rollback-capable undo. Non-contiguous selections disabled. CI pending.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
@@ -2418,13 +2418,13 @@
         "SubtitleTimingTests.AdjoinOneLineUsesItsOutsideNeighborWhileBlocksChangeOnlyInternalBoundaries",
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "time/continuous/start",
       "yoake_command": "time/continuous/start",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Implemented: single-row previous/next neighbor semantics and internal contiguous-block boundary adjustment; immutable revision-checked snapshot, cancellable calculation, one rollback-capable undo. Non-contiguous selections disabled. CI pending.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
@@ -2435,13 +2435,13 @@
         "SubtitleTimingTests.AdjoinOneLineUsesItsOutsideNeighborWhileBlocksChangeOnlyInternalBoundaries",
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "time/frame/current",
       "yoake_command": "time/frame/current",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Implemented: shift all selected endpoints by the delta between the active start and current VFR START boundary, with audited centisecond rounding and zero clamp. Document/frame context captured before cancellable calculation; one undo transaction; video absence disabled. CI pending.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
@@ -2453,7 +2453,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-6"
@@ -2599,7 +2599,7 @@
     {
       "id": "time/shift",
       "yoake_command": "time/shift",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Implemented: immutable revision-checked timing snapshots, cancellable background calculation, and one rollback-capable undo transaction. Shift Times includes time/frame units, start/end/both, all/selected/selection-onward scopes, persisted preferences and reusable 50-entry history. Continuous timing matches single-neighbor/contiguous-block semantics. Snaps use selected rows and the central VFR START/END boundaries. CI acceptance pending.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
@@ -2612,7 +2612,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (separate real-window timing workflow; fresh/restored processes)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-I"
@@ -2622,7 +2622,7 @@
     {
       "id": "time/snap/end_video",
       "yoake_command": "time/snap/end_video",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Implemented: all selected rows snap through central VFR START/END boundaries; extends the other endpoint when needed to include the frame. Disabled without video/frame data. Revision-checked cancellable calculation and one undo transaction. CI pending.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
@@ -2634,7 +2634,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-4"
@@ -2644,7 +2644,7 @@
     {
       "id": "time/snap/scene",
       "yoake_command": "time/snap/scene",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Implemented: selected rows span the current scene from its keyframe through the frame before the next cut, with first/last scene edges. Central provider keyframes and VFR START/END boundaries; one undo transaction; video/keyframe absence disabled. External keyframes remain a separate missing cluster. CI pending.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
@@ -2656,7 +2656,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-5"
@@ -2666,7 +2666,7 @@
     {
       "id": "time/snap/start_video",
       "yoake_command": "time/snap/start_video",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Implemented: all selected rows snap through central VFR START/END boundaries; extends the other endpoint when needed to include the frame. Disabled without video/frame data. Revision-checked cancellable calculation and one undo transaction. CI pending.",
       "exposure": [
         "Shared semantic CommandRegistry actions",
@@ -2678,7 +2678,7 @@
         "EditorWorkflowTests.TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability",
         "TimingUiAcceptanceVerification (actual Ctrl-3/Ctrl-4/Ctrl-5/Ctrl-6 with native media)"
       ],
-      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation.",
+      "notes": "Exact 3.2.2 and 3.5 time.cpp/dialog_shift_times.cpp were compared; core shift/adjoin/snap semantics are unchanged. Yoake rejects end-before-start ranges atomically instead of permitting invalid timing; retains extended-duration support instead of the Aegisub ten-hour clamp; preserves exact untouched endpoint fields and unknown/Mangetsu source. Existing timing/set-start and timing/set-end current-time actions remain separate; imported Ctrl-3/Ctrl-4 now invoke true video-only selection snaps. Audio timing-unit/lead/karaoke operations remain a separate incomplete cluster. Pending drafts are validated without mutation; cancellation/errors preserve them, and success commits draft plus timing in one undo operation. Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-3"
