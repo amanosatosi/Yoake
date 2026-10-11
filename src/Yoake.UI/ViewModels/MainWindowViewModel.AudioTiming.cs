@@ -156,10 +156,10 @@ public sealed partial class MainWindowViewModel
     {
         bool Applies(CommandContext c)=>_activeId is not null&&(c.DocumentId is null||c.DocumentId==_activeId)&&!HasEditOperation;
         bool Available()=>SelectedEvent is not null&&!HasGesture&&PrimaryAudioRange is not null&&ValidAudioTimingDraft();
-        void Register(string id,string label,Action<CommandInvocation,CancellationToken> action,Func<bool>? available=null,Func<bool>? check=null)
+        void Register(string id,string label,Action<CommandInvocation,CancellationToken> action,Func<bool>? available=null,Func<bool>? check=null,bool gestureInput=false)
         {
             _registry.Register(new(new(id,label,label,"Audio timing"),(i,t)=>{t.ThrowIfCancellationRequested();action(i,t);return ValueTask.CompletedTask;},
-                c=>Applies(c)&&(available?.Invoke()??true),check is null?null:c=>_activeId is not null&&(c.DocumentId is null||c.DocumentId==_activeId)&&check()));
+                c=>(gestureInput?_activeId is not null&&(c.DocumentId is null||c.DocumentId==_activeId):Applies(c))&&(available?.Invoke()??true),check is null?null:c=>_activeId is not null&&(c.DocumentId is null||c.DocumentId==_activeId)&&check()));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
         foreach(var (id,label,mode) in new[]{("audio/commit","Commit timing",AudioTimingCommitMode.Preference),
@@ -189,7 +189,7 @@ public sealed partial class MainWindowViewModel
         Register("audio/timing/revert","Revert pending timing",(_,_)=>{if(SelectedEvent is {} line)AudioTiming?.Clear(line);AudioTimingChanged();},()=>!HasGesture&&SelectedEvent is {} line&&AudioTiming?.Get(line) is not null);
         Register("audio/timing/gesture/begin","Begin audio timing drag",(_,_)=>BeginAudioTimingGestureCore(),Available);
         Register("audio/timing/gesture/update","Move audio timing markers",(i,_)=>
-        {try{if(i.Parameter is TimingGestureUpdate p)UpdateAudioTimingGestureCore(p);}catch{FinishAudioTimingGesture(false);throw;}},()=>_audioTimingGesture is not null);
-        Register("audio/timing/gesture/commit","Finish audio timing drag",(_,_)=>FinishAudioTimingGesture(true),()=>_audioTimingGesture is not null);
+        {try{if(i.Parameter is TimingGestureUpdate p)UpdateAudioTimingGestureCore(p);}catch{FinishAudioTimingGesture(false);throw;}},()=>_audioTimingGesture is not null,gestureInput:true);
+        Register("audio/timing/gesture/commit","Finish audio timing drag",(_,_)=>FinishAudioTimingGesture(true),()=>_audioTimingGesture is not null,gestureInput:true);
     }
 }

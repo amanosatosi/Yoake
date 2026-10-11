@@ -126,4 +126,15 @@ public sealed partial class EditorWorkflowTests
         _model.PropertyChanged+=observer;try{await Command("time/continuous/end");}finally{_model.PropertyChanged-=observer;}
         Assert.True(observed);Assert.True(disabled);Assert.True(checkedState);Assert.True(_model.AudioAutoCommit);Assert.True(_model.AudioAutoNext);
     }
+    [Fact] public async Task ReleasingAnOwnedGestureCannotBeBlockedByAnOverlappingBackgroundOperation()
+    {
+        await TimingRows();Assert.True(_model.BeginAudioTimingGesture());_model.UpdateAudioTimingGesture(1,.2);var released=false;
+        System.ComponentModel.PropertyChangedEventHandler observer=(_,args)=>
+        {
+            if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)
+            {_model.EndAudioTimingGesture();released=!_model.HasGesture;}
+        };
+        _model.PropertyChanged+=observer;try{await Command("time/continuous/end");}finally{_model.PropertyChanged-=observer;}
+        Assert.True(released);Assert.False(_model.HasGesture);Assert.Equal(2000,_model.SelectedEvent!.EndMilliseconds);Assert.False(_model.HasPendingAudioTiming);
+    }
 }
