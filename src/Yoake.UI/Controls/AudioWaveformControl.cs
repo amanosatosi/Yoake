@@ -56,6 +56,8 @@ public sealed class AudioWaveformControl : Control
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
         if(Model is not {} model)return;
+        if(e.PropertyName==nameof(MainWindowViewModel.HasAudio))
+        { _analysis?.Cancel(); _detail=null; _spectrum?.Dispose(); _spectrum=null; RequestSpectrum(); }
         if(_lastDocument!=model.ActiveDocumentId){_lastDocument=model.ActiveDocumentId;_restoringDocument=true;}
         if(e.PropertyName==nameof(MainWindowViewModel.IsAudioSpectrum)){_spectrum?.Dispose();_spectrum=null;RequestSpectrum();}
         if(e.PropertyName==nameof(MainWindowViewModel.AudioViewport)){var viewport=model.AudioViewport;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;}
@@ -168,7 +170,7 @@ public sealed class AudioWaveformControl : Control
     private async void RequestSpectrum()
     {
         _analysis?.Cancel();_analysis?.Dispose();_analysis=null;
-        _detail=null;if(Model is not {} model)return;
+        _detail=null;if(Model is not { HasAudio:true } model)return;
         // Supply a visible-range tile while the long-file overview is still
         // building. Once available, use the overview unless finer detail is needed.
         if(!Spectrogram&&Samples is not null&&VisibleSeconds/Math.Max(1,Bounds.Width)>=Samples.StepSeconds)return;

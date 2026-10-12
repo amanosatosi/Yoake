@@ -25,6 +25,8 @@ public sealed partial class EditorWorkflowTests
         Assert.Equal(range, _model.PrimaryAudioRange); Assert.Equal(source, editor.Document.Serialize()); Assert.Equal(undo, editor.Undo.NextUndoName);
         Assert.Null(_model.VideoSourcePath); Assert.Null(_model.AudioSourcePath); Assert.Empty(_model.RecentVideoItems); Assert.Empty(_model.RecentAudioItems);
         Assert.False(_model.Actions["video/close"].CanExecute(null));
+        Assert.False(_model.Actions["audio/close"].CanExecute(null));
+        Assert.False(await _model.Registry.InvokeAsync("audio/close", new(Guid.NewGuid())));
     }
     [Fact] public async Task RestoredMediaRecentsDoNotReopenProvidersAndMissingVideoRemovesOnlyItsOwnEntry()
     {

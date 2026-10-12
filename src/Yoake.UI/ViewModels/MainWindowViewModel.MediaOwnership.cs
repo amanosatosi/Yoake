@@ -46,6 +46,10 @@ public sealed partial class MainWindowViewModel
             (_, _) => { CloseVideo(); return ValueTask.CompletedTask; }, context => Applies(context) &&
                 (_media?.HasVideo == true || _documents[_activeId!.Value].VideoLoading is not null)));
         Actions["video/close"] = new RegistryCommand(_registry, "video/close", CurrentContext, hotkeys: () => HotkeyProfile);
+        _registry.Register(new(new("audio/close", "Close audio", "Release audio while retaining video", "Audio"),
+            (_, _) => { CloseAudio(); return ValueTask.CompletedTask; }, context => Applies(context) &&
+                (_media?.HasAudio == true || _documents[_activeId!.Value].AudioLoading is not null)));
+        Actions["audio/close"] = new RegistryCommand(_registry, "audio/close", CurrentContext, hotkeys: () => HotkeyProfile);
     }
 
     public Task<bool> OpenVideoAsync(string path, CancellationToken token = default) => OpenMediaTrackAsync(path, true, token);
@@ -93,7 +97,7 @@ public sealed partial class MainWindowViewModel
                 if (!video || ActiveAudioPlayback is null) StopPlayback();
                 Interlocked.Increment(ref _seekGeneration);
             }
-            if (!video) state.AudioExport?.Cancel();
+            if (!video) { state.AudioExport?.Cancel(); ResetAudioAnalysis(state); }
             state.Editing?.Cancel();
             token.ThrowIfCancellationRequested();
             state.Media = replacement;
@@ -145,13 +149,36 @@ public sealed partial class MainWindowViewModel
         PublishMediaPresentation(state, true, state.Media is null);
         _ = Task.Run(old.Dispose); ScheduleDocumentAutomationSync(id);
     }
+    private void CloseAudio()
+    {
+        var id = _activeId!.Value; var state = _documents[id];
+        state.AudioLoading?.Cancel(); state.Loading?.Cancel(); state.AudioExport?.Cancel();
+        // Cancel an uncommitted audio drag without discarding previously pending
+        // markers or the text draft. Video gestures and frame state stay intact.
+        FinishAudioTimingGesture(false);
+        StopPlayback(); ResetAudioAnalysis(state);
+        var old = state.Media;
+        if (old?.HasAudio != true) { _registry.NotifyStateChanged(); return; }
+        var replacement = old.WithAudio(null);
+        state.Media = replacement.HasVideo ? replacement : null;
+        if (state.Media is null) replacement.Dispose();
+        state.Waveform = null;
+        PublishMediaPresentation(state, false, state.Media is null);
+        _ = Task.Run(old.Dispose); ScheduleDocumentAutomationSync(id);
+    }
+    private void ResetAudioAnalysis(DocumentState state)
+    {
+        state.AudioAnalysis.Cancel(); state.AudioAnalysis.Dispose(); state.AudioAnalysis = new();
+        _waveformCache.Clear(); _spectrumCache.Clear();
+    }
     private void PublishMediaPresentation(DocumentState state, bool videoChanged, bool playableChanged)
     {
         _media = state.Media; MediaDurationSeconds = _media?.Info.DurationSeconds ?? 0;
         // Retain the central position where possible; an explicit Audio audition
         // retains its sample clock even when its companion video disappears.
         if (!IsPlaying && MediaDurationSeconds > 0 && CurrentTimeSeconds > MediaDurationSeconds) CurrentTimeSeconds = MediaDurationSeconds;
-        if (videoChanged) VideoFrame = null; else WaveformSamples = state.Waveform;
+        if (videoChanged) VideoFrame = null;
+        else { WaveformSamples = state.Waveform; OnPropertyChanged(nameof(HasAudio)); }
         foreach (var name in new[] { nameof(VideoSourcePath), nameof(AudioSourcePath), nameof(FrameTimes), nameof(Keyframes),
             nameof(FramePositionDisplay), nameof(RelativeTimingDisplay), nameof(CanShiftByFrames) }) OnPropertyChanged(name);
         if (playableChanged) OnPropertyChanged(nameof(CanPlayMedia));

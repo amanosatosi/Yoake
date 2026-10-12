@@ -49,6 +49,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public string SelectionStatus="";
         public CancellationTokenSource? SelectionCancellation;
         public CancellationTokenSource? AudioExport;
+        public CancellationTokenSource AudioAnalysis = new();
         public double AudioStart,AudioSpan=20;
     }
     private readonly CommandRegistry _registry;
@@ -177,6 +178,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         private set { if (ReferenceEquals(_videoFrame,value)) return; var old=_videoFrame; _videoFrame=value; OnPropertyChanged(); old?.Dispose(); }
     }
     public WaveformData? WaveformSamples { get=>_waveformSamples; private set=>SetField(ref _waveformSamples,value); }
+    public bool HasAudio => _media?.HasAudio == true;
     public double MediaDurationSeconds { get=>_mediaDurationSeconds; private set { SetField(ref _mediaDurationSeconds,Math.Max(0,value)); OnPropertyChanged(nameof(DurationDisplay)); } }
     public double CurrentTimeSeconds
     {
@@ -317,7 +319,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             var choice=Dialogs is null ? UnsavedChoice.Cancel : await Dialogs.ConfirmUnsavedAsync(_workspace.ActiveDocument!.Title);
             if (choice==UnsavedChoice.Cancel || choice==UnsavedChoice.Save && !await SaveAsync()) return false;
         }
-        CancelGesture(); StopPlayback(); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
+        CancelGesture(); StopPlayback(); ResetAudioAnalysis(state); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
         var media=state.Media; state.Media=null; if (media is not null) _=Task.Run(media.Dispose);
         SearchWindowCloseRequested?.Invoke(this,new(id));
         CloseAutomationDocument(id); _documents.Remove(id); _workspace.Close(id); if (_workspace.Documents.Count==0) CreateNewDocument(); return true;
@@ -352,7 +354,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public async Task<bool> OpenMediaAsync(string path)
     {
         if (_activeId is not { } id || !_documents.TryGetValue(id,out var state)) return false;
-        CancelGesture(); StopPlayback(); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
+        CancelGesture(); StopPlayback(); ResetAudioAnalysis(state); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
         MediaStatus=$"FFMS2 indexing {Path.GetFileName(path)}窶ｦ";
         DocumentMedia? opened=null;FrameTiming? frameTiming=null;Exception? boundaryError=null;
         try
@@ -422,7 +424,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         if (!_disposed) DisposeAutomation();
         if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); foreach(var state in _documents.Values){state.AudioExport?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();} _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
-        foreach(var state in _documents.Values) { state.Editing?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
+        foreach(var state in _documents.Values) { state.AudioAnalysis.Cancel();state.AudioAnalysis.Dispose(); state.Editing?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
         foreach(var tab in Tabs) tab.Dispose(); Tabs.Clear(); DisposeSubtitleRenderer(); VideoFrame=null;
     }
     private void SetField<T>(ref T field,T value,[CallerMemberName]string? name=null) { if(EqualityComparer<T>.Default.Equals(field,value))return; field=value; OnPropertyChanged(name); }

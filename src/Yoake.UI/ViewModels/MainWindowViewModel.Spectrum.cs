@@ -14,6 +14,8 @@ public sealed partial class MainWindowViewModel
     public async Task<WriteableBitmap?> CreateSpectrumAsync(double start,double duration,CancellationToken token)
     {
         var media=_media?.AudioProvider;if(media is null)return null;
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, _documents[_activeId!.Value].AudioAnalysis.Token);
+        token = linked.Token;
         var intensity=AudioIntensity;var key=(media,Math.Round(start,2),Math.Round(duration,2),intensity);
         if(!_spectrumCache.TryGetValue(key,out var tile))
         {

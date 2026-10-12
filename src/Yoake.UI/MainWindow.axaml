@@ -202,6 +202,7 @@
 </MenuItem>
 <MenuItem Name="AudioMenu" Header="Audio">
 <MenuItem Name="OpenAudioMenu" Header="Open audio…" InputGesture="{Binding Actions[audio/open].InputGesture}" Command="{Binding Actions[audio/open]}" />
+<MenuItem Name="CloseAudioMenu" Header="Close audio" InputGesture="{Binding Actions[audio/close].InputGesture}" Command="{Binding Actions[audio/close]}" />
 <MenuItem Name="RecentAudioMenu" Header="Recent audio" />
 <MenuItem Name="AudioTimingMenu" Header="Timing">
 <MenuItem Name="AudioCommitMenu" Header="Commit timing" Command="{Binding Actions[audio/commit]}" InputGesture="{Binding Actions[audio/commit].InputGesture}" />

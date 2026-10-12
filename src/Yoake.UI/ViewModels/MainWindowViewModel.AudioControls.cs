@@ -41,6 +41,8 @@ public sealed partial class MainWindowViewModel
     public async Task<WaveformData?> CreateWaveformViewportAsync(double start,double span,int width,CancellationToken token)
     {
         var media=_media?.AudioProvider;if(media is null)return null;var key=((object)media,start,span,width);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, _documents[_activeId!.Value].AudioAnalysis.Token);
+        token = linked.Token;
         if(_waveformCache.TryGetValue(key,out var cached))return cached;
         var result=await RunAnalysisAsync("Waveform detail",ct=>media.BuildWaveformViewport(start,span,width,ct),token);
         token.ThrowIfCancellationRequested();if(!ReferenceEquals(media,_media?.AudioProvider))return null;

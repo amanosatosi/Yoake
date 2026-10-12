@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Yoake.Core.Commands;
+using Yoake.Core.Audio;
 using Yoake.Core.Logging;
 using Yoake.Core.Settings;
 using Yoake.Core.Subtitles;
@@ -22,6 +23,9 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
     private object? _samples, _draft, _selected, _editor;
     private Yoake.Core.Audio.AudioClipInterval? _pending;
     private Task<bool>? _opening, _racingVideo;
+    private object? _retainedFrame, _retainedTimes;
+    private Task<WaveformData?>? _obsoleteWaveform;
+    private Task<Avalonia.Media.Imaging.WriteableBitmap?>? _obsoleteSpectrum;
     public void Start() { window.LayoutUpdated += (_, _) => _ready = window.IsVisible && window.Bounds.Width > 0; _timer.Tick += Tick; _timer.Start(); }
     private async void Tick(object? sender, EventArgs args)
     {
@@ -102,6 +106,31 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     { canceled.Cancel(); Require(!await model.Registry.InvokeAsync("video/open", new(model.ActiveDocumentId), _audio, canceled.Token), "Canceled request cannot replace providers."); }
                     var obsolete = model.OpenVideoAsync(_audio); var latest = model.OpenVideoAsync(_video);
                     Require(!await obsolete && await latest && model.VideoSourcePath == _video, "Superseded indexing cannot publish old video.");
+                    await Invoke("audio/play/current"); Require(model.IsPlaying, "Audio audition starts before Audio Close.");
+                    _retainedFrame = model.VideoFrame; _retainedTimes = model.FrameTimes;
+                    _obsoleteWaveform = model.CreateWaveformViewportAsync(0.013, 1.137, 1023, CancellationToken.None);
+                    _obsoleteSpectrum = model.CreateSpectrumAsync(0.013, 1.137, CancellationToken.None);
+                    window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen = true; return;
+                case 7:
+                    Press(window.FindControl<MenuItem>("CloseAudioMenu")!, Key.Enter); return;
+                case 8:
+                    Require(model.AudioSourcePath is null && model.VideoSourcePath == _video && !model.HasAudio && model.WaveformSamples is null,
+                        "Audio Close releases only Audio and clears its overview.");
+                    Require(!model.IsPlaying && model.ActiveAudioPlayback is null && !model.Actions["audio/play/current"].CanExecute(null) && model.Actions["video/play"].CanExecute(null),
+                        "Audio Close stops audition and keeps Video playback enabled.");
+                    Require(ReferenceEquals(_retainedFrame, model.VideoFrame) && ReferenceEquals(_retainedTimes, model.FrameTimes) &&
+                        model.ExternalTimecodePath is not null && model.ExternalKeyframePath is not null,
+                        "Audio Close retains exact Video frame/provider map and external metadata.");
+                    Require(await RejectedAnalysis(_obsoleteWaveform!) && await RejectedAnalysis(_obsoleteSpectrum!), "Closed Audio analysis cannot publish obsolete detail or spectrum.");
+                    Require(!window.FindControl<AudioWaveformControl>("AudioDisplay")!.SpectrumTileReady, "Audio Close clears the presented spectrum.");
+                    DocumentUnchanged();
+                    Require(!await model.Registry.InvokeAsync("audio/close", new(model.ActiveDocumentId)), "Repeated Audio Close is safely disabled.");
+                    await Invoke("video/frame/next"); await Invoke("video/play"); return;
+                case 9:
+                    Require(model.IsPlaying && model.VideoFrame is not null, "Retained native Video seeks and plays without Audio.");
+                    await Invoke("video/stop"); Require(await model.OpenAudioAsync(_audio), "Audio reopens after Close.");
+                    Require(model.AudioSourcePath == _audio && model.WaveformSamples is not null && ReferenceEquals(_retainedTimes, model.FrameTimes), "Reopening Audio retains native Video and restores analysis.");
+                    DocumentUnchanged();
                     Require(StartupDiagnostics.BindingWarningCount == 0 && StartupDiagnostics.FrameworkErrorCount == 0, "Ownership menus/layout must have no binding errors.");
                     _timer.Stop(); options.FinishVerification("PASS: separate real-window independent media ownership; native track transfer and release; Unicode Video Open; transactional failed and superseded replacement; real Close menu Enter; focused Audio S/H after Video Close; real Recent Video menu Enter through shared backend; Audio replacement retains Video; independent persisted MRUs; external timecodes/keyframes and document/draft/pending/selection/undo retention. Existing Video playback/EOF and visual acceptance run separately. Audible output remains manual QA.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;
             }
@@ -110,6 +139,9 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
         finally { _ticking = false; }
     }
     private void Unchanged() => Require(ReferenceEquals(_editor, model.ActiveEditor) && ReferenceEquals(_samples, model.WaveformSamples) && ReferenceEquals(_draft, model.Draft) && ReferenceEquals(_selected, model.SelectedEvent) && _pending == model.PrimaryAudioRange && _source == model.ActiveEditor!.Document.Serialize() && _undo == (model.ActiveEditor.Undo.NextUndoName ?? ""), "Video changes preserve exact audio/document/draft/pending/selection/history.");
+    private void DocumentUnchanged() => Require(ReferenceEquals(_editor, model.ActiveEditor) && ReferenceEquals(_draft, model.Draft) && ReferenceEquals(_selected, model.SelectedEvent) && _pending == model.PrimaryAudioRange && _source == model.ActiveEditor!.Document.Serialize() && _undo == (model.ActiveEditor.Undo.NextUndoName ?? ""), "Audio Close/reopen preserves document/draft/pending/selection/undo.");
+    private static async Task<bool> RejectedAnalysis<T>(Task<T?> task) where T : class
+    { try { return await task is null; } catch (OperationCanceledException) { return true; } }
     private async Task Invoke(string id, object? parameter = null) => Require(await model.Registry.InvokeAsync(id, new(model.ActiveDocumentId), parameter), "Ownership preparation: " + id);
     private static void Press(Control control, Key key)
     {
@@ -126,6 +158,10 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
         var closed = replacement.WithVideo(null); var replacedVideo = replacement.VideoProvider!; replacement.Dispose();
         Require(!replacedVideo.HasVideo && audio.ReadAudioFrames(0, 32).FrameCount == 32, "Closing video releases video and retains native audio.");
         closed.Dispose(); Require(!audio.HasAudio, "Final audio owner releases its native source.");
+        using var both = DocumentMedia.Open(path);
+        var retainedVideo = both.VideoProvider!; var releasedAudio = both.AudioProvider!;
+        using var audioClosed = both.WithAudio(null); both.Dispose(); both.Dispose();
+        Require(!releasedAudio.HasAudio && retainedVideo.GetFrameAtTime(0).Width > 0 && ReferenceEquals(retainedVideo, audioClosed.VideoProvider), "Closing Audio retains a decoding native Video provider.");
     }
     private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
 }

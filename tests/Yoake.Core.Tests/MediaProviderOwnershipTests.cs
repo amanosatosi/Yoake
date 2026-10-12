@@ -37,6 +37,21 @@ public sealed class MediaProviderOwnershipTests
         Assert.Equal(0, video.Disposals); Assert.Equal(0, nextAudio.Disposals);
         replaced.Dispose(); Assert.Equal(1, video.Disposals); Assert.Equal(1, nextAudio.Disposals);
     }
+    [Fact] public void AudioCloseDisposesExactlyOnceRetainsVideoAndAllowsNewAudio()
+    {
+        var video = new Provider(); var audio = new Provider(); var nextAudio = new Provider();
+        var original = MediaProviderOwnership<Provider>.Own(video, audio);
+        var closed = original.ReplaceAudio(null); original.Dispose(); original.Dispose();
+        Assert.Equal(1, audio.Disposals); Assert.Equal(0, video.Disposals);
+        Assert.Same(video, closed.Video); Assert.Null(closed.Audio);
+        var closedAgain = closed.ReplaceAudio(null); closed.Dispose();
+        using var candidate = MediaProviderOwnership<Provider>.Own(null, nextAudio);
+        var reopened = closedAgain.ReplaceAudio(candidate); closedAgain.Dispose(); candidate.Dispose();
+        Assert.Same(video, reopened.Video); Assert.Same(nextAudio, reopened.Audio);
+        Assert.Equal(0, video.Disposals); Assert.Equal(0, nextAudio.Disposals);
+        reopened.Dispose(); reopened.Dispose();
+        Assert.Equal(1, video.Disposals); Assert.Equal(1, audio.Disposals); Assert.Equal(1, nextAudio.Disposals);
+    }
     [Fact] public async Task ConcurrentSnapshotReleaseDisposesEachProviderExactlyOnce()
     {
         var video = new Provider(); var audio = new Provider();
