@@ -410,7 +410,7 @@ public partial class MainWindow : Window, IEditorDialogs
         // failed Flush must leave a usable delayed-rendering bitmap until the
         // platform disposes the transfer, rather than a disposed image payload.
     }
-    public Task<Yoake.Core.Media.DummyVideoOptions?> ShowDummyVideoAsync(Yoake.Core.Media.DummyVideoOptions initial) => new DummyVideoWindow(initial).ShowDialog<Yoake.Core.Media.DummyVideoOptions?>(this);
+    public Task<Yoake.Core.Media.DummyVideoOptions?> ShowDummyVideoAsync(Yoake.Core.Media.DummyVideoOptions initial) => new DummyVideoWindow(initial,e=>_model?.Registry.ReportFailure("video/dummy-color",e)).ShowDialog<Yoake.Core.Media.DummyVideoOptions?>(this);
     public Task<string?> ShowCustomAspectAsync(double current) => new VideoAspectWindow(current).ShowDialog<string?>(this);
     public async Task ShowVideoDetailsAsync(VideoDetails details) => await new VideoDetailsWindow(details).ShowDialog(this);
     public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor,_model?.StyleLibraryPath, _model?.SelectedEvent,_model?.StyleSplitWeights,weights=>{if(_model is {} model)_=model.Registry.InvokeAsync("styles/layout",new(),weights);}).ShowDialog(this);

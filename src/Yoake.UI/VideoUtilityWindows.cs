@@ -75,7 +75,7 @@ public sealed class DummyVideoWindow : Window
         ("640×352 (SD widescreen MOD16)",640,352), ("704×400 (SD widescreen MOD16)",704,400),
         ("1280×720 (HD 720p)",1280,720), ("1920×1080 (HD 1080p)",1920,1080), ("1024×576 (SuperPAL widescreen)",1024,576)
     ];
-    public DummyVideoWindow(DummyVideoOptions initial)
+    public DummyVideoWindow(DummyVideoOptions initial, Action<Exception>? reportFailure = null)
     {
         var panel = VideoDialogInput.Panel(this, "DummyVideoDialog", "Dummy video options", 430);
         var presets = new ComboBox { Name = "DummyResolution", ItemsSource = Resolutions.Select(r => r.Label).ToArray(), HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -92,7 +92,12 @@ public sealed class DummyVideoWindow : Window
         _pattern.IsChecked = initial.Checkerboard; _color = initial.Color with { Transparency = 0 }; ColorLabel();
         foreach (var field in new[] { _width, _height, _fps, _frames }) field.PropertyChanged += (_, e) => { if (e.Property == TextBox.TextProperty) Read(); };
         presets.SelectionChanged += (_, _) => { if (presets.SelectedIndex is >= 0 and < 9) { var preset = Resolutions[presets.SelectedIndex]; _width.Text = preset.Width.ToString(CultureInfo.InvariantCulture); _height.Text = preset.Height.ToString(CultureInfo.InvariantCulture); } };
-        _colorButton.Click += async (_, _) => { if (await new AssColorDialog(_color).ShowDialog<AssColor?>(this) is { } color) { _color = color with { Transparency = 0 }; ColorLabel(); } };
+        presets.SelectedIndex = Array.FindIndex(Resolutions, r => r.Width == initial.Width && r.Height == initial.Height);
+        _colorButton.Click += async (_, _) =>
+        {
+            try { if (await new AssColorDialog(_color).ShowDialog<AssColor?>(this) is { } color) { _color = color with { Transparency = 0 }; ColorLabel(); } }
+            catch (Exception e) { reportFailure?.Invoke(e); _error.Text = "Color picker: " + e.Message; }
+        };
         VideoDialogInput.Buttons(this, panel, "Dummy", "Open", () => { if (Read() is { } options) Close(options); });
         Read(); Opened += (_, _) => { _width.Focus(); _width.SelectAll(); };
     }
