@@ -732,6 +732,8 @@ public sealed partial class EditorWorkflowTests : IDisposable
         public string? ClipboardText;
         public VideoDetails? VideoDetails;
         public bool FailFrameClipboard;
+        public bool Detached;
+        public Task SetVideoDetachedAsync(bool detached,CancellationToken token){token.ThrowIfCancellationRequested();Detached=detached;return Task.CompletedTask;}
         public Task<string?> OpenSubtitleAsync()=>Task.FromResult<string?>(null);
         public Task<string?> OpenMediaAsync()=>Task.FromResult<string?>(null);
         public Task<string?> SaveSubtitleAsync(string suggestedName)=>Task.FromResult<string?>(null);

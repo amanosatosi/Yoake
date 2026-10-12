@@ -4,6 +4,7 @@ using Avalonia.Media;
 using System.ComponentModel;
 using Yoake.Core.Media;
 using Yoake.UI.ViewModels;
+using Avalonia.Threading;
 
 namespace Yoake.UI.Controls;
 
@@ -12,8 +13,9 @@ public sealed class VideoPresentationControl : Control
 {
     public static readonly StyledProperty<MainWindowViewModel?> ModelProperty = AvaloniaProperty.Register<VideoPresentationControl, MainWindowViewModel?>(nameof(Model));
     public MainWindowViewModel? Model { get => GetValue(ModelProperty); set => SetValue(ModelProperty, value); }
-    public Rect VideoArea => Model is { } model ? Rect(model.VideoViewport(Bounds.Width, Bounds.Height)) : default;
+    public Rect VideoArea => Model is { } model ? Rect(model.VideoViewport(Bounds.Width, Bounds.Height, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1)) : default;
     internal static Rect Rect(VideoPresentation viewport) => new(viewport.X, viewport.Y, viewport.Width, viewport.Height);
+    private double _reportedZoom = double.NaN;
     public VideoPresentationControl() { ClipToBounds = true; IsHitTestVisible = false; }
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -23,11 +25,20 @@ public sealed class VideoPresentationControl : Control
             if (change.OldValue is MainWindowViewModel old) { old.PropertyChanged -= Changed; old.FrameReady -= FrameReady; }
             if (Model is { } model) { model.PropertyChanged += Changed; model.FrameReady += FrameReady; }
         }
+        if (change.Property == BoundsProperty) UpdateTransform();
         InvalidateVisual();
     }
-    private void FrameReady(object? sender, EventArgs args) => InvalidateVisual();
+    private void UpdateTransform()
+    {
+        if (Model is not { } model) return;
+        _ = VideoArea;
+        if (_reportedZoom == model.VideoWindowZoom) return;
+        _reportedZoom = model.VideoWindowZoom; var document = model.ActiveDocumentId;
+        Dispatcher.UIThread.Post(() => { if (ReferenceEquals(Model, model) && model.ActiveDocumentId == document) model.NotifyVideoPresentation(); });
+    }
+    private void FrameReady(object? sender, EventArgs args) { UpdateTransform(); InvalidateVisual(); }
     private void Changed(object? sender, PropertyChangedEventArgs e)
-    { if (e.PropertyName is nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.ShowVideoOverscan)) InvalidateVisual(); }
+    { if (e.PropertyName is nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.ShowVideoOverscan) or nameof(MainWindowViewModel.VideoPresentationRevision)) InvalidateVisual(); }
     public override void Render(DrawingContext context)
     {
         base.Render(context);

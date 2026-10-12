@@ -43,7 +43,6 @@ public sealed partial class MainWindowViewModel
     public void ReportVideoPointer(AssPoint? point) { if (point is null || double.IsFinite(point.Value.X) && double.IsFinite(point.Value.Y)) _videoPointer = point; }
     private static VideoAspect InitialVideoAspect(IVideoProvider? video) => video is { IsDummy:false, DisplayAspectRatio:>0 }
         ? new(VideoAspectKind.Custom, Math.Clamp(video.DisplayAspectRatio,0.5,5)) : new();
-    public VideoPresentation VideoViewport(double width, double height) => VideoPresentation.Fit(width, height, VideoAspectRatio);
     private void RegisterVideoUtilityCommands()
     {
         bool Applies(CommandContext context) => _activeId is not null && (context.DocumentId is null || context.DocumentId == _activeId);
@@ -81,8 +80,10 @@ public sealed partial class MainWindowViewModel
                 }
                 token.ThrowIfCancellationRequested();
                 if (_activeId != id || !_documents.TryGetValue(id, out var live) || !ReferenceEquals(state, live) || !ReferenceEquals(provider, _media?.VideoProvider)) return;
+                var windowZoom = VideoWindowZoom;
                 CancelGesture(); state.VideoAspect = aspect; _videoPointer = null;
-                OnPropertyChanged(nameof(VideoAspectRatio)); _registry.NotifyStateChanged();
+                if (IsVideoDetached) { state.VideoView.SetWindowZoom(windowZoom); VideoWindowZoomRequested?.Invoke(this, EventArgs.Empty); }
+                OnPropertyChanged(nameof(VideoAspectRatio)); NotifyVideoPresentation();
             }, check: () => VideoAspect.Kind == kind);
         }
         Register("video/copy_coordinates", "Copy coordinates to clipboard", async (_, token) =>

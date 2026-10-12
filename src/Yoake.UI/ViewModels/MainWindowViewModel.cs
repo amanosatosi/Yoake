@@ -29,6 +29,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public PendingAudioTiming AudioTiming {get;}=new(editor);
         public string VisualTool="Position",VectorMode="Select";
         public VideoAspect VideoAspect = new();
+        public VideoViewState VideoView = new();
         public CancellationTokenSource? FrameExtraction;
         public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
         public DocumentMedia? Media;
@@ -217,6 +218,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterAudioTimingCommands();
         RegisterMediaOwnershipCommands();
         RegisterVideoUtilityCommands();
+        RegisterVideoPresentationCommands();
         RegisterFrameImageCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
@@ -348,7 +350,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             _activeId=id;
             var state=id is { } key && _documents.TryGetValue(key,out var found) ? found : null;
             _activeSubtitleDocument=state?.Editor.Document; _media=state?.Media;
-            NotifyVisualToolState(); OnPropertyChanged(nameof(VideoAspectRatio)); OnPropertyChanged(nameof(ShowVideoOverscan)); _videoPointer=null;
+            NotifyVisualToolState(); NotifyVideoPresentation(); OnPropertyChanged(nameof(VideoAspectRatio)); OnPropertyChanged(nameof(ShowVideoOverscan)); _videoPointer=null;
             _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
             _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft(); VideoFrame=null; WaveformSamples=state?.Waveform; MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
             _currentTimeSeconds=state?.Time ?? 0;
@@ -373,13 +375,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if(_activeId==id){CancelGesture();CancelVisualBounds();}
             opened!.SetExternalKeyframes(state.ExternalKeyframes);
             var old=state.Media; state.Media=opened;state.ProviderFrameTiming=frameTiming;state.FrameTiming=state.ExternalTimecodes?.Timing??frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
-            state.VideoAspect=InitialVideoAspect(state.Media.VideoProvider); _videoPointer=null;
+            state.VideoView.ResetContent();state.VideoAspect=InitialVideoAspect(state.Media.VideoProvider); _videoPointer=null;
             var media=state.Media.AudioProvider;
             // Native indexing is complete. Audio analysis now belongs to the
             // published audio resource, not to future video replacements.
             state.Loading=null;if(media is not null)state.AudioLoading=cts;
             if(state.Media.HasVideo)RememberMedia(path,true);if(media is not null)RememberMedia(path,false);
-            if (_activeId==id) { _media=state.Media;OnPropertyChanged(nameof(VideoAspectRatio));if(!_media!.HasVideo)VideoFrame=null; MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(VideoSourcePath));OnPropertyChanged(nameof(AudioSourcePath));OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
+            if (_activeId==id) { _media=state.Media;NotifyVideoPresentation();OnPropertyChanged(nameof(VideoAspectRatio));if(!_media!.HasVideo)VideoFrame=null; MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(VideoSourcePath));OnPropertyChanged(nameof(AudioSourcePath));OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
             _registry.NotifyStateChanged();
             if(media is null)return true;
             WaveformData? peaks=null;

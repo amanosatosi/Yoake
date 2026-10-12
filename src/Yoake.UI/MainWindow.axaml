@@ -158,6 +158,15 @@
 <MenuItem Name="VideoAspectcinematicMenu" Header="Cinematic (2.35)" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/cinematic].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/cinematic]}" InputGesture="{Binding Actions[video/aspect/cinematic].InputGesture}" />
 <MenuItem Name="VideoAspectcustomMenu" Header="Custom…" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/custom].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/custom]}" InputGesture="{Binding Actions[video/aspect/custom].InputGesture}" />
 </MenuItem>
+<MenuItem Name="VideoZoomMenu" Header="Set Zoom">
+<MenuItem Name="VideoZoom50Menu" Header="50%" ToggleType="Radio" IsChecked="{Binding Actions[video/zoom/50].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/zoom/50]}" InputGesture="{Binding Actions[video/zoom/50].InputGesture}" />
+<MenuItem Name="VideoZoom100Menu" Header="100%" ToggleType="Radio" IsChecked="{Binding Actions[video/zoom/100].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/zoom/100]}" InputGesture="{Binding Actions[video/zoom/100].InputGesture}" />
+<MenuItem Name="VideoZoom200Menu" Header="200%" ToggleType="Radio" IsChecked="{Binding Actions[video/zoom/200].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/zoom/200]}" InputGesture="{Binding Actions[video/zoom/200].InputGesture}" />
+<MenuItem Name="VideoZoomInMenu" Header="Zoom In" Command="{Binding Actions[video/zoom/in]}" InputGesture="{Binding Actions[video/zoom/in].InputGesture}" />
+<MenuItem Name="VideoZoomOutMenu" Header="Zoom Out" Command="{Binding Actions[video/zoom/out]}" InputGesture="{Binding Actions[video/zoom/out].InputGesture}" />
+</MenuItem>
+<MenuItem Name="VideoResetPanMenu" Header="Reset Video Pan" Command="{Binding Actions[video/reset_pan]}" InputGesture="{Binding Actions[video/reset_pan].InputGesture}" />
+<MenuItem Name="VideoDetachMenu" Header="Detach Video" ToggleType="CheckBox" IsChecked="{Binding Actions[video/detach].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/detach]}" InputGesture="{Binding Actions[video/detach].InputGesture}" />
 <MenuItem Name="VideoFrameImageMenu" Header="Frame images">
 <MenuItem Name="FramecopyMenu" Header="copy: Full frame" Command="{Binding Actions[video/frame/copy]}" InputGesture="{Binding Actions[video/frame/copy].InputGesture}" />
 <MenuItem Name="FramecopyrawMenu" Header="copy: Video only" Command="{Binding Actions[video/frame/copy/raw]}" InputGesture="{Binding Actions[video/frame/copy/raw].InputGesture}" />
@@ -302,8 +311,8 @@
 </StackPanel></Grid></Grid></Border>
 <Grid Grid.Row="2" Name="UpperWorkspace">
   <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
-  <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn" IsVisible="{Binding ShowVideo}">
-    <Border Grid.Row="0" Background="{DynamicResource PanelBrush}">
+  <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn" IsVisible="{Binding ShowEmbeddedVideo}">
+    <Border Name="VideoDock" Grid.Row="0" Background="{DynamicResource PanelBrush}">
       <Grid Name="VideoRegion" Margin="6" RowDefinitions="*,22,26,Auto" RowSpacing="4">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*">      <StackPanel Name="VisualPrimaryTools" Grid.Column="0" Orientation="Vertical" Spacing="3" Margin="0,0,8,0">
         <ToggleButton Name="VisualToolCrosshair" Classes="authoring" IsChecked="{Binding Actions[video/tool/crosshair].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" Padding="5,2" ToolTip.Tip="Crosshair"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualCrosshair}" /></ToggleButton>
@@ -323,7 +332,7 @@
           <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />
           <Button Content="◀" Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame" /><Button Content="▶" Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame" />
           <TextBox Margin="4,0,0,0" Name="ExactTime" Width="92" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
-        </StackPanel>        <Grid Grid.Column="1" ColumnDefinitions="*" ColumnSpacing="4"><TextBlock Text="{Binding FramePositionDisplay}" ToolTip.Tip="{Binding RelativeTimingDisplay}" VerticalAlignment="Center" FontSize="10" TextTrimming="CharacterEllipsis" /></Grid></Grid>
+        </StackPanel>        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="4"><controls:VideoZoomControl Name="VideoZoom" Grid.Column="1" /><TextBlock Text="{Binding FramePositionDisplay}" ToolTip.Tip="{Binding RelativeTimingDisplay}" VerticalAlignment="Center" FontSize="10" TextTrimming="CharacterEllipsis" /></Grid></Grid>
 
     <Border Grid.Row="3" Name="VisualToolsBar" ToolTip.Tip="{Binding VisualHint}" IsVisible="{Binding HasVisualOptions}" Padding="0,4,0,0"><StackPanel>
       <WrapPanel Name="VisualToolGroups">
@@ -347,7 +356,7 @@
     </Border>
 
   </Grid>
-  <GridSplitter Name="VideoSplitter" Grid.Column="1" IsVisible="{Binding ShowVideo}" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
+  <GridSplitter Name="VideoSplitter" Grid.Column="1" IsVisible="{Binding ShowEmbeddedVideo}" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
   <Grid Grid.Column="2" Name="TemporalTextColumn">
     <Grid.RowDefinitions><RowDefinition Height="180" MinHeight="160" /><RowDefinition Height="4" /><RowDefinition Height="*" MinHeight="280" /></Grid.RowDefinitions>
     <Border Grid.Row="0" IsVisible="{Binding ShowAudio}" Background="{DynamicResource PanelBrush}">

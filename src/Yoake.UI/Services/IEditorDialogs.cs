@@ -5,6 +5,7 @@ namespace Yoake.UI.Services;
 public enum UnsavedChoice { Cancel, Discard, Save }
 public interface IEditorDialogs
 {
+    Task SetVideoDetachedAsync(bool detached, CancellationToken token) => throw new NotSupportedException("Detached Video is unavailable.");
     Task ShowOptionsAsync(Yoake.UI.ViewModels.MainWindowViewModel model) => throw new NotSupportedException("Options are unavailable.");
     Task ShowLogAsync(string path)=>throw new NotSupportedException("Log window is unavailable.");
     Task<string?> OpenAutomationScriptAsync() => Task.FromResult<string?>(null);

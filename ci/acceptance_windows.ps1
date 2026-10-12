@@ -266,3 +266,24 @@ try {
   if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
   $process.Dispose()
 }
+
+# Video presentation input uses a separate real-input acceptance process.
+$videoPresentationRoot = Join-Path $root ('video-presentation-' + [Guid]::NewGuid().ToString('N'))
+$videoPresentationProfile = Join-Path $videoPresentationRoot 'profile'
+New-Item -ItemType Directory -Force -Path $videoPresentationProfile | Out-Null
+$logs = Join-Path $videoPresentationRoot 'logs'
+$report = Join-Path $videoPresentationRoot 'acceptance.txt'
+$arguments = @('--verify-ui-video-presentation', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $videoPresentationProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged Video presentation acceptance timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged Video presentation acceptance failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}

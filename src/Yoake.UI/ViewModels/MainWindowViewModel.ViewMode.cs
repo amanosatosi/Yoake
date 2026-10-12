@@ -35,7 +35,7 @@ public sealed partial class MainWindowViewModel
         if (ViewMode == mode) return;
         // Presentation only: do not commit drafts, seek, or synchronize sessions.
         _settings = _settings with { ViewMode = mode };
-        foreach (var name in new[] { nameof(ViewMode), nameof(ShowAudio), nameof(ShowVideo),
+        foreach (var name in new[] { nameof(ViewMode), nameof(ShowAudio), nameof(ShowVideo), nameof(ShowEmbeddedVideo),
             nameof(IsDefaultView), nameof(IsAudioView), nameof(IsVideoView), nameof(IsAudioVideoView) })
             OnPropertyChanged(name);
         _settingsStore.Save(_settings);

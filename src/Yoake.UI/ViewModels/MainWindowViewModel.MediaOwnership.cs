@@ -110,7 +110,7 @@ public sealed partial class MainWindowViewModel
             state.Media = replacement;
             prepared = null;
             if (ReferenceEquals(replacement, candidate)) candidate = null;
-            if (video) { state.FrameExtraction?.Cancel(); state.VideoAspect = InitialVideoAspect(replacement.VideoProvider);
+            if (video) { state.FrameExtraction?.Cancel(); state.VideoView.ResetContent(); state.VideoAspect = InitialVideoAspect(replacement.VideoProvider);
                 _videoPointer=null; state.ProviderFrameTiming = nativeTiming; state.FrameTiming = external?.Timing ?? nativeTiming; }
             else state.Waveform = peaks;
             if (_activeId == id) PublishMediaPresentation(state, video, old is null);
@@ -153,7 +153,7 @@ public sealed partial class MainWindowViewModel
         var replacement = old.WithVideo(null);
         state.Media = replacement.HasAudio ? replacement : null;
         if (state.Media is null) replacement.Dispose();
-        state.ProviderFrameTiming = null; state.FrameTiming = state.ExternalTimecodes?.Timing;
+        state.VideoView.ResetContent(); state.ProviderFrameTiming = null; state.FrameTiming = state.ExternalTimecodes?.Timing;
         state.Editing?.Cancel();
         PublishMediaPresentation(state, true, state.Media is null);
         _ = Task.Run(old.Dispose); ScheduleDocumentAutomationSync(id);
@@ -186,7 +186,7 @@ public sealed partial class MainWindowViewModel
         // Retain the central position where possible; an explicit Audio audition
         // retains its sample clock even when its companion video disappears.
         if (!IsPlaying && MediaDurationSeconds > 0 && CurrentTimeSeconds > MediaDurationSeconds) CurrentTimeSeconds = MediaDurationSeconds;
-        if (videoChanged) { VideoFrame = null; OnPropertyChanged(nameof(VideoAspectRatio)); }
+        if (videoChanged) { VideoFrame = null; NotifyVideoPresentation(); OnPropertyChanged(nameof(VideoAspectRatio)); }
         else { WaveformSamples = state.Waveform; OnPropertyChanged(nameof(HasAudio)); }
         foreach (var name in new[] { nameof(VideoSourcePath), nameof(AudioSourcePath), nameof(FrameTimes), nameof(Keyframes),
             nameof(FramePositionDisplay), nameof(RelativeTimingDisplay), nameof(CanShiftByFrames) }) OnPropertyChanged(name);

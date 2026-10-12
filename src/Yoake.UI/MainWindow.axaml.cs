@@ -49,7 +49,8 @@ public partial class MainWindow : Window, IEditorDialogs
         TitleTabStrip.SizeChanged+=(_,_)=>UpdateTabLimit();
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_model.TextCursor=SubtitleText.CaretIndex;_model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;}};
         Closing+=HandleClosing;
-        Closed+=(_,_)=>_model?.Dispose();
+        Deactivated+=VideoHostDeactivated;
+        Closed+=(_,_)=>{MoveVideoHost(false);_model?.Dispose();};
     }
     private static string[] DropPaths(DragEventArgs e)
     {
@@ -103,12 +104,12 @@ public partial class MainWindow : Window, IEditorDialogs
 
     private void AttachModel()
     {
-        if(_model is not null){_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        if(_model is not null){MoveVideoHost(false);_model.VideoWindowZoomRequested-=ResizeDetachedVideo;_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
         RefreshRecentKeyframes();
         RefreshRecentMedia();
         RefreshRecentTimecodes();
-        if(_model is not null){_model.Dialogs=this;_model.VideoSeekFocusRequested+=SeekFocusRequested;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
+        if(_model is not null){_model.Dialogs=this;_model.VideoWindowZoomRequested+=ResizeDetachedVideo;_model.VideoSeekFocusRequested+=SeekFocusRequested;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
@@ -196,18 +197,18 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if (_model is null) return;
         var columns = UpperWorkspace.ColumnDefinitions;
-        if (_videoRegionShown != _model.ShowVideo)
+        if (_videoRegionShown != _model.ShowEmbeddedVideo)
         {
-            if (!_model.ShowVideo)
+            if (!_model.ShowEmbeddedVideo)
             {
                 _videoWidth = columns[0].Width;
                 _textWidth = columns[2].Width;
             }
-            columns[0].MinWidth = _model.ShowVideo ? 340 : 0;
-            columns[0].Width = _model.ShowVideo ? _videoWidth : new GridLength(0);
-            columns[1].Width = new GridLength(_model.ShowVideo ? 4 : 0);
-            columns[2].Width = _model.ShowVideo ? _textWidth : new GridLength(1, GridUnitType.Star);
-            _videoRegionShown = _model.ShowVideo;
+            columns[0].MinWidth = _model.ShowEmbeddedVideo ? 340 : 0;
+            columns[0].Width = _model.ShowEmbeddedVideo ? _videoWidth : new GridLength(0);
+            columns[1].Width = new GridLength(_model.ShowEmbeddedVideo ? 4 : 0);
+            columns[2].Width = _model.ShowEmbeddedVideo ? _textWidth : new GridLength(1, GridUnitType.Star);
+            _videoRegionShown = _model.ShowEmbeddedVideo;
         }
         var rows = TemporalTextColumn.RowDefinitions;
         rows[0].MinHeight = _model.ShowAudio ? 160 : 0;
@@ -277,7 +278,8 @@ public partial class MainWindow : Window, IEditorDialogs
         if(e.PropertyName==nameof(MainWindowViewModel.RecentKeyframeItems))Dispatcher.UIThread.Post(RefreshRecentKeyframes);
         if(e.PropertyName==nameof(MainWindowViewModel.RecentTimecodeItems))Dispatcher.UIThread.Post(RefreshRecentTimecodes);
         if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight))UpdateAudioBounds();
-        if(e.PropertyName==nameof(MainWindowViewModel.ViewMode))UpdateWorkspaceView();
+        if(e.PropertyName==nameof(MainWindowViewModel.ViewMode)){VisualOverlay.CancelInput();_model?.NotifyVideoPresentation();UpdateWorkspaceView();}
+        if(e.PropertyName is nameof(MainWindowViewModel.IsVideoDetached) or nameof(MainWindowViewModel.VideoSourcePath))SynchronizeVideoHost();
         if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }
@@ -307,6 +309,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(_model is null||e.Handled)return;
         var control=e.Source as Control;var context=HotkeyContext.Default;
         var ancestors=control is null?Array.Empty<Control>():control.GetVisualAncestors().OfType<Control>().Prepend(control).ToArray();
+        if(e.Key is Key.Enter or Key.Escape && ancestors.Any(input=>input is VideoZoomControl))return;
         // Captured edit gestures and point/box selections own cancellation.
         // An idle overlay routes Escape normally through the Video context.
         if(e.Key==Key.Escape&&control is VisualOverlayControl {HasTransientInput:true})return;

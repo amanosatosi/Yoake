@@ -65,6 +65,6 @@ public sealed partial class EditorWorkflowTests
         foreach(var id in new[]{"video/aspect/default","video/frame/copy/raw","video/details","video/open/dummy","video/show_overscan"})Assert.False(await _model.Registry.InvokeAsync(id,new(Guid.NewGuid())));
         await Command("video/close");Assert.Null(_model.CurrentVideoDetails);Assert.False(_model.Actions["video/frame/copy/raw"].CanExecute(null));
         await Command("recent/video",_model.RecentVideoItems[0].Path);Assert.Equal(64,_model.CurrentVideoDetails!.Width);
-        foreach(var id in new[]{"video/reset_pan","video/zoom/50","video/zoom/100","video/zoom/200","video/zoom/in","video/zoom/out","video/detach"})Assert.False(_model.Registry.TryGet(id,out _));
+        foreach(var id in new[]{"video/reset_pan","video/zoom/50","video/zoom/100","video/zoom/200","video/zoom/in","video/zoom/out","video/detach"})Assert.True(_model.Registry.TryGet(id,out _));
     }
 }
