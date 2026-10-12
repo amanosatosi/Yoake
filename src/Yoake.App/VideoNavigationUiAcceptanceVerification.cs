@@ -67,21 +67,21 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     Require(input.IsKeyboardFocusWithin&&input.Text==_frame.ToString(),"Actual jump dialog initially focuses and selects current frame.");
                     input.Text="invalid";Press(jump.FindControl<Button>("JumpConfirm")!,Key.Enter);
                     Require(window.OwnedWindows.Contains(jump)&&model.CurrentFrame==_frame,"Invalid jump input cannot close the dialog or seek.");
-                    input.Text="3";Require(jump.FindControl<TextBox>("JumpTime")!.Text==AssTime.Format((long)Math.Round(model.FrameTimes[3]*1000)),"Frame input updates VFR time display.");
+                    input.Text="2";Require(jump.FindControl<TextBox>("JumpTime")!.Text==AssTime.Format((long)Math.Round(model.FrameTimes[2]*1000)),"Frame input updates VFR time display.");
                     Require(input.Focus()&&input.IsKeyboardFocusWithin,"The actual jump input must own focus before IME composition starts.");
                     var presenter=input.GetVisualDescendants().OfType<TextPresenter>().First();presenter.PreeditText="日本";Press(input,Key.Enter);
                     Require(presenter.PreeditText=="日本","Jump Enter preserves active IME composition.");presenter.PreeditText=null;
                     Require(window.OwnedWindows.Contains(jump),"IME Enter cannot accept the jump dialog.");
                     Press(jump.FindControl<Button>("JumpConfirm")!,Key.Enter);return;
                 case 3:
-                    Require(!window.OwnedWindows.OfType<VideoJumpWindow>().Any()&&model.CurrentFrame==3&&window.FindControl<VideoFrameSlider>("VideoSeekBar")!.IsKeyboardFocusWithin,"Accepted jump seeks exact frame and restores slider focus.");
+                    Require(!window.OwnedWindows.OfType<VideoJumpWindow>().Any()&&model.CurrentFrame==2&&window.FindControl<VideoFrameSlider>("VideoSeekBar")!.IsKeyboardFocusWithin,"Accepted jump seeks exact frame and restores slider focus.");
                     Press(Video,Key.G,KeyModifiers.Control);return;
                 case 4:
                     var cancel=window.OwnedWindows.OfType<VideoJumpWindow>().Single();cancel.FindControl<TextBox>("JumpTime")!.Text="0:00:00.50";
                     Require(cancel.FindControl<TextBox>("JumpFrame")!.Text==_map!.FrameAtMilliseconds(500).ToString(),"Time input updates exact VFR frame index.");
                     Press(cancel.FindControl<Button>("JumpCancel")!,Key.Enter);return;
                 case 5:
-                    Require(model.CurrentFrame==3&&!window.OwnedWindows.OfType<VideoJumpWindow>().Any(),"Canceled jump preserves current frame.");
+                    Require(model.CurrentFrame==2&&!window.OwnedWindows.OfType<VideoJumpWindow>().Any(),"Canceled jump preserves current frame.");
                     // Start/stop happen in the same input turn, before an audio device
                     // opens. This proves routing/range without claiming audible output.
                     Press(Video,Key.Space);Require(model.IsPlaying&&model.Actions["video/play"].IsChecked&&window.FindControl<MenuItem>("VideoPlayMenu")!.IsChecked,"Real Video Space publishes shared play/menu state.");
