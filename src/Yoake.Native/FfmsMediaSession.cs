@@ -20,7 +20,7 @@ public sealed record DecodedVideoFrame(int Width, int Height, int Stride, byte[]
 [Flags]
 public enum MediaTracks { Video = 1, Audio = 2, Both = Video | Audio }
 
-public sealed unsafe partial class FfmsMediaSession : IDisposable
+public sealed unsafe partial class FfmsMediaSession : IVideoProvider
 {
     private const int VideoTrackType = 0;
     private const int AudioTrackType = 1;
@@ -81,6 +81,10 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     }
 
     public string SourcePath { get; }
+    public string DecoderName => "FFMS2 / FFmpeg";
+    public bool IsDummy => false;
+    public double DisplayAspectRatio { get; private set; }
+    public MediaInfo SourceInfo => _providerInfo;
     private double _videoDurationSeconds;
     // A video command ends at video EOF even when an independent audio span
     // contributes a longer combined timeline duration. External VFR maps own
@@ -155,6 +159,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             var frameCount = 0;
             var fps = 0d;
             var videoDuration = 0d;
+            var sar = 1d;
 
             if (videoSource != 0)
             {
@@ -162,6 +167,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
                 if (properties == null)
                     throw new InvalidOperationException("FFMS_GetVideoProperties returned null.");
                 frameCount = properties->NumFrames;
+                if (properties->SARNum > 0 && properties->SARDen > 0) sar = properties->SARNum / (double)properties->SARDen;
                 fps = properties->FPSDenominator != 0
                     ? (double)properties->FPSNumerator / properties->FPSDenominator
                     : 0d;
@@ -223,7 +229,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
 
             var duration = Math.Max(videoDuration, audioDuration);
             var info = new MediaInfo(path, width, height, frameCount, fps, duration, sampleRate, channels, audioSamples);
-            var session = new FfmsMediaSession(path, videoSource, audioSource, info){_videoDurationSeconds=videoDuration};
+            var session = new FfmsMediaSession(path, videoSource, audioSource, info){_videoDurationSeconds=videoDuration,DisplayAspectRatio=height>0?width*sar/height:0};
             if (videoSource != 0)
             {
                 var track = Native.FFMS_GetTrackFromVideo(videoSource);
@@ -274,7 +280,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             ThrowIfDisposed();
             FfmsMediaSession? video = _videoSource == 0 ? null : new(SourcePath, _videoSource, 0,
                 _providerInfo with { SampleRate = 0, Channels = 0, AudioSamples = 0, DurationSeconds = _videoDurationSeconds })
-            { _frameTimes = _frameTimes, _keyframes = _keyframes, _videoDurationSeconds = _videoDurationSeconds };
+            { _frameTimes = _frameTimes, _keyframes = _keyframes, _videoDurationSeconds = _videoDurationSeconds, DisplayAspectRatio = DisplayAspectRatio };
             FfmsMediaSession? audio = _audioSource == 0 ? null : new(SourcePath, 0, _audioSource,
                 _providerInfo with { Width = 0, Height = 0, FrameCount = 0, FramesPerSecond = 0,
                     DurationSeconds = _providerInfo.SampleRate > 0 ? _providerInfo.AudioSamples / (double)_providerInfo.SampleRate : 0 });
@@ -284,6 +290,12 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     }
 
     public DecodedVideoFrame GetFrameAtTime(double seconds, byte[]? destinationPixels = null)
+        => GetFrameCore(null, seconds, destinationPixels);
+
+    public DecodedVideoFrame GetFrame(int frame, byte[]? destinationPixels = null)
+        => GetFrameCore(frame, 0, destinationPixels);
+
+    private DecodedVideoFrame GetFrameCore(int? frameIndex, double seconds, byte[]? destinationPixels)
     {
         lock (_videoGate)
         {
@@ -295,7 +307,8 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             var error = CreateErrorInfo(errorBuffer);
             var time = Info.DurationSeconds > 0 ? Math.Clamp(seconds, 0, Info.DurationSeconds) : Math.Max(0, seconds);
             var timing=Volatile.Read(ref _externalTiming);
-            var framePointer = timing is null?Native.FFMS_GetFrameByTime(_videoSource,time,&error)
+            if (frameIndex is { } requested && (requested < 0 || requested >= _providerInfo.FrameCount)) throw new ArgumentOutOfRangeException(nameof(frameIndex));
+            var framePointer = frameIndex is { } index ? Native.FFMS_GetFrame(_videoSource, index, &error) : timing is null?Native.FFMS_GetFrameByTime(_videoSource,time,&error)
                 :Native.FFMS_GetFrame(_videoSource,FrameNavigation.AtTime(timing.Map.FrameTimes,time),&error);
             if (framePointer == 0)
                 throw CreateException($"FFMS_GetFrameByTime({time:0.###})", errorBuffer);
@@ -446,6 +459,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         public int RFFDenominator;
         public int RFFNumerator;
         public int NumFrames;
+        public int SARNum, SARDen;
     }
 
     [StructLayout(LayoutKind.Sequential)]

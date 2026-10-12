@@ -23,6 +23,8 @@ public sealed class VisualOverlayControl : Control
     private IVisualTool? _tool;
     private VisualToolContext? _context;
     private VisualPointer _pointer;
+    private Point? _lastPointerPosition;
+    private Guid? _pointerDocument;
     private IPointer? _capture;
     private bool _inside;
     private StandardCursorType? _cursorType;
@@ -48,14 +50,14 @@ public sealed class VisualOverlayControl : Control
     {
         if(e.PropertyName is nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events))
         {ReleaseCapture();_tool?.Cancel();}
-        if(e.PropertyName is nameof(MainWindowViewModel.PreviewRevision) or nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.CurrentTimeSeconds) or nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.EditorDraft) or nameof(MainWindowViewModel.VisualBounds) or nameof(MainWindowViewModel.VisualBoundsPending))Refresh();
+        if(e.PropertyName is nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.PreviewRevision) or nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.CurrentTimeSeconds) or nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.EditorDraft) or nameof(MainWindowViewModel.VisualBounds) or nameof(MainWindowViewModel.VisualBoundsPending))Refresh();
     }
     private void Refresh()
     {
         if(Model is not {} model||model.VideoFrame is not {} frame){_context=null;InvalidateVisual();return;}
-        var scale=Math.Min(Bounds.Width/frame.PixelSize.Width,Bounds.Height/frame.PixelSize.Height);
-        var width=frame.PixelSize.Width*scale;var height=frame.PixelSize.Height*scale;
-        _context=new(model,new((Bounds.Width-width)/2,(Bounds.Height-height)/2,width,height),model.VisibleVisualLines());
+        if (_pointerDocument != model.ActiveDocumentId) { _pointerDocument=model.ActiveDocumentId; _lastPointerPosition=null; }
+        _context=new(model,VideoPresentationControl.Rect(model.VideoViewport(Bounds.Width,Bounds.Height)),model.VisibleVisualLines());
+        if (_lastPointerPosition is { } last && _context.Video.Width>0 && _context.Video.Height>0) model.ReportVideoPointer(_context.Script(last));
         _tools.TryGetValue(model.ActiveVisualTool,out _tool);model.RequestVisualBounds();InvalidateVisual();
     }
     public override void Render(DrawingContext context)
@@ -71,12 +73,16 @@ public sealed class VisualOverlayControl : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);Focus();_pointer=Pointer(e);_inside=true;
+        _lastPointerPosition=_pointer.Screen;
+        Model?.ReportVideoPointer(_pointer.Script);
         if(_context is not {} state||_tool is null||!state.Video.Contains(_pointer.Screen)||!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;
         try{if(_tool.Press(state,_pointer)){_capture=e.Pointer;e.Pointer.Capture(this);e.Handled=true;}InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);_pointer=Pointer(e);_inside=_context?.Video.Contains(_pointer.Screen)==true;
+        _lastPointerPosition=_pointer.Screen;
+        if (_context is not null) Model?.ReportVideoPointer(_pointer.Script);
         try{if(_capture is not null&&_context is {} state)_tool?.Move(state,_pointer);var cursorType=_tool?.Cursor(_context,_pointer)??StandardCursorType.Cross;if(cursorType!=_cursorType){_cursorType=cursorType;Cursor=new Cursor(cursorType);}InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
     protected override void OnPointerExited(PointerEventArgs e){base.OnPointerExited(e);if(_capture is null)_inside=false;InvalidateVisual();}

@@ -728,13 +728,20 @@ public sealed partial class EditorWorkflowTests : IDisposable
     private sealed class TestDialogs : IEditorDialogs
     {
         public UnsavedChoice Choice=UnsavedChoice.Cancel;
+        public Yoake.Native.DecodedVideoFrame? FrameImage;
+        public string? ClipboardText;
+        public VideoDetails? VideoDetails;
+        public bool FailFrameClipboard;
         public Task<string?> OpenSubtitleAsync()=>Task.FromResult<string?>(null);
         public Task<string?> OpenMediaAsync()=>Task.FromResult<string?>(null);
         public Task<string?> SaveSubtitleAsync(string suggestedName)=>Task.FromResult<string?>(null);
         public Task<UnsavedChoice> ConfirmUnsavedAsync(string title)=>Task.FromResult(Choice);
         public Task<bool> ConfirmRevertAsync()=>Task.FromResult(false);
         public Task<string?> ReadClipboardAsync()=>Task.FromResult<string?>(null);
-        public Task WriteClipboardAsync(string text)=>Task.CompletedTask;
+        public Task WriteClipboardAsync(string text){ClipboardText=text;return Task.CompletedTask;}
+        public Task WriteFrameClipboardAsync(Yoake.Native.DecodedVideoFrame image,Func<bool> isCurrent,CancellationToken token)
+        {token.ThrowIfCancellationRequested();if(FailFrameClipboard)throw new IOException("Clipboard unavailable.");if(!isCurrent())throw new OperationCanceledException();FrameImage=image;return Task.CompletedTask;}
+        public Task ShowVideoDetailsAsync(VideoDetails details){VideoDetails=details;return Task.CompletedTask;}
         public Task ShowStylesAsync(SubtitleEditor editor)=>Task.CompletedTask;
         public Task ShowScriptInfoAsync(SubtitleEditor editor)=>Task.CompletedTask;
         public Task ShowFindAsync(MainWindowViewModel model)=>Task.CompletedTask;

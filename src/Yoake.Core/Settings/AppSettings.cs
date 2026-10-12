@@ -39,6 +39,8 @@ public sealed record AppSettings
     public SubtitleSearchPreferences? SearchPreferences {get;init;}
     public SubtitleSelectionOptions? SelectionPreferences {get;init;}
     public bool? VideoAutoSeek {get;init;}
+    public bool VideoOverscan { get; init; }
+    public Yoake.Core.Media.DummyVideoOptions? LastDummyVideo { get; init; }
     public int? VideoFastJumpStep {get;init;}
     public SubtitleShiftPreferences? ShiftPreferences {get;init;}
     public SubtitleShiftHistoryEntry[]? ShiftHistory {get;init;}
@@ -118,6 +120,7 @@ public sealed record AppSettings
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals)]
 [JsonSerializable(typeof(AppSettings))]
+[JsonSerializable(typeof(Yoake.Core.Media.DummyVideoOptions))]
 [JsonSerializable(typeof(HotkeyOverride))]
 [JsonSerializable(typeof(SubtitleSearchPreferences))]
 [JsonSerializable(typeof(SubtitleSelectionOptions))]

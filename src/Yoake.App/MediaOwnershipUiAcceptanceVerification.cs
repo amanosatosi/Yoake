@@ -108,10 +108,10 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     Require(!await obsolete && await latest && model.VideoSourcePath == _video, "Superseded indexing cannot publish old video.");
                     await Invoke("audio/play/current"); Require(model.IsPlaying, "Audio audition starts before Audio Close.");
                     _retainedFrame = model.VideoFrame; _retainedTimes = model.FrameTimes;
-                    _obsoleteWaveform = model.CreateWaveformViewportAsync(0.013, 1.137, 1023, CancellationToken.None);
-                    _obsoleteSpectrum = model.CreateSpectrumAsync(0.013, 1.137, CancellationToken.None);
                     window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen = true; return;
                 case 7:
+                    _obsoleteWaveform = model.CreateWaveformViewportAsync(0.013, 1.137, 1023, CancellationToken.None);
+                    _obsoleteSpectrum = model.CreateSpectrumAsync(0.013, 1.137, CancellationToken.None);
                     Press(window.FindControl<MenuItem>("CloseAudioMenu")!, Key.Enter); return;
                 case 8:
                     Require(model.AudioSourcePath is null && model.VideoSourcePath == _video && !model.HasAudio && model.WaveformSamples is null,
@@ -151,7 +151,7 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
     private static void VerifyNativeOwnership(string path)
     {
         using var original = DocumentMedia.Open(path); var video = original.VideoProvider!; var audio = original.AudioProvider!;
-        Require(video.HasVideo && !video.HasAudio && audio.HasAudio && !audio.HasVideo, "One index transfers native tracks into separate owners.");
+        Require(video.HasVideo && video is FfmsMediaSession { HasAudio:false } && audio.HasAudio && !audio.HasVideo, "One index transfers native tracks into separate owners.");
         using var candidate = DocumentMedia.Open(path, tracks: MediaTracks.Video);
         var replacement = original.WithVideo(candidate); original.Dispose(); candidate.Dispose();
         Require(!video.HasVideo && ReferenceEquals(audio, replacement.AudioProvider) && audio.ReadAudioFrames(0, 32).FrameCount == 32, "Replacing video releases its native source and retains usable audio.");

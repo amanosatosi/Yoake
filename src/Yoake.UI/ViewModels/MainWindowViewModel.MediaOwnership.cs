@@ -54,7 +54,8 @@ public sealed partial class MainWindowViewModel
 
     public Task<bool> OpenVideoAsync(string path, CancellationToken token = default) => OpenMediaTrackAsync(path, true, token);
     public Task<bool> OpenAudioAsync(string path, CancellationToken token = default) => OpenMediaTrackAsync(path, false, token);
-    private async Task<bool> OpenMediaTrackAsync(string path, bool video, CancellationToken parent)
+    public Task<bool> OpenDummyVideoAsync(DummyVideoOptions options, CancellationToken token = default) => OpenMediaTrackAsync("", true, token, options);
+    private async Task<bool> OpenMediaTrackAsync(string path, bool video, CancellationToken parent, DummyVideoOptions? dummy = null)
     {
         if (_disposed || _activeId is not { } id || !_documents.TryGetValue(id, out var state)) return false;
         parent.ThrowIfCancellationRequested();
@@ -67,13 +68,14 @@ public sealed partial class MainWindowViewModel
         var token = cancellation.Token;
         var external = state.ExternalTimecodes; var keyframes = state.ExternalKeyframes;
         DocumentMedia? candidate = null, prepared = null; FrameTiming? nativeTiming = null; WaveformData? peaks = null;
-        MediaStatus = "FFMS2 indexing " + Path.GetFileName(path);
+        MediaStatus = dummy is null ? "FFMS2 indexing " + Path.GetFileName(path) : "Preparing dummy video";
         try
         {
-            var full = Path.GetFullPath(path);
+            var full = dummy is null ? Path.GetFullPath(path) : "";
             var job = _jobs.Run(video ? "Open video" : "Open audio", ct =>
             {
-                candidate = DocumentMedia.Open(full, ct, video ? MediaTracks.Video : MediaTracks.Audio);
+                candidate = dummy is null ? DocumentMedia.Open(full, ct, video ? MediaTracks.Video : MediaTracks.Audio)
+                    : DocumentMedia.FromVideo(new DummyVideoProvider(dummy, ct));
                 if (video)
                 {
                     nativeTiming = new(candidate.FrameTimes, candidate.Info.FramesPerSecond, ct);
@@ -103,11 +105,13 @@ public sealed partial class MainWindowViewModel
             state.Media = replacement;
             prepared = null;
             if (ReferenceEquals(replacement, candidate)) candidate = null;
-            if (video) { state.ProviderFrameTiming = nativeTiming; state.FrameTiming = external?.Timing ?? nativeTiming; }
+            if (video) { state.FrameExtraction?.Cancel(); state.VideoAspect = replacement.VideoProvider is { IsDummy:false, DisplayAspectRatio:>0 } sourceVideo
+                    ? new(VideoAspectKind.Custom, Math.Clamp(sourceVideo.DisplayAspectRatio, 0.5, 5)) : new();
+                _videoPointer=null; state.ProviderFrameTiming = nativeTiming; state.FrameTiming = external?.Timing ?? nativeTiming; }
             else state.Waveform = peaks;
             if (_activeId == id) PublishMediaPresentation(state, video, old is null);
             if (old is not null) _ = Task.Run(old.Dispose);
-            var historyWarning = RememberMedia(full, video);
+            var historyWarning = dummy is null ? RememberMedia(full, video) : RememberDummyVideo(dummy);
             if (_activeId == id && state.Media?.HasVideo == true) await RefreshVideoFrameAsync(CurrentTimeSeconds);
             if (historyWarning is not null && _activeId == id && ReferenceEquals(state.Media,replacement) &&
                 ReferenceEquals(video ? state.VideoLoading : state.AudioLoading,cancellation))
@@ -137,6 +141,7 @@ public sealed partial class MainWindowViewModel
     {
         var id = _activeId!.Value; var state = _documents[id];
         state.VideoLoading?.Cancel(); state.Loading?.Cancel();
+        state.FrameExtraction?.Cancel();
         var old = state.Media; if (old?.HasVideo != true) return;
         CancelGesture(); CancelVisualBounds();
         if (ActiveAudioPlayback is null) StopPlayback();
@@ -177,7 +182,7 @@ public sealed partial class MainWindowViewModel
         // Retain the central position where possible; an explicit Audio audition
         // retains its sample clock even when its companion video disappears.
         if (!IsPlaying && MediaDurationSeconds > 0 && CurrentTimeSeconds > MediaDurationSeconds) CurrentTimeSeconds = MediaDurationSeconds;
-        if (videoChanged) VideoFrame = null;
+        if (videoChanged) { VideoFrame = null; OnPropertyChanged(nameof(VideoAspectRatio)); }
         else { WaveformSamples = state.Waveform; OnPropertyChanged(nameof(HasAudio)); }
         foreach (var name in new[] { nameof(VideoSourcePath), nameof(AudioSourcePath), nameof(FrameTimes), nameof(Keyframes),
             nameof(FramePositionDisplay), nameof(RelativeTimingDisplay), nameof(CanShiftByFrames) }) OnPropertyChanged(name);

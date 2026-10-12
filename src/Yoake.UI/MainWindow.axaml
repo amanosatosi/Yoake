@@ -149,6 +149,25 @@
 <MenuItem Name="OpenVideoMenu" Header="Open video…" InputGesture="{Binding Actions[video/open].InputGesture}" Command="{Binding Actions[video/open]}" />
 <MenuItem Name="CloseVideoMenu" Header="Close video" InputGesture="{Binding Actions[video/close].InputGesture}" Command="{Binding Actions[video/close]}" />
 <MenuItem Name="RecentVideoMenu" Header="Recent video" />
+<MenuItem Name="OpenDummyVideoMenu" Header="Use dummy video…" Command="{Binding Actions[video/open/dummy]}" InputGesture="{Binding Actions[video/open/dummy].InputGesture}" />
+<MenuItem Name="VideoDetailsMenu" Header="Show video details" Command="{Binding Actions[video/details]}" InputGesture="{Binding Actions[video/details].InputGesture}" />
+<MenuItem Name="VideoAspectMenu" Header="Aspect ratio">
+<MenuItem Name="VideoAspectdefaultMenu" Header="Default" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/default].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/default]}" InputGesture="{Binding Actions[video/aspect/default].InputGesture}" />
+<MenuItem Name="VideoAspectfullMenu" Header="Fullscreen (4:3)" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/full].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/full]}" InputGesture="{Binding Actions[video/aspect/full].InputGesture}" />
+<MenuItem Name="VideoAspectwideMenu" Header="Widescreen (16:9)" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/wide].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/wide]}" InputGesture="{Binding Actions[video/aspect/wide].InputGesture}" />
+<MenuItem Name="VideoAspectcinematicMenu" Header="Cinematic (2.35)" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/cinematic].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/cinematic]}" InputGesture="{Binding Actions[video/aspect/cinematic].InputGesture}" />
+<MenuItem Name="VideoAspectcustomMenu" Header="Custom…" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/custom].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/custom]}" InputGesture="{Binding Actions[video/aspect/custom].InputGesture}" />
+</MenuItem>
+<MenuItem Name="VideoFrameImageMenu" Header="Frame images">
+<MenuItem Name="FramecopyMenu" Header="copy: Full frame" Command="{Binding Actions[video/frame/copy]}" InputGesture="{Binding Actions[video/frame/copy].InputGesture}" />
+<MenuItem Name="FramecopyrawMenu" Header="copy: Video only" Command="{Binding Actions[video/frame/copy/raw]}" InputGesture="{Binding Actions[video/frame/copy/raw].InputGesture}" />
+<MenuItem Name="FramecopysubsMenu" Header="copy: Subtitles only (transparent)" Command="{Binding Actions[video/frame/copy/subs]}" InputGesture="{Binding Actions[video/frame/copy/subs].InputGesture}" />
+<MenuItem Name="FramesaveMenu" Header="save: Full frame" Command="{Binding Actions[video/frame/save]}" InputGesture="{Binding Actions[video/frame/save].InputGesture}" />
+<MenuItem Name="FramesaverawMenu" Header="save: Video only" Command="{Binding Actions[video/frame/save/raw]}" InputGesture="{Binding Actions[video/frame/save/raw].InputGesture}" />
+<MenuItem Name="FramesavesubsMenu" Header="save: Subtitles only (transparent)" Command="{Binding Actions[video/frame/save/subs]}" InputGesture="{Binding Actions[video/frame/save/subs].InputGesture}" />
+</MenuItem>
+<MenuItem Name="VideoCopyCoordinatesMenu" Header="Copy coordinates to clipboard" Command="{Binding Actions[video/copy_coordinates]}" InputGesture="{Binding Actions[video/copy_coordinates].InputGesture}" />
+<MenuItem Name="VideoOverscanMenu" Header="Show overscan mask" ToggleType="CheckBox" IsChecked="{Binding Actions[video/show_overscan].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/show_overscan]}" InputGesture="{Binding Actions[video/show_overscan].InputGesture}" />
 <MenuItem Name="TimecodesMenu" Header="Timecodes">
 <MenuItem Name="OpenTimecodesMenu" Header="Open timecodes…" Command="{Binding Actions[timecode/open]}" InputGesture="{Binding Actions[timecode/open].InputGesture}" />
 <MenuItem Name="SaveTimecodesMenu" Header="Save timecodes…" Command="{Binding Actions[timecode/save]}" InputGesture="{Binding Actions[timecode/save].InputGesture}" />
@@ -298,7 +317,7 @@
         <ToggleButton Name="VisualToolVectorClip" Classes="authoring" IsChecked="{Binding Actions[video/tool/vectorclip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" Padding="5,2" ToolTip.Tip="VectorClip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualVector}" /></ToggleButton>
         <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
         <ToggleButton Name="VisualToolDistort" Classes="authoring" IsChecked="{Binding Actions[video/tool/distort].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/distort]}" Padding="5,2" ToolTip.Tip="Distort"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualDistort}" /></ToggleButton>
-      </StackPanel><Border Grid.Column="1" Background="Black" ClipToBounds="True"><Grid><Image Name="VideoImage" Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
+      </StackPanel><Border Grid.Column="1" Background="Black" ClipToBounds="True"><Grid><controls:VideoPresentationControl Name="VideoImage" Model="{Binding}" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
         <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="1" Model="{Binding}" />
         <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="8">        <StackPanel Orientation="Horizontal" Spacing="4">
           <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />

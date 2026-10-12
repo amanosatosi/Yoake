@@ -37,14 +37,4 @@ public sealed unsafe partial class MangetsuSubtitleRenderer
         }
     }
 
-    // ASS_ImageRGBA prefix from libassmod's mangetsu branch, libass/ass.h.
-    // Sequential layout retains the native pointer alignment on Windows x64.
-    [StructLayout(LayoutKind.Sequential)]
-    private struct ImageRgba
-    {
-        public int Width, Height, Stride;
-        public byte* Rgba;
-        public int X, Y, Type;
-        public ImageRgba* Next;
-    }
 }

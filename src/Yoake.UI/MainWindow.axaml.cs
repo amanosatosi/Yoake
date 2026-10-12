@@ -388,6 +388,20 @@ public partial class MainWindow : Window, IEditorDialogs
         return data is null?null:await data.TryGetTextAsync();
     }
     public async Task WriteClipboardAsync(string text){if(Clipboard is not null){var data=new DataTransfer();data.Add(DataTransferItem.CreateText(text));await Clipboard.SetDataAsync(data);await Clipboard.FlushAsync();}}
+    public async Task WriteFrameClipboardAsync(Yoake.Native.DecodedVideoFrame image, Func<bool> isCurrent, CancellationToken token)
+    {
+        var clipboard = Clipboard ?? throw new InvalidOperationException("Image clipboard is unavailable.");
+        using var bitmap = MainWindowViewModel.CreateBitmap(image);
+        using var data = new DataTransfer(); data.Add(DataTransferItem.Create(DataFormat.Bitmap, bitmap));
+        token.ThrowIfCancellationRequested();
+        if (!isCurrent()) throw new OperationCanceledException("The video frame changed before copying.");
+        await clipboard.SetDataAsync(data);
+        // Flush transfers ownership to Windows before disposing our bitmap.
+        await clipboard.FlushAsync();
+    }
+    public Task<Yoake.Core.Media.DummyVideoOptions?> ShowDummyVideoAsync(Yoake.Core.Media.DummyVideoOptions initial) => new DummyVideoWindow(initial).ShowDialog<Yoake.Core.Media.DummyVideoOptions?>(this);
+    public Task<string?> ShowCustomAspectAsync(double current) => new VideoAspectWindow(current).ShowDialog<string?>(this);
+    public async Task ShowVideoDetailsAsync(VideoDetails details) => await new VideoDetailsWindow(details).ShowDialog(this);
     public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor,_model?.StyleLibraryPath, _model?.SelectedEvent,_model?.StyleSplitWeights,weights=>{if(_model is {} model)_=model.Registry.InvokeAsync("styles/layout",new(),weights);}).ShowDialog(this);
     public Task ShowScriptInfoAsync(SubtitleEditor editor)=>new ScriptInfoWindow(editor).ShowDialog(this);
     public Task ShowFindAsync(MainWindowViewModel model)=>ShowFindAsync(model,false);

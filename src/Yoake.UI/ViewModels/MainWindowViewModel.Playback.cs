@@ -248,24 +248,7 @@ public sealed partial class MainWindowViewModel
 
         try
         {
-            lock (_subtitleRendererGate)
-            {
-                if (_subtitleRenderer is null)
-                {
-                    _subtitleRenderer = new MangetsuSubtitleRenderer(
-                        assText,
-                        frame.Width,
-                        frame.Height);
-                    _subtitleRendererRevision = revision;
-                }
-                else if (_subtitleRendererRevision != revision)
-                {
-                    _subtitleRenderer.UpdateTrack(assText);
-                    _subtitleRendererRevision = revision;
-                }
-
-                _subtitleRenderer.Composite(frame, seconds);
-            }
+            RenderFrameSubtitles(frame, seconds, assText, revision, Yoake.Core.Media.FrameImageKind.Full);
             return null;
         }
         catch (Exception exception)
@@ -277,6 +260,7 @@ public sealed partial class MainWindowViewModel
     private CancellationTokenSource? _previewDelay;
     private void InvalidateSubtitlePreview(bool refreshCurrentFrame)
     {
+        if (_activeId is { } id && _documents.TryGetValue(id, out var state)) state.FrameExtraction?.Cancel();
         Interlocked.Increment(ref _subtitleRevision);
         _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;
         if(refreshCurrentFrame&&!IsPlaying&&_media?.HasVideo==true)

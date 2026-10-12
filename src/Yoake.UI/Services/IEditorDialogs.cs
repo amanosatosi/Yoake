@@ -31,6 +31,10 @@ public interface IEditorDialogs
     Task<bool> ConfirmRevertAsync();
     Task<string?> ReadClipboardAsync();
     Task WriteClipboardAsync(string text);
+    Task WriteFrameClipboardAsync(Yoake.Native.DecodedVideoFrame image, Func<bool> isCurrent, CancellationToken token) => throw new NotSupportedException("Image clipboard is unavailable.");
+    Task<Yoake.Core.Media.DummyVideoOptions?> ShowDummyVideoAsync(Yoake.Core.Media.DummyVideoOptions initial) => Task.FromResult<Yoake.Core.Media.DummyVideoOptions?>(null);
+    Task<string?> ShowCustomAspectAsync(double current) => Task.FromResult<string?>(null);
+    Task ShowVideoDetailsAsync(Yoake.UI.ViewModels.VideoDetails details) => throw new NotSupportedException("Video details are unavailable.");
     Task ShowStylesAsync(Yoake.Core.Subtitles.SubtitleEditor editor);
     Task ShowScriptInfoAsync(Yoake.Core.Subtitles.SubtitleEditor editor);
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model);

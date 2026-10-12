@@ -6,10 +6,10 @@ namespace Yoake.Native;
 /// <summary>A document's resource snapshot. Playback remains owned by the UI's central timeline.</summary>
 public sealed class DocumentMedia : IDisposable
 {
-    private readonly MediaProviderOwnership<FfmsMediaSession> _ownership;
-    private DocumentMedia(MediaProviderOwnership<FfmsMediaSession> ownership) => _ownership = ownership;
-    public FfmsMediaSession? VideoProvider => _ownership.Video;
-    public FfmsMediaSession? AudioProvider => _ownership.Audio;
+    private readonly MediaProviderOwnership<IDisposable> _ownership;
+    private DocumentMedia(MediaProviderOwnership<IDisposable> ownership) => _ownership = ownership;
+    public IVideoProvider? VideoProvider => _ownership.Video as IVideoProvider;
+    public FfmsMediaSession? AudioProvider => _ownership.Audio as FfmsMediaSession;
     public bool HasVideo => VideoProvider is not null;
     public bool HasAudio => AudioProvider is not null;
     public string? VideoSourcePath => VideoProvider?.SourcePath;
@@ -32,9 +32,10 @@ public sealed class DocumentMedia : IDisposable
     {
         using var opened = FfmsMediaSession.Open(path, token, tracks);
         var (video, audio) = opened.SeparateResources();
-        try { return new(MediaProviderOwnership<FfmsMediaSession>.Own(video, audio)); }
+        try { return new(MediaProviderOwnership<IDisposable>.Own(video, audio)); }
         catch { try { video?.Dispose(); } finally { audio?.Dispose(); } throw; }
     }
+    public static DocumentMedia FromVideo(IVideoProvider video) => new(MediaProviderOwnership<IDisposable>.Own(video, null));
     public DocumentMedia WithVideo(DocumentMedia? candidate) => new(_ownership.ReplaceVideo(candidate?._ownership));
     public DocumentMedia WithAudio(DocumentMedia? candidate) => new(_ownership.ReplaceAudio(candidate?._ownership));
     public void SetExternalTimecodes(VideoTimecodeMap? map) => VideoProvider?.SetExternalTimecodes(map);
