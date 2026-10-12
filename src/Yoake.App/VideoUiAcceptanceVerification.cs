@@ -46,13 +46,17 @@ internal sealed class VideoUiAcceptanceVerification(IClassicDesktopStyleApplicat
                 case 0:
                     Require(!model.Actions["video/tool/clip"].CanExecute(null),"Visual tool command must require loaded video.");
                     var path=Path.Combine(options.ProfileDirectory!,"video-tools.ass");
-                    File.WriteAllText(path,"[Script Info]\nPlayResX: 384\nPlayResY: 288\n[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\nDialogue: 0,0:00:00.00,0:00:02.00,Default,A,0001,0002,0003,fx,{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語 é\n");
+                    File.WriteAllText(path,"[Script Info]\nPlayResX: 384\nPlayResY: 288\n[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\nDialogue: 0,0:00:00.30,0:00:01.40,Default,A,0001,0002,0003,fx,{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語 é\n");
                     Require(model.OpenSubtitle(path),"Open lossless visual fixture.");
                     _media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 1:
                     if(_media?.IsCompleted!=true){_stage--;return;}Require(await _media,"Load native video provider.");await Invoke(CommandIds.ViewAudioVideo);
                     _line=model.SelectedEvent!;_document=model.ActiveDocumentId;_samples=model.WaveformSamples;_frames=model.FrameTimes;_keys=model.Keyframes;
-                    _source=model.ActiveEditor!.Document.Serialize();model.CurrentTimeSeconds=.4;
+                    _source=model.ActiveEditor!.Document.Serialize();
+                    await Invoke("time/lead/in");model.CurrentTimeSeconds=.2;
+                    Require(model.VisibleVisualLines() is [var pending]&&pending.RelativeTime==0&&pending.Duration==1200,
+                        "Visual tools use the pending compositor interval at a frame outside stored timing.");
+                    await Invoke("audio/timing/revert");model.CurrentTimeSeconds=.4;
                     model.Draft!.Text+=" retained draft";var draft=model.Draft;
                     foreach(var (key,tool) in new[]{(Key.A,"Crosshair"),(Key.S,"Position"),(Key.D,"RotateZ"),(Key.F,"RotateXY"),(Key.G,"Scale"),(Key.H,"Clip"),(Key.J,"VectorClip")})
                     {

@@ -59,14 +59,27 @@ public sealed partial class MainWindowViewModel
     {
         if(ActiveEditor is null)return [];
         var time=(FrameTimes.Count>0?FrameTimes[CurrentFrame]:CurrentTimeSeconds)*1000;var size=ScriptSize;
-        var visible=Selection().Where(l=>!l.IsComment&&time>=(l.StartMilliseconds??0)&&time<(l.EndMilliseconds??0)).ToArray();
-        var primary=visible.FirstOrDefault(l=>ReferenceEquals(l,SelectedEvent))??visible.FirstOrDefault();
-        return visible.Select(line=>
+        // Use the same active-line timing values as the subtitle compositor,
+        // including pending markers during a visual gesture. The audio primary
+        // range intentionally falls back to stored timing while such a gesture
+        // owns input, so it cannot be used as a second preview timing model here.
+        var preview=AudioPreviewValues();
+        (long Start,long End) Range(AssEvent line)
         {
-            var active=ReferenceEquals(line,SelectedEvent);var text=active?VisualText:line.Text;
+            if(ReferenceEquals(line,SelectedEvent)&&preview is not null&&
+                AssTime.TryParse(preview.GetValueOrDefault("Start"),out var start)&&
+                AssTime.TryParse(preview.GetValueOrDefault("End"),out var end)&&end>=start)return(start,end);
+            return(line.StartMilliseconds??0,line.EndMilliseconds??0);
+        }
+        var visible=Selection().Select(line=>(Line:line,Timing:Range(line)))
+            .Where(entry=>!entry.Line.IsComment&&time>=entry.Timing.Start&&time<entry.Timing.End).ToArray();
+        var primary=visible.FirstOrDefault(entry=>ReferenceEquals(entry.Line,SelectedEvent)).Line??visible.FirstOrDefault().Line;
+        return visible.Select(entry=>
+        {
+            var line=entry.Line;var active=ReferenceEquals(line,SelectedEvent);var text=active?VisualText:line.Text;
             var style=ActiveEditor.Document.Styles.FirstOrDefault(s=>s.Name==(active?EditorDraft.Style:line.Style));
             var fallback=AssVisualTags.DefaultPosition(line,style,size.Width,size.Height,text);
-            var relative=time-(line.StartMilliseconds??0);var duration=(line.EndMilliseconds??0)-(line.StartMilliseconds??0);
+            var relative=time-entry.Timing.Start;var duration=entry.Timing.End-entry.Timing.Start;
             var position=AssVisualTags.PositionAtTime(text,(long)relative,duration)??fallback;
             return new VisualLine(line,text,fallback,position,AssVisualTags.Origin(text)??position,AssVisualTags.Transform(text,style),relative,duration,ReferenceEquals(line,primary));
         }).ToArray();

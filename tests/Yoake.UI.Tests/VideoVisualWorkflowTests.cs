@@ -9,6 +9,21 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public async Task VisualToolsUseTheCompositorsPendingTimingBeforeDuringAndAfterAGesture()
+    {
+        var rows=await TimingRows();var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
+        await Command("time/lead/both");_model.CurrentTimeSeconds=.25;
+        var line=Assert.Single(_model.VisibleVisualLines());Assert.Same(rows[0],line.Line);
+        Assert.Equal(50d,line.RelativeTime);Assert.Equal(1550d,line.Duration);
+        Assert.Contains("0:00:00.20",_model.PreviewSource());
+        Assert.True(_model.BeginGesture("Position pending preview"));
+        _model.UpdateVisualGesture(l=>AssVisualTags.SetPosition(l.Text,new(30,40)));
+        line=Assert.Single(_model.VisibleVisualLines());Assert.Equal(50d,line.RelativeTime);Assert.Equal(1550d,line.Duration);
+        Assert.True(_model.HasPendingAudioTiming);Assert.Equal(300,rows[0].StartMilliseconds);
+        _model.EndGesture();Assert.Single(_model.VisibleVisualLines());await Command(CommandIds.EditUndo);
+        Assert.Equal(source,editor.Document.Serialize());Assert.True(_model.HasPendingAudioTiming);Assert.False(editor.Undo.CanUndo);
+        await Command("audio/timing/revert");Assert.Empty(_model.VisibleVisualLines());
+    }
     [Theory][InlineData(false)][InlineData(true)]
     public async Task RectangleFromAbsentClipPreviewsFromPressAndCommitsOneLosslessUndo(bool inverse)
     {
