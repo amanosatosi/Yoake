@@ -22,7 +22,7 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
     private bool _ready,_ticking;private int _stage;private Task<bool>? _media;
     private AssEvent[] _rows=[];private string _source="";private int _frame;private Guid? _document;
-    private object? _frames,_samples,_keys;private FrameTiming? _map;
+    private object? _frames,_samples,_keys;private FrameTiming? _map;private int _waiting;
     private Control Video=>window.FindControl<VisualOverlayControl>("VisualOverlay")!;
     private Control Grid=>window.FindControl<ListBox>("SubtitleRows")!;
     public void Start(){window.LayoutUpdated+=(_,_)=>_ready=window.IsVisible&&window.Bounds.Width>0;_timer.Tick+=Tick;_timer.Start();}
@@ -87,16 +87,32 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     Press(Video,Key.Space);Require(model.IsPlaying&&model.Actions["video/play"].IsChecked&&window.FindControl<MenuItem>("VideoPlayMenu")!.IsChecked,"Real Video Space publishes shared play/menu state.");
                     Press(Video,Key.Escape);Require(!model.IsPlaying&&!model.Actions["video/play"].IsChecked,"Video Escape stops central AV playback.");
                     await Invoke("time/lead/out");var range=model.PrimaryAudioRange!.Value;
-                    var expected=FrameNavigation.LineRange(_map!,model.FrameTimes,range.StartMilliseconds,range.EndMilliseconds,model.MediaDurationSeconds)!.Value;
+                    var expected=FrameNavigation.LineRange(_map!,model.FrameTimes,range.StartMilliseconds,range.EndMilliseconds,model.VideoDurationSeconds)!.Value;
                     Press(window.FindControl<TextBox>("ExactTime")!,Key.Space,KeyModifiers.Shift);
                     Require(!model.IsPlaying,"Space typing in a focused Video text input must not invoke play-line.");
-                    Press(Video,Key.Space,KeyModifiers.Shift);Require(model.IsPlaying&&Math.Abs(model.CurrentTimeSeconds-expected.Start)<.000001,"Real Video Shift-Space play-line starts at the pending primary START frame.");
+                    Press(Video,Key.Space,KeyModifiers.Shift);Require(model.IsPlaying&&model.ActiveVideoPlaybackEndSeconds==expected.End&&Math.Abs(model.CurrentTimeSeconds-expected.Start)<.000001,"Real Video Shift-Space play-line starts at the pending primary START frame.");
                     Press(Video,Key.Escape);Require(model.HasPendingAudioTiming&&model.ActiveEditor!.Document.Serialize()==_source,"Play-line and Stop preserve pending timing/source/undo.");
                     Require(!await model.Registry.InvokeAsync("video/jump",new(Guid.NewGuid()),new VideoJumpRequest(Frame:10)),"Foreign-document seek is rejected.");
                     using(var c=new CancellationTokenSource()){c.Cancel();Require(!await model.Registry.InvokeAsync("video/jump",new(_document),new VideoJumpRequest(Frame:10),c.Token),"Canceled jump is rejected before changing frame.");}
                     Require(ReferenceEquals(_frames,model.FrameTimes)&&ReferenceEquals(_samples,model.WaveformSamples)&&ReferenceEquals(_keys,model.Keyframes)&&!model.ActiveEditor.Undo.CanUndo,"Navigation retains actual providers/timeline/history.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Navigation must not introduce native binding/layout errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window Video navigation acceptance; actual Video/Grid keyframe routing and EOF fallback; configured frame-based Alt steps; exact START/END subtitle boundary traversal including comment rows; Ctrl-1/Ctrl-2; seek-focus return; Ctrl-G real frame/time dialog synchronization, invalid/cancel and IME Enter isolation; Video Space/Escape shared playback state; Video Shift-Space pending-aware frame-bounded play-line; foreign/canceled requests; native providers/frame-map/source/undo retention. Audible output and hardware playback latency remain manual QA.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    var shortMap=Path.Combine(options.ProfileDirectory!,"short-video.txt");
+                    File.WriteAllText(shortMap,"# timecode format v2\n"+string.Join('\n',Enumerable.Range(0,10).Select(i=>i*100))+"\n");await Invoke("timecode/open",shortMap);
+                    Require(model.VideoDurationSeconds<model.MediaDurationSeconds,"Video EOF stays independent of the longer audio timeline.");
+                    Press(Video,Key.Space);Require(model.ActiveVideoPlaybackEndSeconds==model.VideoDurationSeconds,"Full video play captures video EOF rather than combined duration.");Press(Video,Key.Escape);
+                    Press(Video,Key.Space,KeyModifiers.Shift);Require(model.ActiveVideoPlaybackEndSeconds==model.VideoDurationSeconds,"Play-line clips its final frame span to video EOF.");Press(Video,Key.Escape);
+                    var longMap=Path.Combine(options.ProfileDirectory!,"long-video.txt");
+                    File.WriteAllText(longMap,"# timecode format v2\n"+string.Join('\n',Enumerable.Range(0,10).Select(i=>i*400))+"\n");await Invoke("timecode/open",longMap);await Seek(8);
+                    Require(model.CurrentTimeSeconds>2&&model.VideoDurationSeconds>model.CurrentTimeSeconds,"The deterministic tail begins after this fixture's audio EOF without opening an output device.");
+                    Press(Video,Key.Space);Require(model.IsPlaying&&model.ActiveVideoPlaybackEndSeconds==model.VideoDurationSeconds,"Real tail playback begins at the loaded video frame.");return;
+                case 6:
+                    if(model.CurrentTimeSeconds<=3.3){Require(++_waiting<30,"Video clock must advance after audio EOF.");_stage--;return;}
+                    Require(model.IsPlaying&&model.CurrentTimeSeconds>=3.3,"Audio EOF must not immediately stop video or rewind the clock.");_waiting=0;return;
+                case 7:
+                    if(model.IsPlaying){Require(++_waiting<40,"Tail playback must stop at video EOF.");_stage--;return;}
+                    Require(Math.Abs(model.CurrentTimeSeconds-model.VideoDurationSeconds)<.000001&&model.ActiveVideoPlaybackEndSeconds is null,"The same central clock stops at the exact video endpoint.");
+                    await Invoke("timecode/close");Require(ReferenceEquals(_frames,model.FrameTimes)&&ReferenceEquals(_samples,model.WaveformSamples)&&ReferenceEquals(_keys,model.Keyframes)&&model.ActiveEditor!.Document.Serialize()==_source&&!model.ActiveEditor.Undo.CanUndo,"EOF tests retain native providers and lossless source/undo.");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window Video navigation acceptance; actual Video/Grid keyframe routing and EOF fallback; configured frame-based Alt steps; exact START/END subtitle boundary traversal including comment rows; Ctrl-1/Ctrl-2; seek-focus return; Ctrl-G real frame/time dialog synchronization, invalid/cancel and IME Enter isolation; Video Space/Escape shared playback state; Video Shift-Space pending-aware frame-bounded play-line; video EOF independent of longer audio; real clock continuation and bounded stop when started after audio EOF without opening an output device; foreign/canceled requests; native providers/frame-map/source/undo retention. Audible output and hardware playback latency remain manual QA.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception exception){_timer.Stop();Program.Fatal("Packaged Video navigation acceptance at stage "+(_stage-1),exception);desktop.Shutdown(1);}

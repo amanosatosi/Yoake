@@ -13,6 +13,7 @@ public sealed partial class MainWindowViewModel
     public IReadOnlyList<double> FrameTimes=>_media?.FrameTimes??Array.Empty<double>();
     public IReadOnlyList<int> Keyframes=>_media?.HasVideo==true?_media.Keyframes:
         _activeId is {} id&&_documents.TryGetValue(id,out var state)?state.ExternalKeyframes??Array.Empty<int>():Array.Empty<int>();
+    public double VideoDurationSeconds=>_media?.VideoDurationSeconds??0;
     public int CurrentFrame=>FrameNavigation.AtTime(FrameTimes,CurrentTimeSeconds);
     public string FramePositionDisplay=>FrameTimes.Count==0?TimeDisplay:$"#{CurrentFrame} · {TimeSpan.FromSeconds(FrameTimes[CurrentFrame]):hh\\:mm\\:ss\\.fff} / {DurationDisplay} "+(Keyframes.Contains(CurrentFrame)?"· keyframe":"");
     public string RelativeTimingDisplay=>SelectedEvent is {} line?FrameNavigation.Relative(FrameTimes.Count>0?FrameTimes[CurrentFrame]:CurrentTimeSeconds,line.StartMilliseconds??0,line.EndMilliseconds??0):"";
@@ -22,7 +23,7 @@ public sealed partial class MainWindowViewModel
     public int VideoFrameAtMilliseconds(long milliseconds)=>ActiveFrameTiming().FrameAtMilliseconds(milliseconds);
     private Task SeekFrameAsync(int frame)=>FrameTimes.Count==0?Task.CompletedTask:SeekPlaybackAsync(FrameTimes[Math.Clamp(frame,0,FrameTimes.Count-1)]);
     private (double Start,double End)? VideoLineRange=>_media?.HasVideo==true&&CanShiftByFrames&&PrimaryAudioRange is {} range
-        ?FrameNavigation.LineRange(ActiveFrameTiming(),FrameTimes,range.StartMilliseconds,range.EndMilliseconds,MediaDurationSeconds):null;
+        ?FrameNavigation.LineRange(ActiveFrameTiming(),FrameTimes,range.StartMilliseconds,range.EndMilliseconds,VideoDurationSeconds):null;
     private async Task SeekBoundaryAsync(bool next)
     {
         if(PrimaryAudioRange is not {} range||SelectedEvent is not {} current)return;

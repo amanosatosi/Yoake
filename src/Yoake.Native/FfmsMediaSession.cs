@@ -78,6 +78,11 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     }
 
     public string SourcePath { get; }
+    private double _videoDurationSeconds;
+    // A video command ends at video EOF even when an independent audio span
+    // contributes a longer combined timeline duration. External VFR maps own
+    // their video's endpoint without changing the audio sample domain.
+    public double VideoDurationSeconds=>HasVideo?(Volatile.Read(ref _externalTiming)?.Map.DurationSeconds??_videoDurationSeconds):0;
     private MediaInfo _providerInfo;
     public MediaInfo Info=>Volatile.Read(ref _externalTiming)?.Info??_providerInfo;
     public bool HasVideo => _videoSource != 0;
@@ -214,7 +219,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
 
             var duration = Math.Max(videoDuration, audioDuration);
             var info = new MediaInfo(path, width, height, frameCount, fps, duration, sampleRate, channels, audioSamples);
-            var session = new FfmsMediaSession(path, videoSource, audioSource, info);
+            var session = new FfmsMediaSession(path, videoSource, audioSource, info){_videoDurationSeconds=videoDuration};
             if (videoSource != 0)
             {
                 var track = Native.FFMS_GetTrackFromVideo(videoSource);
@@ -236,7 +241,8 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             {
                 var last=session._frameTimes[^1];
                 var frameDuration=session._frameTimes.Length>1?last-session._frameTimes[^2]:fps>0?1/fps:0;
-                session._providerInfo=info with{DurationSeconds=Math.Max(audioDuration,last+Math.Max(0,frameDuration))};
+                session._videoDurationSeconds=last+Math.Max(0,frameDuration);
+                session._providerInfo=info with{DurationSeconds=Math.Max(audioDuration,session._videoDurationSeconds)};
             }
             return session;
         }

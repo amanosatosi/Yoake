@@ -47,7 +47,11 @@ public sealed partial class MainWindowViewModel
         await StartPlaybackAsync();
     }
 
-    public Task StartPlaybackAsync(double? endSeconds = null)=>RunPlaybackAsync(endSeconds,null,CommandIds.VideoPlay);
+    private double? _activeVideoPlaybackEnd;
+    public double? ActiveVideoPlaybackEndSeconds=>_activeVideoPlaybackEnd;
+    private void SetVideoPlaybackEnd(double? end)
+    {if(_activeVideoPlaybackEnd==end)return;_activeVideoPlaybackEnd=end;OnPropertyChanged(nameof(ActiveVideoPlaybackEndSeconds));}
+    public Task StartPlaybackAsync(double? endSeconds = null)=>RunPlaybackAsync(endSeconds??(_media?.HasVideo==true?VideoDurationSeconds:null),null,CommandIds.VideoPlay);
 
     private async Task RunPlaybackAsync(double? endSeconds,AudioPlaybackPlan? range,string commandId)
     {
@@ -60,7 +64,7 @@ public sealed partial class MainWindowViewModel
 
         StopPlayback();
         if(range is not null)CurrentTimeSeconds=range.StartSeconds;
-        else if (CurrentTimeSeconds >= MediaDurationSeconds - 0.001)
+        else if (CurrentTimeSeconds >= (endSeconds??MediaDurationSeconds) - 0.001)
             CurrentTimeSeconds = 0;
 
         var start = CurrentTimeSeconds;
@@ -68,13 +72,14 @@ public sealed partial class MainWindowViewModel
         var cancellation = new CancellationTokenSource();
         _playbackCancellation = cancellation;
         var token = cancellation.Token;
-        ActiveAudioPlayback=range;
+        ActiveAudioPlayback=range;SetVideoPlaybackEnd(range is null&&session.HasVideo?endSeconds:null);
         IsPlaying = true;
 
         WindowsWaveOutStream? player = null;
         Task? audioTask = null;
         long audioClockBits = BitConverter.DoubleToInt64Bits(start);
         var stopwatch = Stopwatch.StartNew();
+        double? afterAudioAnchor=null;var afterAudioElapsed=0d;
 
         try
         {
@@ -109,17 +114,23 @@ public sealed partial class MainWindowViewModel
                    generation == Volatile.Read(ref _playbackGeneration) &&
                    ReferenceEquals(session, _media))
             {
-                if (audioTask is { IsCompleted: true })
+                if (afterAudioAnchor is null&&audioTask is { IsCompleted: true })
                 {
                     await audioTask;
-                    SetPlaybackTime(BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits)));
-                    if(session.HasVideo)await RefreshVideoFrameAsync(CurrentTimeSeconds);
-                    break;
+                    var audioEnd=BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits));
+                    if(range is not null||!session.HasVideo)
+                    {
+                        SetPlaybackTime(audioEnd);if(session.HasVideo)await RefreshVideoFrameAsync(CurrentTimeSeconds);break;
+                    }
+                    // Continue the same central clock silently after audio EOF.
+                    // In particular, starting video beyond audio EOF must not
+                    // stop immediately or rewind to the shorter audio endpoint.
+                    afterAudioAnchor=Math.Max(start,audioEnd);afterAudioElapsed=stopwatch.Elapsed.TotalSeconds;
                 }
 
-                var seconds = session.HasAudio
-                    ? BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits))
-                    : start + stopwatch.Elapsed.TotalSeconds;
+                var seconds = afterAudioAnchor is {} anchor?anchor+stopwatch.Elapsed.TotalSeconds-afterAudioElapsed:
+                    session.HasAudio?BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits)):
+                    start + stopwatch.Elapsed.TotalSeconds;
 
                 var stopAt=ActiveAudioPlayback?.EndSeconds??endSeconds;
                 if(stopAt is {} endAt&&seconds>=endAt){SetPlaybackTime(endAt);player?.Stop();break;}
@@ -173,7 +184,7 @@ public sealed partial class MainWindowViewModel
             }
 
             if (!_disposed && generation == Volatile.Read(ref _playbackGeneration))
-            {ActiveAudioPlayback=null;IsPlaying = false;}
+            {ActiveAudioPlayback=null;SetVideoPlaybackEnd(null);IsPlaying = false;}
         }
     }
 
@@ -205,7 +216,7 @@ public sealed partial class MainWindowViewModel
 
         var player = Interlocked.Exchange(ref _audioPlayer, null);
         player?.Stop();
-        ActiveAudioPlayback=null;
+        ActiveAudioPlayback=null;SetVideoPlaybackEnd(null);
         IsPlaying = false;
     }
 
