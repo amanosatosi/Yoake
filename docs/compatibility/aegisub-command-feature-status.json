@@ -3556,12 +3556,20 @@
     },
     {
       "id": "video/detach",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Detach the video display from the main window, displaying it in a separate Window",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/detach",
+      "status": "already complete",
+      "backend": "MainWindow.VideoHost moves the existing complete Video control group to one native owned resizable window; same document/provider/frame/renderer/central timeline. Native Close or semantic toggle reattaches; tab-owned preference/geometry, Video Close/Recent/Dummy, independent Audio Close, external metadata and owner shutdown lifetimes are handled without duplicate subscriptions.",
+      "exposure": [
+        "Semantic CommandRegistry / contextual keyboard overrides",
+        "MainWindow Video menu / shared Video controls / native detached host"
+      ],
+      "tests": [
+        "VideoPresentationTests",
+        "VideoPresentationWorkflowTests",
+        "VideoPresentationUiAcceptanceVerification",
+        "Existing Video/ownership/utilities packaged regressions"
+      ],
+      "notes": "Verified production 5a23837f3a7ccd267a8aad2cf493d9f1360144e4; source-policy, managed, NativeAOT/package and separate native Windows acceptance passed in 38304952560/38304957636. Primary oracle: supplied Aegisub 3.5 archive; thirteen inspected files match release 43af875ea01e80052cc6c44f24fc8c5258261c6d. Exact audit: docs/compatibility/aegisub-video-presentation-reference.md. Reset Pan follows the established 3.5 behavioral delta, clearing content zoom as well as pan. Deliberate Yoake differences: existing initial fit and fixed editor viewport are retained until explicit source zoom; the same controls move between hosts instead of constructing a second display; document-scoped geometry/preferences do not alter ASS or persist globally across launches. Native resize and monitor DPI mapping retain the source semantics; all tools share the image rectangle.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -4081,12 +4089,20 @@
     },
     {
       "id": "video/reset_pan",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Reset the video's position in the video display",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/reset_pan",
+      "status": "already complete",
+      "backend": "Document-owned VideoViewState.ResetContent clears physical pan and content zoom, preserving window zoom/aspect; shared transform updates image, overscan, visual tools, hit testing and script pointer. Captured input cancels safely without subtitle source/history edits.",
+      "exposure": [
+        "Semantic CommandRegistry / contextual keyboard overrides",
+        "MainWindow Video menu / shared Video controls / native detached host"
+      ],
+      "tests": [
+        "VideoPresentationTests",
+        "VideoPresentationWorkflowTests",
+        "VideoPresentationUiAcceptanceVerification",
+        "Existing Video/ownership/utilities packaged regressions"
+      ],
+      "notes": "Verified production 5a23837f3a7ccd267a8aad2cf493d9f1360144e4; source-policy, managed, NativeAOT/package and separate native Windows acceptance passed in 38304952560/38304957636. Primary oracle: supplied Aegisub 3.5 archive; thirteen inspected files match release 43af875ea01e80052cc6c44f24fc8c5258261c6d. Exact audit: docs/compatibility/aegisub-video-presentation-reference.md. Reset Pan follows the established 3.5 behavioral delta, clearing content zoom as well as pan. Deliberate Yoake differences: existing initial fit and fixed editor viewport are retained until explicit source zoom; the same controls move between hosts instead of constructing a second display; document-scoped geometry/preferences do not alter ASS or persist globally across launches. Native resize and monitor DPI mapping retain the source semantics; all tools share the image rectangle.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -4445,42 +4461,74 @@
     },
     {
       "id": "video/zoom/100",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Set zoom to 100%",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/zoom/100",
+      "status": "already complete",
+      "backend": "Physical source-height window zoom, aspect-corrected width and logical-DPI conversion through the authoritative VideoViewState.Layout transform. Presets .5/1/2 stop playback and have radio state; in/out add/subtract .125 without stopping; bounds .125-10. Attached-only validation matches 3.5. Editable zoom and default/Ctrl/Shift wheel actions support both hosts; independent content zoom/pan never enters source exports.",
+      "exposure": [
+        "Semantic CommandRegistry / contextual keyboard overrides",
+        "MainWindow Video menu / shared Video controls / native detached host"
+      ],
+      "tests": [
+        "VideoPresentationTests",
+        "VideoPresentationWorkflowTests",
+        "VideoPresentationUiAcceptanceVerification",
+        "Existing Video/ownership/utilities packaged regressions"
+      ],
+      "notes": "Verified production 5a23837f3a7ccd267a8aad2cf493d9f1360144e4; source-policy, managed, NativeAOT/package and separate native Windows acceptance passed in 38304952560/38304957636. Primary oracle: supplied Aegisub 3.5 archive; thirteen inspected files match release 43af875ea01e80052cc6c44f24fc8c5258261c6d. Exact audit: docs/compatibility/aegisub-video-presentation-reference.md. Reset Pan follows the established 3.5 behavioral delta, clearing content zoom as well as pan. Deliberate Yoake differences: existing initial fit and fixed editor viewport are retained until explicit source zoom; the same controls move between hosts instead of constructing a second display; document-scoped geometry/preferences do not alter ASS or persist globally across launches. Native resize and monitor DPI mapping retain the source semantics; all tools share the image rectangle.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/zoom/200",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Set zoom to 200%",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/zoom/200",
+      "status": "already complete",
+      "backend": "Physical source-height window zoom, aspect-corrected width and logical-DPI conversion through the authoritative VideoViewState.Layout transform. Presets .5/1/2 stop playback and have radio state; in/out add/subtract .125 without stopping; bounds .125-10. Attached-only validation matches 3.5. Editable zoom and default/Ctrl/Shift wheel actions support both hosts; independent content zoom/pan never enters source exports.",
+      "exposure": [
+        "Semantic CommandRegistry / contextual keyboard overrides",
+        "MainWindow Video menu / shared Video controls / native detached host"
+      ],
+      "tests": [
+        "VideoPresentationTests",
+        "VideoPresentationWorkflowTests",
+        "VideoPresentationUiAcceptanceVerification",
+        "Existing Video/ownership/utilities packaged regressions"
+      ],
+      "notes": "Verified production 5a23837f3a7ccd267a8aad2cf493d9f1360144e4; source-policy, managed, NativeAOT/package and separate native Windows acceptance passed in 38304952560/38304957636. Primary oracle: supplied Aegisub 3.5 archive; thirteen inspected files match release 43af875ea01e80052cc6c44f24fc8c5258261c6d. Exact audit: docs/compatibility/aegisub-video-presentation-reference.md. Reset Pan follows the established 3.5 behavioral delta, clearing content zoom as well as pan. Deliberate Yoake differences: existing initial fit and fixed editor viewport are retained until explicit source zoom; the same controls move between hosts instead of constructing a second display; document-scoped geometry/preferences do not alter ASS or persist globally across launches. Native resize and monitor DPI mapping retain the source semantics; all tools share the image rectangle.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/zoom/50",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Set zoom to 50%",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/zoom/50",
+      "status": "already complete",
+      "backend": "Physical source-height window zoom, aspect-corrected width and logical-DPI conversion through the authoritative VideoViewState.Layout transform. Presets .5/1/2 stop playback and have radio state; in/out add/subtract .125 without stopping; bounds .125-10. Attached-only validation matches 3.5. Editable zoom and default/Ctrl/Shift wheel actions support both hosts; independent content zoom/pan never enters source exports.",
+      "exposure": [
+        "Semantic CommandRegistry / contextual keyboard overrides",
+        "MainWindow Video menu / shared Video controls / native detached host"
+      ],
+      "tests": [
+        "VideoPresentationTests",
+        "VideoPresentationWorkflowTests",
+        "VideoPresentationUiAcceptanceVerification",
+        "Existing Video/ownership/utilities packaged regressions"
+      ],
+      "notes": "Verified production 5a23837f3a7ccd267a8aad2cf493d9f1360144e4; source-policy, managed, NativeAOT/package and separate native Windows acceptance passed in 38304952560/38304957636. Primary oracle: supplied Aegisub 3.5 archive; thirteen inspected files match release 43af875ea01e80052cc6c44f24fc8c5258261c6d. Exact audit: docs/compatibility/aegisub-video-presentation-reference.md. Reset Pan follows the established 3.5 behavioral delta, clearing content zoom as well as pan. Deliberate Yoake differences: existing initial fit and fixed editor viewport are retained until explicit source zoom; the same controls move between hosts instead of constructing a second display; document-scoped geometry/preferences do not alter ASS or persist globally across launches. Native resize and monitor DPI mapping retain the source semantics; all tools share the image rectangle.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/zoom/in",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Zoom video in",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/zoom/in",
+      "status": "already complete",
+      "backend": "Physical source-height window zoom, aspect-corrected width and logical-DPI conversion through the authoritative VideoViewState.Layout transform. Presets .5/1/2 stop playback and have radio state; in/out add/subtract .125 without stopping; bounds .125-10. Attached-only validation matches 3.5. Editable zoom and default/Ctrl/Shift wheel actions support both hosts; independent content zoom/pan never enters source exports.",
+      "exposure": [
+        "Semantic CommandRegistry / contextual keyboard overrides",
+        "MainWindow Video menu / shared Video controls / native detached host"
+      ],
+      "tests": [
+        "VideoPresentationTests",
+        "VideoPresentationWorkflowTests",
+        "VideoPresentationUiAcceptanceVerification",
+        "Existing Video/ownership/utilities packaged regressions"
+      ],
+      "notes": "Verified production 5a23837f3a7ccd267a8aad2cf493d9f1360144e4; source-policy, managed, NativeAOT/package and separate native Windows acceptance passed in 38304952560/38304957636. Primary oracle: supplied Aegisub 3.5 archive; thirteen inspected files match release 43af875ea01e80052cc6c44f24fc8c5258261c6d. Exact audit: docs/compatibility/aegisub-video-presentation-reference.md. Reset Pan follows the established 3.5 behavioral delta, clearing content zoom as well as pan. Deliberate Yoake differences: existing initial fit and fixed editor viewport are retained until explicit source zoom; the same controls move between hosts instead of constructing a second display; document-scoped geometry/preferences do not alter ASS or persist globally across launches. Native resize and monitor DPI mapping retain the source semantics; all tools share the image rectangle.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-KP_Add"
@@ -4489,12 +4537,20 @@
     },
     {
       "id": "video/zoom/out",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Zoom video out",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/zoom/out",
+      "status": "already complete",
+      "backend": "Physical source-height window zoom, aspect-corrected width and logical-DPI conversion through the authoritative VideoViewState.Layout transform. Presets .5/1/2 stop playback and have radio state; in/out add/subtract .125 without stopping; bounds .125-10. Attached-only validation matches 3.5. Editable zoom and default/Ctrl/Shift wheel actions support both hosts; independent content zoom/pan never enters source exports.",
+      "exposure": [
+        "Semantic CommandRegistry / contextual keyboard overrides",
+        "MainWindow Video menu / shared Video controls / native detached host"
+      ],
+      "tests": [
+        "VideoPresentationTests",
+        "VideoPresentationWorkflowTests",
+        "VideoPresentationUiAcceptanceVerification",
+        "Existing Video/ownership/utilities packaged regressions"
+      ],
+      "notes": "Verified production 5a23837f3a7ccd267a8aad2cf493d9f1360144e4; source-policy, managed, NativeAOT/package and separate native Windows acceptance passed in 38304952560/38304957636. Primary oracle: supplied Aegisub 3.5 archive; thirteen inspected files match release 43af875ea01e80052cc6c44f24fc8c5258261c6d. Exact audit: docs/compatibility/aegisub-video-presentation-reference.md. Reset Pan follows the established 3.5 behavioral delta, clearing content zoom as well as pan. Deliberate Yoake differences: existing initial fit and fixed editor viewport are retained until explicit source zoom; the same controls move between hosts instead of constructing a second display; document-scoped geometry/preferences do not alter ASS or persist globally across launches. Native resize and monitor DPI mapping retain the source semantics; all tools share the image rectangle.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-KP_Subtract"
