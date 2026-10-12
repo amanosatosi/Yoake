@@ -99,10 +99,14 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     await Invoke("video/jump",new VideoJumpRequest(Frame:175));_playFrame=model.CurrentFrame;Press(Overlay,Key.Space);Require(model.IsPlaying,"Detached Video uses existing central playback after retained Audio EOF.");return;
                 case 12:
                     if(model.CurrentFrame<=_playFrame){_stage--;return;}
-                    Require(model.VideoFrame is not null&&model.IsPlaying&&ReferenceEquals(Overlay.Model,model)&&ReferenceEquals(_map,model.FrameTimes),"Detached current frame and subtitle preview advance on the shared timeline.");Press(Overlay,Key.Escape);Require(!model.IsPlaying,"Detached Video Escape stops playback.");
+                    Require(model.VideoFrame is not null&&model.IsPlaying&&ReferenceEquals(Overlay.Model,model)&&ReferenceEquals(_map,model.FrameTimes),"Detached current frame and subtitle preview advance on the shared timeline.");
+                    await Invoke("video/detach");Require(model.IsPlaying&&window.DetachedVideoWindow is null,"Reattach preserves active central playback.");
+                    await Invoke("video/detach");_detached=window.DetachedVideoWindow;Require(model.IsPlaying&&_detached is not null,"Detach preserves the same active playback clock.");
+                    Press(Overlay,Key.Escape);Require(!model.IsPlaying,"Detached Video Escape stops playback.");
                     _detached!.Close();return;
                 case 13:
-                    Require(window.DetachedVideoWindow is null&&!model.IsVideoDetached&&ReferenceEquals(TopLevel.GetTopLevel(Overlay),window)&&ReferenceEquals(_map,model.FrameTimes),"Native detached close reattaches without closing provider.");Unchanged();
+                    Require(window.DetachedVideoWindow is null&&!model.IsVideoDetached&&ReferenceEquals(TopLevel.GetTopLevel(Overlay),window)&&ReferenceEquals(_map,model.FrameTimes),"Native detached close reattaches without closing provider.");
+                    Require(_detached is {IsVisible:false}&&_detached.TryGetPlatformHandle() is null&&!window.OwnedWindows.Contains(_detached),"Closed host releases native window and ownership without retaining controls.");Unchanged();
                     await Invoke("video/detach");model.Draft!.Layer="0";await Invoke(CommandIds.SubtitleNew);await Invoke("video/open/dummy",new DummyVideoOptions{Width=160,Height=90,FrameCount=30});return;
                 case 14:
                     Require(window.DetachedVideoWindow is null&&!model.IsVideoDetached&&model.VideoView!.PanX==0,"New tab has independent embedded presentation.");

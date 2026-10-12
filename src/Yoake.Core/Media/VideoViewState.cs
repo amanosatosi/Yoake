@@ -27,6 +27,7 @@ public sealed class VideoViewState
         _windowZoomChanged = true;
     }
     public void ResetContent() { PanX = PanY = 0; ContentZoom = 1; _contentHeight = 0; }
+    public void CompleteHostChange() => _preserveHostSize = false;
     public void Pan(double logicalX, double logicalY)
     {
         if (!double.IsFinite(logicalX) || !double.IsFinite(logicalY)) throw new ArgumentException("Pan must be finite.");
@@ -62,9 +63,10 @@ public sealed class VideoViewState
             PanX *= ratio; PanY *= ratio; _contentHeight *= ratio;
         }
         var resized = width != _viewportWidth || height != _viewportHeight;
-        var baseHeight = Detached || WindowZoom is null ? Math.Min(height, width / aspect) : sourceHeight * WindowZoom.Value;
+        var baseHeight = Detached && _windowZoomChanged && WindowZoom is { } requested ? sourceHeight * requested
+            : Detached || WindowZoom is null ? Math.Min(height, width / aspect) : sourceHeight * WindowZoom.Value;
         if (Detached && !_windowZoomChanged && (resized && ContentActive || _preserveHostSize) && _contentHeight > 0) ContentZoom = _contentHeight / baseHeight;
-        _preserveHostSize = false;
+        _preserveHostSize = _preserveHostSize && !resized;
         _windowZoomChanged = false;
         _dpi = dpi; _viewportWidth = width; _viewportHeight = height; _baseHeight = baseHeight;
         EffectiveWindowZoom = baseHeight / sourceHeight;

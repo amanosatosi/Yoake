@@ -49,7 +49,7 @@ public sealed class VisualOverlayControl : Control
             }} : null;
             Refresh();
         }
-        if(change.Property==BoundsProperty){if(IsPanning)Cancel();Refresh();}
+        if(change.Property==BoundsProperty){if(HasTransientInput)Cancel();Refresh();}
         if(change.Property==IsVisibleProperty&&!IsVisible)Cancel();
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e){Cancel();Refresh();}
@@ -64,7 +64,9 @@ public sealed class VisualOverlayControl : Control
     {
         if(Model is not {} model||model.VideoFrame is not {} frame){_context=null;InvalidateVisual();return;}
         if (_pointerDocument != model.ActiveDocumentId) { _pointerDocument=model.ActiveDocumentId; _lastPointerPosition=null; }
-        _context=new(model,VideoPresentationControl.Rect(model.VideoViewport(Bounds.Width,Bounds.Height,TopLevel.GetTopLevel(this)?.RenderScaling??1)),model.VisibleVisualLines());
+        var area=VideoPresentationControl.Rect(model.VideoViewport(Bounds.Width,Bounds.Height,TopLevel.GetTopLevel(this)?.RenderScaling??1));
+        if(!IsPanning&&HasTransientInput&&_context is {} previous&&previous.Video!=area){Cancel();}
+        _context=new(model,area,model.VisibleVisualLines());
         if (_lastPointerPosition is { } last && _context.Video.Width>0 && _context.Video.Height>0) model.ReportVideoPointer(_context.Script(last));
         _tools.TryGetValue(model.ActiveVisualTool,out _tool);model.RequestVisualBounds();InvalidateVisual();
     }

@@ -58,4 +58,18 @@ public sealed class VideoPresentationTests
         var before=state.Layout(800,600,1,480,4d/3);var after=state.Layout(800,600,1.5,480,4d/3);
         Assert.Equal(before,after);Assert.Equal(1.5,state.WindowZoom);Assert.Equal(30,state.PanX);Assert.Equal(22.5,state.PanY);
     }
+    [Fact] public void DetachedWindowZoomChangesContentSizeBeforeNativeResizeSettles()
+    {
+        var state=new VideoViewState{Detached=true};state.Layout(800,600,1,480,4d/3);state.ZoomContent(2,400,300);
+        state.SetWindowZoom(1);var pending=state.Layout(800,600,1,480,4d/3);
+        Assert.Equal(960,pending.Height);var settled=state.Layout(640,480,1,480,4d/3);
+        Assert.Equal(960,settled.Height);Assert.Equal(2,state.ContentZoom);Assert.Equal(1,state.EffectiveWindowZoom);
+    }
+    [Fact] public void HostTransitionPreservesExactFitThroughIntermediateOldBounds()
+    {
+        var state=new VideoViewState();state.SetWindowZoom(1);var original=state.Layout(640,480,1,480,4d/3);
+        state.Detached=true;Assert.Equal(original,state.Layout(640,480,1,480,4d/3));
+        Assert.Equal(original.Height,state.Layout(720,560,1,480,4d/3).Height);state.CompleteHostChange();
+        state.ResetContent();Assert.Equal(540,state.Layout(720,560,1,480,4d/3).Height);
+    }
 }

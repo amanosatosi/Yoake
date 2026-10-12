@@ -43,7 +43,16 @@ public partial class MainWindow
                 _hostDocument = _model?.ActiveDocumentId;
                 if (_hostDocument is { } id && _videoWindows.TryGetValue(id, out var saved)) { host.Width = saved.Width; host.Height = saved.Height; host.WindowStartupLocation = WindowStartupLocation.Manual; host.Position = saved.Position; host.WindowState = saved.State; }
                 VideoDock.Child = null; host.Content = VideoRegion; DetachedVideoWindow = host;
-                try { host.Show(this); ConstrainVideoHost(host); }
+                try
+                {
+                    host.Show(this); ConstrainVideoHost(host);
+                    var state = _model?.VideoView;
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        if (DetachedVideoWindow != host || !ReferenceEquals(_model?.VideoView, state)) return;
+                        _ = VideoImage.VideoArea; state?.CompleteHostChange(); _model?.NotifyVideoPresentation();
+                    }, DispatcherPriority.Background);
+                }
                 catch { host.Content = null; VideoDock.Child = VideoRegion; DetachedVideoWindow = null; RemoveVideoHandlers(host); host.Close(); throw; }
             }
             else if (DetachedVideoWindow is { } host)
