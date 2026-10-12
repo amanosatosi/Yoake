@@ -53,6 +53,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(_model is not null){_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
         RefreshRecentKeyframes();
+        RefreshRecentMedia();
         RefreshRecentTimecodes();
         if(_model is not null){_model.Dialogs=this;_model.VideoSeekFocusRequested+=SeekFocusRequested;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
@@ -202,8 +203,23 @@ public partial class MainWindow : Window, IEditorDialogs
             RecentKeyframesMenu.Items.Add(item);
         }
     }
+    private void RefreshRecentMedia()
+    {
+        foreach(var (menu,entries) in new[]{(RecentVideoMenu,_model?.RecentVideoItems??[]),(RecentAudioMenu,_model?.RecentAudioItems??[])})
+        {
+            menu.Items.Clear();menu.IsEnabled=entries.Count>0;
+            foreach(var entry in entries)
+            {
+                var item=new MenuItem{Header=new TextBlock{Text=Path.GetFileName(entry.Path)+" · "+Path.GetDirectoryName(entry.Path),TextTrimming=Avalonia.Media.TextTrimming.CharacterEllipsis,MaxWidth=420},Command=entry.Command,InputGesture=entry.Command.InputGesture};
+                ToolTip.SetTip(item,entry.Path);
+                entry.Command.PropertyChanged+=(_,args)=>{if(args.PropertyName==nameof(Yoake.UI.Commands.RegistryCommand.InputGesture))item.InputGesture=entry.Command.InputGesture;};
+                menu.Items.Add(item);
+            }
+        }
+    }
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
+        if(e.PropertyName is nameof(MainWindowViewModel.RecentVideoItems) or nameof(MainWindowViewModel.RecentAudioItems))Dispatcher.UIThread.Post(RefreshRecentMedia);
         if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();
         if(e.PropertyName==nameof(MainWindowViewModel.RecentKeyframeItems))Dispatcher.UIThread.Post(RefreshRecentKeyframes);
         if(e.PropertyName==nameof(MainWindowViewModel.RecentTimecodeItems))Dispatcher.UIThread.Post(RefreshRecentTimecodes);
@@ -318,6 +334,13 @@ public partial class MainWindow : Window, IEditorDialogs
     public async Task<string?> OpenMediaAsync()
     {
         var files=await StorageProvider.OpenFilePickerAsync(new(){Title="Open video/audio",AllowMultiple=false,FileTypeFilter=[MediaFiles,FilePickerFileTypes.All]});return files.Count>0?LocalPath(files[0]):null;
+    }
+    public Task<string?> OpenVideoAsync()=>OpenMediaTrackPickerAsync(true);
+    public Task<string?> OpenAudioAsync()=>OpenMediaTrackPickerAsync(false);
+    private async Task<string?> OpenMediaTrackPickerAsync(bool video)
+    {
+        var types=new FilePickerFileType(video?"Video":"Audio"){Patterns=video?["*.avi","*.mkv","*.mp4","*.mov","*.webm","*.wmv","*.mpeg","*.mpg","*.m2ts","*.ts","*.y4m"]:["*.wav","*.flac","*.mp3","*.aac","*.m4a","*.opus","*.ogg","*.mkv","*.mp4","*.avi"]};
+        var files=await StorageProvider.OpenFilePickerAsync(new(){Title=video?"Open video":"Open audio",AllowMultiple=false,FileTypeFilter=[types,FilePickerFileTypes.All]});return files.Count>0?LocalPath(files[0]):null;
     }
     public async Task<string?> OpenKeyframesAsync()
     {

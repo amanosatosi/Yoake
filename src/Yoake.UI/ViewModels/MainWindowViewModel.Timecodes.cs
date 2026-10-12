@@ -28,11 +28,11 @@ public sealed partial class MainWindowViewModel
             state.TimecodeLoading?.Cancel();var cancellation=CancellationTokenSource.CreateLinkedTokenSource(token);state.TimecodeLoading=cancellation;NotifyTimecodes();
             try
             {
-                var full=Path.GetFullPath(path);var media=state.Media;ExternalTimecodes? loaded=null;VideoTimecodeMap? prepared=null;
+                var full=Path.GetFullPath(path);var media=state.Media?.VideoProvider;ExternalTimecodes? loaded=null;VideoTimecodeMap? prepared=null;
                 var job=_jobs.Run("Open timecodes",ct=>
                 {loaded=TimecodeFile.Load(full,ct);if(media?.HasVideo==true)prepared=loaded.ForVideoMap(media.Info.FrameCount,ct);return Task.CompletedTask;},cancellation.Token);
                 await job.Completion;cancellation.Token.ThrowIfCancellationRequested();
-                if(_disposed||!_documents.TryGetValue(id,out live)||!ReferenceEquals(live,state)||!ReferenceEquals(media,state.Media))return;
+                if(_disposed||!_documents.TryGetValue(id,out live)||!ReferenceEquals(live,state)||!ReferenceEquals(media,state.Media?.VideoProvider))return;
                 state.Editing?.Cancel();if(media?.HasVideo==true)media.SetExternalTimecodes(prepared);
                 state.ExternalTimecodes=loaded;state.FrameTiming=loaded!.Timing;state.TimecodePath=full;RememberTimecodes(full);
                 if(_activeId==id){NotifyTimecodes();MediaStatus=$"Timecodes: {Path.GetFileName(full)} ({loaded.Milliseconds.Count} timestamps)";ScheduleAutomationValidation();await RefreshVideoFrameAsync(CurrentTimeSeconds);}

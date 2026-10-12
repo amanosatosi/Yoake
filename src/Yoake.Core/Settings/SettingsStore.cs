@@ -68,7 +68,7 @@ public sealed class SettingsStore(string path)
         bool? audioSpectrum=null,audioAutoScroll=null;
         bool? audioAutoCommit=null,audioAutoNext=null;
         int? audioDefaultDuration=null,audioLeadIn=null,audioLeadOut=null;
-        double[]? widths = null; string[]? recent = null;string[]? recentKeyframes=null;string[]? recentTimecodes=null;
+        double[]? widths = null; string[]? recent = null;string[]? recentKeyframes=null;string[]? recentTimecodes=null;string[]? recentVideo=null,recentAudio=null;
         Dictionary<string, JsonElement> future = [];
         foreach (var member in root.EnumerateObject())
         {
@@ -115,6 +115,8 @@ public sealed class SettingsStore(string path)
                     if (member.Value.ValueKind == JsonValueKind.Array) widths = member.Value.EnumerateArray().Take(9).Select(ReadNumber).ToArray();
                     break;
                 case "recentKeyframes":recentKeyframes=ReadPaths(member.Value);break;
+                case "recentVideo":recentVideo=ReadPaths(member.Value);break;
+                case "recentAudio":recentAudio=ReadPaths(member.Value);break;
                 case "recentTimecodes":recentTimecodes=ReadPaths(member.Value);break;
                 case "recentFiles":
                     if (member.Value.ValueKind == JsonValueKind.Array) recent = member.Value.EnumerateArray().Take(24).Select(v => v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "").ToArray();
@@ -124,7 +126,7 @@ public sealed class SettingsStore(string path)
         }
         return new AppSettings { Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
             HotkeyOverrides=hotkeys.ToArray(),AudioStopHotkeysMigrated=audioStopMigrated,GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,SelectionPreferences=selection,VideoAutoSeek=videoAutoSeek,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
-            GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, FutureSettings = future,
+            GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, RecentVideo=recentVideo, RecentAudio=recentAudio, FutureSettings = future,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,AudioSpectrum=audioSpectrum,AudioAutoScroll=audioAutoScroll,
             AudioAutoCommit=audioAutoCommit,AudioAutoNext=audioAutoNext,AudioDefaultDuration=audioDefaultDuration,AudioLeadIn=audioLeadIn,AudioLeadOut=audioLeadOut,
             AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };

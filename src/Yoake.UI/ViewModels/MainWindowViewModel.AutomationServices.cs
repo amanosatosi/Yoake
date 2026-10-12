@@ -29,8 +29,8 @@ public sealed partial class MainWindowViewModel
             ["ar_mode"] = IntProperty("Video AR Mode"), ["scroll_position"] = IntProperty("Scroll Position"),
             ["active_row"] = id == _activeId && SelectedEvent is { } selected ? document.Events.ToList().IndexOf(selected) : IntProperty("Active Line"),
             ["video_position"] = id == _activeId && media?.HasVideo == true ? CurrentFrame : IntProperty("Video Position"),
-            ["audio_file"] = media?.HasAudio == true ? media.SourcePath : AbsoluteProperty("Audio File"),
-            ["video_file"] = media?.HasVideo == true ? media.SourcePath : AbsoluteProperty("Video File"),
+            ["audio_file"] = media?.HasAudio == true ? media.AudioSourcePath! : AbsoluteProperty("Audio File"),
+            ["video_file"] = media?.HasVideo == true ? media.VideoSourcePath! : AbsoluteProperty("Video File"),
             ["timecodes_file"] = state.TimecodePath??AbsoluteProperty("Timecodes File"), ["keyframes_file"] = state.KeyframePath??AbsoluteProperty("Keyframes File")
         };
         var timecodes = state.ExternalTimecodes is {} external?new AutomationTimecodeView(external)

@@ -17,6 +17,9 @@ public sealed record MediaInfo(
 
 public sealed record DecodedVideoFrame(int Width, int Height, int Stride, byte[] Pixels);
 
+[Flags]
+public enum MediaTracks { Video = 1, Audio = 2, Both = Video | Audio }
+
 public sealed unsafe partial class FfmsMediaSession : IDisposable
 {
     private const int VideoTrackType = 0;
@@ -88,8 +91,9 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     public bool HasVideo => _videoSource != 0;
     public bool HasAudio => _audioSource != 0;
 
-    public static FfmsMediaSession Open(string path, CancellationToken cancellationToken = default)
+    public static FfmsMediaSession Open(string path, CancellationToken cancellationToken = default, MediaTracks tracks = MediaTracks.Both)
     {
+        if (tracks is not (MediaTracks.Video or MediaTracks.Audio or MediaTracks.Both)) throw new ArgumentOutOfRangeException(nameof(tracks));
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         path = System.IO.Path.GetFullPath(path);
         if (!File.Exists(path))
@@ -105,7 +109,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             throw CreateException("FFMS_CreateIndexer", errorBuffer);
 
         Native.FFMS_TrackTypeIndexSettings(indexer, VideoTrackType, IndexTrack, 0);
-        Native.FFMS_TrackTypeIndexSettings(indexer, AudioTrackType, IndexTrack, 0);
+        Native.FFMS_TrackTypeIndexSettings(indexer, AudioTrackType, tracks.HasFlag(MediaTracks.Audio) ? IndexTrack : 0, 0);
         ResetError(ref error, errorBuffer);
         var cancellationHandle = GCHandle.Alloc(cancellationToken);
         nint index;
@@ -126,7 +130,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             ResetError(ref error, errorBuffer);
             var audioTrack = Native.FFMS_GetFirstIndexedTrackOfType(index, AudioTrackType, &error);
 
-            if (videoTrack >= 0)
+            if (videoTrack >= 0 && tracks.HasFlag(MediaTracks.Video))
             {
                 ResetError(ref error, errorBuffer);
                 videoSource = Native.FFMS_CreateVideoSource(path, videoTrack, index, 0, SeekNormal, &error);
@@ -134,7 +138,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
                     throw CreateException("FFMS_CreateVideoSource", errorBuffer);
             }
 
-            if (audioTrack >= 0)
+            if (audioTrack >= 0 && tracks.HasFlag(MediaTracks.Audio))
             {
                 ResetError(ref error, errorBuffer);
                 var delayMode = videoTrack >= 0 ? videoTrack : DelayTimeZero;
@@ -257,6 +261,25 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         finally
         {
             Native.FFMS_DestroyIndex(index);
+        }
+    }
+
+    // Transfer handles opened against one index without reopening either track.
+    // The source is left empty and can be disposed immediately. Allocation is
+    // completed before either handle changes owner.
+    internal (FfmsMediaSession? Video, FfmsMediaSession? Audio) SeparateResources()
+    {
+        lock (_videoGate) lock (_audioGate)
+        {
+            ThrowIfDisposed();
+            FfmsMediaSession? video = _videoSource == 0 ? null : new(SourcePath, _videoSource, 0,
+                _providerInfo with { SampleRate = 0, Channels = 0, AudioSamples = 0, DurationSeconds = _videoDurationSeconds })
+            { _frameTimes = _frameTimes, _keyframes = _keyframes, _videoDurationSeconds = _videoDurationSeconds };
+            FfmsMediaSession? audio = _audioSource == 0 ? null : new(SourcePath, 0, _audioSource,
+                _providerInfo with { Width = 0, Height = 0, FrameCount = 0, FramesPerSecond = 0,
+                    DurationSeconds = _providerInfo.SampleRate > 0 ? _providerInfo.AudioSamples / (double)_providerInfo.SampleRate : 0 });
+            _videoSource = _audioSource = 0;
+            return (video, audio);
         }
     }
 

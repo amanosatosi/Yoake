@@ -160,7 +160,7 @@ public sealed partial class MainWindowViewModel
     private IReadOnlyDictionary<string, string> AutomationTokens(Guid? documentId)
     {
         var session = _workspace.Documents.FirstOrDefault(s => s.Id == documentId);
-        var media = documentId is { } id && _documents.TryGetValue(id, out var state) ? state.Media?.SourcePath : null;
+        var media = documentId is { } id && _documents.TryGetValue(id, out var state) ? state.Media?.VideoSourcePath : null;
         return new Dictionary<string, string>
         {
             ["?data"] = AppContext.BaseDirectory, ["?local"] = Path.GetDirectoryName(_settingsStore.Path)!,

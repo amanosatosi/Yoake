@@ -56,12 +56,14 @@ public sealed partial class MainWindowViewModel
     private async Task RunPlaybackAsync(double? endSeconds,AudioPlaybackPlan? range,string commandId)
     {
         var session = _media;
+        var audio = session?.AudioProvider;
         if (session is null || (!session.HasVideo && !session.HasAudio) || _disposed)
         {
             MediaStatus = "Open playable media first.";
             return;
         }
 
+        var playbackInfo = session.Info; var hadVideo = session.HasVideo;
         StopPlayback();
         if(range is not null)CurrentTimeSeconds=range.StartSeconds;
         else if (CurrentTimeSeconds >= (endSeconds??MediaDurationSeconds) - 0.001)
@@ -72,7 +74,7 @@ public sealed partial class MainWindowViewModel
         var cancellation = new CancellationTokenSource();
         _playbackCancellation = cancellation;
         var token = cancellation.Token;
-        ActiveAudioPlayback=range;SetVideoPlaybackEnd(range is null&&session.HasVideo?endSeconds:null);
+        ActiveAudioPlayback=range;SetVideoPlaybackEnd(range is null&&hadVideo?endSeconds:null);
         IsPlaying = true;
 
         WindowsWaveOutStream? player = null;
@@ -87,16 +89,16 @@ public sealed partial class MainWindowViewModel
             // An immediate Stop can cancel startup without acquiring a device.
             await Task.Yield();
             token.ThrowIfCancellationRequested();
-            if (session.HasAudio)
+            if (audio is not null)
             {
                 player = new WindowsWaveOutStream();
                 player.SetVolume(PlaybackVolume,PlaybackMuted);
                 if(range is not null)player.SetEndFrame(ActiveAudioPlayback?.EndFrame??range.EndFrame);
-                else if(endSeconds is {} end)player.SetEndFrame(AudioPlaybackPlan.FrameAtSeconds(end,session.Info.SampleRate,session.Info.AudioSamples));
+                else if(endSeconds is {} end)player.SetEndFrame(AudioPlaybackPlan.FrameAtSeconds(end,playbackInfo.SampleRate,playbackInfo.AudioSamples));
                 _audioPlayer = player;
                 audioTask = Task.Run(
                     () => player.PlayAsync(
-                        session,
+                        audio!,
                         start,
                         seconds => Interlocked.Exchange(
                             ref audioClockBits,
@@ -105,22 +107,22 @@ public sealed partial class MainWindowViewModel
                     token);
             }
 
-            var fps = session.Info.FramesPerSecond > 0
-                ? Math.Min(60, session.Info.FramesPerSecond)
+            var fps = playbackInfo.FramesPerSecond > 0
+                ? Math.Min(60, playbackInfo.FramesPerSecond)
                 : 30;
             var delayMs = Math.Clamp((int)Math.Round(1000d / fps), 15, 50);
 
             while (!token.IsCancellationRequested &&
                    generation == Volatile.Read(ref _playbackGeneration) &&
-                   ReferenceEquals(session, _media))
+                   (range is null ? ReferenceEquals(session, _media) : ReferenceEquals(audio, _media?.AudioProvider)))
             {
                 if (afterAudioAnchor is null&&audioTask is { IsCompleted: true })
                 {
                     await audioTask;
                     var audioEnd=BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits));
-                    if(range is not null||!session.HasVideo)
+                    if(range is not null||!hadVideo)
                     {
-                        SetPlaybackTime(audioEnd);if(session.HasVideo)await RefreshVideoFrameAsync(CurrentTimeSeconds);break;
+                        SetPlaybackTime(audioEnd);if(_media?.HasVideo==true)await RefreshVideoFrameAsync(CurrentTimeSeconds);break;
                     }
                     // Continue the same central clock silently after audio EOF.
                     // In particular, starting video beyond audio EOF must not
@@ -129,7 +131,7 @@ public sealed partial class MainWindowViewModel
                 }
 
                 var seconds = afterAudioAnchor is {} anchor?anchor+stopwatch.Elapsed.TotalSeconds-afterAudioElapsed:
-                    session.HasAudio?BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits)):
+                    audio is not null?BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits)):
                     start + stopwatch.Elapsed.TotalSeconds;
 
                 var stopAt=ActiveAudioPlayback?.EndSeconds??endSeconds;
@@ -139,13 +141,13 @@ public sealed partial class MainWindowViewModel
                 {
                     seconds = MediaDurationSeconds;
                     SetPlaybackTime(seconds);
-                    if (session.HasVideo)
+                    if (_media?.HasVideo==true)
                         await RefreshVideoFrameAsync(seconds);
                     break;
                 }
 
                 SetPlaybackTime(seconds);
-                if (session.HasVideo)
+                if (_media?.HasVideo==true)
                     await RefreshVideoFrameAsync(seconds);
 
                 await Task.Delay(delayMs, token);

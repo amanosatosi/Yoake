@@ -14,10 +14,10 @@ public sealed partial class MainWindowViewModel
         _registry.Register(new(new("audio/save/clip","Save selected-line audio clip…","Save one WAV spanning the selected subtitle rows","Audio"),async(invocation,parent)=>
         {
             parent.ThrowIfCancellationRequested();
-            var id=_activeId!.Value;var state=_documents[id];var media=state.Media!;
+            var id=_activeId!.Value;var state=_documents[id];var media=state.Media!.AudioProvider!;
             var interval=AudioClipInterval.Capture(state.Editor,SelectedEvents.ToArray());
             var path=invocation.Parameter as string??(Dialogs is null?null:await Dialogs.SaveAudioClipAsync(Path.GetFileNameWithoutExtension(SuggestedSubtitleFileName)+"-selected.wav"));
-            if(path is null||_disposed||!_documents.TryGetValue(id,out var live)||!ReferenceEquals(live,state)||!ReferenceEquals(state.Media,media))return;
+            if(path is null||_disposed||!_documents.TryGetValue(id,out var live)||!ReferenceEquals(live,state)||!ReferenceEquals(state.Media?.AudioProvider,media))return;
             if(state.AudioExport is not null)throw new InvalidOperationException("An audio clip export is already running for this document.");
             var cancellation=CancellationTokenSource.CreateLinkedTokenSource(parent);state.AudioExport=cancellation;
             var progress=new Progress<double>(value=>
@@ -25,7 +25,9 @@ public sealed partial class MainWindowViewModel
             NotifyAudioExport();
             try
             {
-                var last=0L;var full=Path.GetFullPath(path);var job=_jobs.Run("Save selected audio clip",token=>
+                var last=0L;var full=Path.GetFullPath(path);
+                if(string.Equals(full,state.Media?.VideoSourcePath,OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal))throw new ArgumentException("Choose a destination other than the opened video file.");
+                var job=_jobs.Run("Save selected audio clip",token=>
                 {
                     media.SaveAudioClip(full,interval,token,value=>
                     {var now=Stopwatch.GetTimestamp();if(value is 0 or 1||Stopwatch.GetElapsedTime(last,now).TotalMilliseconds>=100){last=now;((IProgress<double>)progress).Report(value);}});

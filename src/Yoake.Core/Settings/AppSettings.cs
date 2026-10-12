@@ -26,6 +26,8 @@ public sealed record AppSettings
     public string[] RecentFiles { get; init; } = [];
     public string[]? RecentKeyframes {get;init;}
     public string[]? RecentTimecodes {get;init;}
+    public string[]? RecentVideo {get;init;}
+    public string[]? RecentAudio {get;init;}
     public int SchemaVersion { get; init; } = 1;
     public ThemePreference Theme { get; init; } = ThemePreference.System;
     public WorkspaceViewMode ViewMode { get; init; } = WorkspaceViewMode.Default;
@@ -86,7 +88,7 @@ public sealed record AppSettings
         var height = double.IsFinite(GridHeight) && GridHeight > 0 ? Math.Clamp(GridHeight, 100, 2000) : defaults.GridHeight;
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
-        return this with { GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), RecentTimecodes=(NormalizePaths(RecentTimecodes)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
+        return this with { GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), RecentTimecodes=(NormalizePaths(RecentTimecodes)??[]).Take(12).ToArray(), RecentVideo=(NormalizePaths(RecentVideo)??[]).Take(12).ToArray(), RecentAudio=(NormalizePaths(RecentAudio)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
             HotkeyOverrides=HotkeyProfile.Normalize(AudioStopHotkeysMigrated?HotkeyOverrides:AegisubHotkeyDefaults.MigrateAudioStopOverrides(HotkeyOverrides), report),
             AudioStopHotkeysMigrated=true,
             ToolbarVisible=ToolbarVisible??true,

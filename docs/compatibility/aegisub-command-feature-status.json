@@ -514,19 +514,21 @@
     },
     {
       "id": "audio/open",
-      "yoake_command": "media/open",
+      "yoake_command": "audio/open",
       "status": "partially implemented",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Open an audio file",
+      "backend": "Independent document-owned video/audio provider snapshots; one FFMS index for legacy combined open, separate decoder ownership; transactional candidate preparation, cancellation/staleness, retained companion resources, typed independent persisted MRU. No additional clock or editor/session.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "MainWindow Video/Audio menu and real file picker",
+        "Typed fixed-path recent menu through shared Open backend"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "MediaProviderOwnershipTests",
+        "MediaOwnershipWorkflowTests",
+        "MediaOwnershipUiAcceptanceVerification",
+        "VideoNavigationUiAcceptanceVerification (existing playback/EOF regression)"
       ],
-      "notes": "Bundled media/open replaces video and audio together; independent open is missing.",
+      "notes": "Exact 3.2.2/3.5.0 video.cpp/project.cpp/recent.cpp inspected. Yoake preserves independently loaded audio, external timecodes/keyframes, draft/pending/selection/undo on Video replacement/close; deliberately does not adopt upstream optional auto-open-audio or overwrite script geometry/external maps. Existing combined media/open remains available. Audio Open is the minimal ownership dependency needed to prove Video survives Audio replacement, not a broader Audio parity claim. Implementation and separate packaged native/menu/keyboard acceptance added; awaiting GitHub Actions before completion credit.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2278,12 +2280,21 @@
     },
     {
       "id": "recent/audio",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent audio",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "recent/audio",
+      "status": "partially implemented",
+      "backend": "Independent document-owned video/audio provider snapshots; one FFMS index for legacy combined open, separate decoder ownership; transactional candidate preparation, cancellation/staleness, retained companion resources, typed independent persisted MRU. No additional clock or editor/session.",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow Video/Audio menu and real file picker",
+        "Typed fixed-path recent menu through shared Open backend"
+      ],
+      "tests": [
+        "MediaProviderOwnershipTests",
+        "MediaOwnershipWorkflowTests",
+        "MediaOwnershipUiAcceptanceVerification",
+        "VideoNavigationUiAcceptanceVerification (existing playback/EOF regression)"
+      ],
+      "notes": "Exact 3.2.2/3.5.0 video.cpp/project.cpp/recent.cpp inspected. Yoake preserves independently loaded audio, external timecodes/keyframes, draft/pending/selection/undo on Video replacement/close; deliberately does not adopt upstream optional auto-open-audio or overwrite script geometry/external maps. Existing combined media/open remains available. Audio Open is the minimal ownership dependency needed to prove Video survives Audio replacement, not a broader Audio parity claim. Implementation and separate packaged native/menu/keyboard acceptance added; awaiting GitHub Actions before completion credit.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2348,12 +2359,21 @@
     },
     {
       "id": "recent/video",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Persisted typed MRU family; parameterized semantic open command and missing-path handling. Required action: Open recent video",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "recent/video",
+      "status": "partially implemented",
+      "backend": "Independent document-owned video/audio provider snapshots; one FFMS index for legacy combined open, separate decoder ownership; transactional candidate preparation, cancellation/staleness, retained companion resources, typed independent persisted MRU. No additional clock or editor/session.",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow Video/Audio menu and real file picker",
+        "Typed fixed-path recent menu through shared Open backend"
+      ],
+      "tests": [
+        "MediaProviderOwnershipTests",
+        "MediaOwnershipWorkflowTests",
+        "MediaOwnershipUiAcceptanceVerification",
+        "VideoNavigationUiAcceptanceVerification (existing playback/EOF regression)"
+      ],
+      "notes": "Exact 3.2.2/3.5.0 video.cpp/project.cpp/recent.cpp inspected. Yoake preserves independently loaded audio, external timecodes/keyframes, draft/pending/selection/undo on Video replacement/close; deliberately does not adopt upstream optional auto-open-audio or overwrite script geometry/external maps. Existing combined media/open remains available. Audio Open is the minimal ownership dependency needed to prove Video survives Audio replacement, not a broader Audio parity claim. Implementation and separate packaged native/menu/keyboard acceptance added; awaiting GitHub Actions before completion credit.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3458,12 +3478,21 @@
     },
     {
       "id": "video/close",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Close the currently open video file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/close",
+      "status": "partially implemented",
+      "backend": "Independent document-owned video/audio provider snapshots; one FFMS index for legacy combined open, separate decoder ownership; transactional candidate preparation, cancellation/staleness, retained companion resources, typed independent persisted MRU. No additional clock or editor/session.",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow Video/Audio menu and real file picker",
+        "Typed fixed-path recent menu through shared Open backend"
+      ],
+      "tests": [
+        "MediaProviderOwnershipTests",
+        "MediaOwnershipWorkflowTests",
+        "MediaOwnershipUiAcceptanceVerification",
+        "VideoNavigationUiAcceptanceVerification (existing playback/EOF regression)"
+      ],
+      "notes": "Exact 3.2.2/3.5.0 video.cpp/project.cpp/recent.cpp inspected. Yoake preserves independently loaded audio, external timecodes/keyframes, draft/pending/selection/undo on Video replacement/close; deliberately does not adopt upstream optional auto-open-audio or overwrite script geometry/external maps. Existing combined media/open remains available. Audio Open is the minimal ownership dependency needed to prove Video survives Audio replacement, not a broader Audio parity claim. Implementation and separate packaged native/menu/keyboard acceptance added; awaiting GitHub Actions before completion credit.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3846,19 +3875,21 @@
     },
     {
       "id": "video/open",
-      "yoake_command": "media/open",
+      "yoake_command": "video/open",
       "status": "partially implemented",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Open a video file",
+      "backend": "Independent document-owned video/audio provider snapshots; one FFMS index for legacy combined open, separate decoder ownership; transactional candidate preparation, cancellation/staleness, retained companion resources, typed independent persisted MRU. No additional clock or editor/session.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "MainWindow Video/Audio menu and real file picker",
+        "Typed fixed-path recent menu through shared Open backend"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "MediaProviderOwnershipTests",
+        "MediaOwnershipWorkflowTests",
+        "MediaOwnershipUiAcceptanceVerification",
+        "VideoNavigationUiAcceptanceVerification (existing playback/EOF regression)"
       ],
-      "notes": "Real FFMS2 media open exists; independent video ownership/open/close workflow needs completion.",
+      "notes": "Exact 3.2.2/3.5.0 video.cpp/project.cpp/recent.cpp inspected. Yoake preserves independently loaded audio, external timecodes/keyframes, draft/pending/selection/undo on Video replacement/close; deliberately does not adopt upstream optional auto-open-audio or overwrite script geometry/external maps. Existing combined media/open remains available. Audio Open is the minimal ownership dependency needed to prove Video survives Audio replacement, not a broader Audio parity claim. Implementation and separate packaged native/menu/keyboard acceptance added; awaiting GitHub Actions before completion credit.",
       "yoake_default_hotkeys": {}
     },
     {

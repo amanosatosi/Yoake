@@ -146,6 +146,9 @@
 <MenuItem Header="Next subtitle" InputGesture="{Binding Actions[grid/line/next].InputGesture}" Command="{Binding Actions[grid/line/next]}" />
 </MenuItem>
 <MenuItem Name="VideoMenu" Header="Video">
+<MenuItem Name="OpenVideoMenu" Header="Open video…" InputGesture="{Binding Actions[video/open].InputGesture}" Command="{Binding Actions[video/open]}" />
+<MenuItem Name="CloseVideoMenu" Header="Close video" InputGesture="{Binding Actions[video/close].InputGesture}" Command="{Binding Actions[video/close]}" />
+<MenuItem Name="RecentVideoMenu" Header="Recent video" />
 <MenuItem Name="TimecodesMenu" Header="Timecodes">
 <MenuItem Name="OpenTimecodesMenu" Header="Open timecodes…" Command="{Binding Actions[timecode/open]}" InputGesture="{Binding Actions[timecode/open].InputGesture}" />
 <MenuItem Name="SaveTimecodesMenu" Header="Save timecodes…" Command="{Binding Actions[timecode/save]}" InputGesture="{Binding Actions[timecode/save].InputGesture}" />
@@ -198,6 +201,8 @@
 </MenuItem>
 </MenuItem>
 <MenuItem Name="AudioMenu" Header="Audio">
+<MenuItem Name="OpenAudioMenu" Header="Open audio…" InputGesture="{Binding Actions[audio/open].InputGesture}" Command="{Binding Actions[audio/open]}" />
+<MenuItem Name="RecentAudioMenu" Header="Recent audio" />
 <MenuItem Name="AudioTimingMenu" Header="Timing">
 <MenuItem Name="AudioCommitMenu" Header="Commit timing" Command="{Binding Actions[audio/commit]}" InputGesture="{Binding Actions[audio/commit].InputGesture}" />
 <MenuItem Name="AudioCommitStayMenu" Header="Commit and stay" Command="{Binding Actions[audio/commit/stay]}" InputGesture="{Binding Actions[audio/commit/stay].InputGesture}" />
