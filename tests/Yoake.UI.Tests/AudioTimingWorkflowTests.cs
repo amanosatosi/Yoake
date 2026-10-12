@@ -61,6 +61,32 @@ public sealed partial class EditorWorkflowTests
         await Command("audio/commit/default");Assert.Same(rows[1],_model.SelectedEvent);Assert.Equal(1200,rows[1].StartMilliseconds);Assert.Equal(0,rows[1].EndMilliseconds);
         Assert.Equal(new AudioClipInterval(1400,4400),_model.PrimaryAudioRange);await Command("audio/commit/stay");Assert.Equal(1400,rows[1].StartMilliseconds);Assert.Equal(4400,rows[1].EndMilliseconds);
     }
+    [Theory]
+    [InlineData("audio/commit/default","Start","unfinished")]
+    [InlineData("audio/commit/default","End","0:00:00.10")]
+    [InlineData("audio/commit/default","MarginL","-1")]
+    [InlineData("audio/commit/next","MarginL","-1")]
+    public async Task InvalidDefaultSuccessorRejectsBeforePublishingMarkersOrDraft(string command,string field,string value)
+    {
+        var rows=await TimingRows(command=="audio/commit/next");
+        _model.ActiveEditor!.SetField(rows[1],field,value,"Malformed successor");
+        await Command("time/lead/out");_model.Draft!.Text+=" retained draft";
+        var draft=_model.Draft;var editor=_model.ActiveEditor;var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        Assert.False(await _model.Registry.InvokeAsync(command,new()));
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        Assert.Same(rows[0],_model.SelectedEvent);Assert.Same(draft,_model.Draft);Assert.EndsWith("retained draft",draft.Text);
+        Assert.Equal(new AudioClipInterval(300,1750),_model.PrimaryAudioRange);Assert.True(_model.HasPendingAudioTiming);
+        Assert.True(editor.Undo.Undo());Assert.False(editor.Undo.CanUndo);
+    }
+    [Fact] public async Task UnrepresentableInsertedSuccessorRejectsBeforeCommittingTheCurrentLine()
+    {
+        var rows=await TimingRows();_model.SelectedEvent=rows[1];
+        _model.Draft!.End=AssTime.Format((long)int.MaxValue*3600000+3599990);
+        var draft=_model.Draft;var source=_model.ActiveEditor!.Document.Serialize();
+        Assert.False(await _model.Registry.InvokeAsync("audio/commit/default",new()));
+        Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.False(_model.ActiveEditor.Undo.CanUndo);
+        Assert.Same(draft,_model.Draft);Assert.Same(rows[1],_model.SelectedEvent);Assert.Equal(2,_model.Events.Count);
+    }
     [Fact] public async Task AutoCommitDoesNotNavigateAndBareCommitHonorsAutoNextWhileStayOverridesIt()
     {
         var rows=await TimingRows();await Command("audio/opt/autocommit");Assert.True(_model.Actions["audio/opt/autocommit"].IsChecked);Assert.True(_model.Actions["audio/opt/autonext"].IsChecked);

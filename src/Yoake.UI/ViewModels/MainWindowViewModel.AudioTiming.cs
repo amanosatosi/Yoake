@@ -82,6 +82,28 @@ public sealed partial class MainWindowViewModel
         token.ThrowIfCancellationRequested();
         if(!ValidAudioTimingDraft())throw new ArgumentException("Correct the edit draft before committing audio timing. Nothing was changed.");
         var end=PrimaryAudioRange?.EndMilliseconds??throw new ArgumentException("Select a valid subtitle timing range.");
+        // Preflight the complete successor before committing markers or a draft.
+        // Stage rejects malformed stored endpoints, and the new pending range
+        // must also leave a valid event (including its untouched metadata).
+        var advances=mode!=AudioTimingCommitMode.Stay&&(mode!=AudioTimingCommitMode.Preference||AudioAutoNext);
+        if(advances)
+        {
+            var successorIndex=Events.ToList().IndexOf(SelectedEvent!)+1;
+            var successor=successorIndex<Events.Count?Events[successorIndex]:null;
+            if(successor is null||mode==AudioTimingCommitMode.DefaultNext||successor.EndMilliseconds==0)
+            {
+                var range=new AudioClipInterval(end,checked(end+(_settings.AudioDefaultDuration??3000)));
+                PendingAudioTiming.Validate(range);
+                if(successor is not null)
+                {
+                    if(successor.StartMilliseconds is not {} start||successor.EndMilliseconds is not {} finish||finish!=0&&finish<start)
+                        throw new ArgumentException("Correct the successor's stored timing before committing. Nothing was changed.");
+                    var values=successor.FieldNames.ToDictionary(name=>name,successor.Get,StringComparer.OrdinalIgnoreCase);
+                    values["Start"]=AssTime.Format(range.StartMilliseconds);values["End"]=AssTime.Format(range.EndMilliseconds);
+                    SubtitleEditor.ValidateEventDraftValues(successor,values);
+                }
+            }
+        }
         // Seed from typed timing without publishing unrelated text/metadata.
         if(AudioTiming?.Get(SelectedEvent!) is null)StageAudioTiming(PrimaryAudioRange!.Value,false);
         CommitAudioMarkers(token);

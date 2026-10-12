@@ -51,23 +51,27 @@ internal sealed class AudioTimingUiAcceptanceVerification(IClassicDesktopStyleAp
                     Require(!window.FindControl<MenuItem>("AudioAutoCommitMenu")!.IsChecked&&window.FindControl<MenuItem>("AudioAutoNextMenu")!.IsChecked,"Actual menu option checks reflect the registry.");
                     Press(window.FindControl<MenuItem>("AudioCommitStayMenu")!,Key.Enter);
                     Require(ReferenceEquals(model.SelectedEvent,_rows[0])&&_rows[0].StartMilliseconds==200&&_rows[0].EndMilliseconds==1750&&!model.HasPendingAudioTiming,"Native menu Enter commits timing and stays.");
+                    return;
+                case 4:
                     Press(Grid,Key.Z,KeyModifiers.Control);Require(_editor!.Document.Serialize()==_source&&!_editor.Undo.CanUndo,"One real Ctrl-Z restores exact timing/source.");
                     model.AudioWindowSeconds=2;return;
-                case 4:
+                case 5:
                     Drag(false);Require(model.PrimaryAudioRange==new AudioClipInterval(300,1400)&&_editor!.Document.Serialize()==_source,"Capture loss restores prior markers/source.");
                     Drag(true);Require(model.PrimaryAudioRange==new AudioClipInterval(300,1600)&&_rows[0].EndMilliseconds==1400&&!_editor!.Undo.CanUndo,"Released drag remains pending with auto-commit off.");
                     Press(Audio,Key.Enter);Require(_rows[0].EndMilliseconds==1600&&ReferenceEquals(model.SelectedEvent,_rows[1]),"Real Audio Enter commits and follows auto-next.");
                     Press(Audio,Key.G,KeyModifiers.Shift);Require(model.Events.Count==3&&model.PrimaryAudioRange==new AudioClipInterval(1800,4800),"Real Shift-G commits and stages default next at the previous end.");
                     Require(model.SelectedEvent!.StartMilliseconds==1800&&model.SelectedEvent.EndMilliseconds==4800,"Last-line successor has stored default timing.");
                     window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen=true;return;
-                case 5:window.FindControl<MenuItem>("AudioTimingMenu")!.IsSubMenuOpen=true;return;
-                case 6:
+                case 6:window.FindControl<MenuItem>("AudioTimingMenu")!.IsSubMenuOpen=true;return;
+                case 7:
                     Press(window.FindControl<MenuItem>("AudioAutoCommitMenu")!,Key.Enter);Require(model.AudioAutoCommit,"Native auto-commit menu toggles the persisted semantic option.");
                     window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen=true;return;
-                case 7:window.FindControl<MenuItem>("AudioTimingMenu")!.IsSubMenuOpen=true;return;
-                case 8:
+                case 8:window.FindControl<MenuItem>("AudioTimingMenu")!.IsSubMenuOpen=true;return;
+                case 9:
                     Require(window.FindControl<MenuItem>("AudioAutoCommitMenu")!.IsChecked,"Native menu checks refresh after changing the option.");
                     Press(window.FindControl<MenuItem>("AudioAutoNextMenu")!,Key.Enter);Require(!model.AudioAutoNext,"Native auto-next menu toggles independently.");
+                    return;
+                case 10:
                     model.SelectedEvent=_rows[0];Press(Audio,Key.V);Require(_rows[0].EndMilliseconds==1950&&ReferenceEquals(model.SelectedEvent,_rows[0]),"Auto-commit applies timing without auto-next.");
                     Press(Audio,Key.G);Require(ReferenceEquals(model.SelectedEvent,_rows[0]),"Real G honors disabled auto-next.");
                     var text=window.FindControl<AssTextBox>("SubtitleText")!;var before=_editor!.Document.Serialize();var active=model.SelectedEvent;
@@ -78,14 +82,14 @@ internal sealed class AudioTimingUiAcceptanceVerification(IClassicDesktopStyleAp
                     Require(ReferenceEquals(_samples,model.WaveformSamples)&&ReferenceEquals(_times,model.FrameTimes)&&ReferenceEquals(_keys,model.Keyframes)&&ReferenceEquals(_editor,model.ActiveEditor),"Timing must retain the providers, frame map and editor.");
                     var settings=new Yoake.Core.Settings.SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();Require(settings.AudioAutoCommit==true&&settings.AudioAutoNext==false,"Options must persist through the real settings store.");
                     _=model.Registry.InvokeAsync("audio/timing/options",new(model.ActiveDocumentId));return;
-                case 9:
+                case 11:
                     var preferences=window.OwnedWindows.OfType<AudioTimingOptionsWindow>().Single();Require(preferences.IsVisible&&preferences.Bounds.Width>=360,"Timing preferences must open as a usable native dialog.");
                     Require(preferences.FindControl<NumericUpDown>("DefaultDuration")!.Value==3000m&&preferences.FindControl<NumericUpDown>("LeadIn")!.Value==100m&&preferences.FindControl<NumericUpDown>("LeadOut")!.Value==350m,"The actual preferences controls must display audited defaults.");
                     preferences.FindControl<NumericUpDown>("DefaultDuration")!.SetCurrentValue(NumericUpDown.ValueProperty,4000m);
                     preferences.FindControl<NumericUpDown>("LeadIn")!.SetCurrentValue(NumericUpDown.ValueProperty,120m);
                     preferences.FindControl<NumericUpDown>("LeadOut")!.SetCurrentValue(NumericUpDown.ValueProperty,400m);
                     Press(preferences.FindControl<Button>("CloseOptions")!,Key.Enter);return;
-                case 10:
+                case 12:
                     Require(!window.OwnedWindows.OfType<AudioTimingOptionsWindow>().Any(),"Real preferences Close button must dismiss the dialog.");
                     var saved=new Yoake.Core.Settings.SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();Require(saved.AudioDefaultDuration==4000&&saved.AudioLeadIn==120&&saved.AudioLeadOut==400,"Actual numeric controls must route through the shared preferences command and persist immediately.");
                     Require(Audio.Bounds.Width>100&&Audio.Bounds.Height>40&&StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Ordinary CI-size layout/input must remain valid.");
@@ -111,6 +115,6 @@ internal sealed class AudioTimingUiAcceptanceVerification(IClassicDesktopStyleAp
     }
     private async Task Invoke(string id)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId)),"Timing preparation: "+id);
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
-    {(TopLevel.GetTopLevel(control) as Window)?.Activate();Require(control.Focus()&&control.IsKeyboardFocusWithin,"The actual timing control must own focus.");control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});}
+    {(TopLevel.GetTopLevel(control) as Window)?.Activate();Require(control.Focus()&&control.IsKeyboardFocusWithin,$"The actual timing control must own focus: {control.Name ?? control.GetType().Name}; enabled={control.IsEffectivelyEnabled}, visible={control.IsEffectivelyVisible}, attached={control.GetVisualRoot() is not null}.");control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});}
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
 }
