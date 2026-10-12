@@ -151,9 +151,19 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
                     Require(model.CurrentVideoDetails!.Decoder.Contains("dummy") && model.CurrentVideoDetails.FramesPerSecond == 25, "Dummy details are real source values.");
                     var dummyRaw = await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Raw); Require(dummyRaw.Image.Width == 320 && dummyRaw.Image.Height == 180, "Dummy extraction dimensions.");
                     Require(!dummyRaw.Image.Pixels[..4].SequenceEqual(dummyRaw.Image.Pixels[32..36]), "Dummy source generates its 8×8 checkerboard.");
-                    await Invoke("video/jump", new VideoJumpRequest(Frame: 2)); await Invoke("video/play"); return;
+                    // The packaged runner has no guaranteed audio output device. Use the
+                    // documented video-tail path beyond this fixture's audio EOF:
+                    // Audio remains owned, but waveOut does not need to open a device.
+                    // This still exercises the central clock and live dummy frames.
+                    await Invoke("video/jump", new VideoJumpRequest(Frame: 175));
+                    Require(model.CurrentTimeSeconds > 2 && model.VideoDurationSeconds > model.CurrentTimeSeconds + 0.5,
+                        "Dummy playback tail must begin beyond fixture Audio EOF and before Video EOF.");
+                    await Invoke("video/play"); return;
                 case 16:
-                    Require(model.IsPlaying && model.VideoFrame is not null, "Dummy uses central Video playback with retained Audio.");
+                    Require(model.IsPlaying && model.VideoFrame is not null && model.AudioSourcePath == _audio,
+                        $"Dummy uses central Video playback with retained Audio: playing={model.IsPlaying}, frame={model.VideoFrame is not null}, " +
+                        $"audioRetained={model.AudioSourcePath == _audio}, time={model.CurrentTimeSeconds:F3}, " +
+                        $"videoEnd={model.VideoDurationSeconds:F3}, mediaEnd={model.MediaDurationSeconds:F3}, status={model.MediaStatus}.");
                     using (var canceledCommand = new CancellationTokenSource())
                     {
                         canceledCommand.Cancel();
