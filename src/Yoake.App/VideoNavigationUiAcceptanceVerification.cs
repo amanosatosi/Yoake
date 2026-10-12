@@ -36,7 +36,7 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                 case 0:
                     Require(!model.Actions["video/play"].CanExecute(null)&&!model.Actions["video/jump"].CanExecute(null),"Video commands require video.");
                     var path=Path.Combine(options.ProfileDirectory!,"video-navigation.ass");
-                    File.WriteAllText(path,"[Script Info]\nPlayResX: 384\nPlayResY: 288\n[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\nDialogue: 0,0:00:00.30,0:00:00.60,Default,A,0001,0002,0003,fx,{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語\nComment: 0,0:00:00.70,0:00:00.90,Default,B,0,0,0,,မြန်မာ\nDialogue: 0,0:00:01.00,0:00:01.20,Default,C,0,0,0,,last\n");
+                    File.WriteAllText(path,"[Script Info]\nPlayResX: 384\nPlayResY: 288\n[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\nDialogue: 0,0:00:00.20,0:00:00.80,Default,A,0001,0002,0003,fx,{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語\nComment: 0,0:00:01.00,0:00:01.20,Default,B,0,0,0,,မြန်မာ\nDialogue: 0,0:00:01.40,0:00:01.80,Default,C,0,0,0,,last\n");
                     Require(model.OpenSubtitle(path),"Open navigation fixture.");_media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 1:
                     if(_media?.IsCompleted!=true){_stage--;return;}Require(await _media,"Native video navigation media must load.");await Invoke(CommandIds.ViewAudioVideo);
