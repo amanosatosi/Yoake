@@ -38,4 +38,17 @@ public sealed partial class EditorWorkflowTests
         var saved = new SettingsStore(Path.Combine(_root, "media-settings.json")).Load();
         Assert.Empty(saved.RecentVideo!); Assert.Single(saved.RecentAudio!);
     }
+    [Fact] public async Task RecentPersistenceFailureReportsAnErrorWithoutUndoingTheLiveRecentStateOrEditingTheDocument()
+    {
+        var blocked = Path.Combine(_root, "blocked"); File.WriteAllText(blocked, "not a directory");
+        var missing = Path.Combine(_root, "存在しない.mkv");
+        using var model = new Yoake.UI.ViewModels.MainWindowViewModel(new(), new(), new(), new Yoake.UI.Services.ThemeService(),
+            new SettingsStore(Path.Combine(blocked, "settings.json")), new AppSettings { RecentVideo = [missing] });
+        var source = model.ActiveEditor!.Document.Serialize(); var draft = model.Draft;
+        var failures = new List<string>(); model.Registry.CommandFailed += (_, failure) => failures.Add(failure.CommandId);
+        Assert.True(await model.Registry.InvokeAsync("recent/video", new(), missing));
+        Assert.Contains("settings/media-recents", failures); Assert.Empty(model.RecentVideoItems);
+        Assert.Equal(source, model.ActiveEditor.Document.Serialize()); Assert.Same(draft, model.Draft); Assert.False(model.ActiveEditor.Undo.CanUndo);
+        Assert.Contains("recent history could not be saved", model.MediaStatus);
+    }
 }

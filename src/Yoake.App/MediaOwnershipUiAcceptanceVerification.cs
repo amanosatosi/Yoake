@@ -86,6 +86,11 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     Require(ReferenceEquals(_editor, model.ActiveEditor) && ReferenceEquals(_draft, model.Draft) && ReferenceEquals(_selected, model.SelectedEvent) && _pending == model.PrimaryAudioRange && _source == model.ActiveEditor!.Document.Serialize() && _undo == (model.ActiveEditor.Undo.NextUndoName ?? ""), "Audio replacement retains document state.");
                     var saved = new SettingsStore(Path.Combine(options.ProfileDirectory!, "settings.json")).Load();
                     Require(saved.RecentVideo!.SequenceEqual(new[] { _video, _audio }) && saved.RecentAudio!.SequenceEqual(new[] { _video, _audio }), "Independent Unicode MRUs reorder and persist.");
+                    using (var locked = File.Open(Path.Combine(options.ProfileDirectory!, "settings.json"), FileMode.Open, FileAccess.Read, FileShare.None))
+                    {
+                        Require(await model.OpenVideoAsync(_video), "A profile-write failure cannot turn a successfully published Video provider into a failed replacement.");
+                        Require(model.VideoSourcePath == _video && model.AudioSourcePath == _video && model.MediaStatus.Contains("recent history could not be saved"), "Successful media stays usable and profile failure is visible.");
+                    }
                     using (var canceled = new CancellationTokenSource())
                     { canceled.Cancel(); Require(!await model.Registry.InvokeAsync("video/open", new(model.ActiveDocumentId), _audio, canceled.Token), "Canceled request cannot replace providers."); }
                     var obsolete = model.OpenVideoAsync(_audio); var latest = model.OpenVideoAsync(_video);

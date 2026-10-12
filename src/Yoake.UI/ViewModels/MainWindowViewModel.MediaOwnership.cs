@@ -62,7 +62,7 @@ public sealed partial class MainWindowViewModel
         if (video) state.VideoLoading = cancellation; else state.AudioLoading = cancellation;
         var token = cancellation.Token;
         var external = state.ExternalTimecodes; var keyframes = state.ExternalKeyframes;
-        DocumentMedia? candidate = null; FrameTiming? nativeTiming = null; WaveformData? peaks = null;
+        DocumentMedia? candidate = null, prepared = null; FrameTiming? nativeTiming = null; WaveformData? peaks = null;
         MediaStatus = "FFMS2 indexing " + Path.GetFileName(path);
         try
         {
@@ -86,7 +86,7 @@ public sealed partial class MainWindowViewModel
             // publish a candidate prepared against obsolete external metadata.
             if (video && (!ReferenceEquals(external, state.ExternalTimecodes) || !ReferenceEquals(keyframes, state.ExternalKeyframes))) return false;
             var old = state.Media;
-            var replacement = old is null ? candidate : video ? old.WithVideo(candidate) : old.WithAudio(candidate);
+            var replacement = prepared = old is null ? candidate : video ? old.WithVideo(candidate) : old.WithAudio(candidate);
             if (_activeId == id)
             {
                 CancelGesture(); CancelVisualBounds();
@@ -95,7 +95,9 @@ public sealed partial class MainWindowViewModel
             }
             if (!video) state.AudioExport?.Cancel();
             state.Editing?.Cancel();
+            token.ThrowIfCancellationRequested();
             state.Media = replacement;
+            prepared = null;
             if (ReferenceEquals(replacement, candidate)) candidate = null;
             if (video) { state.ProviderFrameTiming = nativeTiming; state.FrameTiming = external?.Timing ?? nativeTiming; }
             else state.Waveform = peaks;
@@ -115,7 +117,7 @@ public sealed partial class MainWindowViewModel
         }
         finally
         {
-            candidate?.Dispose();
+            try { prepared?.Dispose(); } finally { candidate?.Dispose(); }
             if (video && ReferenceEquals(state.VideoLoading, cancellation)) state.VideoLoading = null;
             if (!video && ReferenceEquals(state.AudioLoading, cancellation)) state.AudioLoading = null;
             cancellation.Dispose(); _registry.NotifyStateChanged();
@@ -159,14 +161,26 @@ public sealed partial class MainWindowViewModel
         var items = new[] { full }.Concat(((video ? _settings.RecentVideo : _settings.RecentAudio) ?? [])
             .Where(item => !SameMediaPath(item, full))).Take(12).ToArray();
         _settings = video ? _settings with { RecentVideo = items } : _settings with { RecentAudio = items };
-        _settingsStore.Save(_settings); OnPropertyChanged(video ? nameof(RecentVideoItems) : nameof(RecentAudioItems));
+        PersistMediaRecents(video);
     }
     private void ForgetMedia(string path, bool video)
     {
         var full = Path.GetFullPath(path);
         var items = ((video ? _settings.RecentVideo : _settings.RecentAudio) ?? []).Where(item => !SameMediaPath(item, full)).ToArray();
         _settings = video ? _settings with { RecentVideo = items } : _settings with { RecentAudio = items };
-        _settingsStore.Save(_settings); OnPropertyChanged(video ? nameof(RecentVideoItems) : nameof(RecentAudioItems));
+        PersistMediaRecents(video);
+    }
+    private void PersistMediaRecents(bool video)
+    {
+        try { _settingsStore.Save(_settings); }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            // Provider publication already succeeded. A history-write failure
+            // must not masquerade as a failed transactional provider replacement.
+            _registry.ReportFailure("settings/media-recents", exception);
+            MediaStatus = "Media state retained; recent history could not be saved: " + exception.Message;
+        }
+        OnPropertyChanged(video ? nameof(RecentVideoItems) : nameof(RecentAudioItems));
     }
     private static bool SameMediaPath(string left, string right)
     {
