@@ -22,6 +22,7 @@ public sealed partial class MainWindowViewModel
 
     private async Task RunFrameExtractionAsync(FrameImageKind kind, Func<VideoFrameCapture, CancellationToken, Task> publish, CancellationToken parent)
     {
+        parent.ThrowIfCancellationRequested();
         if (_disposed || _activeId is not { } id || _media?.VideoProvider is not { } provider) throw new InvalidOperationException("Open video first.");
         var state = _documents[id];
         var identity = new FrameCaptureIdentity(provider, FrameTimes, CurrentFrame, FrameTimes[CurrentFrame], PreviewRevision);

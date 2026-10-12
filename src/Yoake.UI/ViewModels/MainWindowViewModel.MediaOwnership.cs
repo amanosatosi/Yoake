@@ -48,7 +48,7 @@ public sealed partial class MainWindowViewModel
                 (_media?.HasVideo == true || _documents[_activeId!.Value].VideoLoading is not null)));
         Actions["video/close"] = new RegistryCommand(_registry, "video/close", CurrentContext, hotkeys: () => HotkeyProfile);
         _registry.Register(new(new("audio/close", "Close audio", "Release audio while retaining video", "Audio"),
-            (_, _) => { CloseAudio(); return ValueTask.CompletedTask; }, context => Applies(context) &&
+            (_, token) => { token.ThrowIfCancellationRequested(); CloseAudio(); return ValueTask.CompletedTask; }, context => Applies(context) &&
                 (_media?.HasAudio == true || _documents[_activeId!.Value].AudioLoading is not null)));
         Actions["audio/close"] = new RegistryCommand(_registry, "audio/close", CurrentContext, hotkeys: () => HotkeyProfile);
     }

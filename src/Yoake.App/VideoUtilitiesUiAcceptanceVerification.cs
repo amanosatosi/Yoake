@@ -153,7 +153,15 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
                     Require(!dummyRaw.Image.Pixels[..4].SequenceEqual(dummyRaw.Image.Pixels[32..36]), "Dummy source generates its 8×8 checkerboard.");
                     await Invoke("video/jump", new VideoJumpRequest(Frame: 2)); await Invoke("video/play"); return;
                 case 16:
-                    Require(model.IsPlaying && model.VideoFrame is not null, "Dummy uses central Video playback with retained Audio."); await Invoke("video/stop");
+                    Require(model.IsPlaying && model.VideoFrame is not null, "Dummy uses central Video playback with retained Audio.");
+                    using (var canceledCommand = new CancellationTokenSource())
+                    {
+                        canceledCommand.Cancel();
+                        foreach(var command in new[]{"video/aspect/full","video/details","video/open/dummy","video/frame/copy/raw"})
+                            Require(!await model.Registry.InvokeAsync(command,new(model.ActiveDocumentId),cancellationToken:canceledCommand.Token),"Canceled utility cannot open a dialog, copy or stop playback: "+command);
+                        Require(model.IsPlaying && model.VideoAspect.Kind == VideoAspectKind.Default && !window.OwnedWindows.Any(),"Canceled utilities retain playback and presentation.");
+                    }
+                    await Invoke("video/stop");
                     await Invoke("video/jump", new VideoJumpRequest(Frame: 3)); var dummySubs = await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Subtitles); VerifyCoverage(dummySubs.Image);
                     await Invoke("timecode/close"); await Invoke("video/jump", new VideoJumpRequest(Frame: 175));
                     var blank = await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Subtitles);

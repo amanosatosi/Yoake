@@ -107,6 +107,8 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     var obsolete = model.OpenVideoAsync(_audio); var latest = model.OpenVideoAsync(_video);
                     Require(!await obsolete && await latest && model.VideoSourcePath == _video, "Superseded indexing cannot publish old video.");
                     await Invoke("audio/play/current"); Require(model.IsPlaying, "Audio audition starts before Audio Close.");
+                    using (var canceledClose = new CancellationTokenSource())
+                    { canceledClose.Cancel(); Require(!await model.Registry.InvokeAsync("audio/close",new(model.ActiveDocumentId),cancellationToken:canceledClose.Token) && model.IsPlaying && model.AudioSourcePath == _video,"Canceled Audio Close retains active playback and both resources."); }
                     _retainedFrame = model.VideoFrame; _retainedTimes = model.FrameTimes;
                     window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen = true; return;
                 case 7:

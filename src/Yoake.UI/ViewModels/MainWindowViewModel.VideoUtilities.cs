@@ -49,7 +49,7 @@ public sealed partial class MainWindowViewModel
         bool Applies(CommandContext context) => _activeId is not null && (context.DocumentId is null || context.DocumentId == _activeId);
         void Register(string id, string label, Func<CommandInvocation, CancellationToken, ValueTask> action, bool requiresVideo = true, Func<bool>? check = null)
         {
-            _registry.Register(new(new(id, label, label, "Video"), action, c => Applies(c) && (!requiresVideo || _media?.HasVideo == true),
+            _registry.Register(new(new(id, label, label, "Video"), (invocation, token) => { token.ThrowIfCancellationRequested(); return action(invocation, token); }, c => Applies(c) && (!requiresVideo || _media?.HasVideo == true),
                 isChecked: check is null ? null : c => Applies(c) && check()));
             Actions[id] = new RegistryCommand(_registry, id, CurrentContext, hotkeys: () => HotkeyProfile);
         }
