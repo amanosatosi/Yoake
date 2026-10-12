@@ -359,15 +359,19 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>DocumentMedia.Open(path,ct),ct);if(opened.HasVideo){try{frameTiming=new(opened.FrameTimes,opened.Info.FramesPerSecond,ct);}catch(Exception exception)when(exception is ArgumentException or OverflowException){boundaryError=exception;}if(external is not null)opened.SetExternalTimecodes(external.ForVideoMap(opened.Info.FrameCount,ct));} },token); await job.Completion;
             token.ThrowIfCancellationRequested();
             if(boundaryError is not null)_registry.ReportFailure("media/frame-boundaries",boundaryError);
-            if (_disposed || !_documents.ContainsKey(id)) { opened?.Dispose(); return false; }
+            if (_disposed || !_documents.TryGetValue(id,out var owner) || !ReferenceEquals(owner,state)) { opened?.Dispose(); return false; }
             if(_activeId==id){CancelGesture();CancelVisualBounds();}
             opened!.SetExternalKeyframes(state.ExternalKeyframes);
             var old=state.Media; state.Media=opened;state.ProviderFrameTiming=frameTiming;state.FrameTiming=state.ExternalTimecodes?.Timing??frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
+            var media=state.Media.AudioProvider;
+            // Native indexing is complete. Audio analysis now belongs to the
+            // published audio resource, not to future video replacements.
+            state.Loading=null;if(media is not null)state.AudioLoading=cts;
+            if(state.Media.HasVideo)RememberMedia(path,true);if(media is not null)RememberMedia(path,false);
             if (_activeId==id) { _media=state.Media;if(!_media!.HasVideo)VideoFrame=null; MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(VideoSourcePath));OnPropertyChanged(nameof(AudioSourcePath));OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
             _registry.NotifyStateChanged();
-            if(state.Media!.HasVideo)RememberMedia(path,true);if(state.Media.HasAudio)RememberMedia(path,false);
-            if(!state.Media.HasAudio)return true;
-            var media=state.Media.AudioProvider!; WaveformData? peaks=null;
+            if(media is null)return true;
+            WaveformData? peaks=null;
             var analysis=_jobs.Run("Audio peaks",ct=> { peaks=media.BuildWaveform(cancellationToken:ct); return Task.CompletedTask; },token); await analysis.Completion;
             token.ThrowIfCancellationRequested(); if(!ReferenceEquals(state.Media?.AudioProvider,media))return false;state.Waveform=peaks;
             if (_activeId==id && ReferenceEquals(_media?.AudioProvider,media)) WaveformSamples=peaks;
@@ -375,7 +379,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         }
         catch(OperationCanceledException) { opened?.Dispose(); return false; }
         catch(Exception e) { opened?.Dispose(); if (_activeId==id) MediaStatus=e.Message; return false; }
-        finally {if(ReferenceEquals(state.Loading,cts))state.Loading=null;cts.Dispose();OnPropertyChanged(nameof(CanShiftByFrames));_registry.NotifyStateChanged();}
+        finally {if(ReferenceEquals(state.Loading,cts))state.Loading=null;if(ReferenceEquals(state.AudioLoading,cts))state.AudioLoading=null;cts.Dispose();OnPropertyChanged(nameof(CanShiftByFrames));_registry.NotifyStateChanged();}
     }
     private async Task RefreshVideoFrameAsync(double seconds)
     {

@@ -21,7 +21,7 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
     private string _video = "", _audio = "", _source = "", _undo = "";
     private object? _samples, _draft, _selected, _editor;
     private Yoake.Core.Audio.AudioClipInterval? _pending;
-    private Task<bool>? _opening;
+    private Task<bool>? _opening, _racingVideo;
     public void Start() { window.LayoutUpdated += (_, _) => _ready = window.IsVisible && window.Bounds.Width > 0; _timer.Tick += Tick; _timer.Start(); }
     private async void Tick(object? sender, EventArgs args)
     {
@@ -39,9 +39,19 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     var subtitles = Path.Combine(root, "media-ownership.ass");
                     File.WriteAllText(subtitles, "[Script Info]\nPlayResX: 384\nPlayResY: 288\n[Events]\nFormat: " + string.Join(',', AssDocument.EventFormat) + "\nDialogue: 0,0:00:00.30,0:00:01.40,Default,A,0001,0002,0003,fx,{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語 é\n");
                     Require(model.OpenSubtitle(subtitles), "Open lossless ownership fixture.");
+                    System.ComponentModel.PropertyChangedEventHandler? published = null;
+                    published = (_, change) =>
+                    {
+                        if(change.PropertyName != nameof(MainWindowViewModel.AudioSourcePath) || model.AudioSourcePath is null) return;
+                        model.PropertyChanged -= published;
+                        Require(model.WaveformSamples is null, "The video replacement starts before combined-open audio analysis finishes.");
+                        _racingVideo = model.OpenVideoAsync(_video);
+                    };
+                    model.PropertyChanged += published;
                     _opening = model.OpenMediaAsync(_audio); return;
                 case 1:
                     if (_opening?.IsCompleted != true) { _stage--; return; } Require(await _opening, "Real combined baseline opens once.");
+                    Require(_racingVideo is not null && await _racingVideo && model.WaveformSamples is not null, "Video replacement retains in-flight audio peak publication.");
                     await Invoke(CommandIds.ViewAudioVideo); model.Draft!.Text += " stored checkpoint"; await Invoke(CommandIds.EditCommit); await Invoke("time/lead/out");
                     _editor = model.ActiveEditor; _source = model.ActiveEditor!.Document.Serialize(); _undo = model.ActiveEditor.Undo.NextUndoName ?? "";
                     model.Draft!.Layer = "unfinished"; model.Draft.Text += " retained draft";
