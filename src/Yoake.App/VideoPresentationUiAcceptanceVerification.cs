@@ -6,6 +6,8 @@ using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Avalonia.Media.Imaging;
+using System.Runtime.InteropServices;
 using Yoake.Core.Commands;
 using Yoake.Core.Hotkeys;
 using Yoake.Core.Logging;
@@ -26,7 +28,9 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
     private bool _ticking;private int _stage;private Task<bool>? _opening;
     private string _source="",_undo="",_audio="";private object? _draft,_selection,_samples;private Yoake.Core.Audio.AudioClipInterval? _pending;
     private Guid? _document;private VideoViewState? _state;private IReadOnlyList<double>? _map;private byte[]? _raw;
+    private IReadOnlyList<int>? _keys;
     private Window? _detached;private int _playFrame;private VideoPresentation _before;
+    private byte[]? _beforePanPixels;
     private VisualOverlayControl Overlay=>window.FindControl<VisualOverlayControl>("VisualOverlay")!;
     private VideoPresentationControl Image=>window.FindControl<VideoPresentationControl>("VideoImage")!;
     public void Start(){_timer.Tick+=Tick;_timer.Start();}
@@ -43,7 +47,8 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     _audio=Path.Combine(options.VerificationMedia!,"av.avi");_opening=model.OpenMediaAsync(_audio);return;
                 case 1:
                     if(_opening?.IsCompleted!=true){_stage--;return;}Require(await _opening,"Load independent native Audio/Video.");
-                    await Invoke(CommandIds.ViewAudioVideo);await Invoke("video/open/dummy",new DummyVideoOptions{Width=320,Height=180,FrameCount=600,FramesPerSecond=25});
+                    await Invoke(CommandIds.ViewAudioVideo);await Invoke("video/open/dummy",new DummyVideoOptions{Width=320,Height=180,FrameCount=600,FramesPerSecond=25,Checkerboard=true});
+                    var keyPath=Path.Combine(options.ProfileDirectory!,"pan-keys.txt");File.WriteAllText(keyPath,"# keyframe format v1\nfps 0\n0\n5\n175\n");await Invoke("keyframe/open",keyPath);_keys=model.Keyframes;
                     await Invoke("time/lead/out");model.Draft!.Layer="unfinished";
                     _document=model.ActiveDocumentId;_source=model.ActiveEditor!.Document.Serialize();_undo=model.ActiveEditor.Undo.NextUndoName??"";_draft=model.Draft;_selection=model.SelectedEvent;_pending=model.PrimaryAudioRange;_samples=model.WaveformSamples;
                     _map=model.FrameTimes;_state=model.VideoView;_raw=(await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Raw)).Image.Pixels;
@@ -59,8 +64,9 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     Require(model.VideoWindowZoom==2,"Menu Zoom Out subtracts exactly 12.5 points.");
                     Press(Overlay,Key.Add,Avalonia.Input.KeyModifiers.Control);Require(model.VideoWindowZoom==2.125,"Default Ctrl keypad Plus routes zoom.");
                     await Invoke("settings/hotkeys/set",new HotkeyChange(HotkeyContext.Video,"video/zoom/out",["F9"]));Press(Overlay,Key.F9);Require(model.VideoWindowZoom==2,"Live Video hotkey override routes zoom.");
-                    _before=Area();Pan(new(130,100),new(161,117));Require(!Overlay.IsPanning&&!model.HasGesture&&_pointer.Captured is null,"Middle release ends capture without subtitle editing.");
+                    _before=Area();_beforePanPixels=RenderImage();Pan(new(130,100),new(161,117));Require(!Overlay.IsPanning&&!model.HasGesture&&_pointer.Captured is null,"Middle release ends capture without subtitle editing.");
                     Require(Math.Abs(Area().X-_before.X-31)<.01&&Math.Abs(Area().Y-_before.Y-17)<.01,"Real middle drag translates image and overlay together.");Unchanged();
+                    Require(!RenderImage().SequenceEqual(_beforePanPixels),"Actual clipped image pixels move during pan, not just stored coordinates.");
                     var target=new AssPoint(140.125,90.5);var mapped=Area().FromScript(target,320,180);Move(new(mapped.X,mapped.Y),RawInputModifiers.None);await Invoke("video/copy_coordinates");Require(await window.ReadClipboardAsync()=="140.125,90.5","Copy Coordinates uses zoom/pan transform.");
                     Wheel(new(140,100),Avalonia.Input.KeyModifiers.Control);Require(model.VideoView!.ContentZoom==1.125,"Ctrl-wheel changes pointer-anchored content zoom.");
                     window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen=true;Press(window.FindControl<MenuItem>("VideoResetPanMenu")!,Key.Enter);return;
@@ -74,7 +80,7 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     _detached=window.DetachedVideoWindow;Require(_detached is {IsVisible:true,IsLoaded:true,CanResize:true}&&_detached.TryGetPlatformHandle() is {Handle: not 0},"Detach creates a real native resizable window.");
                     Require(ReferenceEquals(TopLevel.GetTopLevel(Overlay),_detached)&&!window.FindControl<Grid>("VisualColumn")!.IsVisible&&window.FindControl<MenuItem>("VideoDetachMenu")!.IsChecked,"Existing controls and tools moved, main host hidden, toggle checked.");
                     foreach(var id in ZoomIds)Require(!model.Actions[id].CanExecute(null),"Aegisub attached-only zoom command: "+id);
-                    Require(ReferenceEquals(_map,model.FrameTimes)&&ReferenceEquals(_state,model.VideoView),"Detach preserves map and presentation owner.");Unchanged();
+                    Require(ReferenceEquals(_map,model.FrameTimes)&&ReferenceEquals(_keys,model.Keyframes)&&ReferenceEquals(_state,model.VideoView),"Detach preserves external keys, map and presentation owner.");Unchanged();
                     Pan(new(100,100),new(120,111));Require(model.VideoView!.PanX!=0&&!model.HasGesture,"Detached pointer input pans same source.");
                     model.Draft!.Layer="0";await Invoke("video/tool/clip");
                     var a=Area().FromScript(new(130,70),320,180);var b=Area().FromScript(new(155,95),320,180);
@@ -112,6 +118,7 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     Require(!await model.Registry.InvokeAsync("video/zoom/100",new(model.ActiveDocumentId)),"Attached-only preset rejects detached invocation.");return;
                 case 17:
                     await Invoke("video/detach");await Invoke("video/zoom/100");await Invoke("video/detach");var retained=model.FrameTimes;
+                    Require(model.Keyframes.SequenceEqual(new[]{0,5,175})&&model.ExternalTimecodePath is not null,"External keys/timecodes survive tab and Close/Recent hosting.");
                     await Invoke("audio/close");Require(!model.HasAudio&&window.DetachedVideoWindow is not null&&ReferenceEquals(retained,model.FrameTimes),"Audio Close preserves detached Video and external timing.");
                     Require((await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Raw)).Image.Pixels.SequenceEqual(_raw!),"Zoom, pan, host and aspect stay out of source exports.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"No bindings or native window errors.");
@@ -124,6 +131,12 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
     private static readonly string[] ZoomIds=["video/zoom/50","video/zoom/100","video/zoom/200","video/zoom/in","video/zoom/out"];
     private static readonly string[] Seven=[..ZoomIds,"video/reset_pan","video/detach"];
     private VideoPresentation Area(){var r=Image.VideoArea;return new(r.X,r.Y,r.Width,r.Height);}
+    private byte[] RenderImage()
+    {
+        using var bitmap=new RenderTargetBitmap(new PixelSize(Math.Max(1,(int)Image.Bounds.Width),Math.Max(1,(int)Image.Bounds.Height)),new Vector(96,96));bitmap.Render(Image);
+        var pixels=new byte[bitmap.PixelSize.Width*bitmap.PixelSize.Height*4];var pinned=GCHandle.Alloc(pixels,GCHandleType.Pinned);
+        try{bitmap.CopyPixels(new PixelRect(bitmap.PixelSize),pinned.AddrOfPinnedObject(),pixels.Length,bitmap.PixelSize.Width*4);}finally{pinned.Free();}return pixels;
+    }
     private void Zoom(double scale,string suffix)
     {Require(model.VideoWindowZoom==scale&&window.FindControl<MenuItem>("VideoZoom"+suffix+"Menu")!.IsChecked,"Zoom radio: "+suffix);Require(Math.Abs(Image.VideoArea.Height-180*scale/window.RenderScaling)<.01,"Zoom is source height in physical pixels.");Require(Math.Abs(Area().Height-180*scale/window.RenderScaling)<.01,"Shared image/tool rectangle.");}
     private void OpenZoom(){window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen=true;window.FindControl<MenuItem>("VideoZoomMenu")!.IsSubMenuOpen=true;}

@@ -49,7 +49,7 @@ public sealed class VisualOverlayControl : Control
             }} : null;
             Refresh();
         }
-        if(change.Property==BoundsProperty)Refresh();
+        if(change.Property==BoundsProperty){if(IsPanning)Cancel();Refresh();}
         if(change.Property==IsVisibleProperty&&!IsVisible)Cancel();
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e){Cancel();Refresh();}

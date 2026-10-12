@@ -52,4 +52,10 @@ public sealed class VideoPresentationTests
     {var state=new VideoViewState();state.SetWindowZoom(1);Assert.Throws<ArgumentException>(()=>state.SetWindowZoom(value));Assert.Equal(1,state.WindowZoom);}
     [Fact] public void WindowZoomIsBoundedAndRescalesPan()
     {var state=new VideoViewState();state.SetWindowZoom(1);state.Layout(800,600,1,480,4d/3);state.Pan(30,20);state.SetWindowZoom(2);Assert.Equal(60,state.PanX);Assert.Equal(40,state.PanY);state.SetWindowZoom(.01);Assert.Equal(.125,state.WindowZoom);state.SetWindowZoom(50);Assert.Equal(10,state.WindowZoom);}
+    [Fact] public void MonitorDpiChangePreservesLogicalSizeAndPanAsReferenceDoes()
+    {
+        var state=new VideoViewState();state.SetWindowZoom(1);state.Layout(800,600,1,480,4d/3);state.Pan(20,15);
+        var before=state.Layout(800,600,1,480,4d/3);var after=state.Layout(800,600,1.5,480,4d/3);
+        Assert.Equal(before,after);Assert.Equal(1.5,state.WindowZoom);Assert.Equal(30,state.PanX);Assert.Equal(22.5,state.PanY);
+    }
 }

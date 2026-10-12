@@ -13,7 +13,7 @@ public partial class MainWindow
     public Window? DetachedVideoWindow { get; private set; }
     private bool _movingVideo;
     private Guid? _hostDocument;
-    private readonly Dictionary<Guid, (PixelPoint Position, double Width, double Height)> _videoWindows = [];
+    private readonly Dictionary<Guid, (PixelPoint Position, double Width, double Height, WindowState State)> _videoWindows = [];
     public Task SetVideoDetachedAsync(bool detached, CancellationToken token)
     {
         token.ThrowIfCancellationRequested(); MoveVideoHost(detached); return Task.CompletedTask;
@@ -33,7 +33,7 @@ public partial class MainWindow
         _movingVideo = true;
         try
         {
-            VisualOverlay.CancelInput();
+            VisualOverlay.CancelInput(); VideoSeekBar.CancelInput();
             if (detached)
             {
                 var host = new Window { Name = "DetachedVideoWindow", Title = "Detached Video", Width = Math.Max(440, VideoRegion.Bounds.Width + 16), Height = Math.Max(320, VideoRegion.Bounds.Height + 40), MinWidth = 240, MinHeight = 180, CanResize = true, DataContext = _model, WindowStartupLocation = WindowStartupLocation.CenterOwner };
@@ -41,14 +41,14 @@ public partial class MainWindow
                 host.Deactivated += VideoHostDeactivated; host.Closing += DetachedClosing; host.Closed += DetachedClosed;
                 host.SizeChanged += DetachedResized;
                 _hostDocument = _model?.ActiveDocumentId;
-                if (_hostDocument is { } id && _videoWindows.TryGetValue(id, out var saved)) { host.Width = saved.Width; host.Height = saved.Height; host.WindowStartupLocation = WindowStartupLocation.Manual; host.Position = saved.Position; }
+                if (_hostDocument is { } id && _videoWindows.TryGetValue(id, out var saved)) { host.Width = saved.Width; host.Height = saved.Height; host.WindowStartupLocation = WindowStartupLocation.Manual; host.Position = saved.Position; host.WindowState = saved.State; }
                 VideoDock.Child = null; host.Content = VideoRegion; DetachedVideoWindow = host;
-                try { host.Show(this); }
+                try { host.Show(this); ConstrainVideoHost(host); }
                 catch { host.Content = null; VideoDock.Child = VideoRegion; DetachedVideoWindow = null; RemoveVideoHandlers(host); host.Close(); throw; }
             }
             else if (DetachedVideoWindow is { } host)
             {
-                if (_hostDocument is { } id) _videoWindows[id] = (host.Position, host.Width, host.Height);
+                if (_hostDocument is { } id) _videoWindows[id] = (host.Position, host.Width, host.Height, host.WindowState == WindowState.Minimized ? WindowState.Normal : host.WindowState);
                 host.Content = null; VideoDock.Child = VideoRegion; DetachedVideoWindow = null; _hostDocument = null;
                 RemoveVideoHandlers(host); host.Close();
             }
@@ -60,6 +60,15 @@ public partial class MainWindow
         host.RemoveHandler(KeyDownEvent, HandleKey); host.Deactivated -= VideoHostDeactivated;
         host.Closing -= DetachedClosing; host.Closed -= DetachedClosed; host.SizeChanged -= DetachedResized;
         host.DataContext = null;
+    }
+    private void ConstrainVideoHost(Window host)
+    {
+        var screen = Screens.ScreenFromPoint(host.Position) ?? Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen is null) return;
+        var area = screen.WorkingArea; var scale = host.RenderScaling;
+        host.Width = Math.Min(host.Width, area.Width / scale); host.Height = Math.Min(host.Height, area.Height / scale);
+        host.Position = new PixelPoint(Math.Clamp(host.Position.X, area.X, Math.Max(area.X, area.Right - (int)Math.Ceiling(host.Width * scale))),
+            Math.Clamp(host.Position.Y, area.Y, Math.Max(area.Y, area.Bottom - (int)Math.Ceiling(host.Height * scale))));
     }
     private void VideoHostDeactivated(object? sender, EventArgs e) => VisualOverlay.CancelInput();
     private void DetachedResized(object? sender, SizeChangedEventArgs e)

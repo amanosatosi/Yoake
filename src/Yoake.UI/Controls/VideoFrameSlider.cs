@@ -13,6 +13,7 @@ public sealed class VideoFrameSlider : Control
     public static readonly StyledProperty<MainWindowViewModel?> ModelProperty=AvaloniaProperty.Register<VideoFrameSlider,MainWindowViewModel?>(nameof(Model));
     public MainWindowViewModel? Model{get=>GetValue(ModelProperty);set=>SetValue(ModelProperty,value);}
     private bool _drag,_resume;
+    private IPointer? _capture;
     public int RenderedKeyframeMarks {get;private set;}
     public int KeyframeCount=>Model?.Keyframes.Count??0;
     public VideoFrameSlider(){Focusable=true;MinHeight=24;ToolTip.SetTip(this,"Seek by frame · Shift+click: nearest keyframe · Wheel: frames · Shift+wheel: keyframes");}
@@ -39,9 +40,11 @@ public sealed class VideoFrameSlider : Control
         if(IsFocused)context.DrawRectangle(null,new Pen(accent,1),new Rect(Bounds.Size).Deflate(1));
     }
     private void Seek(double x,KeyModifiers modifiers){if(Model is {} model)_=model.Registry.InvokeAsync("video/seek/frame",new(),FrameAt(x,modifiers.HasFlag(KeyModifiers.Shift)));}
-    protected override void OnPointerPressed(PointerPressedEventArgs e){base.OnPointerPressed(e);if(!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;Focus();_resume=Model?.IsPlaying==true;Model?.StopPlayback();_drag=true;e.Pointer.Capture(this);Seek(e.GetPosition(this).X,e.KeyModifiers);e.Handled=true;}
+    protected override void OnPointerPressed(PointerPressedEventArgs e){base.OnPointerPressed(e);if(!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;Focus();_resume=Model?.IsPlaying==true;Model?.StopPlayback();_drag=true;_capture=e.Pointer;e.Pointer.Capture(this);Seek(e.GetPosition(this).X,e.KeyModifiers);e.Handled=true;}
     protected override void OnPointerMoved(PointerEventArgs e){base.OnPointerMoved(e);if(_drag)Seek(e.GetPosition(this).X,e.KeyModifiers);}
-    protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(!_drag)return;var resume=_resume;_drag=false;_resume=false;e.Pointer.Capture(null);if(resume&&Model is {} model)_=model.Registry.InvokeAsync("video/play",new());e.Handled=true;}
-    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);_drag=false;_resume=false;}
+    protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(!_drag)return;var resume=_resume;CancelInput();if(resume&&Model is {} model)_=model.Registry.InvokeAsync("video/play",new());e.Handled=true;}
+    public void CancelInput(){_drag=false;_resume=false;var pointer=_capture;_capture=null;pointer?.Capture(null);}
+    protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);_drag=false;_resume=false;_capture=null;}
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e){CancelInput();base.OnDetachedFromVisualTree(e);}
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e){base.OnPointerWheelChanged(e);if(Model is not {} model)return;var next=e.Delta.Y<0;_=model.Registry.InvokeAsync(e.KeyModifiers.HasFlag(KeyModifiers.Shift)?next?"video/frame/next-keyframe":"video/frame/previous-keyframe":next?"video/frame/next":"video/frame/previous",new());e.Handled=true;}
 }
