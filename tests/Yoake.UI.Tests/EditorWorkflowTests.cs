@@ -407,25 +407,22 @@ public sealed partial class EditorWorkflowTests : IDisposable
         Assert.StartsWith("Redo ", redo.Label); Assert.True(redo.CanExecute(null));
     }
 
-    [Fact] public async Task VisualRadioStateIsOwnedBySemanticCommandsIncludingDirectVectorModeSelection()
+    [Fact] public async Task VisualCommandsRequireVideoAndRejectForeignOrCancelledInvocationWithoutEditingDraft()
     {
-        foreach (var tool in MainWindowViewModel.VisualToolNames)
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text=@"{uture(keep)}uncommitted";
+        var draft=_model.Draft;var source=_model.ActiveEditor!.Document.Serialize();var revision=_model.PreviewRevision;
+        foreach(var id in MainWindowViewModel.VisualToolNames.Select(tool=>"video/tool/"+(tool=="Position"?"position":tool.ToLowerInvariant()))
+            .Concat(MainWindowViewModel.VectorModes.Select(mode=>"video/vector/"+mode.ToLowerInvariant())))
         {
-            var id = "video/tool/" + (tool == "Position" ? "position" : tool.ToLowerInvariant());
-            await Command(id);
-            Assert.Equal(tool, _model.ActiveVisualTool);
-            Assert.Single(MainWindowViewModel.VisualToolNames.Where(name => _model.Actions["video/tool/" + (name == "Position" ? "position" : name.ToLowerInvariant())].IsChecked));
+            Assert.False(_model.Actions[id].CanExecute(null));Assert.False(await _model.Registry.InvokeAsync(id,new()));
+            Assert.False(await _model.Registry.InvokeAsync(id,new(Guid.NewGuid())));
+            Assert.False(_model.Registry.GetRequired(id).IsChecked(new(Guid.NewGuid())));
         }
-        foreach (var mode in MainWindowViewModel.VectorModes)
-        {
-            await Command("video/vector/" + mode.ToLowerInvariant());
-            Assert.True(_model.IsVectorClipTool); Assert.Equal(mode, _model.VectorMode);
-            Assert.Single(MainWindowViewModel.VectorModes.Where(name => _model.Actions["video/vector/" + name.ToLowerInvariant()].IsChecked));
-        }
-        await Command("video/tool/crosshair");
-        Assert.DoesNotContain(MainWindowViewModel.VectorModes, name => _model.Actions["video/vector/" + name.ToLowerInvariant()].IsChecked);
+        Assert.Equal("Position",_model.ActiveVisualTool);Assert.Equal("Select",_model.VectorMode);
+        Assert.Same(draft,_model.Draft);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(revision,_model.PreviewRevision);
+        // Positive radio and capture-switch proofs require the real provider and
+        // run in VideoUiAcceptanceVerification, including every prior tool/mode.
     }
-
     [Fact] public async Task ViewCommandsOnlyChangePresentationAndRestoreOnNextLaunch()
     {
         await Command(CommandIds.GridInsertAfter);
@@ -585,12 +582,12 @@ public sealed partial class EditorWorkflowTests : IDisposable
         Assert.Equal(new AssPoint(40,50),AssVisualTags.Origin(visible.Text));Assert.Equal("",hidden.Text);
         await Command(CommandIds.EditUndo);Assert.Equal("",visible.Text);
     }
-    [Theory][InlineData("edit/cancel")][InlineData("video/tool/rotatez")][InlineData("video/tool/vectorclip")]
+    [Theory][InlineData("edit/cancel")][InlineData("workspace/activate-tab")]
     public async Task VisualCancellationAndToolSwitchRestoreTheBatch(string command)
     {
         await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(line,0,1000);var source=line.Text;
         Assert.True(_model.BeginGesture("Visual gesture"));_model.UpdateVisualGesture(l=>AssVisualTags.SetOrigin(l.Text,new(20,30)));Assert.NotEqual(source,line.Text);
-        await Command(command);Assert.Equal(source,line.Text);Assert.False(_model.HasGesture);Assert.DoesNotContain("\\org(20,30)",_model.PreviewSource());
+        await Command(command,command=="workspace/activate-tab"?_model.ActiveDocumentId:null);Assert.Equal(source,line.Text);Assert.False(_model.HasGesture);Assert.DoesNotContain("\\org(20,30)",_model.PreviewSource());
     }
     [Theory]
     [InlineData(@"{\iclip(3,m 0 0 l 80 0 80 80)\clippos(5,6)\future(x)}vector")]

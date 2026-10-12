@@ -192,8 +192,7 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.EditFind,"Find / Replace…",async _=>{if(CommitDraft()&&Dialogs is not null)await Dialogs.ShowFindAsync(this);});
         S(CommandIds.AudioZoomIn,"Zoom audio in",()=>AudioWindowSeconds=Math.Max(0.02,AudioWindowSeconds/2));
         S(CommandIds.AudioZoomOut,"Zoom audio out",()=>AudioWindowSeconds=Math.Min(3600,AudioWindowSeconds*2));
-        foreach(var name in VisualToolNames){var tool=name;S("video/tool/"+(tool=="Clip"?"clip":tool=="Position"?"position":tool.ToLowerInvariant()),tool+" tool",()=>SelectVisualTool(tool),isChecked:()=>ActiveVisualTool==tool);}
-        foreach(var name in VectorModes){var mode=name;S("video/vector/"+mode.ToLowerInvariant(),"Vector clip: "+mode,()=>{CancelGesture();SelectVisualTool("VectorClip");VectorMode=mode;},isChecked:()=>IsVectorClipTool&&VectorMode==mode);}
+        RegisterVisualToolCommands();
         S("video/position/toggle-move","Toggle position / movement",ToggleVisualMove,HasLine);
         S("video/clip/invert","Invert selected clips",InvertVisualClip,HasLine);
         S(CommandIds.ViewThemeCycle,"Cycle theme",()=>{_settings=_settings with{Theme=_theme.Next()};_settingsStore.Save(_settings);});

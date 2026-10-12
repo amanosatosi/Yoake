@@ -182,3 +182,24 @@ try {
   if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
   $process.Dispose()
 }
+
+# Video tool input uses a separate real-input acceptance process.
+$videoToolsRoot = Join-Path $root ('video-tools-' + [Guid]::NewGuid().ToString('N'))
+$videoToolsProfile = Join-Path $videoToolsRoot 'profile'
+New-Item -ItemType Directory -Force -Path $videoToolsProfile | Out-Null
+$logs = Join-Path $videoToolsRoot 'logs'
+$report = Join-Path $videoToolsRoot 'acceptance.txt'
+$arguments = @('--verify-ui-video', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $videoToolsProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged Video tools acceptance timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged Video tools acceptance failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}

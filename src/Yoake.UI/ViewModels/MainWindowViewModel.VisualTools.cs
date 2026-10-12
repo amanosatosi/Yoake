@@ -1,5 +1,6 @@
 using Yoake.Core.Commands;
 using Yoake.Core.Subtitles;
+using Yoake.UI.Commands;
 
 namespace Yoake.UI.ViewModels;
 
@@ -13,7 +14,7 @@ public sealed partial class MainWindowViewModel
     public static readonly string[] VisualToolNames=["Crosshair","Position","RotateZ","RotateXY","Scale","Clip","VectorClip","Distort"];
     public static readonly string[] VectorModes=["Select","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];
     private string _vectorMode="Select";
-    public string VectorMode {get=>_vectorMode;private set{SetField(ref _vectorMode,value);OnPropertyChanged(nameof(VisualHint));foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);}}
+    public string VectorMode {get=>VisualState?.VectorMode??_vectorMode;private set{if(VisualState is {} state)state.VectorMode=value;SetField(ref _vectorMode,value);OnPropertyChanged();OnPropertyChanged(nameof(VisualHint));foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);}}
     public bool IsCrosshairTool=>ActiveVisualTool=="Crosshair";
     public bool IsRotateZTool=>ActiveVisualTool=="RotateZ";
     public bool IsRotateXYTool=>ActiveVisualTool=="RotateXY";
@@ -83,7 +84,36 @@ public sealed partial class MainWindowViewModel
     private void SelectVisualTool(string tool)
     {
         CancelGesture();ActiveVisualTool=tool;
+        NotifyVisualToolState();
+    }
+    private void NotifyVisualToolState()
+    {
+        OnPropertyChanged(nameof(ActiveVisualTool));OnPropertyChanged(nameof(VectorMode));
+        foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);
         foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(HasVisualOptions),nameof(VisualHint)})OnPropertyChanged(property);
+    }
+    private DocumentState? VisualState=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?state:null;
+    private void RegisterVisualToolCommands()
+    {
+        bool Owns(CommandContext context)=>_activeId is not null&&(context.DocumentId is null||context.DocumentId==_activeId);
+        void Register(string id,string label,Action select,Func<bool> check)
+        {
+            _registry.Register(new(new(id,label,label,"Video visual tools"),(_,token)=>
+            {token.ThrowIfCancellationRequested();select();return ValueTask.CompletedTask;},
+                c=>Owns(c)&&_media?.HasVideo==true&&!HasEditOperation,isChecked:c=>Owns(c)&&check()));
+            Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
+        }
+        foreach(var name in VisualToolNames)
+        {
+            var tool=name;var id="video/tool/"+(tool=="Position"?"position":tool.ToLowerInvariant());
+            Register(id,tool+" tool",()=>SelectVisualTool(tool),()=>ActiveVisualTool==tool);
+        }
+        foreach(var name in VectorModes)
+        {
+            var mode=name;
+            Register("video/vector/"+mode.ToLowerInvariant(),"Vector clip: "+mode,
+                ()=>{CancelGesture();SelectVisualTool("VectorClip");VectorMode=mode;},()=>IsVectorClipTool&&VectorMode==mode);
+        }
     }
     private void ToggleVisualMove()
     {

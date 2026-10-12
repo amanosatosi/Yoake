@@ -27,6 +27,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         public SubtitleEditor Editor { get; } = editor;
         public PendingAudioTiming AudioTiming {get;}=new(editor);
+        public string VisualTool="Position",VectorMode="Select";
         public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
         public FfmsMediaSession? Media;
         public FrameTiming? FrameTiming;
@@ -161,7 +162,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public string SuggestedSubtitleFileName => _workspace.ActiveDocument?.Title is { Length:>0 } title ? (Path.HasExtension(title) ? title : title+".ass") : "subtitle.ass";
     public string SubtitleStatus { get=>_subtitleStatus; private set=>SetField(ref _subtitleStatus,value); }
     public string MediaStatus { get=>_mediaStatus; private set=>SetField(ref _mediaStatus,value); }
-    public string ActiveVisualTool { get=>_activeVisualTool; private set{SetField(ref _activeVisualTool,value);OnPropertyChanged(nameof(IsPositionTool));OnPropertyChanged(nameof(IsClipTool));} }
+    public string ActiveVisualTool { get=>VisualState?.VisualTool??_activeVisualTool; private set{if(VisualState is {} state)state.VisualTool=value;SetField(ref _activeVisualTool,value);OnPropertyChanged();OnPropertyChanged(nameof(IsPositionTool));OnPropertyChanged(nameof(IsClipTool));} }
     public bool IsPositionTool=>ActiveVisualTool=="Position";
     public bool IsClipTool=>ActiveVisualTool=="Clip";
     public long PreviewRevision => Volatile.Read(ref _subtitleRevision);
@@ -335,6 +336,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             _activeId=id;
             var state=id is { } key && _documents.TryGetValue(key,out var found) ? found : null;
             _activeSubtitleDocument=state?.Editor.Document; _media=state?.Media;
+            NotifyVisualToolState();
             _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
             _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft(); VideoFrame=null; WaveformSamples=state?.Waveform; MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
             _currentTimeSeconds=state?.Time ?? 0;

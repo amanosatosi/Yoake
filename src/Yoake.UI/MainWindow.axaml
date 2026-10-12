@@ -164,8 +164,25 @@
 <MenuItem Header="Stop" InputGesture="{Binding Actions[video/stop].InputGesture}" Command="{Binding Actions[video/stop]}" />
 <MenuItem Header="Previous frame" InputGesture="{Binding Actions[video/frame/previous].InputGesture}" Command="{Binding Actions[video/frame/previous]}" />
 <MenuItem Header="Next frame" InputGesture="{Binding Actions[video/frame/next].InputGesture}" Command="{Binding Actions[video/frame/next]}" />
-<MenuItem Header="Position tool" InputGesture="{Binding Actions[video/tool/position].InputGesture}" Command="{Binding Actions[video/tool/position]}" />
-<MenuItem Header="Clip tool" InputGesture="{Binding Actions[video/tool/clip].InputGesture}" Command="{Binding Actions[video/tool/clip]}" />
+<MenuItem Header="Visual tools">
+<MenuItem Name="VideoToolCrosshairMenu" Header="Crosshair" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/crosshair].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" InputGesture="{Binding Actions[video/tool/crosshair].InputGesture}" />
+<MenuItem Name="VideoToolPositionMenu" Header="Position" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/position].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/position]}" InputGesture="{Binding Actions[video/tool/position].InputGesture}" />
+<MenuItem Name="VideoToolRotateZMenu" Header="RotateZ" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/rotatez].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatez]}" InputGesture="{Binding Actions[video/tool/rotatez].InputGesture}" />
+<MenuItem Name="VideoToolRotateXYMenu" Header="RotateXY" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/rotatexy].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatexy]}" InputGesture="{Binding Actions[video/tool/rotatexy].InputGesture}" />
+<MenuItem Name="VideoToolScaleMenu" Header="Scale" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/scale].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/scale]}" InputGesture="{Binding Actions[video/tool/scale].InputGesture}" />
+<MenuItem Name="VideoToolClipMenu" Header="Clip" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/clip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/clip]}" InputGesture="{Binding Actions[video/tool/clip].InputGesture}" />
+<MenuItem Name="VideoToolVectorClipMenu" Header="VectorClip" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/vectorclip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" InputGesture="{Binding Actions[video/tool/vectorclip].InputGesture}" />
+<MenuItem Header="Vector modes">
+<MenuItem Name="VideoVectorSelectMenu" Header="Select" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/select].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/select]}" InputGesture="{Binding Actions[video/vector/select].InputGesture}" />
+<MenuItem Name="VideoVectorLineMenu" Header="Line" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/line].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/line]}" InputGesture="{Binding Actions[video/vector/line].InputGesture}" />
+<MenuItem Name="VideoVectorBicubicMenu" Header="Bicubic" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/bicubic].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/bicubic]}" InputGesture="{Binding Actions[video/vector/bicubic].InputGesture}" />
+<MenuItem Name="VideoVectorConvertMenu" Header="Convert" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/convert].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/convert]}" InputGesture="{Binding Actions[video/vector/convert].InputGesture}" />
+<MenuItem Name="VideoVectorInsertMenu" Header="Insert" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/insert].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/insert]}" InputGesture="{Binding Actions[video/vector/insert].InputGesture}" />
+<MenuItem Name="VideoVectorRemoveMenu" Header="Remove" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/remove].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/remove]}" InputGesture="{Binding Actions[video/vector/remove].InputGesture}" />
+<MenuItem Name="VideoVectorFreehandMenu" Header="Freehand" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/freehand].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/freehand]}" InputGesture="{Binding Actions[video/vector/freehand].InputGesture}" />
+<MenuItem Name="VideoVectorSmoothMenu" Header="Smooth" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/smooth].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/smooth]}" InputGesture="{Binding Actions[video/vector/smooth].InputGesture}" />
+</MenuItem>
+</MenuItem>
 </MenuItem>
 <MenuItem Name="AudioMenu" Header="Audio">
 <MenuItem Name="AudioTimingMenu" Header="Timing">
