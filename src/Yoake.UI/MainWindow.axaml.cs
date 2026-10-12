@@ -391,13 +391,19 @@ public partial class MainWindow : Window, IEditorDialogs
     public async Task WriteFrameClipboardAsync(Yoake.Native.DecodedVideoFrame image, Func<bool> isCurrent, CancellationToken token)
     {
         var clipboard = Clipboard ?? throw new InvalidOperationException("Image clipboard is unavailable.");
-        var data = new FrameClipboardTransfer(MainWindowViewModel.CreateBitmap(image)); var transferred=false;
+        var bitmap = await Task.Run(() => MainWindowViewModel.CreateBitmap(image), token);
+        var data = new FrameClipboardTransfer(bitmap, isCurrent, token); var transferred=false;
         try
         {
             token.ThrowIfCancellationRequested();
             if (!isCurrent()) throw new OperationCanceledException("The video frame changed before copying.");
             await clipboard.SetDataAsync(data); transferred=true;
+            token.ThrowIfCancellationRequested();
+            if (!isCurrent()) throw new OperationCanceledException("The video frame changed during clipboard retries.");
             await clipboard.FlushAsync();
+            token.ThrowIfCancellationRequested();
+            if (!isCurrent()) throw new OperationCanceledException("The video frame changed before clipboard rendering.");
+            data.Accept();
         }
         finally { if (!transferred) data.Dispose(); }
         // Successful SetData transfers ownership to Avalonia. In particular, a

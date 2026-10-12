@@ -54,6 +54,7 @@ public sealed partial class MainWindowViewModel
             var label = (save ? "Save PNG snapshot" : "Copy frame image") + (kind == FrameImageKind.Raw ? " (no subtitles)" : kind == FrameImageKind.Subtitles ? " (subtitles only)" : "");
             _registry.Register(new(new(id, label, "Extract current source-resolution frame", "Video"), async (invocation, token) =>
             {
+                var owner=_activeId;
                 try
                 {
                     await RunFrameExtractionAsync(kind, async (capture, ct) =>
@@ -75,7 +76,7 @@ public sealed partial class MainWindowViewModel
                         MediaStatus = "Saved snapshot: " + full;
                     }, token);
                 }
-                catch (OperationCanceledException) when (!token.IsCancellationRequested) { MediaStatus = "Frame extraction canceled: video, frame or preview changed."; }
+                catch (OperationCanceledException) when (!token.IsCancellationRequested) { if(_activeId==owner)MediaStatus = "Frame extraction canceled: video, frame or preview changed."; }
             }, context => _activeId is not null && (context.DocumentId is null || context.DocumentId == _activeId) && _media?.HasVideo == true && (save || Dialogs is not null)));
             Actions[id] = new RegistryCommand(_registry, id, CurrentContext, hotkeys: () => HotkeyProfile);
         }

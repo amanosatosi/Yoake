@@ -76,6 +76,16 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
                     }
                     var previous = model.Dialogs; model.Dialogs = new ClipboardFailureDialogs(previous!);
                     Require(!await model.Registry.InvokeAsync("video/frame/copy/raw", new(model.ActiveDocumentId)), "Clipboard failure crosses centralized command reporting."); model.Dialogs = previous; Unchanged();
+                    var validClipboardCapture=true;
+                    var clipboardReady=new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                    var delayedCopy=window.WriteFrameClipboardAsync(_subs.Image,()=>{clipboardReady.TrySetResult();return validClipboardCapture;},CancellationToken.None);
+                    await clipboardReady.Task;
+                    validClipboardCapture=false;
+                    var canceledClipboard=false;
+                    try { await delayedCopy; } catch(OperationCanceledException) { canceledClipboard=true; }
+                    Require(canceledClipboard, "Delayed Windows clipboard rendering rejects an obsolete capture.");
+                    using(var staleData=await window.Clipboard!.TryGetDataAsync())
+                    { using var staleBitmap=staleData is null?null:await staleData.TryGetBitmapAsync();Require(staleBitmap is null,"Obsolete delayed clipboard rendering cannot persist old image pixels."); }
                     var badDestination = Path.Combine(options.ProfileDirectory!, "missing", "failed.png");
                     Require(!await model.Registry.InvokeAsync("video/frame/save/raw", new(model.ActiveDocumentId), badDestination) && !File.Exists(badDestination), "Failed PNG has no half-written destination.");
                     Require(!Directory.GetFiles(options.ProfileDirectory!, "*.tmp").Any(), "PNG failures clean sibling temporary files.");
