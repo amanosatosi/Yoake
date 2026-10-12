@@ -26,6 +26,7 @@ public sealed class VisualOverlayControl : Control
     private IPointer? _capture;
     private bool _inside;
     private StandardCursorType? _cursorType;
+    public bool HasTransientInput=>_capture is not null||Model?.HasGesture==true;
     public int RenderedHandles {get;private set;}
     public string? VectorPreviewDrawing=>(_tool as VectorClipTool)?.PreviewDrawing;
     public string? RenderedTool {get;private set;}
@@ -85,7 +86,7 @@ public sealed class VisualOverlayControl : Control
         try{if(_context is {} state)_tool?.Release(state,Pointer(e));ReleaseCapture();if(Model?.HasGesture==true)Model.EndGesture();e.Handled=true;InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);if(_capture is not null)Cancel();}
-    protected override void OnKeyDown(KeyEventArgs e){base.OnKeyDown(e);if(e.Key==Key.Escape){Cancel();e.Handled=true;}else Modifiers(e.KeyModifiers);}
+    protected override void OnKeyDown(KeyEventArgs e){base.OnKeyDown(e);if(e.Key==Key.Escape&&HasTransientInput){Cancel();e.Handled=true;}else Modifiers(e.KeyModifiers);}
     protected override void OnKeyUp(KeyEventArgs e){base.OnKeyUp(e);Modifiers(e.KeyModifiers);}
     private void Modifiers(KeyModifiers modifiers){_pointer=_pointer with{Modifiers=modifiers};try{if(_capture is not null&&_context is {} state)_tool?.Move(state,_pointer);InvalidateVisual();}catch(Exception ex){Fail(ex);}}
     private void ReleaseCapture(){var pointer=_capture;_capture=null;pointer?.Capture(null);}

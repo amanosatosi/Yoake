@@ -238,9 +238,9 @@ public partial class MainWindow : Window, IEditorDialogs
         if(_model is null||e.Handled)return;
         var control=e.Source as Control;var context=HotkeyContext.Default;
         var ancestors=control is null?Array.Empty<Control>():control.GetVisualAncestors().OfType<Control>().Prepend(control).ToArray();
-        // The overlay owns cancellation of both edit gestures and non-mutating
-        // point/box selections. Do not consume its Escape as video Stop.
-        if(e.Key==Key.Escape&&control is VisualOverlayControl)return;
+        // Captured edit gestures and point/box selections own cancellation.
+        // An idle overlay routes Escape normally through the Video context.
+        if(e.Key==Key.Escape&&control is VisualOverlayControl {HasTransientInput:true})return;
         foreach(var input in ancestors)
         {
             if(input is TextBox textBox && textBox.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
