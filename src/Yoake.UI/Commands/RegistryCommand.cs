@@ -56,6 +56,7 @@ public sealed class RegistryCommand : ICommand, INotifyPropertyChanged
         {
             var bindings=_hotkeys?.Invoke().Resolver.Bindings;
             return bindings?.FirstOrDefault(binding => binding.CommandId==_commandId && binding.Context==HotkeyContext.Default)
+                ?? bindings?.FirstOrDefault(binding => binding.CommandId==_commandId && binding.Context==HotkeyContext.Video && _commandId.StartsWith("video/",StringComparison.Ordinal))
                 ?? bindings?.FirstOrDefault(binding => binding.CommandId==_commandId && binding.Context!=HotkeyContext.Always);
         }
     }

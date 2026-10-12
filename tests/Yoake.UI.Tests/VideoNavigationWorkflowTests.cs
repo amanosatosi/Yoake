@@ -20,6 +20,17 @@ public sealed partial class EditorWorkflowTests
         }
         Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Same(draft,_model.Draft);Assert.Equal(range,_model.PrimaryAudioRange);Assert.False(_model.IsPlaying);
     }
+    [Fact] public void VideoLineShortcutUsesOnlyTheVideoContextAndDisplaysItsUsableBinding()
+    {
+        var gesture=Yoake.Core.Hotkeys.HotkeyGesture.Parse("Shift-Space");
+        Assert.Equal("video/play/line",_model.Hotkeys.Resolve(gesture,[Yoake.Core.Hotkeys.HotkeyContext.Default,Yoake.Core.Hotkeys.HotkeyContext.Video],false)!.CommandId);
+        Assert.Null(_model.Hotkeys.Resolve(gesture,[Yoake.Core.Hotkeys.HotkeyContext.Default,Yoake.Core.Hotkeys.HotkeyContext.SubtitleEdit],false));
+        Assert.Null(_model.Hotkeys.Resolve(Yoake.Core.Hotkeys.HotkeyGesture.Parse("Home"),[Yoake.Core.Hotkeys.HotkeyContext.Default,Yoake.Core.Hotkeys.HotkeyContext.SubtitleGrid],false));
+        Assert.Equal("Shift-Space",_model.Actions["video/play/line"].Shortcut);
+        var binding=_model.Hotkeys.Resolve(gesture,[Yoake.Core.Hotkeys.HotkeyContext.Video],false)!;
+        Assert.False(Yoake.Core.Hotkeys.HotkeyInputPolicy.MayRoute(binding,gesture,true));
+        Assert.True(Yoake.Core.Hotkeys.HotkeyInputPolicy.MayRoute(binding,gesture,false));
+    }
     [Fact] public async Task FastJumpPreferenceDefaultsPersistsAndRejectsBadValues()
     {
         Assert.Equal(10m,_model.VideoFastJumpStep);await Command("video/preferences/fast-step",3);

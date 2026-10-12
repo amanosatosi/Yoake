@@ -73,6 +73,10 @@ public static partial class AegisubHotkeyDefaults
         {
             Add("video/play", context, "Space"); Add("audio/play/selection", context, "R");
         }
+        // Styling/Translation retain their shipped Home binding. The main
+        // Video view gains a free context-local audition key; editor/grid Home
+        // remains ordinary navigation.
+        Add("video/play/line", HotkeyContext.Video, "Shift-Space");
         Add("video/stop", HotkeyContext.Video, "Escape");
         Add("video/stop", HotkeyContext.Audio, "Escape");
         Add("audio/zoom/in", HotkeyContext.Audio, "OemPlus");

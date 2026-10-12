@@ -3931,26 +3931,16 @@
         "VideoNavigationWorkflowTests",
         "VideoNavigationUiAcceptanceVerification"
       ],
-      "notes": "Exact 3.2.2 video.cpp/VideoController/default configuration compared to 3.5.0. Large step defaults to 10 frames; boundary traversal visits active START/END then adjacent actual event including comments. Play-line uses Yoake pending primary range, mapped to included video frames on the shared AV clock; this deliberately replaces upstream independently rounded video/audio clocks. Managed tests pass; packaged real-input verification pending.",
+      "notes": "Exact 3.2.2 video.cpp/VideoController/default configuration compared to 3.5.0. Large step defaults to 10 frames; boundary traversal visits active START/END then adjacent actual event including comments. Play-line uses Yoake pending primary range, mapped to included video frames on the shared AV clock; this deliberately replaces upstream independently rounded video/audio clocks. Managed tests pass; packaged real-input verification pending. Yoake adds Video-only Shift-Space; shipped Styling/Translation Home stays in its own contexts. Editor/Grid Home and Space typing remain native navigation/input; menus prefer the usable Video binding.",
       "yoake_default_hotkeys": {
-        "Always": [
-          "KP_5"
-        ],
-        "Audio": [
-          "S",
-          "Space"
+        "Video": [
+          "Shift-Space"
         ],
         "Styling Assistant": [
-          "End"
+          "Home"
         ],
         "Translation Assistant": [
-          "End"
-        ],
-        "Video": [
-          "R"
-        ],
-        "Subtitle Grid": [
-          "R"
+          "Home"
         ]
       }
     },
