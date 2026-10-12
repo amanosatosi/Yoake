@@ -37,6 +37,7 @@ public sealed record AppSettings
     public SubtitleSearchPreferences? SearchPreferences {get;init;}
     public SubtitleSelectionOptions? SelectionPreferences {get;init;}
     public bool? VideoAutoSeek {get;init;}
+    public int? VideoFastJumpStep {get;init;}
     public SubtitleShiftPreferences? ShiftPreferences {get;init;}
     public SubtitleShiftHistoryEntry[]? ShiftHistory {get;init;}
     public double MainSplitRatio { get; init; } = 0.5;
@@ -92,7 +93,7 @@ public sealed record AppSettings
             GridTagDisplay=GridTagDisplay is {} tags&&Enum.IsDefined(tags)?tags:GridTagDisplayMode.Simplified,
             SearchPreferences=SearchPreferences?.Normalize()??new SubtitleSearchPreferences(),
             SelectionPreferences=SelectionPreferences?.Normalize()??new SubtitleSelectionOptions(),
-            VideoAutoSeek=VideoAutoSeek??true,
+            VideoAutoSeek=VideoAutoSeek??true,VideoFastJumpStep=VideoFastJumpStep is >=1 and <=1000000?VideoFastJumpStep:10,
             ShiftPreferences=ShiftPreferences?.Normalize()??new SubtitleShiftPreferences(),
             ShiftHistory=(ShiftHistory??[]).Where(entry=>entry is not null&&entry.Preferences is not null&&entry.Document is {Length:<=512}&&entry.Rows is {Length:<=4096}).Take(50).Select(entry=>entry with{Preferences=entry.Preferences.Normalize()}).ToArray(),
             AutomationAutoloadDirectories=NormalizePaths(AutomationAutoloadDirectories), AutomationIncludeDirectories=NormalizePaths(AutomationIncludeDirectories),

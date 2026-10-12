@@ -55,6 +55,9 @@ public sealed class OptionsWindow : Window
         Action("Reset command","ResetCommandHotkeys",()=>Apply("settings/hotkeys/reset-command",Choice is {} choice?new HotkeyCommandReset(Context,choice.Id):null));
         Action("Reset context","ResetContextHotkeys",()=>Apply("settings/hotkeys/reset-context",Context));Action("Reset all","ResetAllHotkeys",()=>Apply("settings/hotkeys/reset-all"));
         edit.Children.Add(new TextBlock{Text="Changes apply and save immediately. Each context can bind the same key differently. A conflict leaves existing bindings unchanged.",TextWrapping=Avalonia.Media.TextWrapping.Wrap});
+        var step=new NumericUpDown{Name="VideoFastJumpStep",Minimum=1,Maximum=1000000,Value=_model.VideoFastJumpStep,Width=100};names.Register(step.Name!,step);
+        var stepRow=new StackPanel{Orientation=Orientation.Horizontal,Spacing=8};stepRow.Children.Add(new TextBlock{Text="Fast video jump (frames)",VerticalAlignment=VerticalAlignment.Center});stepRow.Children.Add(step);edit.Children.Add(stepRow);
+        step.ValueChanged+=(_,_)=>_model.VideoFastJumpStep=step.Value;
         At(root,_status,3);var close=new Button{Content="Close",HorizontalAlignment=HorizontalAlignment.Right,IsCancel=true};close.Click+=(_,_)=>Close();At(root,close,4);
         _context.SelectionChanged+=(_,_)=>RefreshCommands();_filter.TextChanged+=(_,_)=>RefreshCommands();
         _commands.SelectionChanged+=(_,_)=>RefreshBindings();_bindings.SelectionChanged+=(_,_)=>{if(_bindings.SelectedItem is string key)_gesture.Text=key;};

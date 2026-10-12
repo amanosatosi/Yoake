@@ -18,6 +18,7 @@ public interface IEditorDialogs
     Task<AssColor?> ChooseColorAsync(AssColor color)=>Task.FromResult<AssColor?>(null);
     Task<string?> OpenSubtitleAsync();
     Task<string?> OpenMediaAsync();
+    Task<Yoake.UI.ViewModels.VideoJumpRequest?> ShowVideoJumpAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>Task.FromResult<Yoake.UI.ViewModels.VideoJumpRequest?>(null);
     Task<string?> OpenKeyframesAsync()=>Task.FromResult<string?>(null);
     Task<string?> OpenTimecodesAsync()=>Task.FromResult<string?>(null);
     Task<string?> SaveTimecodesAsync(string suggestedName)=>Task.FromResult<string?>(null);

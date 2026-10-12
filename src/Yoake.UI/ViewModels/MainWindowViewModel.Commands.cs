@@ -176,17 +176,9 @@ public sealed partial class MainWindowViewModel
         R(CommandIds.GridPaste,"Paste lines",async _=>{if(Dialogs is not null&&await Dialogs.ReadClipboardAsync() is {} text)RunEdit(e=>Select(e.Paste(text,SelectedEvent).FirstOrDefault()));});
         R(CommandIds.MediaOpen,"Open video/audio…",async _=>{var path=Dialogs is null?null:await Dialogs.OpenMediaAsync();if(path is not null)await OpenMediaAsync(path);});
         // Playback is a continuing activity; registry invocation completes once started.
-        S(CommandIds.VideoPlay,"Play / Pause",()=>{if(IsPlaying)StopPlayback();else _=StartPlaybackAsync();},()=>CanPlayMedia);
-        S(CommandIds.VideoStop,"Stop",StopPlayback,()=>CanPlayMedia);
-        R(CommandIds.VideoFrameNext,"Next frame",async _=>await StepFrameAsync(1),()=>_media?.HasVideo==true);
-        R("video/seek/frame","Seek to frame",async i=>{if(i.Parameter is int frame)await SeekFrameAsync(frame);},()=>_media?.HasVideo==true);
-        foreach(var delta in new[]{-1,1}){var step=delta;R(step>0?"video/frame/next-keyframe":"video/frame/previous-keyframe","Step keyframe",async _=>await SeekFrameAsync(Yoake.Core.Media.FrameNavigation.StepKeyframe(Keyframes,CurrentFrame,step)),()=>_media?.HasVideo==true);}
-        R(CommandIds.VideoFramePrevious,"Previous frame",async _=>await StepFrameAsync(-1),()=>_media?.HasVideo==true);
-        R(CommandIds.VideoSeek,"Seek to exact time",async i=>{if(i.Parameter is string text&&AssTime.TryParse(text,out var ms))await SeekPlaybackAsync(ms/1000d);else throw new ArgumentException("Enter h:mm:ss.cc");},()=>CanPlayMedia);
+        RegisterVideoNavigationCommands();
         S(CommandIds.TimingSetStart,"Set start to current time",()=>RunEdit(e=>{var line=SelectedEvent!;using var t=e.Undo.BeginTransaction("Set line start");e.SetTiming(line,(long)(CurrentTimeSeconds*1000),Math.Max((long)(CurrentTimeSeconds*1000),line.EndMilliseconds??0));t.Commit();}),HasLine);
         S(CommandIds.TimingSetEnd,"Set end to current time",()=>RunEdit(e=>{var line=SelectedEvent!;using var t=e.Undo.BeginTransaction("Set line end");e.SetTiming(line,Math.Min((long)(CurrentTimeSeconds*1000),line.StartMilliseconds??0),(long)(CurrentTimeSeconds*1000));t.Commit();}),HasLine);
-        S(CommandIds.TimingJumpStart,"Jump to line start",()=>{if(SelectedEvent?.StartMilliseconds is {} ms){StopPlayback();CurrentTimeSeconds=ms/1000d;}},HasLine);
-        S(CommandIds.TimingJumpEnd,"Jump to line end",()=>{if(SelectedEvent?.EndMilliseconds is {} ms){StopPlayback();CurrentTimeSeconds=ms/1000d;}},HasLine);
         R(CommandIds.StylesManage,"Styles Manager…",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} editor){await Dialogs.ShowStylesAsync(editor);OnPropertyChanged(nameof(StyleNames));ReloadDraft();}});
         R(CommandIds.ScriptInfoEdit,"Script Info…",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} editor)await Dialogs.ShowScriptInfoAsync(editor);});
         R(CommandIds.EditFind,"Find / Replace…",async _=>{if(CommitDraft()&&Dialogs is not null)await Dialogs.ShowFindAsync(this);});
@@ -211,11 +203,9 @@ public sealed partial class MainWindowViewModel
         var stem=Path.Combine(directory,Path.GetFileNameWithoutExtension(subtitlePath));
         return new[]{".mkv",".mp4",".webm",".m2ts",".ts",".avi",".mov"}.Select(ext=>stem+ext).FirstOrDefault(File.Exists);
     }
-    private async Task StepFrameAsync(int delta)
+    private Task StepFrameAsync(int delta)
     {
-        StopPlayback(); var media=_media; if(media is null)return;
-        CurrentTimeSeconds=await Task.Run(()=>media.AdjacentFrameTime(CurrentTimeSeconds,delta));
-        await RefreshVideoFrameAsync(CurrentTimeSeconds);
+        StopPlayback();return SeekFrameAsync((int)Math.Clamp((long)CurrentFrame+delta,0,Math.Max(0,FrameTimes.Count-1)));
     }
     public event EventHandler? SearchSelectionApplied;
     public void SelectSearchResult(SubtitleSearchMatch match,IEnumerable<AssEvent>? scope=null)

@@ -50,11 +50,11 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private void AttachModel()
     {
-        if(_model is not null){_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        if(_model is not null){_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
         RefreshRecentKeyframes();
         RefreshRecentTimecodes();
-        if(_model is not null){_model.Dialogs=this;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
+        if(_model is not null){_model.Dialogs=this;_model.VideoSeekFocusRequested+=SeekFocusRequested;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
@@ -106,6 +106,21 @@ public partial class MainWindow : Window, IEditorDialogs
             SubtitleText.CaretIndex=end;SubtitleText.SelectionStart=start;SubtitleText.SelectionEnd=end;
         });
     }
+    private WeakReference<Control>? _previousVideoFocus;
+    private void SeekFocusRequested(object? sender,VideoSeekFocusEventArgs args)
+    {
+        if(args.Toggle&&VideoSeekBar.IsKeyboardFocusWithin)
+        {
+            if(_previousVideoFocus?.TryGetTarget(out var previous)==true&&previous.IsEffectivelyVisible&&previous.IsEffectivelyEnabled)
+                previous.Focus();
+            return;
+        }
+        if(args.Toggle&&FocusManager?.GetFocusedElement() is Control focused)
+            _previousVideoFocus=new(focused);
+        if(_model?.ShowVideo!=true)_model?.Actions[CommandIds.ViewVideo].Execute(null);
+        VideoSeekBar.Focus();
+    }
+    public Task<VideoJumpRequest?> ShowVideoJumpAsync(MainWindowViewModel model)=>new VideoJumpWindow(model).ShowDialog<VideoJumpRequest?>(this);
     public async Task ShowShiftTimesAsync(MainWindowViewModel model)=>await new ShiftTimesWindow(model).ShowDialog(this);
     public async Task ShowAudioTimingOptionsAsync(MainWindowViewModel model)=>await new AudioTimingOptionsWindow(model).ShowDialog(this);
     public async Task ShowSelectLinesAsync(MainWindowViewModel model)=>await new SelectLinesWindow(model).ShowDialog(this);

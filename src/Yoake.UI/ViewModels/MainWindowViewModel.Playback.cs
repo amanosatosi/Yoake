@@ -179,14 +179,14 @@ public sealed partial class MainWindowViewModel
 
     public async Task SeekPlaybackAsync(double seconds)
     {
-        var resume = IsPlaying;
-        StopPlayback();
+        var resume = IsPlaying;var session=_media;var document=_activeId;
+        StopPlayback();var generation=Volatile.Read(ref _playbackGeneration);
 
         CurrentTimeSeconds = seconds;
         if (_media?.HasVideo == true)
             await RefreshVideoFrameAsync(CurrentTimeSeconds);
 
-        if (resume)
+        if (resume&&!_disposed&&_activeId==document&&ReferenceEquals(session,_media)&&generation==Volatile.Read(ref _playbackGeneration))
             await StartPlaybackAsync();
     }
 

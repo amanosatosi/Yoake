@@ -160,7 +160,20 @@
 </MenuItem>
 <MenuItem Name="VideoAutoSeekMenu" Header="Autoseek to selected line" ToggleType="CheckBox" IsChecked="{Binding Actions[video/autoseek].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/autoseek]}" />
 <MenuItem Header="Open video/audio…" InputGesture="{Binding Actions[media/open].InputGesture}" Command="{Binding Actions[media/open]}" />
-<MenuItem Header="Play / Pause" InputGesture="{Binding Actions[video/play].InputGesture}" Command="{Binding Actions[video/play]}" />
+<MenuItem Name="VideoPlayMenu" Header="Play / Pause" ToggleType="CheckBox" IsChecked="{Binding Actions[video/play].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[video/play].InputGesture}" Command="{Binding Actions[video/play]}" />
+<MenuItem Name="VideoPlayLineMenu" Header="Play current line" InputGesture="{Binding Actions[video/play/line].InputGesture}" Command="{Binding Actions[video/play/line]}" />
+<MenuItem Name="VideoJumpMenu" Header="Jump to frame or time…" InputGesture="{Binding Actions[video/jump].InputGesture}" Command="{Binding Actions[video/jump]}" />
+<MenuItem Header="Jump to subtitle start" InputGesture="{Binding Actions[timing/jump-start].InputGesture}" Command="{Binding Actions[timing/jump-start]}" />
+<MenuItem Header="Jump to subtitle end" InputGesture="{Binding Actions[timing/jump-end].InputGesture}" Command="{Binding Actions[timing/jump-end]}" />
+<MenuItem Header="Toggle seek focus" InputGesture="{Binding Actions[video/focus_seek].InputGesture}" Command="{Binding Actions[video/focus_seek]}" />
+<MenuItem Header="Navigate">
+<MenuItem Header="Previous keyframe" InputGesture="{Binding Actions[video/frame/previous-keyframe].InputGesture}" Command="{Binding Actions[video/frame/previous-keyframe]}" />
+<MenuItem Header="Next keyframe" InputGesture="{Binding Actions[video/frame/next-keyframe].InputGesture}" Command="{Binding Actions[video/frame/next-keyframe]}" />
+<MenuItem Header="Previous subtitle boundary" InputGesture="{Binding Actions[video/frame/prev/boundary].InputGesture}" Command="{Binding Actions[video/frame/prev/boundary]}" />
+<MenuItem Header="Next subtitle boundary" InputGesture="{Binding Actions[video/frame/next/boundary].InputGesture}" Command="{Binding Actions[video/frame/next/boundary]}" />
+<MenuItem Header="Fast jump backward" InputGesture="{Binding Actions[video/frame/prev/large].InputGesture}" Command="{Binding Actions[video/frame/prev/large]}" />
+<MenuItem Header="Fast jump forward" InputGesture="{Binding Actions[video/frame/next/large].InputGesture}" Command="{Binding Actions[video/frame/next/large]}" />
+</MenuItem>
 <MenuItem Header="Stop" InputGesture="{Binding Actions[video/stop].InputGesture}" Command="{Binding Actions[video/stop]}" />
 <MenuItem Header="Previous frame" InputGesture="{Binding Actions[video/frame/previous].InputGesture}" Command="{Binding Actions[video/frame/previous]}" />
 <MenuItem Header="Next frame" InputGesture="{Binding Actions[video/frame/next].InputGesture}" Command="{Binding Actions[video/frame/next]}" />

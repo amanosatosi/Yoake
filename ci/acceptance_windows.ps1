@@ -203,3 +203,24 @@ try {
   if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
   $process.Dispose()
 }
+
+# Video navigation input uses a separate real-input acceptance process.
+$videoNavigationRoot = Join-Path $root ('video-navigation-' + [Guid]::NewGuid().ToString('N'))
+$videoNavigationProfile = Join-Path $videoNavigationRoot 'profile'
+New-Item -ItemType Directory -Force -Path $videoNavigationProfile | Out-Null
+$logs = Join-Path $videoNavigationRoot 'logs'
+$report = Join-Path $videoNavigationRoot 'acceptance.txt'
+$arguments = @('--verify-ui-video-navigation', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $videoNavigationProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged Video navigation acceptance timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged Video navigation acceptance failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
