@@ -43,7 +43,11 @@ public partial class MainWindow
                 host.ScalingChanged += DetachedScalingChanged;
                 _hostDocument = _model?.ActiveDocumentId;
                 if (_hostDocument is { } id && _videoWindows.TryGetValue(id, out var saved)) { host.Width = saved.Width; host.Height = saved.Height; host.WindowStartupLocation = WindowStartupLocation.Manual; host.Position = saved.Position; host.WindowState = saved.State; }
-                VideoDock.Child = null; host.Content = VideoRegion; DetachedVideoWindow = host;
+                // Drain the source layout while controls still belong to it,
+                // then again while detached. Avalonia 12's queued arrange items
+                // otherwise survive reparenting and target the wrong root.
+                VideoRegion.UpdateLayout(); VideoDock.Child = null; VideoDock.UpdateLayout();
+                host.Content = VideoRegion; DetachedVideoWindow = host;
                 try
                 {
                     host.Show(this); ConstrainVideoHost(host);
@@ -54,12 +58,13 @@ public partial class MainWindow
                         _ = VideoImage.VideoArea; state?.CompleteHostChange(); _model?.NotifyVideoPresentation();
                     }, DispatcherPriority.Background);
                 }
-                catch { host.Content = null; VideoDock.Child = VideoRegion; DetachedVideoWindow = null; RemoveVideoHandlers(host); host.Close(); throw; }
+                catch { host.Content = null; host.UpdateLayout(); VideoDock.Child = VideoRegion; DetachedVideoWindow = null; RemoveVideoHandlers(host); host.Close(); throw; }
             }
             else if (DetachedVideoWindow is { } host)
             {
                 if (_hostDocument is { } id) _videoWindows[id] = (host.Position, host.Width, host.Height, host.WindowState == WindowState.Minimized ? WindowState.Normal : host.WindowState);
-                host.Content = null; VideoDock.Child = VideoRegion; DetachedVideoWindow = null; _hostDocument = null;
+                VideoRegion.UpdateLayout(); host.Content = null; host.UpdateLayout();
+                VideoDock.Child = VideoRegion; DetachedVideoWindow = null; _hostDocument = null;
                 RemoveVideoHandlers(host); host.Close();
             }
         }
