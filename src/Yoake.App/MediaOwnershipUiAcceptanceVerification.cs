@@ -3,6 +3,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Yoake.Core.Commands;
+using Yoake.Core.Logging;
 using Yoake.Core.Settings;
 using Yoake.Core.Subtitles;
 using Yoake.Native;
