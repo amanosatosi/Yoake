@@ -54,8 +54,8 @@ public sealed partial class MainWindowViewModel
     {
         if (_disposed || _activeId is not { } id || !_documents.TryGetValue(id, out var state)) return false;
         parent.ThrowIfCancellationRequested();
-        var draft = Draft; var resumeBurst = draft?.IsChanged == true && _editBurstDelay is not null;
-        if (resumeBurst) { _editBurstDelay!.Cancel(); _editBurstDelay.Dispose(); _editBurstDelay = null; }
+        var draft = Draft; state.MediaDraftPauses++;
+        _editBurstDelay?.Cancel(); _editBurstDelay?.Dispose(); _editBurstDelay = null;
         state.Loading?.Cancel();
         (video ? state.VideoLoading : state.AudioLoading)?.Cancel();
         var cancellation = CancellationTokenSource.CreateLinkedTokenSource(parent);
@@ -119,7 +119,8 @@ public sealed partial class MainWindowViewModel
             if (video && ReferenceEquals(state.VideoLoading, cancellation)) state.VideoLoading = null;
             if (!video && ReferenceEquals(state.AudioLoading, cancellation)) state.AudioLoading = null;
             cancellation.Dispose(); _registry.NotifyStateChanged();
-            if (resumeBurst && !_disposed && _activeId == id && ReferenceEquals(Draft, draft) && Draft?.IsChanged == true && _editBurstDelay is null)
+            state.MediaDraftPauses--;
+            if (state.MediaDraftPauses == 0 && !_disposed && _activeId == id && ReferenceEquals(Draft, draft) && Draft?.IsChanged == true && _editBurstDelay is null)
             { var delay = new CancellationTokenSource(); _editBurstDelay = delay; _ = FinalizeBurstAsync(delay.Token); }
         }
     }

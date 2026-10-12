@@ -43,6 +43,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public AssEvent? Selected;
         public CancellationTokenSource? Loading;
         public CancellationTokenSource? VideoLoading, AudioLoading;
+        public int MediaDraftPauses;
         public CancellationTokenSource? Editing;
         public SubtitleSearchToolState Search=new(new());
         public string SelectionStatus="";
@@ -124,8 +125,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if(_activeId is {} editingId&&_documents.TryGetValue(editingId,out var editingState))editingState.Editing?.Cancel();
         try{SelectedEvent?.ShowDraft(Draft?.Values);}catch(ArgumentException){/* Invalid metadata remains editable, never saved. */}
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));
-        _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();var delay=new CancellationTokenSource();_editBurstDelay=delay;
-        _=FinalizeBurstAsync(delay.Token);
+        _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
+        if(_activeId is not {} draftOwner||!_documents.TryGetValue(draftOwner,out var draftState)||draftState.MediaDraftPauses==0)
+        {var delay=new CancellationTokenSource();_editBurstDelay=delay;_=FinalizeBurstAsync(delay.Token);}
         if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false);
         _registry.NotifyStateChanged();
         if(e.PropertyName is nameof(EventEditDraft.Text) or nameof(EventEditDraft.Style))RefreshFormatting();
