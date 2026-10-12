@@ -14,7 +14,7 @@ public sealed partial class EditorWorkflowTests
         var first=provider.GetFrame(0);Assert.Equal(24,first.Width);Assert.Equal(16,first.Height);Assert.Equal(new byte[]{150,100,50,255},first.Pixels[..4]);
         first.Pixels[0]=0;Assert.Equal(150,provider.GetFrame(0).Pixels[0]);Assert.Equal(provider.GetFrame(0).Pixels,provider.GetFrameAtTime(0.399).Pixels);
         Assert.Equal(0.16,provider.AdjacentFrameTime(0.12,1));Assert.Throws<ArgumentOutOfRangeException>(()=>provider.GetFrame(10));
-        using var pattern=new DummyVideoProvider(options with{Checkerboard=true});var pixels=pattern.GetFrame(0).Pixels;Assert.NotEqual(pixels[..4],pixels[8*4..(8*4+4)]);Assert.Equal(pixels[..4],pixels[(8*24+8)*4..((8*24+8)*4+4)]);
+        using var pattern=new DummyVideoProvider(options with{Checkerboard=true});var pixels=pattern.GetFrame(0).Pixels;Assert.NotEqual(pixels[..4],pixels[(8*4)..(8*4+4)]);Assert.Equal(pixels[..4],pixels[((8*24+8)*4)..((8*24+8)*4+4)]);
         using var media=DocumentMedia.FromVideo(provider);using var replacement=DocumentMedia.FromVideo(pattern);using var replaced=media.WithVideo(replacement);
         replacement.Dispose();media.Dispose();Assert.False(provider.HasVideo);Assert.True(pattern.HasVideo);
         using var closed=replaced.WithVideo(null);replaced.Dispose();Assert.False(pattern.HasVideo);Assert.False(closed.HasVideo);

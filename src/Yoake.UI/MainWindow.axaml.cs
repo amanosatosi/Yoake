@@ -392,7 +392,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         var clipboard = Clipboard ?? throw new InvalidOperationException("Image clipboard is unavailable.");
         using var bitmap = MainWindowViewModel.CreateBitmap(image);
-        using var data = new DataTransfer(); data.Add(DataTransferItem.Create(DataFormat.Bitmap, bitmap));
+        var data = new DataTransfer(); data.Add(DataTransferItem.Create(DataFormat.Bitmap, bitmap));
         token.ThrowIfCancellationRequested();
         if (!isCurrent()) throw new OperationCanceledException("The video frame changed before copying.");
         await clipboard.SetDataAsync(data);

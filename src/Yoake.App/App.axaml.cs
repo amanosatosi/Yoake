@@ -96,6 +96,7 @@ public partial class App : Application
                 else if(_startup.SelectionAcceptance)new SelectionUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.AudioClipAcceptance)new AudioClipUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.AudioPlaybackAcceptance)new AudioPlaybackUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.VideoUtilitiesAcceptance)new VideoUtilitiesUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.MediaOwnershipAcceptance)new MediaOwnershipUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.VideoNavigationAcceptance)new VideoNavigationUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.VideoAcceptance)new VideoUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
