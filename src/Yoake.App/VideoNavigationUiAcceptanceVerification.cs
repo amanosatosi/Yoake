@@ -103,6 +103,12 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
     private async Task Seek(int frame)=>await Invoke("video/seek/frame",frame);
     private async Task Invoke(string id,object? parameter=null)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId),parameter),"Video navigation preparation: "+id);
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
-    {(TopLevel.GetTopLevel(control) as Window)?.Activate();Require(control.Focus()&&control.IsKeyboardFocusWithin,"Actual navigation control must own focus: "+control.Name);control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});}
+    {
+        if(control is ListBox list)
+        {
+            var row=list.ContainerFromIndex(Math.Max(0,list.SelectedIndex)) as Control;
+            Require(row is {Bounds.Height:>0},"A realized interactive subtitle row must exist before keyboard input.");control=row!;
+        }
+        (TopLevel.GetTopLevel(control) as Window)?.Activate();Require(control.Focus()&&control.IsKeyboardFocusWithin,"Actual navigation control must own focus: "+control.Name);control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});}
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
 }

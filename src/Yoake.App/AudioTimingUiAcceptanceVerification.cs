@@ -115,6 +115,12 @@ internal sealed class AudioTimingUiAcceptanceVerification(IClassicDesktopStyleAp
     }
     private async Task Invoke(string id)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId)),"Timing preparation: "+id);
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
-    {(TopLevel.GetTopLevel(control) as Window)?.Activate();Require(control.Focus()&&control.IsKeyboardFocusWithin,$"The actual timing control must own focus: {control.Name ?? control.GetType().Name}; enabled={control.IsEffectivelyEnabled}, visible={control.IsEffectivelyVisible}, attached={TopLevel.GetTopLevel(control) is not null}.");control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});}
+    {
+        if(control is ListBox list)
+        {
+            var row=list.ContainerFromIndex(Math.Max(0,list.SelectedIndex)) as Control;
+            Require(row is {Bounds.Height:>0},"A realized interactive subtitle row must exist before keyboard input.");control=row!;
+        }
+        (TopLevel.GetTopLevel(control) as Window)?.Activate();Require(control.Focus()&&control.IsKeyboardFocusWithin,$"The actual timing control must own focus: {control.Name ?? control.GetType().Name}; enabled={control.IsEffectivelyEnabled}, visible={control.IsEffectivelyVisible}, attached={TopLevel.GetTopLevel(control) is not null}.");control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});}
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
 }
