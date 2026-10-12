@@ -16,7 +16,7 @@ public sealed class DummyVideoProvider : IVideoProvider
     public DummyVideoProvider(DummyVideoOptions options, CancellationToken token = default)
     {
         options.Validate(); Options = options;
-        SourcePath = string.Create(CultureInfo.InvariantCulture, $"?dummy:{options.FramesPerSecond:F6}:{options.FrameCount}:{options.Width}:{options.Height}:{options.Color.Red}:{options.Color.Green}:{options.Color.Blue}:{(options.Checkerboard ? "c" : "")}");
+        SourcePath = options.SourceName;
         SourceInfo = new(SourcePath, options.Width, options.Height, options.FrameCount, options.FramesPerSecond, options.DurationSeconds, 0, 0, 0);
         _nativeTimes = new ConstantFrameTimes(options.FrameCount, options.FramesPerSecond);
         _pixels = new byte[checked(options.Width * options.Height * 4)];

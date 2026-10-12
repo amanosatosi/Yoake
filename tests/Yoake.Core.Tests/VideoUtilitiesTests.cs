@@ -78,6 +78,7 @@ public sealed class VideoUtilitiesTests
     [Fact] public void DummyDefaultsAndOverscanPersistEvenWithOtherDamagedSettings()
     {
         var defaults=new DummyVideoOptions();Assert.Equal(640,defaults.Width);Assert.Equal(480,defaults.Height);Assert.Equal(40000,defaults.FrameCount);Assert.Equal(23.976,defaults.FramesPerSecond);Assert.Equal(new Yoake.Core.Subtitles.AssColor(47,163,254,0),defaults.Color);Assert.False(defaults.Checkerboard);
+        var precise=defaults with{FramesPerSecond=23.976123456789,Checkerboard=true};Assert.True(DummyVideoOptions.TrySourceName(precise.SourceName,out var parsed));Assert.Equal(precise,parsed);Assert.False(DummyVideoOptions.TrySourceName("?dummy:NaN:2:3:4:0:0:0:",out _));
         var root=Path.Combine(Path.GetTempPath(),"Yoake-dummy-settings-"+Guid.NewGuid());var store=new SettingsStore(Path.Combine(root,"settings.json"));
         try
         {

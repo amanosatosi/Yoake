@@ -61,9 +61,10 @@ public sealed partial class EditorWorkflowTests
         _model.ReportVideoPointer(new(12.3456,-0.5));await Command("video/copy_coordinates");Assert.Equal("12.346,-0.5",_dialogs.ClipboardText);
         await Command("video/frame/copy/raw");Assert.Equal(64,_dialogs.FrameImage!.Width);
         _dialogs.FailFrameClipboard=true;Assert.False(await _model.Registry.InvokeAsync("video/frame/copy/raw",new()));Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Same(draft,_model.Draft);
-        Assert.Empty(_model.RecentVideoItems);Assert.Equal(64,_model.LastDummyVideo.Width);
+        Assert.Single(_model.RecentVideoItems);Assert.Equal(_model.VideoSourcePath,_model.RecentVideoItems[0].Path);Assert.Equal(64,_model.LastDummyVideo.Width);
         foreach(var id in new[]{"video/aspect/default","video/frame/copy/raw","video/details","video/open/dummy","video/show_overscan"})Assert.False(await _model.Registry.InvokeAsync(id,new(Guid.NewGuid())));
         await Command("video/close");Assert.Null(_model.CurrentVideoDetails);Assert.False(_model.Actions["video/frame/copy/raw"].CanExecute(null));
+        await Command("recent/video",_model.RecentVideoItems[0].Path);Assert.Equal(64,_model.CurrentVideoDetails!.Width);
         foreach(var id in new[]{"video/reset_pan","video/zoom/50","video/zoom/100","video/zoom/200","video/zoom/in","video/zoom/out","video/detach"})Assert.False(_model.Registry.TryGet(id,out _));
     }
 }

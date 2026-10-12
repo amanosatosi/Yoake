@@ -20,10 +20,13 @@ public sealed partial class MainWindowViewModel
     }
     private string? RememberDummyVideo(DummyVideoOptions options)
     {
-        _settings = _settings with { LastDummyVideo = options };
-        try { _settingsStore.Save(_settings); return null; }
+        // Project::DoLoadVideo -> SetPath(...,"Video",path) records dummy
+        // sources in 3.2.2. These typed entries reopen without filesystem probes.
+        _settings = _settings with { LastDummyVideo = options, RecentVideo = new[] { options.SourceName }
+            .Concat((_settings.RecentVideo ?? []).Where(p => p != options.SourceName)).Take(12).ToArray() };
+        try { _settingsStore.Save(_settings); OnPropertyChanged(nameof(RecentVideoItems)); return null; }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException)
-        { _registry.ReportFailure("settings/dummy-video", e); return "Dummy video retained; last options could not be saved: " + e.Message; }
+        { OnPropertyChanged(nameof(RecentVideoItems)); _registry.ReportFailure("settings/dummy-video", e); return "Dummy video retained; last options could not be saved: " + e.Message; }
     }
     public VideoDetails? CurrentVideoDetails
     {
@@ -37,7 +40,9 @@ public sealed partial class MainWindowViewModel
         }
     }
     private AssPoint? _videoPointer;
-    public void ReportVideoPointer(AssPoint? point) { _videoPointer = point; }
+    public void ReportVideoPointer(AssPoint? point) { if (point is null || double.IsFinite(point.Value.X) && double.IsFinite(point.Value.Y)) _videoPointer = point; }
+    private static VideoAspect InitialVideoAspect(IVideoProvider? video) => video is { IsDummy:false, DisplayAspectRatio:>0 }
+        ? new(VideoAspectKind.Custom, Math.Clamp(video.DisplayAspectRatio,0.5,5)) : new();
     public VideoPresentation VideoViewport(double width, double height) => VideoPresentation.Fit(width, height, VideoAspectRatio);
     private void RegisterVideoUtilityCommands()
     {

@@ -1,4 +1,5 @@
 using Yoake.Core.Subtitles;
+using System.Globalization;
 
 namespace Yoake.Core.Media;
 
@@ -11,6 +12,17 @@ public sealed record DummyVideoOptions
     public AssColor Color { get; init; } = new(47, 163, 254, 0);
     public bool Checkerboard { get; init; }
     public double DurationSeconds => FrameCount / FramesPerSecond;
+    public string SourceName => string.Create(CultureInfo.InvariantCulture, $"?dummy:{FramesPerSecond:R}:{FrameCount}:{Width}:{Height}:{Color.Red}:{Color.Green}:{Color.Blue}:{(Checkerboard ? "c" : "")}");
+    public static bool TrySourceName(string source, out DummyVideoOptions? options)
+    {
+        options = null; if (!source.StartsWith("?dummy:", StringComparison.Ordinal)) return false;
+        var parts = source[7..].Split(':');
+        if (parts.Length != 8 || !double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out var fps) ||
+            !int.TryParse(parts[1], out var count) || !int.TryParse(parts[2], out var width) || !int.TryParse(parts[3], out var height) ||
+            !byte.TryParse(parts[4], out var red) || !byte.TryParse(parts[5], out var green) || !byte.TryParse(parts[6], out var blue) || parts[7] is not ("" or "c")) return false;
+        var parsed = new DummyVideoOptions { Width = width, Height = height, FrameCount = count, FramesPerSecond = fps, Color = new(red, green, blue, 0), Checkerboard = parts[7] == "c" };
+        try { parsed.Validate(); options = parsed; return true; } catch (ArgumentException) { return false; }
+    }
     public void Validate()
     {
         if (Width is < 1 or > 10000 || Height is < 1 or > 10000) throw new ArgumentException("Resolution must be between 1 and 10000 pixels per dimension.");

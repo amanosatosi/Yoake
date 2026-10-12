@@ -387,17 +387,22 @@ public partial class MainWindow : Window, IEditorDialogs
         using var data=await Clipboard.TryGetDataAsync();
         return data is null?null:await data.TryGetTextAsync();
     }
-    public async Task WriteClipboardAsync(string text){if(Clipboard is not null){var data=new DataTransfer();data.Add(DataTransferItem.CreateText(text));await Clipboard.SetDataAsync(data);await Clipboard.FlushAsync();}}
+    public async Task WriteClipboardAsync(string text){var clipboard=Clipboard??throw new InvalidOperationException("Clipboard is unavailable.");var data=new DataTransfer();data.Add(DataTransferItem.CreateText(text));await clipboard.SetDataAsync(data);await clipboard.FlushAsync();}
     public async Task WriteFrameClipboardAsync(Yoake.Native.DecodedVideoFrame image, Func<bool> isCurrent, CancellationToken token)
     {
         var clipboard = Clipboard ?? throw new InvalidOperationException("Image clipboard is unavailable.");
-        using var bitmap = MainWindowViewModel.CreateBitmap(image);
-        var data = new DataTransfer(); data.Add(DataTransferItem.Create(DataFormat.Bitmap, bitmap));
-        token.ThrowIfCancellationRequested();
-        if (!isCurrent()) throw new OperationCanceledException("The video frame changed before copying.");
-        await clipboard.SetDataAsync(data);
-        // Flush transfers ownership to Windows before disposing our bitmap.
-        await clipboard.FlushAsync();
+        var data = new FrameClipboardTransfer(MainWindowViewModel.CreateBitmap(image)); var transferred=false;
+        try
+        {
+            token.ThrowIfCancellationRequested();
+            if (!isCurrent()) throw new OperationCanceledException("The video frame changed before copying.");
+            await clipboard.SetDataAsync(data); transferred=true;
+            await clipboard.FlushAsync();
+        }
+        finally { if (!transferred) data.Dispose(); }
+        // Successful SetData transfers ownership to Avalonia. In particular, a
+        // failed Flush must leave a usable delayed-rendering bitmap until the
+        // platform disposes the transfer, rather than a disposed image payload.
     }
     public Task<Yoake.Core.Media.DummyVideoOptions?> ShowDummyVideoAsync(Yoake.Core.Media.DummyVideoOptions initial) => new DummyVideoWindow(initial).ShowDialog<Yoake.Core.Media.DummyVideoOptions?>(this);
     public Task<string?> ShowCustomAspectAsync(double current) => new VideoAspectWindow(current).ShowDialog<string?>(this);

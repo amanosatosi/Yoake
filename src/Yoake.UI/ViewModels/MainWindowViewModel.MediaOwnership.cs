@@ -38,7 +38,8 @@ public sealed partial class MainWindowViewModel
                 async (invocation, token) =>
                 {
                     if (invocation.Parameter is not string path) return;
-                    if (!await OpenMediaTrackAsync(path, video, token) && !File.Exists(path)) ForgetMedia(path, video);
+                    if (!await OpenMediaTrackAsync(path, video, token) &&
+                        (video && path.StartsWith("?dummy:", StringComparison.Ordinal) ? !DummyVideoOptions.TrySourceName(path, out _) : !File.Exists(path))) ForgetMedia(path, video);
                 }, Applies));
             foreach (var command in new[] { name + "/open", "recent/" + name }) Actions[command] = new RegistryCommand(_registry, command, CurrentContext, hotkeys: () => HotkeyProfile);
         }
@@ -71,6 +72,10 @@ public sealed partial class MainWindowViewModel
         MediaStatus = dummy is null ? "FFMS2 indexing " + Path.GetFileName(path) : "Preparing dummy video";
         try
         {
+            if (video && dummy is null && path.StartsWith("?dummy:", StringComparison.Ordinal))
+            {
+                if (!DummyVideoOptions.TrySourceName(path, out dummy)) throw new ArgumentException("Invalid dummy video source.");
+            }
             var full = dummy is null ? Path.GetFullPath(path) : "";
             var job = _jobs.Run(video ? "Open video" : "Open audio", ct =>
             {
@@ -105,8 +110,7 @@ public sealed partial class MainWindowViewModel
             state.Media = replacement;
             prepared = null;
             if (ReferenceEquals(replacement, candidate)) candidate = null;
-            if (video) { state.FrameExtraction?.Cancel(); state.VideoAspect = replacement.VideoProvider is { IsDummy:false, DisplayAspectRatio:>0 } sourceVideo
-                    ? new(VideoAspectKind.Custom, Math.Clamp(sourceVideo.DisplayAspectRatio, 0.5, 5)) : new();
+            if (video) { state.FrameExtraction?.Cancel(); state.VideoAspect = InitialVideoAspect(replacement.VideoProvider);
                 _videoPointer=null; state.ProviderFrameTiming = nativeTiming; state.FrameTiming = external?.Timing ?? nativeTiming; }
             else state.Waveform = peaks;
             if (_activeId == id) PublishMediaPresentation(state, video, old is null);
@@ -192,7 +196,7 @@ public sealed partial class MainWindowViewModel
     }
     private string? RememberMedia(string path, bool video)
     {
-        var full = Path.GetFullPath(path);
+        var full = path.StartsWith("?dummy:", StringComparison.Ordinal) ? path : Path.GetFullPath(path);
         var items = new[] { full }.Concat(((video ? _settings.RecentVideo : _settings.RecentAudio) ?? [])
             .Where(item => !SameMediaPath(item, full))).Take(12).ToArray();
         _settings = video ? _settings with { RecentVideo = items } : _settings with { RecentAudio = items };
@@ -200,7 +204,7 @@ public sealed partial class MainWindowViewModel
     }
     private void ForgetMedia(string path, bool video)
     {
-        var full = Path.GetFullPath(path);
+        var full = path.StartsWith("?dummy:", StringComparison.Ordinal) ? path : Path.GetFullPath(path);
         var items = ((video ? _settings.RecentVideo : _settings.RecentAudio) ?? []).Where(item => !SameMediaPath(item, full)).ToArray();
         _settings = video ? _settings with { RecentVideo = items } : _settings with { RecentAudio = items };
         PersistMediaRecents(video);
@@ -221,6 +225,7 @@ public sealed partial class MainWindowViewModel
     }
     private static bool SameMediaPath(string left, string right)
     {
+        if (left.StartsWith("?dummy:", StringComparison.Ordinal) || right.StartsWith("?dummy:", StringComparison.Ordinal)) return string.Equals(left, right, StringComparison.Ordinal);
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         try { return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), comparison); }
         catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)

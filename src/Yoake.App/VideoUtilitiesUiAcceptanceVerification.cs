@@ -32,7 +32,7 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
     private string _source = "", _undo = "", _audio = "";
     private object? _draft, _selected, _samples;
     private Yoake.Core.Audio.AudioClipInterval? _pending;
-    private byte[]? _raw, _withoutMask;
+    private byte[]? _raw, _full, _withoutMask;
     private VideoFrameCapture? _subs;
     private VisualOverlayControl Overlay => window.FindControl<VisualOverlayControl>("VisualOverlay")!;
     private VideoPresentationControl Video => window.FindControl<VideoPresentationControl>("VideoImage")!;
@@ -62,6 +62,7 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
                     using (var provider = DocumentMedia.Open(_audio, tracks: MediaTracks.Video)) Require(_raw.SequenceEqual(provider.VideoProvider!.GetFrame(3).Pixels), "Raw extraction decodes the exact source frame index under external timecodes.");
                     _subs = await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Subtitles); VerifyCoverage(_subs.Image);
                     var full = await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Full);
+                    _full = full.Image.Pixels.ToArray();
                     Require(!full.Image.Pixels.SequenceEqual(_raw) && full.Image.Pixels.Where((_, i) => i % 4 == 3).All(a => a == 255), "Full export composes real subtitles while preserving source alpha.");
                     foreach (var suffix in new[] { "", "/raw", "/subs" })
                     {
@@ -112,6 +113,7 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
                 case 10:
                     Require(model.ShowVideoOverscan && window.FindControl<MenuItem>("VideoOverscanMenu")!.IsChecked && !RenderVideo().SequenceEqual(_withoutMask!), "Overscan menu draws a real presentation mask.");
                     Require((await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Raw)).Image.Pixels.SequenceEqual(_raw!), "Aspect and overscan never enter source export."); Unchanged();
+                    Require((await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Full)).Image.Pixels.SequenceEqual(_full!), "Full export also excludes aspect and overscan presentation state.");
                     window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen = true; return;
                 case 11:
                     Press(window.FindControl<MenuItem>("VideoDetailsMenu")!, Key.Enter); return;
@@ -135,7 +137,7 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
                 case 15:
                     if (model.CurrentVideoDetails?.Width != 320 || model.VideoFrame is null) { Require(_timer.IsEnabled, "Dummy publication must finish."); _stage--; return; }
                     Require(model.AudioSourcePath == _audio && ReferenceEquals(_samples, model.WaveformSamples) && model.FrameTimes.Count == 200 && model.VideoAspect.Kind == VideoAspectKind.Default, "Dummy replaces only Video and resets aspect.");
-                    Require(model.RecentVideoItems.All(item => !item.Path.StartsWith('?')), "Dummy never enters Recent Video.");
+                    Require(model.RecentVideoItems[0].Path == model.VideoSourcePath && DummyVideoOptions.TrySourceName(model.RecentVideoItems[0].Path, out _), "Source-derived Recent Video stores a reopenable typed dummy configuration.");
                     Require(model.CurrentVideoDetails!.Decoder.Contains("dummy") && model.CurrentVideoDetails.FramesPerSecond == 25, "Dummy details are real source values.");
                     var dummyRaw = await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Raw); Require(dummyRaw.Image.Width == 320 && dummyRaw.Image.Height == 180, "Dummy extraction dimensions.");
                     Require(!dummyRaw.Image.Pixels[..4].SequenceEqual(dummyRaw.Image.Pixels[32..36]), "Dummy source generates its 8×8 checkerboard.");
@@ -154,7 +156,28 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
                     Require(await Rejected(stale), "A stale frame/preview extraction cannot publish.");
                     var replaced = model.ExtractCurrentVideoFrameAsync(FrameImageKind.Raw); await Invoke("video/close"); Require(await Rejected(replaced), "Closed provider extraction cannot publish.");
                     Require(model.VideoSourcePath is null && model.AudioSourcePath == _audio && model.WaveformSamples is not null, "Dummy Close releases only Video.");
-                    Unchanged(); Require(StartupDiagnostics.BindingWarningCount == 0 && StartupDiagnostics.FrameworkErrorCount == 0, "Video utility windows, controls and menus have no binding/framework errors.");
+                    Unchanged(); await Invoke("recent/video", model.RecentVideoItems[0].Path);
+                    Require(model.CurrentVideoDetails?.Width == 320 && model.AudioSourcePath == _audio, "Typed dummy Recent Video reopens only Video through the same backend.");
+                    await Invoke("video/jump", new VideoJumpRequest(Frame: 3));
+                    await window.WriteClipboardAsync("frame menu marker"); window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen = true; return;
+                case 17:
+                    window.FindControl<MenuItem>("VideoFrameImageMenu")!.IsSubMenuOpen = true; return;
+                case 18:
+                    Press(window.FindControl<MenuItem>("FramecopysubsMenu")!, Key.Enter); return;
+                case 19:
+                    using (var clipboardData = await window.Clipboard!.TryGetDataAsync())
+                    using (var menuBitmap = clipboardData is null ? null : await clipboardData.TryGetBitmapAsync())
+                        Require(menuBitmap?.PixelSize == new PixelSize(320,180), "Actual Frame Copy Subtitles menu Enter publishes an image through the semantic command.");
+                    window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen = true; return;
+                case 20:
+                    window.FindControl<MenuItem>("VideoFrameImageMenu")!.IsSubMenuOpen = true; return;
+                case 21:
+                    Press(window.FindControl<MenuItem>("FramesavesubsMenu")!, Key.Enter); return;
+                case 22:
+                    var automatic = Directory.GetFiles(options.ProfileDirectory!, "dummy_*_3.png");
+                    Require(automatic.Length == 4, "Actual Save Subtitles menu produces another unique automatic snapshot.");
+                    VerifyPng(automatic.Order().Last(),320,180,true);
+                    Require(StartupDiagnostics.BindingWarningCount == 0 && StartupDiagnostics.FrameworkErrorCount == 0, "Video utility windows, controls and menus have no binding/framework errors.");
                     _timer.Stop(); options.FinishVerification("PASS: separate packaged Video utilities; native current-frame/VFR raw/full/subtitles source extraction and real RGBA coverage (opaque, antialias, outline, shadow, ASS alpha, clipping, blank); Windows image clipboard variants with transparency and reported failure; Unicode atomic PNG headers/dimensions/RGBA and failure cleanup; real aspect menu radio/custom validation/IME; shared aspect/letterbox script pointer clipboard; real overscan presentation-only pixels; native Video Details; exact Dummy defaults/dialog validation/IME, internal checkerboard/navigation/playback/subtitles/automatic PNG naming/close with independent Audio; stale frame/provider rejection and document/draft/pending/selection/undo retention.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;
             }
         }
@@ -175,6 +198,7 @@ internal sealed class VideoUtilitiesUiAcceptanceVerification(IClassicDesktopStyl
         Require(Alpha(15,60) == 255 && Alpha(10,60) == 0 && Alpha(25,60) == 0, "Subtitle export obeys rectangular clipping.");
         var glyph = Enumerable.Range(0,image.Width*image.Height).Where(i => i%image.Width >= 80*image.Width/160).ToArray();
         Require(glyph.Any(i => image.Pixels[i*4+3] is >0 and <255), "Glyph antialiasing retains fractional alpha.");
+        Require(glyph.Any(i => image.Pixels[i*4+3] == 255 && image.Pixels[i*4]>240 && image.Pixels[i*4+1]>240 && image.Pixels[i*4+2]>240), "Opaque white glyph interiors retain full alpha.");
         Require(glyph.Any(i => image.Pixels[i*4+3]>0 && image.Pixels[i*4]>image.Pixels[i*4+2]+20), "Rendered blue outline coverage.");
         Require(glyph.Any(i => image.Pixels[i*4+3]>0 && image.Pixels[i*4+1]>image.Pixels[i*4+2]+20), "Rendered green shadow coverage.");
     }
