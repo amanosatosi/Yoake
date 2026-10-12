@@ -103,8 +103,11 @@ public sealed partial class MainWindowViewModel
             else state.Waveform = peaks;
             if (_activeId == id) PublishMediaPresentation(state, video, old is null);
             if (old is not null) _ = Task.Run(old.Dispose);
-            RememberMedia(full, video);
+            var historyWarning = RememberMedia(full, video);
             if (_activeId == id && state.Media?.HasVideo == true) await RefreshVideoFrameAsync(CurrentTimeSeconds);
+            if (historyWarning is not null && _activeId == id && ReferenceEquals(state.Media,replacement) &&
+                ReferenceEquals(video ? state.VideoLoading : state.AudioLoading,cancellation))
+                MediaStatus = MediaStatus == historyWarning ? historyWarning : historyWarning + " Preview: " + MediaStatus;
             ScheduleDocumentAutomationSync(id);
             return true;
         }
@@ -155,13 +158,13 @@ public sealed partial class MainWindowViewModel
         MediaStatus = _media?.SourcePath ?? "Open video/audio";
         _registry.NotifyStateChanged();
     }
-    private void RememberMedia(string path, bool video)
+    private string? RememberMedia(string path, bool video)
     {
         var full = Path.GetFullPath(path);
         var items = new[] { full }.Concat(((video ? _settings.RecentVideo : _settings.RecentAudio) ?? [])
             .Where(item => !SameMediaPath(item, full))).Take(12).ToArray();
         _settings = video ? _settings with { RecentVideo = items } : _settings with { RecentAudio = items };
-        PersistMediaRecents(video);
+        return PersistMediaRecents(video);
     }
     private void ForgetMedia(string path, bool video)
     {
@@ -170,17 +173,19 @@ public sealed partial class MainWindowViewModel
         _settings = video ? _settings with { RecentVideo = items } : _settings with { RecentAudio = items };
         PersistMediaRecents(video);
     }
-    private void PersistMediaRecents(bool video)
+    private string? PersistMediaRecents(bool video)
     {
+        string? warning = null;
         try { _settingsStore.Save(_settings); }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             // Provider publication already succeeded. A history-write failure
             // must not masquerade as a failed transactional provider replacement.
             _registry.ReportFailure("settings/media-recents", exception);
-            MediaStatus = "Media state retained; recent history could not be saved: " + exception.Message;
+            MediaStatus = warning = "Media state retained; recent history could not be saved: " + exception.Message;
         }
         OnPropertyChanged(video ? nameof(RecentVideoItems) : nameof(RecentAudioItems));
+        return warning;
     }
     private static bool SameMediaPath(string left, string right)
     {
