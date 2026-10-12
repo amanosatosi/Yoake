@@ -18,7 +18,7 @@ public sealed class VideoJumpWindow : Window
     private readonly TextBox _time=new(){Name="JumpTime"};
     private readonly TextBlock _error=new(){Name="JumpError",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
     private readonly MainWindowViewModel _model;private readonly Guid? _document;
-    private bool _sync;private VideoJumpRequest? _request;
+    private bool _sync,_byTime;private VideoJumpRequest? _request;
     public VideoJumpWindow(MainWindowViewModel model)
     {
         _model=model;_document=model.ActiveDocumentId;Name="VideoJumpDialog";Title="Jump to frame or time";Width=380;MinWidth=320;
@@ -29,9 +29,19 @@ public sealed class VideoJumpWindow : Window
         var row=new StackPanel{Orientation=Orientation.Horizontal,Spacing=8,HorizontalAlignment=HorizontalAlignment.Right};panel.Children.Add(row);
         var jump=new Button{Name="JumpConfirm",Content="Jump",IsDefault=true};var cancel=new Button{Name="JumpCancel",Content="Cancel",IsCancel=true};row.Children.Add(jump);row.Children.Add(cancel);
         foreach(var c in new Control[]{_frame,_time,_error,jump,cancel})names.Register(c.Name!,c);
-        _frame.TextChanged+=(_,_)=>ReadFrame();_time.TextChanged+=(_,_)=>ReadTime();
+        // TextChanged is deferred by Avalonia. Property changes synchronize
+        // the companion field immediately and let the reentrancy guard cover
+        // programmatic updates (including centisecond display rounding).
+        _frame.PropertyChanged+=(_,change)=>{if(change.Property==TextBox.TextProperty&&!_sync){_byTime=false;ReadFrame();}};
+        _time.PropertyChanged+=(_,change)=>{if(change.Property==TextBox.TextProperty&&!_sync){_byTime=true;ReadTime();}};
         _frame.Text=model.CurrentFrame.ToString(CultureInfo.InvariantCulture);
-        jump.Click+=(_,_)=>{if(_request is not null&&model.ActiveDocumentId==_document)Close(_request);else _error.Text="Enter a valid frame or time within this video.";};
+        jump.Click+=(_,_)=>
+        {
+            // Never publish a cached request when the current text is invalid.
+            if(_byTime)ReadTime();else ReadFrame();
+            if(_request is not null&&model.ActiveDocumentId==_document)Close(_request);
+            else _error.Text="Enter a valid frame or time within this video.";
+        };
         cancel.Click+=(_,_)=>Close(null);
         AddHandler(KeyDownEvent,(_,e)=>
         {
@@ -52,6 +62,7 @@ public sealed class VideoJumpWindow : Window
     private void ReadTime()
     {
         if(_sync)return;_request=null;
+        if(_model.ActiveDocumentId!=_document||_model.FrameTimes.Count==0){_error.Text="The video changed. Reopen Jump to continue.";return;}
         if(!AssTime.TryParse(_time.Text,out var ms)){_error.Text="Enter h:mm:ss.cc.";return;}
         int frame;
         try{frame=_model.VideoFrameAtMilliseconds(ms);}catch(Exception e)when(e is ArgumentException or OverflowException){_error.Text="Choose a time within the loaded video.";return;}
