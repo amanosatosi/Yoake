@@ -1,23 +1,99 @@
-# Continuation after audio auditions
+# Continuation after the cloud Video tools/navigation checkpoint
 
-Stay on `automation-4-layer`; fetch first and inspect any newer remote commits. Preserve the unrelated `luna.md` deletion and untracked `agents.md`. Do not reset/rebase, create another branch, merge into `csharp-ban`, or build/publish locally. GitHub Actions remains the authority.
+Continue only on `automation-4-layer`; fetch first, inspect newer commits and fast-forward normally. Do not reset/rebase, create another feature branch, merge into `csharp-ban`, change native dependency versions, rebuild Automation, or publish/rebuild the native graph locally. GitHub Actions remains package authority. This run used a fresh cloud checkout exclusively; there were no inherited uncommitted files. The older local `luna.md`/`agents.md` notes do not apply to this cloud checkout.
 
-Last verified application implementation: `ed327253df3724fe0e3a534ab1003a4680f3d061`, [run 38173810696](https://github.com/amanosatosi/Yoake/actions/runs/38173810696). Managed tests, source policy, Automation providers and Windows NativeAOT all passed, including all existing startup profiles and acceptance paths. Audio export was separately green at `ab270f8466bd2abc64579194f38fc11954e237c3`, [run 38172064653](https://github.com/amanosatosi/Yoake/actions/runs/38172064653). There is no unresolved failure in these verified implementations.
+Recorded ending implementation HEAD: `2fa8a0701945cfa63ed883c922204398ada80541`. This continuation records the code checkpoint; a subsequent documentation commit may contain the final ledger/CI update. Resolve the enclosing document commit for the final branch HEAD.
 
-The existing source inventory/status manifest/rendered ledger remain the handoff, not a request to regenerate the upstream audit from scratch. The exact reference checkouts are ignored under `.ci-cache/reference/Aegisub-3.2.2` and `Aegisub-3.5.0`; their release commits remain `f743d1411e09cbb2bd34ddd2d4b6738101fab710` and `43af875ea01e80052cc6c44f24fc8c5258261c6d`. Use the frozen 3.2 manual, never `automation/v4-docs` as the API authority.
+Cloud experiment baseline: first measured timestamp `2026-10-12 00:58:21 UTC` (`07:28:21 Asia/Rangoon`), fetched HEAD `6ea216041db2653028fdeec9050d15af4ebff0f0`. The environment status API exposed no instance start timestamp. Initial run [38179602119](https://github.com/amanosatosi/Yoake/actions/runs/38179602119): source-policy, managed-tests and automation-provider-tests passed; Windows NativeAOT compiled/published, then packaged audio-timing acceptance failed at stage 3 on focus. Wall time is measured from the first timestamp, including CI waits.
 
-New verified workflows: cancellable atomic selected-row audio WAV export, and bounded dialogue audio auditions through the existing central timeline. Playback now provides captured/current-line/selection and before/after/begin/end/to-EOF ranges, live selection-end updates, shared menus/toolbar/context keys, playing-only stop and checked toggle state, one-time stop-hotkey customization migration, and draft-aware waveform drawing/hit testing/centering. Timing drags continue an audition; capture loss rolls back both source timing and the following endpoint. Preview commands preserve draft/source/selection/undo/providers. Do not rebuild these workflows.
+Timing recovery: commit-default/next now prevalidates the complete successor state before publishing current markers/draft/source. Regressions cover malformed stored timing, bad untouched metadata, representability overflow, and preservation of selection/draft/markers/undo. Zero-ended successors with a stored nonzero start remain repairable. The initially stranded edits were reimplemented from remote source, not copied from another workspace.
 
-The timing-only implementation now adds document-owned transient markers, commit/default-commit/next/stay, auto-next/auto-commit preferences, lead-in/out, 10 ms adjustments and timing navigation, with managed regression tests and separate real-input packaged acceptance. **CI verification is pending; affected rows remain partial until the workflow passes.** Dialogue ignores shift-following; karaoke syllable navigation and shift-following remain unfinished. Karaoke primary ranges remain unfinished, so playback rows stay partial; `audio/stop` and `audio/save/clip` are complete. Do not begin Video, major tools, independent audio provider replacement or ASSDraw in this timing session.
+The diagnostic run at `b0a22180f942751d56ff2bbc3d3f7cabb7035679` ([38190465578](https://github.com/amanosatosi/Yoake/actions/runs/38190465578), paired PR run 38190468418) passed all cheap jobs and NativeAOT publishing, then failed at audio-timing stage 4: `The actual timing control must own focus: SubtitleRows; enabled=True, visible=True, attached=True.` The harness was focusing the nonfocusable ListBox rather than its realized interactive row. The latest code uses the same realized-row focus path as the existing green keyboard/timing/selection harnesses. It retains Focus() AND IsKeyboardFocusWithin assertions before raising real routed input. Native menu closure and later input use separate dispatcher turns. No IME assertion was bypassed.
 
-Handoff HEAD `444aa657df691569ae9c9ac2770223c22e88a974` is now also verified: [run 38175227881](https://github.com/amanosatosi/Yoake/actions/runs/38175227881) and its paired PR run passed. The current timing commit still needs managed/NativeAOT/package/acceptance results. Inspect those before marking completion. Preserve the same unrelated local changes.
+Latest implementation runs: [38197606988](https://github.com/amanosatosi/Yoake/actions/runs/38197606988) (push), [38197611903](https://github.com/amanosatosi/Yoake/actions/runs/38197611903) (PR), at `2fa8a0701945cfa63ed883c922204398ada80541`. At the final checkpoint source policy, managed tests and Automation providers passed; Windows was building the Mangetsu/native package. These runs are still the final authority for the idle Escape and playback/EOF repair. Inspect their eventual results before expanding ownership or promoting the three playback rows.
 
-Controller contracts: pending markers survive line/tab changes and saving stored source, but not owning document replacement/close. External timing changes/deletion discard conflicting pending entries. Typed endpoint changes clear that line's pending ownership. Marker commit validates the draft and rebases endpoints while retaining text/metadata and draft object identity. Timing authoring is available without media; auditions require audio. Auto-commit coalesces at waveform release for cancel-safe one-undo gestures and never triggers auto-next. Generic insertion retains two seconds/cloned metadata; timing successors use three seconds/current style. See command architecture for deliberate deviations.
+Newest completed red implementation: `ac02e7e7f14428eb4ca2a19e5a115f39fe1a9015`, runs [38196156244](https://github.com/amanosatosi/Yoake/actions/runs/38196156244) and [38196159947](https://github.com/amanosatosi/Yoake/actions/runs/38196159947). All prerequisite jobs, NativeAOT publishing, startup profiles, packaged audio timing and Video tools passed. Navigation stages 1–4 passed keyframes/boundaries/steps/jumps/focus, and actual changed-frame Jump accept/cancel/invalid/IME checks. Stage 5 then failed: `Video Escape stops central AV playback.` The idle visual overlay consumed every Escape as gesture cancellation. `2fa8a07` routes idle Escape through Video Stop while keeping captured edit gestures and point/box selections under overlay cancellation. The failing assertion and the detailed gesture-cancellation acceptance remain intact. Video play/play-line/stop stay partial until the remaining packaged stages (including the real device-free tail beyond audio EOF) pass.
 
-ASSDraw is truthfully missing/deferred, not superseded. Later launch external ASSDraw3.exe without bundling/compiling/CI building it; absent executable message must be `ASSDraw3.exe doesn't exist.` No ASSDraw implementation belongs to timing work.
+Prior red implementation `11f14f85590f7a7c2105951a064a4f2c2369f1f9`, runs 38194541465/38194544760, verified the complete audio-timing and Video-tools paths and navigation stage 1, then failed at navigation stage 2: `Invalid jump input cannot close the dialog or seek.` Deferred TextChanged left a cached valid request available. `ac02e7e` uses synchronous TextProperty updates and fresh submit validation; this repair is verified by the newest red run. The 15 tool rows plus 10 navigation rows are now complete based on their real packaged paths.
 
-Both exact `audio_timing_dialogue.cpp` implementations distinguish pending markers from stored subtitle times. Commit applies modified markers; normal timing-unit next/previous do not commit them. Default-next stages the next existing line at the previous primary end plus the configured default duration; a next line with stored End = 0 gets the same reset. Importantly, exact `grid/line/next/create` already commits timing and inserts a **stored** new line at current End with the configured duration and current style. Do not infer that every newly created line has zero stored timing. Both reference defaults use 3000 ms; Yoake's current `SubtitleEditor.Insert` clones metadata and uses 2000 ms. Preserve/document that existing policy explicitly when adding a real shared preference.
+Earlier red run at `dff02289e66c020b5fbaad00765cffbdf0bcf8f2` (38192470521/38192473844) reached audio-timing stage 10 and failed `IME Enter in the edit box must not leak timing commit/navigation.` The harness assigned preedit before focusing its input. All three new/affected harnesses now acquire focus before starting composition, then assert preedit survives guarded Enter. This fix is verified by the green audio-timing and Video tools processes in the newest red run. Earlier intermediary runs were superseded/cancelled. Last fully green implementation known before this cloud run: `444aa657df691569ae9c9ac2770223c22e88a974`, run [38175227881](https://github.com/amanosatosi/Yoake/actions/runs/38175227881).
 
-Exact lead operations adjust the active dialogue marker (despite menu help mentioning selected lines), with 100 ms in / 350 ms out defaults. Start/length adjustments use 10 ms units; the shift-following parameter is ignored by the dialogue controller and belongs to karaoke semantics. Pending markers need document-owned transient timing metadata and transactional/cancel-safe gestures, not a second editor/session/clock. Keep the existing live gesture behavior unless an explicitly modeled preference changes it. Reuse the shared primary range for playback, waveform overlay/hit testing/centering, and preview. Inspect source behavior for selection, external timing changes, snapping, save/close and default-next ownership before implementation.
+Current cloud validation: 425 core tests and 98 UI workflow tests pass at the final implementation checkpoint. Managed app/XAML compilation and source policy pass. No local NativeAOT publication, native graph build, dependency version update, or hardware-visible claim was made.
 
-Manual QA still required: audible waveOut output, live endpoint shrink/extension while listening, device failure/latency/long playback position behavior, Windows DPI/multi-monitor interaction, and real installed IME behavior. Packaged playback tests use genuine focused keys/menu/pointer routing and real FFMS2 media, then immediate stop; they do not substitute a fake output device or claim to verify audible output on device-less CI. No Automation runtime or native dependency versions were changed.
+Video implementation: retain existing Yoake visual tools, structured ASS edits, unknown/Mangetsu tags, multi-line transactions and preview. Primary/vector mode selection now has loaded-video/owning-document availability and remains radio checked while temporarily unavailable. Visual handles now use the compositor’s pending timing before/during/after gestures, including frames outside stored timing. Mode state is document-owned; tool switching keeps uncommitted draft input, cancels active gestures, and creates no undo entry. Menus/toolbars/context keys share semantic actions. Exact 3.2.2 primary keys remain Video A/S/D/F/G/H/J; 3.5 vector IDs map to the existing eight mode backends. Rectangles now preview from pointer down with no existing clip, including inverse clips and one-gesture undo/redo/capture-loss cancellation. Existing prospective vector geometry is retained and gets native line/bicubic/control/closing proof rather than being rebuilt.
+
+Navigation: source-backed keyframe first/EOF fallbacks, configurable frame-based large steps (default 10), current-line START/END then actual adjacent row traversal (including comments), exact start/end jumps, usable frame/time Jump dialog, validation/cancellation/IME handling, slider focus return/toggle, video-only playback availability and shared checked Play/Stop state. Requests cannot resume a stale provider/document after asynchronous seeking. Ffms now retains its real video EOF separately from combined audio/video duration (including external VFR map overrides). Video and play-line capture video-bounded endpoints; the existing central clock continues silently after shorter audio EOF, while explicit Audio auditions retain their previous stop semantics. Packaged acceptance tests both longer-audio bounds and actual tail playback started after audio EOF without an output device. Play-line consumes the existing pending primary range and maps it to included video frames on one synchronized AV clock, deliberately improving upstream's separate rounded audio/video clocks. Video gets Shift-Space for line audition; shipped Styling/Translation Home stays in its own contexts, Grid/Edit Home stays native, and Space typing in text controls is protected. Menus prefer the usable Video shortcut when no Default binding exists.
+
+Separate acceptance processes: `--verify-ui-video` covers native visual radio keys/toolbar state, draft retention, rectangle press/live/release/inverse/undo/redo, capture loss, tool/document switch, vector line/bicubic prospective controls/curve/closing, IME isolation and providers. `--verify-ui-video-navigation` covers keyframe/Grid contexts, large steps, subtitle boundary traversal, native Jump dialog/focus/IME/invalid/cancel, video play/stop and pending-aware line playback. The pre-existing detailed visual pixel/transform acceptance remains intact.
+
+Exact reference archives were downloaded fresh at `f743d1411e09cbb2bd34ddd2d4b6738101fab710` and `43af875ea01e80052cc6c44f24fc8c5258261c6d`. In this cloud workspace they are `/workspace/yoake-reference/Aegisub-3.2.2` and `/workspace/yoake-reference/Aegisub-3.5.0`, moved outside the repository because source_policy scans ignored JSON files too. The existing frozen inventory was not regenerated.
+
+Next coherent dependency: independent video open/replace/close + `recent/video`. `DocumentState.Media` and `_media` still own one combined `FfmsMediaSession`; current video/open remains partial and must not be called complete. Audio export/playback/peaks/spectrum currently read that same provider. Split ownership explicitly so replacing/closing video retains independent audio, document/pending timing/selection/draft/undo and external frame metadata. Ffms already has separate audio/video gates and native handles; avoid duplicate decoder ownership and test sharing/release before expanding image/view utilities. No half-written ownership refactor is left in this checkpoint.
+
+Then implement the six frame extraction commands via one pipeline: 3.2.2 `get_image` obtains provider output at current frame and frame-map time; full uses subtitle composition, raw excludes subtitles. 3.5 `GetSubtitles` produces only subtitles with alpha, copied at 32 bits; raw/full clipboard variants use 24 bits. These are source-resolution images, not visual-tool/overscan/window screenshots. The current `MangetsuSubtitleRenderer.Composite` preserves the host frame alpha because the native BGRA compositor zeroes tile alpha. Subtitles-only output must accumulate the actual RGBA tile alpha; a transparent host passed through this method would remain transparent. Reuse Mangetsu composition and real clipboard abstraction, Unicode/cancel-safe atomic PNG files, and stale provider/frame checks. Next: shared zoom/pan/aspect transform plus detach/details/coordinates/overscan, dummy source, aspect presets last. Do not implement ASSDraw or multiple subtitle renderers.
+
+Manual QA: audible output/device failure/latency, installed IME behavior, long playback and audio/video EOF relationships, Windows DPI/multi-monitor and physical GPU/display drivers, weaker-hardware pointer responsiveness. Packaged tests use actual focused controls and real FFMS2/Mangetsu providers; immediate playback stop proves routing, not audible hardware output.
+
+Ending Video status (excluding recent/video): {'missing': 23, 'already complete': 28, 'partially implemented': 4, 'deliberately not applicable': 1}. `recent/video` remains separately missing. No complete-to-partial or complete-to-missing movement.
+
+already complete:
+
+`video/focus_seek`, `video/frame/next`, `video/frame/next/boundary`, `video/frame/next/keyframe`, `video/frame/next/large`, `video/frame/prev`, `video/frame/prev/boundary`, `video/frame/prev/keyframe`, `video/frame/prev/large`, `video/jump`, `video/jump/end`, `video/jump/start`, `video/opt/autoscroll`, `video/tool/clip`, `video/tool/cross`, `video/tool/drag`, `video/tool/rotate/xy`, `video/tool/rotate/z`, `video/tool/scale`, `video/tool/vclip/bicubic`, `video/tool/vclip/convert`, `video/tool/vclip/drag`, `video/tool/vclip/freehand`, `video/tool/vclip/freehand_smooth`, `video/tool/vclip/insert`, `video/tool/vclip/line`, `video/tool/vclip/remove`, `video/tool/vector_clip`
+
+partially implemented:
+
+`video/open`, `video/play`, `video/play/line`, `video/stop`
+
+missing:
+
+`video/aspect/cinematic`, `video/aspect/custom`, `video/aspect/default`, `video/aspect/full`, `video/aspect/wide`, `video/close`, `video/copy_coordinates`, `video/detach`, `video/details`, `video/frame/copy`, `video/frame/copy/raw`, `video/frame/copy/subs`, `video/frame/save`, `video/frame/save/raw`, `video/frame/save/subs`, `video/open/dummy`, `video/reset_pan`, `video/show_overscan`, `video/zoom/100`, `video/zoom/200`, `video/zoom/50`, `video/zoom/in`, `video/zoom/out`
+
+deliberately not applicable:
+
+`video/subtitles_provider/cycle`
+
+Exact baseline-to-ending parity changes:
+
+- `video/focus_seek`: missing → already complete
+- `video/frame/next/boundary`: missing → already complete
+- `video/frame/next/keyframe`: partially implemented → already complete
+- `video/frame/next/large`: missing → already complete
+- `video/frame/prev/boundary`: missing → already complete
+- `video/frame/prev/keyframe`: partially implemented → already complete
+- `video/frame/prev/large`: missing → already complete
+- `video/jump`: partially implemented → already complete
+- `video/jump/end`: partially implemented → already complete
+- `video/jump/start`: partially implemented → already complete
+- `video/tool/clip`: partially implemented → already complete
+- `video/tool/cross`: partially implemented → already complete
+- `video/tool/drag`: partially implemented → already complete
+- `video/tool/rotate/xy`: partially implemented → already complete
+- `video/tool/rotate/z`: partially implemented → already complete
+- `video/tool/scale`: partially implemented → already complete
+- `video/tool/vclip/bicubic`: partially implemented → already complete
+- `video/tool/vclip/convert`: partially implemented → already complete
+- `video/tool/vclip/drag`: partially implemented → already complete
+- `video/tool/vclip/freehand`: partially implemented → already complete
+- `video/tool/vclip/freehand_smooth`: partially implemented → already complete
+- `video/tool/vclip/insert`: partially implemented → already complete
+- `video/tool/vclip/line`: partially implemented → already complete
+- `video/tool/vclip/remove`: partially implemented → already complete
+- `video/tool/vector_clip`: partially implemented → already complete
+
+Pushed implementation commits in this cloud run:
+
+- `ed64046d1c7409cc768b461f53cf1617b512f357` — Validate timing successors before edits and yield after native menu input
+- `b0a22180f942751d56ff2bbc3d3f7cabb7035679` — Use supported TopLevel focus diagnostic API
+- `12fb81f2903c8d9b93b4d4f729ed6b1f164889fe` — Finish document-owned visual tool commands and real Video input verification
+- `1907fa11b8b55ec4c5fa3ad26416a75ef5cb8c0f` — Complete VFR video navigation and shared line playback workflows
+- `973be79295fa33a6ec707e38bd50d183bb4f056f` — Send acceptance grid keys to the actual focused row container
+- `822a1040aa11fd50c98a640f40f677b63b2e538e` — Give packaged boundary traversal distinct START and END frames
+- `d47a8ad96a41cc32cb39b308779e2fdf60ba4766` — Add context-local Video line audition without intercepting text input
+- `dff02289e66c020b5fbaad00765cffbdf0bcf8f2` — Keep visual handles aligned with pending subtitle preview timing
+- `d2bb028cc07803c5546ac2d25fbcd2cdf8d47fb8` — Start packaged IME composition only after the real input owns focus
+- `49f2c1e121ca266c6e4257b6c1e322bad87b921e` — Require packaged Jump dialog acceptance to change the current frame
+- `11f14f85590f7a7c2105951a064a4f2c2369f1f9` — Bound video playback to video EOF and continue after shorter audio ends
+- `ac02e7e7f14428eb4ca2a19e5a115f39fe1a9015` — Validate current Jump input synchronously before closing the dialog
+- `2fa8a0701945cfa63ed883c922204398ada80541` — Route idle overlay Escape to Video Stop while retaining capture cancellation
+
+Measured cloud wall time at the documentation checkpoint: approximately 121 minutes from 00:58:21 UTC, including CI waits and repair iterations. A final docs-only commit follows this implementation checkpoint and uses [skip ci] to avoid restarting the still-running native jobs; production code is identical to their tested implementation SHA. Its exact branch SHA is reported in the chat.
