@@ -75,9 +75,10 @@ internal sealed class AudioTimingUiAcceptanceVerification(IClassicDesktopStyleAp
                     model.SelectedEvent=_rows[0];Press(Audio,Key.V);Require(_rows[0].EndMilliseconds==1950&&ReferenceEquals(model.SelectedEvent,_rows[0]),"Auto-commit applies timing without auto-next.");
                     Press(Audio,Key.G);Require(ReferenceEquals(model.SelectedEvent,_rows[0]),"Real G honors disabled auto-next.");
                     var text=window.FindControl<AssTextBox>("SubtitleText")!;var before=_editor!.Document.Serialize();var active=model.SelectedEvent;
-                    text.GetVisualDescendants().OfType<TextPresenter>().First().PreeditText="日本";
-                    Press(text,Key.Enter);Require(ReferenceEquals(active,model.SelectedEvent)&&_editor.Document.Serialize()==before,"IME Enter in the edit box must not leak timing commit/navigation.");
-                    text.GetVisualDescendants().OfType<TextPresenter>().First().PreeditText=null;
+                    Require(text.Focus()&&text.IsKeyboardFocusWithin,"The edit box must own focus before IME composition starts.");
+                    var preedit=text.GetVisualDescendants().OfType<TextPresenter>().First();preedit.PreeditText="日本";
+                    Press(text,Key.Enter);Require(preedit.PreeditText=="日本"&&ReferenceEquals(active,model.SelectedEvent)&&_editor.Document.Serialize()==before,"IME Enter in the edit box must preserve composition and must not leak timing commit/navigation.");
+                    preedit.PreeditText=null;
                     var count=model.Events.Count;Press(text,Key.C);Require(model.Events.Count==count&&_editor.Document.Serialize()==before,"Text C must not invoke Audio lead-in.");
                     Require(ReferenceEquals(_samples,model.WaveformSamples)&&ReferenceEquals(_times,model.FrameTimes)&&ReferenceEquals(_keys,model.Keyframes)&&ReferenceEquals(_editor,model.ActiveEditor),"Timing must retain the providers, frame map and editor.");
                     var settings=new Yoake.Core.Settings.SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();Require(settings.AudioAutoCommit==true&&settings.AudioAutoNext==false,"Options must persist through the real settings store.");

@@ -112,8 +112,8 @@ internal sealed class VideoUiAcceptanceVerification(IClassicDesktopStyleApplicat
                     Down(new(240,180));Up(new(240,180));Require(AssVisualTags.Clip(_line.Text)!.Drawing==_prospective,"Bicubic commit matches hover geometry.");
                     Press(Overlay,Key.Z,KeyModifiers.Control);Press(Overlay,Key.Z,KeyModifiers.Control);Press(Overlay,Key.Z,KeyModifiers.Control);
                     Require(model.ActiveEditor!.Document.Serialize()==_source&&!model.ActiveEditor.Undo.CanUndo,"Each vector gesture is one undo and preserves all unknown/Mangetsu/Unicode source.");
-                    var text=window.FindControl<AssTextBox>("SubtitleText")!;var presenter=text.GetVisualDescendants().OfType<TextPresenter>().First();presenter.PreeditText="日本";
-                    Press(text,Key.H);Press(text,Key.Enter);presenter.PreeditText=null;Radio("VectorClip");
+                    var text=window.FindControl<AssTextBox>("SubtitleText")!;Require(text.Focus()&&text.IsKeyboardFocusWithin,"The actual edit box owns focus before IME preedit is injected.");var presenter=text.GetVisualDescendants().OfType<TextPresenter>().First();presenter.PreeditText="日本";
+                    Press(text,Key.H);Press(text,Key.Enter);Require(presenter.PreeditText=="日本","Guarded Video/edit-box Enter preserves active composition.");presenter.PreeditText=null;Radio("VectorClip");
                     Require(model.ActiveEditor.Document.Serialize()==_source,"IME/edit-box input cannot route Video tool commands or commit source.");
                     await Invoke(CommandIds.EditCancel);await Invoke("video/vector/smooth");
                     Down(_a);Move(_b,true);Require(model.HasGesture,"Document-switch cancellation starts with an actual captured vector drag.");

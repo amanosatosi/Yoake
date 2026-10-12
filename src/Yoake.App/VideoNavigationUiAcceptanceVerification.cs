@@ -68,7 +68,9 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     input.Text="invalid";Press(jump.FindControl<Button>("JumpConfirm")!,Key.Enter);
                     Require(window.OwnedWindows.Contains(jump)&&model.CurrentFrame==_frame,"Invalid jump input cannot close the dialog or seek.");
                     input.Text="3";Require(jump.FindControl<TextBox>("JumpTime")!.Text==AssTime.Format((long)Math.Round(model.FrameTimes[3]*1000)),"Frame input updates VFR time display.");
-                    var presenter=input.GetVisualDescendants().OfType<TextPresenter>().First();presenter.PreeditText="日本";Press(input,Key.Enter);presenter.PreeditText=null;
+                    Require(input.Focus()&&input.IsKeyboardFocusWithin,"The actual jump input must own focus before IME composition starts.");
+                    var presenter=input.GetVisualDescendants().OfType<TextPresenter>().First();presenter.PreeditText="日本";Press(input,Key.Enter);
+                    Require(presenter.PreeditText=="日本","Jump Enter preserves active IME composition.");presenter.PreeditText=null;
                     Require(window.OwnedWindows.Contains(jump),"IME Enter cannot accept the jump dialog.");
                     Press(jump.FindControl<Button>("JumpConfirm")!,Key.Enter);return;
                 case 3:
