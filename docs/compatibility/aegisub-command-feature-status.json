@@ -334,12 +334,19 @@
     },
     {
       "id": "audio/close",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Close the currently open audio file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/close",
+      "status": "already complete",
+      "backend": "DocumentMedia.WithAudio(null); stop central playback, cancel Audio open/export/analysis, clear cached/presented waveform/spectrum, retain Video/frame maps/external metadata and document/draft/pending/selection/history.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "MediaProviderOwnershipTests",
+        "MediaOwnershipWorkflowTests",
+        "MediaOwnershipUiAcceptanceVerification"
+      ],
+      "notes": " Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3428,52 +3435,87 @@
     },
     {
       "id": "video/aspect/cinematic",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Force video to 2.35 aspect ratio",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/aspect/cinematic",
+      "status": "already complete",
+      "backend": "Document-owned presentation-only radio commands: original pixels, 4:3, 16:9, 2.35, or validated decimal/:/x/X/ custom range 0.5-5. Shared image/tool/pointer transform, provider DAR on real open and Default on dummy; no source/undo edits.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Aspect is retained across tabs within a document lifetime and resets on Video replacement. Deliberate Yoake difference: does not write ASS/project properties solely to persist presentation. Native source SAR comes from pinned FFMS2 5.0 ABI. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/aspect/custom",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Force video to a custom aspect ratio",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/aspect/custom",
+      "status": "already complete",
+      "backend": "Document-owned presentation-only radio commands: original pixels, 4:3, 16:9, 2.35, or validated decimal/:/x/X/ custom range 0.5-5. Shared image/tool/pointer transform, provider DAR on real open and Default on dummy; no source/undo edits.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Aspect is retained across tabs within a document lifetime and resets on Video replacement. Deliberate Yoake difference: does not write ASS/project properties solely to persist presentation. Native source SAR comes from pinned FFMS2 5.0 ABI. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/aspect/default",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Use video's original aspect ratio",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/aspect/default",
+      "status": "already complete",
+      "backend": "Document-owned presentation-only radio commands: original pixels, 4:3, 16:9, 2.35, or validated decimal/:/x/X/ custom range 0.5-5. Shared image/tool/pointer transform, provider DAR on real open and Default on dummy; no source/undo edits.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Aspect is retained across tabs within a document lifetime and resets on Video replacement. Deliberate Yoake difference: does not write ASS/project properties solely to persist presentation. Native source SAR comes from pinned FFMS2 5.0 ABI. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/aspect/full",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Force video to 4:3 aspect ratio",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/aspect/full",
+      "status": "already complete",
+      "backend": "Document-owned presentation-only radio commands: original pixels, 4:3, 16:9, 2.35, or validated decimal/:/x/X/ custom range 0.5-5. Shared image/tool/pointer transform, provider DAR on real open and Default on dummy; no source/undo edits.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Aspect is retained across tabs within a document lifetime and resets on Video replacement. Deliberate Yoake difference: does not write ASS/project properties solely to persist presentation. Native source SAR comes from pinned FFMS2 5.0 ABI. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/aspect/wide",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Force video to 16:9 aspect ratio",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/aspect/wide",
+      "status": "already complete",
+      "backend": "Document-owned presentation-only radio commands: original pixels, 4:3, 16:9, 2.35, or validated decimal/:/x/X/ custom range 0.5-5. Shared image/tool/pointer transform, provider DAR on real open and Default on dummy; no source/undo edits.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Aspect is retained across tabs within a document lifetime and resets on Video replacement. Deliberate Yoake difference: does not write ASS/project properties solely to persist presentation. Native source SAR comes from pinned FFMS2 5.0 ABI. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3497,12 +3539,19 @@
     },
     {
       "id": "video/copy_coordinates",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Copy the current coordinates of the mouse over the video to the clipboard",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/copy_coordinates",
+      "status": "already complete",
+      "backend": "Actual pointer -> shared logical-DPI letterbox/aspect transform -> script coordinates -> real clipboard, using comma-separated three-decimal/trailing-zero-trimmed 3.2.2 formatting; retains last pointer position and permits negative letterbox coordinates.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": " Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3517,12 +3566,18 @@
     },
     {
       "id": "video/details",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Show video details",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/details",
+      "status": "already complete",
+      "backend": "Read-only native/dummy provider metadata dialog: identity, source FPS, source resolution/reduced ratio, frame count/effective duration, final mapped frame time, decoder, external/native timing and decoded BGRA format; no native rescan.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Shows source FPS separately from effective mapped duration and last-frame time; no invented encoded pixel-format/codec claim. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3549,32 +3604,53 @@
     },
     {
       "id": "video/frame/copy",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Copy the currently displayed frame to the clipboard",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/frame/copy",
+      "status": "already complete",
+      "backend": "Full through ONE captured source-resolution FrameExtraction pipeline, central frame index/map time, preview-source revision, source lease and stale rejection; existing Mangetsu composition and actual transparent RGBA coverage; owned Windows/Avalonia bitmap clipboard with guarded delayed rendering and flushing.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Source export excludes aspect/overscan/tools/UI. Uses exact release automatic stem_counter_frame naming for saves; alpha is preserved instead of 24-bit flattening. Clipboard delayed-rendering guards reject stale frames. Atomic PNG and precise RGBA are deliberate Yoake improvements. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/frame/copy/raw",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Copy the currently displayed frame to the clipboard, without the subtitles",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/frame/copy/raw",
+      "status": "already complete",
+      "backend": "Raw through ONE captured source-resolution FrameExtraction pipeline, central frame index/map time, preview-source revision, source lease and stale rejection; existing Mangetsu composition and actual transparent RGBA coverage; owned Windows/Avalonia bitmap clipboard with guarded delayed rendering and flushing.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Source export excludes aspect/overscan/tools/UI. Uses exact release automatic stem_counter_frame naming for saves; alpha is preserved instead of 24-bit flattening. Clipboard delayed-rendering guards reject stale frames. Atomic PNG and precise RGBA are deliberate Yoake improvements. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/frame/copy/subs",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Copy the currently displayed subtitles to the clipboard, with transparent background",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/frame/copy/subs",
+      "status": "already complete",
+      "backend": "Subtitles-only through ONE captured source-resolution FrameExtraction pipeline, central frame index/map time, preview-source revision, source lease and stale rejection; existing Mangetsu composition and actual transparent RGBA coverage; owned Windows/Avalonia bitmap clipboard with guarded delayed rendering and flushing.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Subtitle-only is a requested extension absent from 3.2.2 (present in the union inventory from 3.5). Source export excludes aspect/overscan/tools/UI. Uses exact release automatic stem_counter_frame naming for saves; alpha is preserved instead of 24-bit flattening. Clipboard delayed-rendering guards reject stale frames. Atomic PNG and precise RGBA are deliberate Yoake improvements. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3783,32 +3859,53 @@
     },
     {
       "id": "video/frame/save",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Save the currently displayed frame to a PNG file in the video's directory",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/frame/save",
+      "status": "already complete",
+      "backend": "Full through ONE captured source-resolution FrameExtraction pipeline, central frame index/map time, preview-source revision, source lease and stale rejection; existing Mangetsu composition and actual transparent RGBA coverage; background PNG encoder with same-directory preparation and guarded atomic publication; Unicode automatic source/script/home names and collision skipping.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Source export excludes aspect/overscan/tools/UI. Uses exact release automatic stem_counter_frame naming for saves; alpha is preserved instead of 24-bit flattening. Clipboard delayed-rendering guards reject stale frames. Atomic PNG and precise RGBA are deliberate Yoake improvements. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/frame/save/raw",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Save the currently displayed frame without the subtitles to a PNG file in the video's directory",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/frame/save/raw",
+      "status": "already complete",
+      "backend": "Raw through ONE captured source-resolution FrameExtraction pipeline, central frame index/map time, preview-source revision, source lease and stale rejection; existing Mangetsu composition and actual transparent RGBA coverage; background PNG encoder with same-directory preparation and guarded atomic publication; Unicode automatic source/script/home names and collision skipping.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Source export excludes aspect/overscan/tools/UI. Uses exact release automatic stem_counter_frame naming for saves; alpha is preserved instead of 24-bit flattening. Clipboard delayed-rendering guards reject stale frames. Atomic PNG and precise RGBA are deliberate Yoake improvements. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "video/frame/save/subs",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Save the currently displayed subtitles with transparent background to a PNG file in the video's directory",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/frame/save/subs",
+      "status": "already complete",
+      "backend": "Subtitles-only through ONE captured source-resolution FrameExtraction pipeline, central frame index/map time, preview-source revision, source lease and stale rejection; existing Mangetsu composition and actual transparent RGBA coverage; background PNG encoder with same-directory preparation and guarded atomic publication; Unicode automatic source/script/home names and collision skipping.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Subtitle-only is a requested extension absent from 3.2.2 (present in the union inventory from 3.5). Source export excludes aspect/overscan/tools/UI. Uses exact release automatic stem_counter_frame naming for saves; alpha is preserved instead of 24-bit flattening. Clipboard delayed-rendering guards reject stale frames. Atomic PNG and precise RGBA are deliberate Yoake improvements. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3894,12 +3991,19 @@
     },
     {
       "id": "video/open/dummy",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Open a placeholder video clip with solid color",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/open/dummy",
+      "status": "already complete",
+      "backend": "Internal deterministic IVideoProvider; exact release defaults/bounds/resolution choices/RGB and 8x8 checkerboard; independent Video replacement, central navigation/playback, subtitle preview, export and Close; typed source-backed Recent Video and persisted last options.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": "Dummy MRU is explicitly called by 3.2.2 Project::DoLoadVideo -> SetPath. Round-trip FPS and higher-precision HSL are deliberate precision improvements; no media file is generated. Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3987,12 +4091,19 @@
     },
     {
       "id": "video/show_overscan",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Existing media/timeline boundary; presentation transform, navigation, image or provider operation. Required action: Show a mask over the video, indicating areas that might get cropped off by overscan on televisions",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "video/show_overscan",
+      "status": "already complete",
+      "backend": "Saved check command; presentation-only rounded blue 50% safe-area masks using exact release wide/narrow dimensions. Does not enter source pixels, renderer input, exports or undo.",
+      "exposure": [
+        "CommandRegistry / contextual hotkeys",
+        "MainWindow semantic menu routing / native dialogs where applicable"
+      ],
+      "tests": [
+        "VideoUtilitiesTests",
+        "VideoUtilitiesWorkflowTests",
+        "VideoUtilitiesUiAcceptanceVerification"
+      ],
+      "notes": " Verified implementation 8b491c241dedea0363ae9345f7f0eee2b81da6ad; Windows NativeAOT/package and separate acceptance runs 38291051720/38291058475 passed. Primary oracle: supplied Aegisub 3.2.2 archive, build version 8635 / tagged 3.2.2; 12 inspected source/config files match release f743d1411e09cbb2bd34ddd2d4b6738101fab710.",
       "yoake_default_hotkeys": {}
     },
     {
