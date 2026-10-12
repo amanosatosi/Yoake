@@ -35,7 +35,7 @@ public sealed class VisualOverlayControl : Control
     public int RenderedHandles {get;private set;}
     public string? VectorPreviewDrawing=>(_tool as VectorClipTool)?.PreviewDrawing;
     public string? RenderedTool {get;private set;}
-    public VisualOverlayControl(){Focusable=true;ClipToBounds=true;}
+    public VisualOverlayControl(){Focusable=true;ClipToBounds=true;LostFocus+=(_,_)=>Cancel();}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -124,7 +124,6 @@ public sealed class VisualOverlayControl : Control
     }
     public void CancelInput(){Cancel();}
     private void Cancel(){if(IsPanning)FinishPan(false);ReleaseCapture();_tool?.Cancel();Model?.CancelGesture();InvalidateVisual();}
-    protected override void OnLostFocus(Avalonia.Interactivity.RoutedEventArgs e){base.OnLostFocus(e);Cancel();}
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);if(Model?.VideoFrame is null)return;

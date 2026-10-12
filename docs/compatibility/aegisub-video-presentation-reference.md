@@ -1,6 +1,6 @@
 # Video presentation source audit
 
-This continuation starts at `fcc815c9e954b4706682be976b83ff407fb07669` on `automation-4-layer`, fetched before editing. The supplied `C:\aegisub source\Aegisub-3.5.0` is an archive, not a Git checkout; it has no generated `build/git_version.h`. The supplied source is the primary authority. Do not infer behavior from the folder name alone.
+This continuation starts at `fcc815c9e954b4706682be976b83ff407fb07669` on `automation-4-layer`, fetched before editing. The supplied `C:\aegisub source\Aegisub-3.5.0` is an archive, not a Git checkout; it has no generated `build/git_version.h`. All twelve inspected files listed below match the pinned release `43af875ea01e80052cc6c44f24fc8c5258261c6d` after newline normalization. The supplied source remains the primary authority.
 
 Inspected implementations and called helpers:
 
