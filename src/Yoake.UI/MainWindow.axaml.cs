@@ -41,7 +41,7 @@ public partial class MainWindow : Window, IEditorDialogs
         Opened+=(_,_)=>UpdateChrome();
         Opened+=StartAutomation;
         LayoutUpdated+=(_,_)=>UpdateChrome();
-        ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(UpdateChrome);
+        ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(()=>{UpdateChrome();RefreshVideoScaling();});
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
         TemporalTextColumn.SizeChanged+=(_,_)=>ClampAudioBounds();
         AudioSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;},RoutingStrategies.Tunnel);
@@ -172,7 +172,7 @@ public partial class MainWindow : Window, IEditorDialogs
         }
         if(args.Toggle&&FocusManager?.GetFocusedElement() is Control focused)
             _previousVideoFocus=new(focused);
-        if(_model?.ShowVideo!=true)_model?.Actions[CommandIds.ViewVideo].Execute(null);
+        if(_model?.ShowVideo!=true&&DetachedVideoWindow is null)_model?.Actions[CommandIds.ViewVideo].Execute(null);
         VideoSeekBar.Focus();
     }
     public Task<VideoJumpRequest?> ShowVideoJumpAsync(MainWindowViewModel model)=>new VideoJumpWindow(model).ShowDialog<VideoJumpRequest?>(this);

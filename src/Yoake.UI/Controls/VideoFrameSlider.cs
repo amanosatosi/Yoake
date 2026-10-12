@@ -21,7 +21,7 @@ public sealed class VideoFrameSlider : Control
     {
         base.OnPropertyChanged(e);if(e.Property==ModelProperty){if(e.OldValue is MainWindowViewModel old)old.PropertyChanged-=Changed;if(Model is {} model)model.PropertyChanged+=Changed;}InvalidateVisual();
     }
-    private void Changed(object? sender,PropertyChangedEventArgs e)=>InvalidateVisual();
+    private void Changed(object? sender,PropertyChangedEventArgs e){if(e.PropertyName is nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.VideoSourcePath))CancelInput();InvalidateVisual();}
     private double X(int frame)=>5+frame/(double)Math.Max(1,(Model?.FrameTimes.Count??1)-1)*Math.Max(1,Bounds.Width-10);
     public int FrameAt(double x,bool snap)
     {

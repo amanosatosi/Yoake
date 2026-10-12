@@ -12,7 +12,7 @@ namespace Yoake.UI.Controls;
 /// <summary>VideoBox's editable percentage/dropdown, shared by both hosts.</summary>
 public sealed class VideoZoomControl : UserControl
 {
-    private readonly TextBox _text = new() { Width = 64, Padding = new(3, 0), VerticalContentAlignment = VerticalAlignment.Center };
+    private readonly TextBox _text = new() { Name = "VideoZoomValue", Width = 64, Padding = new(3, 0), VerticalContentAlignment = VerticalAlignment.Center };
     private readonly ComboBox _choices = new() { Width = 28, ItemsSource = Enumerable.Range(1, 24).Select(i => (i * 12.5).ToString(CultureInfo.InvariantCulture) + "%").ToArray() };
     private MainWindowViewModel? _model;
     public VideoZoomControl()

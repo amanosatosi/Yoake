@@ -30,7 +30,7 @@ public sealed partial class EditorWorkflowTests
         Assert.Equal(pixels,(await _model.ExtractCurrentVideoFrameAsync(FrameImageKind.Raw)).Image.Pixels);
         using var canceled=new CancellationTokenSource();canceled.Cancel();Assert.False(await _model.Registry.InvokeAsync("video/detach",new(),null,canceled.Token));Assert.False(_model.IsVideoDetached);
         Assert.False(await _model.Registry.InvokeAsync("video/reset_pan",new(Guid.NewGuid())));
-        await Command("video/close");foreach(var id in new[]{"video/zoom/100","video/reset_pan","video/detach"})Assert.False(_model.Actions[id].CanExecute(null));
+        var revision=_model.VideoProviderRevision;await Command("video/close");Assert.True(_model.VideoProviderRevision>revision);foreach(var id in new[]{"video/zoom/100","video/reset_pan","video/detach"})Assert.False(_model.Actions[id].CanExecute(null));
     }
     [Fact] public async Task PresentationBelongsToTabsAndCloseRetainsDetachedPreference()
     {

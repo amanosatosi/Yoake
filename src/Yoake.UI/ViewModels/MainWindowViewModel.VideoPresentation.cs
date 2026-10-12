@@ -10,6 +10,7 @@ public sealed partial class MainWindowViewModel
     public event EventHandler? VideoWindowZoomRequested;
     public VideoViewState? VideoView => _activeId is { } id && _documents.TryGetValue(id, out var state) ? state.VideoView : null;
     public bool IsVideoDetached => VideoView?.Detached == true;
+    public int VideoProviderRevision => _activeId is { } id && _documents.TryGetValue(id, out var state) ? state.VideoProviderRevision : -1;
     public bool ShowEmbeddedVideo => ShowVideo && !IsVideoDetached;
     public double VideoWindowZoom => VideoView?.EffectiveWindowZoom ?? 1;
     public string VideoZoomText => (VideoWindowZoom * 100).ToString("0.###", CultureInfo.InvariantCulture) + "%";

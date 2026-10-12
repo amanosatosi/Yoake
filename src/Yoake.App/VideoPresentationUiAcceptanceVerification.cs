@@ -88,7 +88,7 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     Require(AssVisualTags.Clip(model.SelectedEvent!.Text) is {Rectangular:true} clip&&Math.Abs(clip.Points[0].X-130)<.01&&Math.Abs(clip.Points[0].Y-70)<.01,"Detached visual clip edits exact script coordinates at non-default zoom/pan.");
                     Press(Overlay,Key.Z,Avalonia.Input.KeyModifiers.Control);Require(model.ActiveEditor!.Document.Serialize()==_source,"Visual gesture has one complete undo.");
                     _draft=model.Draft;model.Draft!.Layer="unfinished";_undo=model.ActiveEditor.Undo.NextUndoName??"";
-                    var zoomInput=window.FindControl<VideoZoomControl>("VideoZoom")!.GetVisualDescendants().OfType<TextBox>().Single();zoomInput.Text="125%";
+                    var zoomInput=window.FindControl<VideoZoomControl>("VideoZoom")!.GetVisualDescendants().OfType<TextBox>().Single(input=>input.Name=="VideoZoomValue");zoomInput.Text="125%";
                     var presenter=zoomInput.GetVisualDescendants().OfType<TextPresenter>().First();presenter.PreeditText="日本";Press(zoomInput,Key.Enter);Require(presenter.PreeditText=="日本","Zoom input protects IME Enter.");presenter.PreeditText=null;Press(zoomInput,Key.Enter);return;
                 case 10:
                     Require(model.VideoView!.WindowZoom==1.25,"Detached editable zoom invokes semantic action.");
@@ -112,9 +112,14 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     Require(window.DetachedVideoWindow is null&&!model.IsVideoDetached&&model.VideoView!.PanX==0,"New tab has independent embedded presentation.");
                     await Invoke(CommandIds.WorkspaceActivateTab,_document);return;
                 case 15:
+                    if(model.VideoFrame is null){_stage--;return;}
                     Require(window.DetachedVideoWindow is not null&&model.IsVideoDetached&&ReferenceEquals(_state,model.VideoView)&&ReferenceEquals(_map,model.FrameTimes),"Returning to tab restores detached host and exact owner.");
-                    await Invoke(CommandIds.ViewAudio);Require(window.DetachedVideoWindow.IsVisible,"Audio view does not dispose detached Video.");await Invoke(CommandIds.ViewAudioVideo);
+                    await Invoke(CommandIds.ViewAudio);Require(window.DetachedVideoWindow.IsVisible,"Audio view does not dispose detached Video.");
+                    await Invoke("video/focus_seek");Require(model.IsAudioView&&window.FindControl<VideoFrameSlider>("VideoSeekBar")!.IsKeyboardFocusWithin,"Detached seek focus does not replace the main Audio view.");await Invoke(CommandIds.ViewAudioVideo);
+                    Pan(new(100,80),new(111,85));Down(new(100,80),true);Move(new(120,90),RawInputModifiers.MiddleMouseButton);
+                    Require(Overlay.IsPanning&&_pointer.Captured==Overlay,"Close begins with real active middle capture.");
                     await Invoke("video/close");Require(window.DetachedVideoWindow is null&&model.HasAudio&&model.AudioSourcePath==_audio,"Video Close releases its host, keeps Audio and detached preference.");
+                    Require(!Overlay.IsPanning&&_pointer.Captured is null&&!model.VideoView!.ContentActive,"Provider Close cancels captured pan without restoring the old source's offset.");
                     await Invoke("recent/video",model.RecentVideoItems.First(p=>p.Path.Contains(":320:180:",StringComparison.Ordinal)).Path);return;
                 case 16:
                     Require(window.DetachedVideoWindow is not null&&model.IsVideoDetached&&model.HasAudio,"Recent Video reopens detached presentation and keeps Audio.");

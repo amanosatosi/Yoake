@@ -40,6 +40,7 @@ public partial class MainWindow
                 host.AddHandler(KeyDownEvent, HandleKey, RoutingStrategies.Tunnel);
                 host.Deactivated += VideoHostDeactivated; host.Closing += DetachedClosing; host.Closed += DetachedClosed;
                 host.SizeChanged += DetachedResized;
+                host.ScalingChanged += DetachedScalingChanged;
                 _hostDocument = _model?.ActiveDocumentId;
                 if (_hostDocument is { } id && _videoWindows.TryGetValue(id, out var saved)) { host.Width = saved.Width; host.Height = saved.Height; host.WindowStartupLocation = WindowStartupLocation.Manual; host.Position = saved.Position; host.WindowState = saved.State; }
                 VideoDock.Child = null; host.Content = VideoRegion; DetachedVideoWindow = host;
@@ -67,7 +68,7 @@ public partial class MainWindow
     private void RemoveVideoHandlers(Window host)
     {
         host.RemoveHandler(KeyDownEvent, HandleKey); host.Deactivated -= VideoHostDeactivated;
-        host.Closing -= DetachedClosing; host.Closed -= DetachedClosed; host.SizeChanged -= DetachedResized;
+        host.Closing -= DetachedClosing; host.Closed -= DetachedClosed; host.SizeChanged -= DetachedResized; host.ScalingChanged -= DetachedScalingChanged;
         host.DataContext = null;
     }
     private void ConstrainVideoHost(Window host)
@@ -80,6 +81,8 @@ public partial class MainWindow
             Math.Clamp(host.Position.Y, area.Y, Math.Max(area.Y, area.Bottom - (int)Math.Ceiling(host.Height * scale))));
     }
     private void VideoHostDeactivated(object? sender, EventArgs e) => VisualOverlay.CancelInput();
+    private void RefreshVideoScaling(){VisualOverlay.CancelInput();_ = VideoImage.VideoArea;_model?.NotifyVideoPresentation();}
+    private void DetachedScalingChanged(object? sender,EventArgs e)=>Dispatcher.UIThread.Post(()=>{if(DetachedVideoWindow==sender)RefreshVideoScaling();});
     private void DetachedResized(object? sender, SizeChangedEventArgs e)
     {
         if (_movingVideo || _model is null) return;

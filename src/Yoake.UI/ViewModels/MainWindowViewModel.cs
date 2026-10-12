@@ -30,6 +30,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public string VisualTool="Position",VectorMode="Select";
         public VideoAspect VideoAspect = new();
         public VideoViewState VideoView = new();
+        public int VideoProviderRevision;
         public CancellationTokenSource? FrameExtraction;
         public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
         public DocumentMedia? Media;
@@ -375,7 +376,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if(_activeId==id){CancelGesture();CancelVisualBounds();}
             opened!.SetExternalKeyframes(state.ExternalKeyframes);
             var old=state.Media; state.Media=opened;state.ProviderFrameTiming=frameTiming;state.FrameTiming=state.ExternalTimecodes?.Timing??frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
-            state.VideoView.ResetContent();state.VideoAspect=InitialVideoAspect(state.Media.VideoProvider); _videoPointer=null;
+            state.VideoProviderRevision++;state.VideoView.ResetContent();state.VideoAspect=InitialVideoAspect(state.Media.VideoProvider); _videoPointer=null;
             var media=state.Media.AudioProvider;
             // Native indexing is complete. Audio analysis now belongs to the
             // published audio resource, not to future video replacements.

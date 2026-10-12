@@ -30,6 +30,7 @@ public sealed class VisualOverlayControl : Control
     private StandardCursorType? _cursorType;
     private Point? _panPointer;
     private (double X, double Y)? _panCheckpoint;
+    private int _panProviderRevision;
     public bool IsPanning => _panPointer is not null;
     public bool HasTransientInput=>_capture is not null||Model?.HasGesture==true;
     public int RenderedHandles {get;private set;}
@@ -67,7 +68,8 @@ public sealed class VisualOverlayControl : Control
         var area=VideoPresentationControl.Rect(model.VideoViewport(Bounds.Width,Bounds.Height,TopLevel.GetTopLevel(this)?.RenderScaling??1));
         if(!IsPanning&&HasTransientInput&&_context is {} previous&&previous.Video!=area){Cancel();}
         _context=new(model,area,model.VisibleVisualLines());
-        if (_lastPointerPosition is { } last && _context.Video.Width>0 && _context.Video.Height>0) model.ReportVideoPointer(_context.Script(last));
+        if (_lastPointerPosition is { } last && _context.Video.Width>0 && _context.Video.Height>0)
+        { _pointer=_pointer with { Script=_context.Script(last) }; _inside=_context.Video.Contains(last); model.ReportVideoPointer(_pointer.Script); }
         _tools.TryGetValue(model.ActiveVisualTool,out _tool);model.RequestVisualBounds();InvalidateVisual();
     }
     public override void Render(DrawingContext context)
@@ -87,7 +89,7 @@ public sealed class VisualOverlayControl : Control
         Model?.ReportVideoPointer(_pointer.Script);
         if(e.GetCurrentPoint(this).Properties.IsMiddleButtonPressed&&Model?.VideoFrame is not null)
         {
-            Cancel();_panPointer=e.GetPosition(this);_panCheckpoint=(Model.VideoView!.PanX,Model.VideoView.PanY);
+            Cancel();_panPointer=e.GetPosition(this);_panCheckpoint=(Model.VideoView!.PanX,Model.VideoView.PanY);_panProviderRevision=Model.VideoProviderRevision;
             _capture=e.Pointer;e.Pointer.Capture(this);e.Handled=true;return;
         }
         if(_context is not {} state||_tool is null||!state.Video.Contains(_pointer.Screen)||!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;
@@ -121,7 +123,7 @@ public sealed class VisualOverlayControl : Control
     private void FinishPan(bool commit)
     {
         var checkpoint=_panCheckpoint;_panPointer=null;_panCheckpoint=null;ReleaseCapture();
-        if(!commit&&checkpoint is { } pan&&_pointerDocument==Model?.ActiveDocumentId)Model?.RestoreVideoPan(pan.X,pan.Y);
+        if(!commit&&checkpoint is { } pan&&_pointerDocument==Model?.ActiveDocumentId&&_panProviderRevision==Model?.VideoProviderRevision)Model?.RestoreVideoPan(pan.X,pan.Y);
         Refresh();
     }
     public void CancelInput(){Cancel();}

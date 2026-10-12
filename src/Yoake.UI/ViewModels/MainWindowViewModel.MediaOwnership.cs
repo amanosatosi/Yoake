@@ -110,7 +110,7 @@ public sealed partial class MainWindowViewModel
             state.Media = replacement;
             prepared = null;
             if (ReferenceEquals(replacement, candidate)) candidate = null;
-            if (video) { state.FrameExtraction?.Cancel(); state.VideoView.ResetContent(); state.VideoAspect = InitialVideoAspect(replacement.VideoProvider);
+            if (video) { state.FrameExtraction?.Cancel(); state.VideoProviderRevision++; state.VideoView.ResetContent(); state.VideoAspect = InitialVideoAspect(replacement.VideoProvider);
                 _videoPointer=null; state.ProviderFrameTiming = nativeTiming; state.FrameTiming = external?.Timing ?? nativeTiming; }
             else state.Waveform = peaks;
             if (_activeId == id) PublishMediaPresentation(state, video, old is null);
@@ -153,7 +153,7 @@ public sealed partial class MainWindowViewModel
         var replacement = old.WithVideo(null);
         state.Media = replacement.HasAudio ? replacement : null;
         if (state.Media is null) replacement.Dispose();
-        state.VideoView.ResetContent(); state.ProviderFrameTiming = null; state.FrameTiming = state.ExternalTimecodes?.Timing;
+        state.VideoProviderRevision++; state.VideoView.ResetContent(); state.ProviderFrameTiming = null; state.FrameTiming = state.ExternalTimecodes?.Timing;
         state.Editing?.Cancel();
         PublishMediaPresentation(state, true, state.Media is null);
         _ = Task.Run(old.Dispose); ScheduleDocumentAutomationSync(id);
