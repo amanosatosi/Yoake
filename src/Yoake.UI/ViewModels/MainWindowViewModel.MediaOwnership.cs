@@ -102,7 +102,7 @@ public sealed partial class MainWindowViewModel
             if (_activeId == id) PublishMediaPresentation(state, video, old is null);
             if (old is not null) _ = Task.Run(old.Dispose);
             RememberMedia(full, video);
-            if (_activeId == id && state.Media.HasVideo) await RefreshVideoFrameAsync(CurrentTimeSeconds);
+            if (_activeId == id && state.Media?.HasVideo == true) await RefreshVideoFrameAsync(CurrentTimeSeconds);
             ScheduleDocumentAutomationSync(id);
             return true;
         }
@@ -154,16 +154,24 @@ public sealed partial class MainWindowViewModel
     }
     private void RememberMedia(string path, bool video)
     {
-        var items = new[] { Path.GetFullPath(path) }.Concat(((video ? _settings.RecentVideo : _settings.RecentAudio) ?? [])
-            .Where(item => !string.Equals(item, path, StringComparison.OrdinalIgnoreCase))).Take(12).ToArray();
+        var full = Path.GetFullPath(path);
+        var items = new[] { full }.Concat(((video ? _settings.RecentVideo : _settings.RecentAudio) ?? [])
+            .Where(item => !SameMediaPath(item, full))).Take(12).ToArray();
         _settings = video ? _settings with { RecentVideo = items } : _settings with { RecentAudio = items };
         _settingsStore.Save(_settings); OnPropertyChanged(video ? nameof(RecentVideoItems) : nameof(RecentAudioItems));
     }
     private void ForgetMedia(string path, bool video)
     {
         var full = Path.GetFullPath(path);
-        var items = ((video ? _settings.RecentVideo : _settings.RecentAudio) ?? []).Where(item => !string.Equals(item, full, StringComparison.OrdinalIgnoreCase)).ToArray();
+        var items = ((video ? _settings.RecentVideo : _settings.RecentAudio) ?? []).Where(item => !SameMediaPath(item, full)).ToArray();
         _settings = video ? _settings with { RecentVideo = items } : _settings with { RecentAudio = items };
         _settingsStore.Save(_settings); OnPropertyChanged(video ? nameof(RecentVideoItems) : nameof(RecentAudioItems));
+    }
+    private static bool SameMediaPath(string left, string right)
+    {
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        try { return string.Equals(Path.GetFullPath(left), Path.GetFullPath(right), comparison); }
+        catch (Exception exception) when (exception is ArgumentException or NotSupportedException or PathTooLongException)
+        { return string.Equals(left, right, comparison); }
     }
 }
