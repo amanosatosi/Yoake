@@ -35,6 +35,9 @@ public partial class MainWindow : Window, IEditorDialogs
         SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DragOverEvent, HandleFileDragOver, RoutingStrategies.Tunnel);
+        AddHandler(DragDrop.DropEvent, HandleFileDrop, RoutingStrategies.Tunnel);
         Opened+=(_,_)=>UpdateChrome();
         Opened+=StartAutomation;
         LayoutUpdated+=(_,_)=>UpdateChrome();
@@ -48,6 +51,56 @@ public partial class MainWindow : Window, IEditorDialogs
         Closing+=HandleClosing;
         Closed+=(_,_)=>_model?.Dispose();
     }
+    private static string[] DropPaths(DragEventArgs e)
+    {
+        // Only Explorer's local file URIs are meaningful here; never attempt
+        // network/non-file URI loading or treat drag text as a file path.
+        return (e.DataTransfer.TryGetFiles() ?? [])
+            .Select(item => item.Path is { IsAbsoluteUri: true, IsFile: true } uri ? uri.LocalPath : null)
+            .Where(path => path is not null)
+            .Select(path => path!)
+            .ToArray();
+    }
+    private void HandleFileDragOver(object? sender, DragEventArgs e)
+    {
+        var paths=DropPaths(e);
+        e.DragEffects=paths.Length>0 && paths.All(FileDropPlanner.IsCandidate) ? DragDropEffects.Copy : DragDropEffects.None;
+        e.Handled=true;
+    }
+    private async void HandleFileDrop(object? sender, DragEventArgs e)
+    {
+        var paths=DropPaths(e);
+        e.Handled=true;
+        if(_model is not { } model)return;
+        try
+        {
+            if(!FileDropPlanner.TryBuild(paths,out var files,out var error))
+            {
+                await ShowDropErrorAsync(error);return;
+            }
+            foreach(var file in files)
+            {
+                if(!ReferenceEquals(_model,model))return;
+                var context=new CommandContext(model.ActiveDocumentId);
+                var ok=file.Type switch
+                {
+                    DroppedFileType.Subtitle=>await model.Registry.InvokeAsync(CommandIds.SubtitleOpen,context,file.Path),
+                    DroppedFileType.Video=>await OpenCombinedDropAsync(model,file.Path),
+                    DroppedFileType.Audio=>await model.Registry.InvokeAsync("audio/open",context,file.Path),
+                    DroppedFileType.Timecodes=>await model.Registry.InvokeAsync("timecode/open",context,file.Path),
+                    DroppedFileType.Keyframes=>await model.Registry.InvokeAsync("keyframe/open",context,file.Path),
+                    _=>false
+                };
+                if(!ok){await ShowDropErrorAsync("Could not open dropped file: "+Path.GetFileName(file.Path));return;}
+            }
+        }
+        catch(Exception ex){await ShowDropErrorAsync(ex.Message);}
+    }
+    private static async Task<bool> OpenCombinedDropAsync(MainWindowViewModel model,string path)
+        => await model.OpenMediaAsync(path);
+    private async Task ShowDropErrorAsync(string message)
+        => await AskAsync("File drop",message,["OK"]);
+
     private void AttachModel()
     {
         if(_model is not null){_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
