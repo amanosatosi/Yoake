@@ -743,7 +743,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
         public PasteOverFields? PasteFields;
         public Func<Task<PasteOverFields?>>? PasteDialog;
         public Task<string?> ReadClipboardAsync()=>FailTextClipboard?Task.FromException<string?>(new IOException("Clipboard unavailable.")):Task.FromResult(ClipboardText);
-        public Task<PasteOverFields?> ShowPasteOverAsync(PasteOverFields initial)=>PasteDialog?.Invoke()??Task.FromResult(PasteFields);
+        public Task<PasteOverFields?> ShowPasteOverAsync(PasteOverFields initial,CancellationToken token=default)=>PasteDialog?.Invoke()??Task.FromResult(PasteFields);
         public Task WriteClipboardAsync(string text){ClipboardText=text;return Task.CompletedTask;}
         public Task WriteFrameClipboardAsync(Yoake.Native.DecodedVideoFrame image,Func<bool> isCurrent,CancellationToken token)
         {token.ThrowIfCancellationRequested();if(FailFrameClipboard)throw new IOException("Clipboard unavailable.");if(!isCurrent())throw new OperationCanceledException();FrameImage=image;return Task.CompletedTask;}

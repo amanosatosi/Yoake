@@ -473,7 +473,12 @@ public partial class MainWindow : Window, IEditorDialogs
     public Task<Yoake.Core.Media.DummyVideoOptions?> ShowDummyVideoAsync(Yoake.Core.Media.DummyVideoOptions initial) => new DummyVideoWindow(initial,e=>_model?.Registry.ReportFailure("video/dummy-color",e)).ShowDialog<Yoake.Core.Media.DummyVideoOptions?>(this);
     public Task<string?> ShowCustomAspectAsync(double current) => new VideoAspectWindow(current).ShowDialog<string?>(this);
     public async Task ShowVideoDetailsAsync(VideoDetails details) => await new VideoDetailsWindow(details).ShowDialog(this);
-    public Task<PasteOverFields?> ShowPasteOverAsync(PasteOverFields initial)=>new PasteOverWindow(initial).ShowDialog<PasteOverFields?>(this);
+    public async Task<PasteOverFields?> ShowPasteOverAsync(PasteOverFields initial,CancellationToken token=default)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new PasteOverWindow(initial);
+        using var cancel=token.Register(()=>Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close(null);}));
+        return await dialog.ShowDialog<PasteOverFields?>(this);
+    }
     public Task ShowStylesAsync(SubtitleEditor editor)=>new StylesWindow(editor,_model?.StyleLibraryPath, _model?.SelectedEvent,_model?.StyleSplitWeights,weights=>{if(_model is {} model)_=model.Registry.InvokeAsync("styles/layout",new(),weights);}).ShowDialog(this);
     public Task ShowScriptInfoAsync(SubtitleEditor editor)=>new ScriptInfoWindow(editor).ShowDialog(this);
     public Task ShowFindAsync(MainWindowViewModel model)=>ShowFindAsync(model,false);

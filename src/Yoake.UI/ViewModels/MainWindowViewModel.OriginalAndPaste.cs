@@ -19,13 +19,13 @@ public sealed partial class MainWindowViewModel
     }
     private void RegisterOriginalAndPasteCommands()
     {
-        void R(string id,string label,Func<ValueTask> action,Func<bool> available,Func<bool>? check=null)
+        void R(string id,string label,Func<CancellationToken,ValueTask> action,Func<bool> available,Func<bool>? check=null)
         {
-            _registry.Register(new(new(id,label,label,"Edit"),(_,_)=>action(),context=>(context.DocumentId is null||context.DocumentId==_activeId)&&available(),check is null?null:_=>check()));
+            _registry.Register(new(new(id,label,label,"Edit"),(_,token)=>{token.ThrowIfCancellationRequested();return action(token);},context=>(context.DocumentId is null||context.DocumentId==_activeId)&&available(),check is null?null:_=>check()));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
         bool HasLine()=>SelectedEvent is not null&&!HasGesture;
-        R("edit/show_original","Show Original",()=>
+        R("edit/show_original","Show Original",_=>
         {
             _settings=_settings with{ShowOriginal=!ShowOriginal};
             // The view changes immediately even if persistence fails. Report
@@ -34,8 +34,8 @@ public sealed partial class MainWindowViewModel
             OnPropertyChanged(nameof(ShowOriginal));_registry.NotifyStateChanged();
             _settingsStore.Save(_settings);return ValueTask.CompletedTask;
         },()=>true,()=>ShowOriginal);
-        R("edit/revert","Revert to original",()=>{FormatText("Revert to original",(_,_,_,_)=>new(OriginalText,0,OriginalText.Length));return ValueTask.CompletedTask;},HasLine);
-        R("edit/insert_original","Insert Original",()=>
+        R("edit/revert","Revert to original",_=>{FormatText("Revert to original",(_,_,_,_)=>new(OriginalText,0,OriginalText.Length));return ValueTask.CompletedTask;},HasLine);
+        R("edit/insert_original","Insert Original",_=>
         {
             FormatText("Insert original",(text,start,end,_)=>
             {
@@ -51,7 +51,7 @@ public sealed partial class MainWindowViewModel
         if(index==text.Length)return index;
         return System.Globalization.StringInfo.ParseCombiningCharacters(text).LastOrDefault(p=>p<=index);
     }
-    private async ValueTask PasteOverAsync()
+    private async ValueTask PasteOverAsync(CancellationToken token)
     {
         if(Dialogs is null||_activeId is not {} id||!_documents.TryGetValue(id,out var state)||Draft is not {} draft||SelectedEvent is not {} active)return;
         var editor=state.Editor;var revision=editor.Document.Revision;var selection=SelectedEvents.Where(Events.Contains).ToArray();
@@ -60,11 +60,11 @@ public sealed partial class MainWindowViewModel
         _pasteOverBusy=true;state.MediaDraftPauses++;_editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;_registry.NotifyStateChanged();
         try
         {
-            var text=await Dialogs.ReadClipboardAsync();if(string.IsNullOrEmpty(text)||!Current())return;
-            var clipboard=await Task.Run(()=>SubtitlePasteClipboard.Parse(text));if(clipboard.Count==0||!Current())return;
-            var fields=await Dialogs.ShowPasteOverAsync(PasteOverPreferences);if(fields is null||!Current())return;
+            var text=await Dialogs.ReadClipboardAsync();token.ThrowIfCancellationRequested();if(string.IsNullOrEmpty(text)||!Current())return;
+            var clipboard=await Task.Run(()=>SubtitlePasteClipboard.Parse(text,token),token);if(clipboard.Count==0||!Current())return;
+            var fields=await Dialogs.ShowPasteOverAsync(PasteOverPreferences,token);token.ThrowIfCancellationRequested();if(fields is null||!Current())return;
             _publishingPasteOver=true;
-            try{editor.PasteOver(clipboard,selection,active,fields.Value,values);}
+            try{editor.PasteOver(clipboard,selection,active,fields.Value,values,token);}
             finally{_publishingPasteOver=false;}
             if(fields!=PasteOverFields.None&&(selection.Length==1||selection.Contains(active)))ReloadDraft();
             _settings=_settings with{PasteOverFields=fields};_settingsStore.Save(_settings);

@@ -87,4 +87,12 @@ public sealed partial class EditorWorkflowTests
         Assert.False(await _model.Registry.InvokeAsync("edit/show_original",new()));Assert.True(_model.ShowOriginal);Assert.Equal(1,notifications);
         Assert.True(_model.Registry.GetRequired("edit/show_original").IsChecked(new()));Assert.Same(draft,_model.Draft);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.NotEmpty(_model.SubtitleStatus);
     }
+    [Fact] public async Task CancelledPasteInvocationRetainsSourceOriginalAndPendingDraft()
+    {
+        await SeedOriginal();var source=_model.ActiveEditor!.Document.Serialize();var original=_model.OriginalText;var draft=_model.Draft!;draft.Text="pending";
+        _dialogs.ClipboardText="replacement";using var cancellation=new CancellationTokenSource();
+        _dialogs.PasteDialog=()=>{cancellation.Cancel();return Task.FromResult<PasteOverFields?>(PasteOverFields.Text);};
+        Assert.False(await _model.Registry.InvokeAsync("edit/line/paste/over",new(),cancellationToken:cancellation.Token));
+        Assert.Same(draft,_model.Draft);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(original,_model.OriginalText);Assert.True(_model.Actions["edit/line/paste/over"].CanExecute(null));
+    }
 }

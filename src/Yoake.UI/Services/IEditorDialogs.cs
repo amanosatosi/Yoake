@@ -31,7 +31,7 @@ public interface IEditorDialogs
     Task<UnsavedChoice> ConfirmUnsavedAsync(string title);
     Task<bool> ConfirmRevertAsync();
     Task<string?> ReadClipboardAsync();
-    Task<PasteOverFields?> ShowPasteOverAsync(PasteOverFields initial)=>Task.FromResult<PasteOverFields?>(null);
+    Task<PasteOverFields?> ShowPasteOverAsync(PasteOverFields initial,CancellationToken token=default)=>Task.FromResult<PasteOverFields?>(null);
     Task WriteClipboardAsync(string text);
     Task WriteFrameClipboardAsync(Yoake.Native.DecodedVideoFrame image, Func<bool> isCurrent, CancellationToken token) => throw new NotSupportedException("Image clipboard is unavailable.");
     Task<Yoake.Core.Media.DummyVideoOptions?> ShowDummyVideoAsync(Yoake.Core.Media.DummyVideoOptions initial) => Task.FromResult<Yoake.Core.Media.DummyVideoOptions?>(null);

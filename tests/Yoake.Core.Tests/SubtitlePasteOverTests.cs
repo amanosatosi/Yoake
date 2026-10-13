@@ -49,6 +49,13 @@ public sealed class SubtitlePasteOverTests
     {
         var lines=SubtitlePasteClipboard.Parse("[Chorus]\r\n日本語");Assert.Equal(new[]{"[Chorus]","日本語"},lines.Select(l=>l.Text));
     }
+    [Fact] public void CancelledClipboardAndPublicationNeverMutateSource()
+    {
+        var editor=new SubtitleEditor(AssDocument.Parse(Source));var line=editor.Document.Events[0];using var cancellation=new CancellationTokenSource();cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(()=>SubtitlePasteClipboard.Parse("new text",cancellation.Token));
+        Assert.Throws<OperationCanceledException>(()=>editor.PasteOver(SubtitlePasteClipboard.Parse("new text"),[line],line,PasteOverFields.Text,token:cancellation.Token));
+        Assert.Equal(Source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+    }
     [Fact] public void InvalidLaterResultRollsBackBeforeFirstRowAndKeepsDraft()
     {
         var editor=new SubtitleEditor(AssDocument.Parse(Source));var rows=editor.Document.Events.ToArray();

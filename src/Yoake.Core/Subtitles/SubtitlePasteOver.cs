@@ -14,8 +14,9 @@ public static class SubtitlePasteClipboard
 {
     // Structured input uses the same lossless Format-aware parser as files.
     // Malformed ASS must never silently become dialogue text and overwrite rows.
-    public static IReadOnlyList<AssEvent> Parse(string text)
+    public static IReadOnlyList<AssEvent> Parse(string text,CancellationToken token=default)
     {
+        token.ThrowIfCancellationRequested();
         ArgumentNullException.ThrowIfNull(text);
         if(text.Length>8*1024*1024)throw new ArgumentException("Clipboard subtitles exceed the 8 MiB limit.");
         var rows=text.Split(['\r','\n'],StringSplitOptions.RemoveEmptyEntries);
@@ -25,7 +26,7 @@ public static class SubtitlePasteClipboard
         if(!structured)
         {
             var defaults=AssDocument.CreateEmpty();
-            return rows.Select(r=>{var line=defaults.NewEvent();line.Start=line.End="0:00:00.00";line.Text=r.Trim();return line;}).ToArray();
+            return rows.Select(r=>{token.ThrowIfCancellationRequested();var line=defaults.NewEvent();line.Start=line.End="0:00:00.00";line.Text=r.Trim();return line;}).ToArray();
         }
         var fullDocument=rows.Any(r=>r.Trim().Equals("[Events]",StringComparison.OrdinalIgnoreCase)||r.Trim().Equals("[Script Info]",StringComparison.OrdinalIgnoreCase));
         if(!fullDocument&&rows.Any(r=>!r.TrimStart().StartsWith(';')&&!r.Contains(':')))
@@ -35,6 +36,7 @@ public static class SubtitlePasteClipboard
         if(document.Events.Count==0)throw new ArgumentException("Clipboard contains no subtitle dialogue records.");
         foreach(var line in document.Events)
         {
+            token.ThrowIfCancellationRequested();
             if(line.Fields.Length!=line.FieldNames.Count||line.FieldNames.Distinct(StringComparer.OrdinalIgnoreCase).Count()!=line.FieldNames.Count||line.Index("Text")<0)
                 throw new ArgumentException("Malformed clipboard dialogue or Format record.");
             // Validate supplied timing/metadata without requiring optional columns.
@@ -50,8 +52,9 @@ public static class SubtitlePasteClipboard
 public sealed partial class SubtitleEditor
 {
     public int PasteOver(IReadOnlyList<AssEvent> clipboard,IEnumerable<AssEvent> selection,AssEvent? active,
-        PasteOverFields fields,IReadOnlyDictionary<string,string>? activeDraft=null)
+        PasteOverFields fields,IReadOnlyDictionary<string,string>? activeDraft=null,CancellationToken token=default)
     {
+        token.ThrowIfCancellationRequested();
         if((fields&~PasteOverFields.All)!=0)throw new ArgumentException("Invalid paste fields.");
         var targets=Ordered(selection);
         if(targets.Length==0||clipboard.Count==0||fields==PasteOverFields.None)return 0;
@@ -64,6 +67,7 @@ public sealed partial class SubtitleEditor
         var changes=new List<(AssEvent Line,Dictionary<string,string> Values,bool? Comment)>();
         for(var i=0;i<Math.Min(targets.Length,clipboard.Count);i++)
         {
+            token.ThrowIfCancellationRequested();
             var line=targets[i];var incoming=clipboard[i];
             var values=ReferenceEquals(line,active)&&activeDraft is not null?new Dictionary<string,string>(activeDraft,StringComparer.OrdinalIgnoreCase):new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
             foreach(var (flag,name) in new[]{(PasteOverFields.Layer,"Layer"),(PasteOverFields.Start,"Start"),(PasteOverFields.End,"End"),(PasteOverFields.Style,"Style"),(PasteOverFields.Actor,"Name"),(PasteOverFields.MarginL,"MarginL"),(PasteOverFields.MarginR,"MarginR"),(PasteOverFields.MarginV,"MarginV"),(PasteOverFields.Effect,"Effect"),(PasteOverFields.Text,"Text")})
@@ -79,6 +83,7 @@ public sealed partial class SubtitleEditor
         using var update=Document.BeginUpdate();
         foreach(var (line,values,comment) in changes)
         {
+            token.ThrowIfCancellationRequested();
             foreach(var pair in values)SetField(line,pair.Key,pair.Value,"Paste lines over");
             if(comment is {} desired&&line.IsComment!=desired)
             {
@@ -86,6 +91,6 @@ public sealed partial class SubtitleEditor
                 Undo.Execute(new DelegateUndoOperation("Paste comment flag",()=>line.RestorePrefix(prefix),()=>line.SetKind(desired)));
             }
         }
-        transaction.Commit();return changes.Count;
+        token.ThrowIfCancellationRequested();transaction.Commit();return changes.Count;
     }
 }
