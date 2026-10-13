@@ -10,6 +10,7 @@ public sealed partial class MainWindowViewModel
     public string OriginalText=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?state.OriginalText:"";
     public PasteOverFields PasteOverPreferences=>_settings.PasteOverFields is {} fields&&(fields&~PasteOverFields.All)==0?fields:PasteOverFields.Text;
     private bool _pasteOverBusy;
+    private bool _publishingPasteOver;
     private void RefreshOriginalText()
     {
         if(_activeId is {} id&&_documents.TryGetValue(id,out var state)&&!ReferenceEquals(state.OriginalLine,SelectedEvent))
@@ -58,8 +59,10 @@ public sealed partial class MainWindowViewModel
             var text=await Dialogs.ReadClipboardAsync();if(string.IsNullOrEmpty(text)||!Current())return;
             var clipboard=await Task.Run(()=>SubtitlePasteClipboard.Parse(text));if(clipboard.Count==0||!Current())return;
             var fields=await Dialogs.ShowPasteOverAsync(PasteOverPreferences);if(fields is null||!Current())return;
-            editor.PasteOver(clipboard,selection,active,fields.Value,values);
-            if(fields!=PasteOverFields.None)ReloadDraft();
+            _publishingPasteOver=true;
+            try{editor.PasteOver(clipboard,selection,active,fields.Value,values);}
+            finally{_publishingPasteOver=false;}
+            if(fields!=PasteOverFields.None&&(selection.Length==1||selection.Contains(active)))ReloadDraft();
             _settings=_settings with{PasteOverFields=fields};_settingsStore.Save(_settings);
         }
         finally

@@ -65,4 +65,12 @@ public sealed partial class EditorWorkflowTests
         Assert.False(HotkeyInputPolicy.MayRoute(new("edit/line/paste",HotkeyContext.Default,HotkeyGesture.Parse("Ctrl-V")),HotkeyGesture.Parse("Ctrl-V"),true));
         Assert.False(HotkeyInputPolicy.MayRoute(paste,HotkeyGesture.Parse("Ctrl-Alt-V"),true));
     }
+    [Fact] public async Task PasteOverRetainsAnUnselectedActiveDraft()
+    {
+        await SeedOriginal();await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridLinePrevious);
+        var active=_model.SelectedEvent!;var source=active.Text;var draft=_model.Draft!;draft.Text="keep this pending draft";
+        _model.SetSelectedEvents(_model.Events.Where(l=>!ReferenceEquals(l,active)));_dialogs.ClipboardText="first\nsecond";_dialogs.PasteFields=PasteOverFields.Text;
+        await Command("edit/line/paste/over");Assert.Same(draft,_model.Draft);Assert.Equal("keep this pending draft",draft.Text);Assert.Equal(source,active.Text);
+        Assert.Equal(new[]{"first","second"},_model.Events.Where(l=>!ReferenceEquals(l,active)).Select(l=>l.Text));
+    }
 }
