@@ -19,7 +19,7 @@ public sealed partial class MainWindowViewModel
         {
             _registry.Register(new(new(id,label,label,"Subtitle"),action,c=>Owner(c)&&!HasGesture&&(available?.Invoke()??true)));
         }
-        Register("subtitle/attachment","Attachments…",async (_,token)=>
+        Register("subtitle/attachment","Attachments…",async (invocation,token)=>
         {
             if(_activeId is not {} id||Dialogs is null)return;var state=_documents[id];
             _attachmentDialogOpen=true;state.MediaDraftPauses++;_editBurstDelay?.Cancel();_registry.NotifyStateChanged();
