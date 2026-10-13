@@ -1,3 +1,4 @@
+using Xunit;
 using Yoake.Core.Commands;
 using Yoake.Core.Hotkeys;
 using Yoake.Core.Settings;
