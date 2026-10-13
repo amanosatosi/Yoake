@@ -318,6 +318,10 @@ public partial class MainWindow : Window, IEditorDialogs
             if(input is TextBox textBox && textBox.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
             if(e.Key==Key.Enter&&(input is AutoCompleteBox {IsDropDownOpen:true}||input is ComboBox {IsDropDownOpen:true}))return;
         }
+        // A focused semantic button owns ordinary Enter. Treating it as the
+        // editor's commit/next shortcut prevents keyboard activation of the
+        // Original actions (and other authoring toolbar controls).
+        if(e.Key==Key.Enter&&e.KeyModifiers==Avalonia.Input.KeyModifiers.None&&ancestors.Any(input=>input is Button))return;
         foreach(var current in ancestors)
         {
             if(current==SubtitleRows){context=HotkeyContext.SubtitleGrid;break;}
