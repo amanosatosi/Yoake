@@ -17,6 +17,7 @@ public sealed class ToshikiTimingTests
     [InlineData("自分の価値に目を疑って", "自/分/の/価/値/に/目/を/疑っ/て")]
     [InlineData("かな romaji", "か/な/ /romaji")]
     [InlineData("か\u3099き", "か\u3099/き")]
+    [InlineData("こ\u3099う", "こ\u3099う")]
     public void SongSaneKanaCutUsesReferenceGroupsWithoutInventingTime(string text,string expected)
     {
         var plan=new ToshikiTimingPlan(text,1000,2000);
@@ -60,6 +61,13 @@ public sealed class ToshikiTimingTests
     }
     [Fact] public void EmptyAndSingleUntimedLineDoNotAcquireInventedKaraoke()
     {var plan=new ToshikiTimingPlan("romaji",0,500);Assert.Equal("romaji",plan.PreviewText);Assert.Equal("",new ToshikiTimingPlan("",0,0).PreviewText);}
+    [Fact] public void DrawingAndCommentOnlySlotsKeepTheirOwnRawTimingAnchors()
+    {
+        const string source="{\\k20}{\\p1}m 0 0 l 5 5{\\p0}{\\ko30}{comment}";
+        var plan=new ToshikiTimingPlan(source,0,500);Assert.Equal(2,plan.Count);Assert.All(plan.Slots,s=>Assert.Equal("",s.Text));
+        Assert.Equal(source,plan.PreviewText);Assert.Equal(source,ToshikiTimingPlan.Restore(plan.Capture(0)).PreviewText);
+        plan.MoveBoundary(0,300);Assert.Equal("{\\k30}{\\p1}m 0 0 l 5 5{\\p0}{\\ko20}{comment}",plan.PreviewText);
+    }
     [Theory]
     [InlineData("<病|やまい>","やまい","<病|{\\k30}や{\\k26}ま{\\k10}い>")]
     [InlineData("{\\i1}<病|{\\b1}やまい{\\b0}>{\\i0}","やまい","{\\i1}<病|{\\k30}{\\b1}や{\\k26}ま{\\k10}い{\\b0}>{\\i0}")]

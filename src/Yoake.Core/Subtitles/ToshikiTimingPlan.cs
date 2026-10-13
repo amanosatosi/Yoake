@@ -19,8 +19,8 @@ using Yoake.Core.Audio;
 namespace Yoake.Core.Subtitles;
 
 public sealed record ToshikiSlot(int Index, int TextStart, string Text, string Tag, long Start, long End, bool Assigned, bool Current);
-public sealed record ToshikiRecovery(int Row, string Source, long Start, long End, int[] Cuts, string[] Tags, long[] Boundaries, int[] Recuts, int Current, bool Existing, bool Changed, Dictionary<string,string>? StoredValues = null);
-public sealed record KaraokeSource(string Raw, string Text, int[] Offsets, int[] Cuts, string[] Tags, long[] Durations)
+public sealed record ToshikiRecovery(int Row, string Source, long Start, long End, int[] Cuts, string[] Tags, long[] Boundaries, int[] Recuts, int Current, bool Existing, bool Changed, Dictionary<string,string>? StoredValues = null, int[]? RawCuts = null);
+public sealed record KaraokeSource(string Raw, string Text, int[] Offsets, int[] Cuts, string[] Tags, long[] Durations, int[] Insertions)
 {
     public bool Existing => Tags.Length > 0;
 
@@ -94,24 +94,25 @@ public sealed record KaraokeSource(string Raw, string Text, int[] Offsets, int[]
             if(excluded[i]){pendingOffset=i+1;continue;}
             if (plain[i]) { offsets.Add(pendingOffset); actual.Add(i); text.Append(cleaned[i]); pendingOffset=i+1; }
         }
-        offsets.Add(cleaned.Length);
+        offsets.Add(text.Length==0?0:cleaned.Length);
         actual.Add(cleaned.Length);
         int Logical(int offset) { var found = actual.BinarySearch(offset); return found >= 0 ? Math.Min(found, text.Length) : Math.Min(~found, text.Length); }
-        var cuts = new List<int>(); var tags = new List<string>(); var durations = new List<long>();
+        var cuts = new List<int>(); var tags = new List<string>(); var durations = new List<long>(); var insertions=new List<int>();
         foreach (var anchor in anchors)
         {
             var logical = Logical(anchor.Offset);
-            if (cuts.Count == 0 && logical > 0) { cuts.Add(0); tags.Add("k"); durations.Add(0); }
+            if (cuts.Count == 0 && logical > 0) { cuts.Add(0); tags.Add("k"); durations.Add(0); insertions.Add(offsets[0]); }
             cuts.Add(logical); tags.Add(anchor.Tag); durations.Add(anchor.Duration);
+            insertions.Add(Math.Max(offsets[logical],anchor.Offset));
         }
-        return new(cleaned, text.ToString(), offsets.ToArray(), cuts.ToArray(), tags.ToArray(), durations.ToArray());
+        return new(cleaned, text.ToString(), offsets.ToArray(), cuts.ToArray(), tags.ToArray(), durations.ToArray(),insertions.ToArray());
     }
-    public string Render(IReadOnlyList<int> cuts, IReadOnlyList<string> tags, IReadOnlyList<long> durations)
+    public string Render(IReadOnlyList<int> cuts, IReadOnlyList<string> tags, IReadOnlyList<long> durations, IReadOnlyList<int>? insertions=null)
     {
         var output = new StringBuilder(); var copied = 0;
         for (var i = 0; i < cuts.Count; i++)
         {
-            var position = Offsets[cuts[i]]; output.Append(Raw.AsSpan(copied, position - copied));
+            var position = insertions?[i]??Offsets[cuts[i]]; output.Append(Raw.AsSpan(copied, position - copied));
             output.Append("{\\").Append(tags[i]).Append(((durations[i] + 5) / 10).ToString(CultureInfo.InvariantCulture)).Append('}'); copied = position;
         }
         return output.Append(Raw.AsSpan(copied)).ToString();
@@ -123,6 +124,7 @@ public sealed class ToshikiTimingPlan
 {
     private readonly KaraokeSource _source;
     private readonly List<int> _cuts = [];
+    private readonly List<int> _rawCuts = [];
     private readonly List<string> _tags = [];
     private readonly List<long> _boundaries = [];
     private readonly HashSet<int> _recuts = [];
@@ -142,10 +144,12 @@ public sealed class ToshikiTimingPlan
         Source = source; Start = start; End = end; _source = KaraokeSource.Parse(source); _existing = _source.Existing;
         if (_existing)
         {
-            _cuts.AddRange(_source.Cuts); _tags.AddRange(_source.Tags); var next = start;
+            _cuts.AddRange(_source.Cuts); _rawCuts.AddRange(_source.Insertions); _tags.AddRange(_source.Tags); var next = start;
             for (var i = 0; i < Count - 1; i++) { next = Math.Min(end, checked(next + _source.Durations[i])); _boundaries.Add(next); }
         }
-        else { _cuts.Add(0); _tags.Add("k"); if (autoCut) AutoCut(); }
+        else { _cuts.Add(0); _rawCuts.Add(_source.Offsets[0]); _tags.Add("k"); if (autoCut) AutoCut(); }
+        var safe=SafeCuts().ToHashSet();
+        if(_cuts.Any(c=>!safe.Contains(c)))throw new ArgumentException("Existing karaoke splits a grapheme or an ambiguous reading group. The source is preserved; correct those boundaries before timing.");
     }
     public ToshikiSlot[] Slots
     {
@@ -209,6 +213,7 @@ public sealed class ToshikiTimingPlan
             _boundaries.Insert(slot, slot < _boundaries.Count ? _boundaries[slot] : End);
             var moved = _recuts.Select(i => i >= slot ? i + 1 : i).ToArray(); _recuts.Clear(); _recuts.UnionWith(moved); _recuts.Add(slot);
         }
+        _rawCuts.Insert(slot+1,Math.Clamp(_source.Offsets[logicalPosition],_rawCuts[slot],slot+1<Count?_rawCuts[slot+1]:_source.Raw.Length));
         _cuts.Insert(slot + 1, logicalPosition); _tags.Insert(slot + 1, _tags[slot]); if (slot < Current) Current++; Changed = true;
     }
     public void Join(int right)
@@ -216,7 +221,7 @@ public sealed class ToshikiTimingPlan
         if (right <= 0 || right >= Count) return;
         var boundary = right - 1; if (boundary < _boundaries.Count) _boundaries.RemoveAt(boundary);
         var moved = _recuts.Where(i => i != boundary).Select(i => i > boundary ? i - 1 : i).ToArray(); _recuts.Clear(); _recuts.UnionWith(moved);
-        _cuts.RemoveAt(right); _tags.RemoveAt(right); if (right <= Current) Current--; Changed = true;
+        _cuts.RemoveAt(right); _rawCuts.RemoveAt(right); _tags.RemoveAt(right); if (right <= Current) Current--; Changed = true;
     }
     public int[] SafeCuts()
     {
@@ -235,12 +240,12 @@ public sealed class ToshikiTimingPlan
     {
         if (_existing || _boundaries.Count > 0) return;
         var safe = SafeCuts(); var units = ToshikiKanaCut.Units(Text, safe);
-        _cuts.Clear(); _tags.Clear(); var position = 0;
-        foreach (var unit in units) { _cuts.Add(position); _tags.Add("k"); position += unit.Length; }
-        if (Count == 0) { _cuts.Add(0); _tags.Add("k"); } Current = 0; Changed = Count > 1;
+        _cuts.Clear(); _rawCuts.Clear(); _tags.Clear(); var position = 0;
+        foreach (var unit in units) { _cuts.Add(position); _rawCuts.Add(_source.Offsets[position]); _tags.Add("k"); position += unit.Length; }
+        if (Count == 0) { _cuts.Add(0); _rawCuts.Add(_source.Offsets[0]); _tags.Add("k"); } Current = 0; Changed = Count > 1;
     }
-    public string PreviewText => Count == 1 && !_existing ? Source : _source.Render(_cuts, _tags, Slots.Select(s => s.End - s.Start).ToArray());
-    public ToshikiRecovery Capture(int row) => new(row, Source, Start, End, _cuts.ToArray(), _tags.ToArray(), _boundaries.ToArray(), _recuts.Order().ToArray(), Current, _existing, Changed);
+    public string PreviewText => Count == 1 && !_existing ? Source : _source.Render(_cuts, _tags, Slots.Select(s => s.End - s.Start).ToArray(),_rawCuts);
+    public ToshikiRecovery Capture(int row) => new(row, Source, Start, End, _cuts.ToArray(), _tags.ToArray(), _boundaries.ToArray(), _recuts.Order().ToArray(), Current, _existing, Changed,RawCuts:_rawCuts.ToArray());
     public static ToshikiTimingPlan Restore(ToshikiRecovery recovery)
     {
         if (recovery.Source is null || recovery.Cuts is null || recovery.Tags is null || recovery.Boundaries is null || recovery.Recuts is null || recovery.Cuts.Length is <1 or >100000 || recovery.Tags.Length != recovery.Cuts.Length)
@@ -252,6 +257,18 @@ public sealed class ToshikiTimingPlan
             recovery.Current < 0 || recovery.Current >= recovery.Cuts.Length || recovery.Recuts.Any(i => i < 0 || i >= recovery.Boundaries.Length) || recovery.Tags.Any(t => t is not ("k" or "K" or "kf" or "ko" or "kO")))
             throw new InvalidDataException("Invalid karaoke recovery boundaries.");
         plan._cuts.Clear(); plan._cuts.AddRange(recovery.Cuts); plan._tags.Clear(); plan._tags.AddRange(recovery.Tags);
+        var raw=recovery.RawCuts??recovery.Cuts.Select(c=>plan._source.Offsets[c]).ToArray();
+        if(raw.Length!=recovery.Cuts.Length||raw.Any(p=>p<0||p>plan._source.Raw.Length)||!raw.SequenceEqual(raw.Order()))throw new InvalidDataException("Invalid karaoke source insertion boundaries.");
+        var blocks=new List<(int Start,int End)>();var begin=-1;
+        foreach(var token in AssSyntax.Tokenize(plan._source.Raw).Where(t=>t.Kind==AssSyntaxKind.Brace))
+        {if(plan._source.Raw[token.Start]=='{')begin=token.Start;else if(begin>=0){blocks.Add((begin,token.Start));begin=-1;}}
+        if(begin>=0)blocks.Add((begin,plan._source.Raw.Length));var blockIndex=0;
+        foreach(var position in raw)
+        {
+            while(blockIndex<blocks.Count&&position>blocks[blockIndex].End)blockIndex++;
+            if(blockIndex<blocks.Count&&position>blocks[blockIndex].Start&&position<=blocks[blockIndex].End)throw new InvalidDataException("Karaoke insertion cannot split an override or comment.");
+        }
+        plan._rawCuts.Clear();plan._rawCuts.AddRange(raw);
         plan._boundaries.Clear(); plan._boundaries.AddRange(recovery.Boundaries); plan._recuts.Clear(); plan._recuts.UnionWith(recovery.Recuts);
         plan.Current = recovery.Current; plan._existing = recovery.Existing; plan.Changed = recovery.Changed; return plan;
     }
@@ -283,7 +300,8 @@ internal static class ToshikiKanaCut
             if (Close(cp)) { if (prefix.Length > 0) prefix += unit; else if (units.Count == 0 || Special(units[^1])) Push(unit); else units[^1] += unit; continue; }
             if (Space(cp)) { if (prefix.Length > 0) Push(""); Push(unit); continue; }
             if (Small(cp) || cp is 0x3099 or 0x309a || Punctuation(cp)) { if (prefix.Length > 0 || units.Count == 0 || units[^1].Length == 0) Push(unit); else units[^1] += unit; continue; }
-            var last = units.Count > 0 && units[^1].Length > 0 ? units[^1].EnumerateRunes().Last().Value : 0;
+            var previous = units.Count > 0 ? units[^1] : ""; var graphemes=StringInfo.ParseCombiningCharacters(previous);
+            var last = graphemes.Length > 0 ? Rune.GetRuneAt(previous,graphemes[^1]).Value : 0;
             var attach = cp is 0x3063 or 0x30c3 or 0xff6f or 0x30fc or 0xff70 || cp == 0x3046 && "こごそぞとどのほぼぽもよょろを".Contains((char)last) || cp == 0x30a6 && "コゴソゾトドノホボポモヨョロヲ".Contains((char)last) || cp is 0x3046 or 0x30a6 && Small(last);
             if (Kana(cp)) { if (prefix.Length == 0 && units.Count > 0 && !Special(units[^1]) && attach) units[^1] += unit; else Push(unit); continue; }
             if (Cjk(cp)) { Push(unit); continue; }

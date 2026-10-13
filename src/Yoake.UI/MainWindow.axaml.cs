@@ -327,7 +327,7 @@ public partial class MainWindow : Window, IEditorDialogs
         {
             if(current==SubtitleRows){context=HotkeyContext.SubtitleGrid;break;}
             if(current==EventEditorRegion){context=HotkeyContext.SubtitleEdit;break;}
-            if(current==AudioRegion){context=HotkeyContext.Audio;break;}
+            if(current==AudioRegion||current==AudioHost){context=HotkeyContext.Audio;break;}
             if(current==VideoRegion){context=HotkeyContext.Video;break;}
         }
         // Focus is authoritative across template/presenter boundaries.
