@@ -79,8 +79,11 @@ public sealed partial class SubtitleEditor
             ValidateEventValues(line,values); // Validate every result before the first mutation.
             changes.Add((line,values,fields.HasFlag(PasteOverFields.Comment)?incoming.IsComment:null));
         }
-        using var transaction=Undo.BeginTransaction("Paste lines over");
         using var update=Document.BeginUpdate();
+        // Rollback must finish before the document publishes its coalesced
+        // change. Observers (including pending audio timing) must never see a
+        // temporary partially pasted row on cancellation or failure.
+        using var transaction=Undo.BeginTransaction("Paste lines over");
         foreach(var (line,values,comment) in changes)
         {
             token.ThrowIfCancellationRequested();

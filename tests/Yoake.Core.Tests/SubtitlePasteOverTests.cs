@@ -56,6 +56,14 @@ public sealed class SubtitlePasteOverTests
         Assert.Throws<OperationCanceledException>(()=>editor.PasteOver(SubtitlePasteClipboard.Parse("new text"),[line],line,PasteOverFields.Text,token:cancellation.Token));
         Assert.Equal(Source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
     }
+    [Fact] public void CancellationDuringPublicationOnlyNotifiesObserversAfterRollback()
+    {
+        var editor=new SubtitleEditor(AssDocument.Parse(Source));var line=editor.Document.Events[0];using var cancellation=new CancellationTokenSource();var observed=new List<string>();
+        editor.Document.Changed+=(_,_)=>observed.Add(editor.Document.Serialize());
+        line.PropertyChanged+=(_,_)=>{if(line.Text=="new text")cancellation.Cancel();};
+        Assert.Throws<OperationCanceledException>(()=>editor.PasteOver(SubtitlePasteClipboard.Parse("new text"),[line],line,PasteOverFields.Text,token:cancellation.Token));
+        Assert.Equal(Source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);Assert.Single(observed);Assert.All(observed,value=>Assert.Equal(Source,value));
+    }
     [Fact] public void InvalidLaterResultRollsBackBeforeFirstRowAndKeepsDraft()
     {
         var editor=new SubtitleEditor(AssDocument.Parse(Source));var rows=editor.Document.Events.ToArray();
