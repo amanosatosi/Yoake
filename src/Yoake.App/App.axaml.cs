@@ -99,6 +99,7 @@ public partial class App : Application
                 else if(_startup.VideoPresentationAcceptance)new VideoPresentationUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.OriginalAndPasteAcceptance)new OriginalAndPasteUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.RecoveryCapture||_startup.RecoveryAcceptance)new RecoveryUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AttachmentCapture||_startup.AttachmentRecovery)new AttachmentsUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.VideoUtilitiesAcceptance)new VideoUtilitiesUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.MediaOwnershipAcceptance)new MediaOwnershipUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.VideoNavigationAcceptance)new VideoNavigationUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();

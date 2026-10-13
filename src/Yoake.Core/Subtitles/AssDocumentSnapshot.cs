@@ -8,4 +8,5 @@ public sealed class AssDocumentSnapshot
     public long Revision { get; }
     internal AssDocumentSnapshot(AssDocument copy, long revision) { _copy = copy; Revision = revision; }
     public byte[] SerializeBytes() { lock (_gate) return _copy.SerializeBytes(); }
+    public AssAttachment[] GetAttachments(CancellationToken token=default){lock(_gate)return _copy.GetAttachments(token);}
 }

@@ -328,6 +328,45 @@ try {
   $process.Dispose()
 }
 
+# Attachment integration and unsaved-import crash recovery have their own two
+# native processes, independent of Stage 2A and startup acceptance.
+$attachmentRoot = Join-Path $root ('attachments-' + [Guid]::NewGuid().ToString('N'))
+$attachmentProfile = Join-Path $attachmentRoot 'profile'
+New-Item -ItemType Directory -Force -Path $attachmentProfile | Out-Null
+$captureReport = Join-Path $attachmentRoot 'capture.txt'
+$captureLogs = Join-Path $attachmentRoot 'capture-logs'
+$arguments = @('--verify-ui-attachments-capture', ('"{0}"' -f $captureReport), '--profile-directory', ('"{0}"' -f $attachmentProfile), '--diagnostics-directory', ('"{0}"' -f $captureLogs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  $deadline = [DateTime]::UtcNow.AddSeconds(150)
+  while (-not (Test-Path -LiteralPath $captureReport) -and -not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 200 }
+  $text = if (Test-Path -LiteralPath $captureReport) { Get-Content -LiteralPath $captureReport -Raw } else { '' }
+  if ($process.HasExited -or -not $text.StartsWith('READY:')) { throw "Attachment GUI capture failed:`n$text" }
+  $process.Kill(); $process.WaitForExit(); Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $captureLogs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
+$report = Join-Path $attachmentRoot 'recovered.txt'
+$logs = Join-Path $attachmentRoot 'restart-logs'
+$arguments = @('--verify-ui-attachments-recovery', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $attachmentProfile), '--diagnostics-directory', ('"{0}"' -f $logs))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged attachment restart acceptance timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged attachment recovery failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
+
 $videoPresentationRoot = Join-Path $root ('video-presentation-' + [Guid]::NewGuid().ToString('N'))
 $videoPresentationProfile = Join-Path $videoPresentationRoot 'profile'
 New-Item -ItemType Directory -Force -Path $videoPresentationProfile | Out-Null

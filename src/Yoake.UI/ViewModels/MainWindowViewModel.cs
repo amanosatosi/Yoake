@@ -54,6 +54,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public EventEditDraft? RetainedDraft;
         public bool RecoveredUnsaved;
         public string? RecoveryProvenance;
+        public CancellationTokenSource? AttachmentWork;
+        public RecoveryLease AttachmentLease=new();
+        public string AttachmentStatus="";
         public CancellationTokenSource? Loading;
         public CancellationTokenSource? VideoLoading, AudioLoading;
         public int MediaDraftPauses;
@@ -232,6 +235,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterVideoPresentationCommands();
         RegisterFrameImageCommands();
         InitializeRecovery();
+        RegisterAttachmentCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
@@ -262,13 +266,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     private void Attach(DocumentSession session, AssDocument document)
     {
-        if(_documents.TryGetValue(session.Id,out var previous)){InvalidateRecovery(session.Id);previous.AudioExport?.Cancel();}
+        if(_documents.TryGetValue(session.Id,out var previous)){CancelAttachmentWork(session.Id);InvalidateRecovery(session.Id);previous.AudioExport?.Cancel();}
         var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds,Search=new(_settings.SearchPreferences??new())}; _documents[session.Id]=state;
         session.PropertyChanged+=(_,args)=>{if(args.PropertyName is nameof(DocumentSession.Path) or nameof(DocumentSession.Title))InvalidateRecovery(session.Id);};
-        document.Changed+=(_,_)=> { state.AudioTiming.Reconcile();state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
+        document.Changed+=(_,_)=> { if(!_publishingAttachments)CancelAttachmentWork(session.Id);state.AudioTiming.Reconcile();state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
-            session.IsDirty=state.Editor.IsDirty||state.RecoveredUnsaved;
+            session.IsDirty=state.Editor.IsDirty||state.RecoveredUnsaved||(_activeId==session.Id&&Draft?.IsChanged==true);
             var names=document.Styles.Select(s=>s.Name).ToArray();var namesChanged=!names.SequenceEqual(state.StyleNames);
             if(namesChanged)state.StyleNames=names;
             if(_activeId==session.Id)
@@ -276,7 +280,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                 // Refresh choices before the draft binding selects the renamed
                 // style. Otherwise ComboBox retains an absent/blank selection.
                 if(namesChanged)OnPropertyChanged(nameof(StyleNames));
-                if(!_publishingAudioTiming&&!_publishingPasteOver)ReloadDraft();_registry.NotifyStateChanged();
+                if(!_publishingAudioTiming&&!_publishingPasteOver&&!_publishingAttachments)ReloadDraft();_registry.NotifyStateChanged();
             }
         };
         state.Editor.MarkSaved();
@@ -343,6 +347,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (choice==UnsavedChoice.Cancel || choice==UnsavedChoice.Save && !await SaveAsync()) return false;
         }
         InvalidateRecovery(id);
+        CancelAttachmentWork(id);
         CancelGesture(); StopPlayback(); state.FrameExtraction?.Cancel(); ResetAudioAnalysis(state); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
         var media=state.Media; state.Media=null; if (media is not null) _=Task.Run(media.Dispose);
         SearchWindowCloseRequested?.Invoke(this,new(id));
@@ -362,7 +367,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         try
         {
             CancelGesture(); CancelVisualBounds(); StopPlayback(); Interlocked.Increment(ref _seekGeneration);
-            if (_activeId is { } old && _documents.TryGetValue(old,out var previous)&&ReferenceEquals(previous.Editor.Document,_activeSubtitleDocument)) { previous.RetainedDraft=Draft?.IsChanged==true?Draft:null;previous.Search.Cancellation?.Cancel();previous.Time=CurrentTimeSeconds; previous.Selected=SelectedEvent; }
+            if (_activeId is { } old && _documents.TryGetValue(old,out var previous)&&ReferenceEquals(previous.Editor.Document,_activeSubtitleDocument)) { CancelAttachmentWork(old);previous.RetainedDraft=Draft?.IsChanged==true?Draft:null;previous.Search.Cancellation?.Cancel();previous.Time=CurrentTimeSeconds; previous.Selected=SelectedEvent; }
             _activeId=id;
             var state=id is { } key && _documents.TryGetValue(key,out var found) ? found : null;
             _activeSubtitleDocument=state?.Editor.Document; _media=state?.Media;
@@ -449,7 +454,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public void Dispose()
     {
-        _recoveryTimer.Stop();foreach(var id in _documents.Keys)InvalidateRecovery(id);
+        _recoveryTimer.Stop();foreach(var id in _documents.Keys){CancelAttachmentWork(id);InvalidateRecovery(id);}
         if (!_disposed) DisposeAutomation();
         if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); foreach(var state in _documents.Values){state.AudioExport?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();} _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
         foreach(var state in _documents.Values) { state.FrameExtraction?.Cancel(); state.AudioAnalysis.Cancel();state.AudioAnalysis.Dispose(); state.Editing?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }

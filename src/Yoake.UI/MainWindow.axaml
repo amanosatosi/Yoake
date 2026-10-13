@@ -57,6 +57,7 @@
 <MenuItem Name="NewMenu" Header="New" InputGesture="{Binding Actions[subtitle/new].InputGesture}" Command="{Binding Actions[subtitle/new]}" />
 <MenuItem Header="Open…" InputGesture="{Binding Actions[subtitle/open].InputGesture}" Command="{Binding Actions[subtitle/open]}" />
 <MenuItem Name="RecoveryMenu" Header="Recover Subtitles…" InputGesture="{Binding Actions[subtitle/open/autosave].InputGesture}" Command="{Binding Actions[subtitle/open/autosave]}" />
+<MenuItem Name="AttachmentsMenu" Header="Attachments…" InputGesture="{Binding Actions[subtitle/attachment].InputGesture}" Command="{Binding Actions[subtitle/attachment]}" />
 <MenuItem Header="Save" InputGesture="{Binding Actions[subtitle/save].InputGesture}" Command="{Binding Actions[subtitle/save]}" />
 <MenuItem Header="Save As…" InputGesture="{Binding Actions[subtitle/save-as].InputGesture}" Command="{Binding Actions[subtitle/save-as]}" />
 <MenuItem Header="Export subtitles…" InputGesture="{Binding Actions[automation/export].InputGesture}" Command="{Binding Actions[automation/export]}" />

@@ -439,6 +439,23 @@ public partial class MainWindow : Window, IEditorDialogs
         using var registration=token.Register(()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close();}));
         await dialog.ShowDialog(this);
     }
+    public async Task ShowAttachmentsAsync(MainWindowViewModel model,Guid id,CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new AttachmentsWindow(model,id);
+        using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close();}));
+        await dialog.ShowDialog(this);
+    }
+    public async Task<bool> ConfirmAttachmentOverwriteAsync(string path,CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new Window{Name="AttachmentOverwriteDialog",Title="Replace extracted file?",Width=480,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};
+        var names=new NameScope();NameScope.SetNameScope(dialog,names);var panel=new StackPanel{Margin=new Thickness(12),Spacing=8};dialog.Content=panel;
+        panel.Children.Add(new TextBlock{Text="Replace the existing file?\n"+path,TextWrapping=Avalonia.Media.TextWrapping.Wrap});
+        var row=new StackPanel{Orientation=Avalonia.Layout.Orientation.Horizontal,Spacing=8};panel.Children.Add(row);
+        var cancel=new Button{Name="AttachmentOverwriteCancel",Content="Keep existing",IsDefault=true,IsCancel=true};var replace=new Button{Name="AttachmentOverwriteConfirm",Content="Replace"};row.Children.Add(cancel);row.Children.Add(replace);
+        names.Register(cancel.Name!,cancel);names.Register(replace.Name!,replace);names.Complete();cancel.Click+=(_,_)=>dialog.Close(false);replace.Click+=(_,_)=>dialog.Close(true);
+        using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close(false);}));
+        return await dialog.ShowDialog<bool>(this);
+    }
     public async Task<bool> ConfirmRecoveryDiscardAsync(string name,CancellationToken token)
     {
         token.ThrowIfCancellationRequested();

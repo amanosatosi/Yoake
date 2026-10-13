@@ -3,9 +3,9 @@ using System.Text;
 
 namespace Yoake.Core.Subtitles;
 
-public sealed class AssDocument
+public sealed partial class AssDocument
 {
-    internal sealed record SourceLine(string Raw, string Ending, AssRecord? Record = null);
+    internal sealed record SourceLine(string Raw, string Ending, AssRecord? Record = null,bool IsSectionHeader=false,bool IsAttachmentData=false);
     internal List<SourceLine> Source = [];
     private Encoding _encoding = new UTF8Encoding(false, true);
     private bool _bom;
@@ -27,7 +27,7 @@ public sealed class AssDocument
     public static AssDocument Parse(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        var doc = new AssDocument(); var section = ""; string[]? format = null;
+        var doc = new AssDocument(); var section = ""; string[]? format = null;var attachmentContext=new AssAttachmentContext();
         for (var start = 0; start < text.Length;)
         {
             var end = start; while (end < text.Length && text[end] is not '\r' and not '\n') end++;
@@ -36,9 +36,10 @@ public sealed class AssDocument
             var raw = text[start..end]; var ending = text[end..after]; var trim = raw.Trim();
             if (doc.Source.Count == 0 && ending.Length > 0) doc._newline = ending;
             AssRecord? record = null;
-            if (trim.StartsWith('[') && trim.EndsWith(']')) { section = trim; format = null; }
-            else if (trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
-            else if (format is { Length: > 0 })
+            var context=attachmentContext.Observe(raw);
+            if (context.Section) { section = trim; format = null; }
+            else if (!context.Data&&trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
+            else if (!context.Data&&format is { Length: > 0 })
             {
                 var colon = raw.IndexOf(':');
                 if (colon > 0)
@@ -51,7 +52,7 @@ public sealed class AssDocument
                         record = new AssStyle(raw[..payload], format, SplitFields(raw[payload..], format, false));
                 }
             }
-            doc.Source.Add(new(raw, ending, record)); start = after;
+            doc.Source.Add(new(raw, ending, record,context.Section,context.Data)); start = after;
         }
         doc.Synchronize(); return doc;
     }
@@ -71,8 +72,8 @@ public sealed class AssDocument
         var output = new StringBuilder(); string[]? format = null;_eventSpans.Clear();
         foreach (var line in Source)
         {
-            var trim = line.Raw.Trim(); if (trim.StartsWith('[')) format = null;
-            if (trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
+            var trim = line.Raw.Trim(); if (line.IsSectionHeader) format = null;
+            if (!line.IsAttachmentData&&trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
             if (line.Record is { } record)
             {
                 var different=format is null||!format.SequenceEqual(record.Format,StringComparer.OrdinalIgnoreCase);
@@ -118,8 +119,8 @@ public sealed class AssDocument
     // belong to the background consumer, never to this capture operation.
     public AssDocumentSnapshot CaptureSnapshot()
     {
-        var copy = new AssDocument { _encoding = _encoding, _bom = _bom, _newline = _newline };
-        copy.Source = Source.Select(line => line with { Record = line.Record switch
+        var copy = new AssDocument { _encoding = _encoding, _bom = _bom, _newline = _newline,_attachmentOwner=_attachmentOwner,Revision=Revision };
+        copy.Source = Source.Select(line => line.Record is null?line:line with { Record = line.Record switch
         { AssEvent e => e.Clone(), AssStyle s => s.Clone(), _ => null } }).ToList();
         return new(copy, Revision);
     }
@@ -146,7 +147,7 @@ public sealed class AssDocument
     public bool TryGetSectionValue(string section, string key, out string value)
     {
         var inside = false;
-        foreach (var line in Source) { var trim = line.Raw.Trim(); if (trim.StartsWith('[') && trim.EndsWith(']')) inside = trim.Equals(section, StringComparison.OrdinalIgnoreCase); else if (inside && line.Raw.IndexOf(':') is var colon && colon > 0 && line.Raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { value = line.Raw[(colon + 1)..].Trim(); return true; } }
+        foreach (var line in Source) { var trim = line.Raw.Trim(); if (line.IsSectionHeader) inside = trim.Equals(section, StringComparison.OrdinalIgnoreCase); else if (inside && line.Raw.IndexOf(':') is var colon && colon > 0 && line.Raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { value = line.Raw[(colon + 1)..].Trim(); return true; } }
         value = ""; return false;
     }
     internal void SetScriptInfo(string key, string value)
@@ -155,20 +156,20 @@ public sealed class AssDocument
     {
         if (!section.StartsWith('[') || !section.EndsWith(']') || section.IndexOfAny(['\r', '\n']) >= 0) throw new ArgumentException("Invalid ASS section.");
         if (key.IndexOfAny([':', '\r', '\n']) >= 0 || value.IndexOfAny(['\r', '\n']) >= 0) throw new ArgumentException("Invalid Script Info value.");
-        var header = Source.FindIndex(l => l.Raw.Trim().Equals(section, StringComparison.OrdinalIgnoreCase));
+        var header = Source.FindIndex(l => l.IsSectionHeader&&l.Raw.Trim().Equals(section, StringComparison.OrdinalIgnoreCase));
         if (header < 0)
         {
-            if (section.Equals("[Script Info]", StringComparison.OrdinalIgnoreCase)) { Source.Insert(0, new(section, _newline)); header = 0; }
-            else { Terminate(); Source.Add(new(section, _newline)); header = Source.Count - 1; }
+            if (section.Equals("[Script Info]", StringComparison.OrdinalIgnoreCase)) { Source.Insert(0, new(section, _newline,null,true)); header = 0; }
+            else { Terminate(); Source.Add(new(section, _newline,null,true)); header = Source.Count - 1; }
         }
         var index = header + 1;
-        for (; index < Source.Count && !Source[index].Raw.TrimStart().StartsWith('['); index++) { var raw = Source[index].Raw; var colon = raw.IndexOf(':'); if (colon > 0 && raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { Source[index] = Source[index] with { Raw = raw[..(colon + 1)] + " " + value }; Touch(); return; } }
+        for (; index < Source.Count && !Source[index].IsSectionHeader; index++) { var raw = Source[index].Raw; var colon = raw.IndexOf(':'); if (colon > 0 && raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { Source[index] = Source[index] with { Raw = raw[..(colon + 1)] + " " + value }; Touch(); return; } }
         Source.Insert(index, new(key + ": " + value, _newline)); Touch();
     }
     internal void Insert(AssRecord record, AssRecord? before = null)
     {
         var index = before is null ? -1 : Source.FindIndex(l => ReferenceEquals(l.Record, before));
-        if (index < 0) { var section = record is AssEvent ? "[Events]" : "[V4+ Styles]"; index = Source.FindIndex(l => l.Raw.Trim().Equals(section, StringComparison.OrdinalIgnoreCase)); if (index < 0) { Terminate(); Source.Add(new(section, _newline)); index = Source.Count - 1; } index++; while (index < Source.Count && !Source[index].Raw.TrimStart().StartsWith('[')) index++; }
+        if (index < 0) { var section = record is AssEvent ? "[Events]" : "[V4+ Styles]"; index = Source.FindIndex(l => l.IsSectionHeader&&l.Raw.Trim().Equals(section, StringComparison.OrdinalIgnoreCase)); if (index < 0) { Terminate(); Source.Add(new(section, _newline,null,true)); index = Source.Count - 1; } index++; while (index < Source.Count && !Source[index].IsSectionHeader) index++; }
         if (index > 0 && Source[index - 1].Ending.Length == 0) Source[index - 1] = Source[index - 1] with { Ending = _newline };
         Source.Insert(index, new("", _newline, record)); Synchronize(); Touch();
     }
