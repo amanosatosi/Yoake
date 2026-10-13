@@ -25,6 +25,7 @@ public sealed record RecoveryMetadata
     public string? OriginalPath { get; init; }
     public string SourceHash { get; init; } = "";
     public RecoveryDraft? Draft { get; init; }
+    public ToshikiRecovery[]? Karaoke { get; init; }
     public int SelectedRow { get; init; } = -1;
 }
 public sealed record RecoveryEntry(string Path, RecoveryMetadata? Metadata, string? Error, string SavedFileComparison)
@@ -174,6 +175,12 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
             m.SourceHash != Convert.ToHexString(SHA256.HashData(source))) throw new InvalidDataException("Invalid recovery identity or checksum.");
         var document = AssDocument.LoadBytes(source);
         if (m.SelectedRow < -1 || m.SelectedRow >= document.Events.Count) throw new InvalidDataException("Invalid recovery selection.");
+        if(m.Karaoke is {} karaoke)
+        {
+            if(karaoke.Length > document.Events.Count || karaoke.Any(k=>k is null || k.Row<0 || k.Row>=document.Events.Count) || karaoke.Select(k=>k.Row).Distinct().Count()!=karaoke.Length)
+                throw new InvalidDataException("Invalid recovered karaoke row identity.");
+            foreach(var plan in karaoke) ToshikiTimingPlan.Restore(plan);
+        }
         if (m.Draft is {} draft)
         {
             if (draft.Row < 0 || draft.Row >= document.Events.Count || draft.Values is null || draft.Values.Count > 1024 || draft.OriginalText is null ||

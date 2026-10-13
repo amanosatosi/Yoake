@@ -63,3 +63,7 @@ All pending workflows need semantic routing, usable UI, explicit document owners
 
 
 Checkpoint 2 is fully verified. The new Checkpoints 3–8 assignment starts from d8a4a94 after fetch. Work sequentially, beginning with Toshiki K-Timing; no later workflow is implemented yet. Preserve resumable source audits and independently verified checkpoints within the five-hour execution limit.
+
+## Checkpoint 3 — implementation awaiting CI
+
+Started after fetching d8a4a94 and confirming both Checkpoint 2 runs green; verified ledger documentation is 22e998c. Added a source-derived Toshiki slot plan and reading/source map, shared balanced Automation scanner, document-local pending plans and atomic typed recovery metadata. Real audio panel controls, grapheme splitter, rest/tag/Auto Cut/Commit/Cancel, waveform/spectrum pointer input, existing contextual timing/playback commands and Mangetsu draft preview are connected. Managed regressions and a separate two-process native GUI/crash-recovery acceptance path were added. Source audit: `toshiki-k-timing-reference.md`; architecture: `docs/architecture/karaoke-timing.md`. Verification is pending; audio/karaoke remains missing. Do not start Checkpoint 4 before this implementation's full pipeline passes. Preserve unrelated agents.md/luna.md state; no local compilation or dependency changes.

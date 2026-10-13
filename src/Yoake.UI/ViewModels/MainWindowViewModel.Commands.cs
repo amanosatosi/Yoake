@@ -72,7 +72,7 @@ public sealed partial class MainWindowViewModel
     }
     private void GestureChanged(){InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();}
     private void EndGestureCore() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); _visualBaseline=[]; ReloadDraft(); GestureEnded?.Invoke(this,EventArgs.Empty); } }
-    private void CancelGestureCore() { FinishAudioTimingGesture(false);var gesture=_gesture; _gesture=null; gesture?.Dispose(); _visualBaseline=[]; if(gesture is not null){ReloadDraft();GestureEnded?.Invoke(this,EventArgs.Empty);} }
+    private void CancelGestureCore() { FinishKaraokeGesture(false);FinishAudioTimingGesture(false);var gesture=_gesture; _gesture=null; gesture?.Dispose(); _visualBaseline=[]; if(gesture is not null){ReloadDraft();GestureEnded?.Invoke(this,EventArgs.Empty);} }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
     private AssEvent[] Selection() => SelectedEvents.Where(Events.Contains).DefaultIfEmpty(SelectedEvent).OfType<AssEvent>().Distinct().ToArray();
     private void Select(AssEvent? line) { SetSelectedEvents(line is null?Array.Empty<AssEvent>():new[]{line}); SelectedEvent=line; }

@@ -289,6 +289,45 @@ try {
   $process.Dispose()
 }
 
+# Toshiki K-Timing is intentionally two independent native processes. The first is
+# terminated without Closing/Dispose; the second must use only persisted data.
+$karaokeRoot = Join-Path $root ('karaoke-' + [Guid]::NewGuid().ToString('N'))
+$karaokeProfile = Join-Path $karaokeRoot 'profile'
+New-Item -ItemType Directory -Force -Path $karaokeProfile | Out-Null
+$captureReport = Join-Path $karaokeRoot 'capture.txt'
+$captureLogs = Join-Path $karaokeRoot 'capture-logs'
+$arguments = @('--verify-ui-karaoke', ('"{0}"' -f $captureReport), '--profile-directory', ('"{0}"' -f $karaokeProfile), '--diagnostics-directory', ('"{0}"' -f $captureLogs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  $deadline = [DateTime]::UtcNow.AddSeconds(150)
+  while (-not (Test-Path -LiteralPath $captureReport) -and -not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 200 }
+  $text = if (Test-Path -LiteralPath $captureReport) { Get-Content -LiteralPath $captureReport -Raw } else { '' }
+  if ($process.HasExited -or -not $text.StartsWith('READY:')) { throw "Toshiki capture failed before forced termination:`n$text" }
+  $process.Kill(); $process.WaitForExit(); Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $captureLogs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
+$report = Join-Path $karaokeRoot 'recovered.txt'
+$logs = Join-Path $karaokeRoot 'restart-logs'
+$arguments = @('--verify-ui-karaoke-recovery', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $karaokeProfile), '--diagnostics-directory', ('"{0}"' -f $logs))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged restarted Toshiki recovery acceptance timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged Toshiki recovery acceptance failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
+
 # Recovery is intentionally two independent native processes. The first is
 # terminated without Closing/Dispose; the second must use only persisted data.
 $recoveryRoot = Join-Path $root ('recovery-' + [Guid]::NewGuid().ToString('N'))

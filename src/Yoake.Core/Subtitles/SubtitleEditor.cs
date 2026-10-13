@@ -48,6 +48,14 @@ public sealed partial class SubtitleEditor(AssDocument document)
         foreach (var pair in changed) SetField(line, pair.Key, pair.Value, name);
         transaction.Commit();
     }
+    public void CommitKaraoke(AssEvent line, IReadOnlyDictionary<string,string> values, CancellationToken token = default)
+    {
+        token.ThrowIfCancellationRequested(); Require(line); var probe = ValidateEventValues(line, values);
+        using var update = Document.BeginUpdate();
+        using var transaction = Undo.BeginTransaction("Toshiki K-Timing");
+        foreach(var name in values.Keys) { token.ThrowIfCancellationRequested(); SetField(line, name, probe.Get(name), "Toshiki K-Timing"); }
+        token.ThrowIfCancellationRequested(); transaction.Commit();
+    }
     private static AssEvent ValidateEventValues(AssEvent line,IReadOnlyDictionary<string,string> values)
     {
         var probe=line.Clone();foreach(var pair in values)probe.Set(pair.Key,pair.Value);

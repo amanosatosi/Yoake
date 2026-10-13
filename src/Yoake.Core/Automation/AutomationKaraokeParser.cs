@@ -87,7 +87,7 @@ public static class AutomationKaraokeParser
 
     // Top-level backslashes only: transforms and other parenthesized arguments
     // are kept together, rather than split into false karaoke tags.
-    private static IEnumerable<(int Start, int Length)> Segments(string text, int start, int end)
+    internal static IEnumerable<(int Start, int Length)> Segments(string text, int start, int end)
     {
         var depth = 0; var previous = start;
         for (var i = start + 1; i < end; i++)

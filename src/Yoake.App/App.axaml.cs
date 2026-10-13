@@ -104,6 +104,7 @@ public partial class App : Application
                 else if(_startup.MediaOwnershipAcceptance)new MediaOwnershipUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.VideoNavigationAcceptance)new VideoNavigationUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.VideoAcceptance)new VideoUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.KaraokeAcceptance||_startup.KaraokeRecovery)new KaraokeUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.AudioTimingAcceptance)new AudioTimingUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else new UiStartupVerification(desktop, window, viewModel, _startup).Start();
             }

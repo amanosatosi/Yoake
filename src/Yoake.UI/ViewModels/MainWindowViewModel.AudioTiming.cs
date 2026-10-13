@@ -48,11 +48,11 @@ public sealed partial class MainWindowViewModel
     {
         if(SelectedEvent is not {} line)return null;
         var values=_gesture is null&&Draft?.IsChanged==true?Draft.Values:null;
-        if(AudioTiming?.Get(line) is not {} pending)return values;
+        if(AudioTiming?.Get(line) is not {} pending)return KaraokePreviewValues(values);
         var merged=new Dictionary<string,string>(StringComparer.OrdinalIgnoreCase);
         if(values is not null){foreach(var pair in values)merged[pair.Key]=pair.Value;}
         else{foreach(var name in line.FieldNames)merged[name]=line.Get(name);}
-        merged["Start"]=AssTime.Format(pending.StartMilliseconds);merged["End"]=AssTime.Format(pending.EndMilliseconds);return merged;
+        merged["Start"]=AssTime.Format(pending.StartMilliseconds);merged["End"]=AssTime.Format(pending.EndMilliseconds);return KaraokePreviewValues(merged);
     }
     private void AudioTimingChanged()
     {
@@ -81,6 +81,7 @@ public sealed partial class MainWindowViewModel
     {
         token.ThrowIfCancellationRequested();
         if(!ValidAudioTimingDraft())throw new ArgumentException("Correct the edit draft before committing audio timing. Nothing was changed.");
+        if(IsKaraokeMode&&KaraokePlan is not null){CommitKaraoke(token);if(mode!=AudioTimingCommitMode.Stay&&(mode!=AudioTimingCommitMode.Preference||AudioAutoNext)){NavigateAudioTiming(1);EnsureKaraoke();NotifyKaraoke();}return;}
         var end=PrimaryAudioRange?.EndMilliseconds??throw new ArgumentException("Select a valid subtitle timing range.");
         // Preflight the complete successor before committing markers or a draft.
         // Stage rejects malformed stored endpoints, and the new pending range
@@ -171,7 +172,7 @@ public sealed partial class MainWindowViewModel
         finally
         {
             AudioTimingChanged();OnPropertyChanged(nameof(HasGesture));GestureEnded?.Invoke(this,EventArgs.Empty);
-            if(Draft?.IsChanged==true&&_editBurstDelay is null){var delay=new CancellationTokenSource();_editBurstDelay=delay;_=FinalizeBurstAsync(delay.Token);}
+            if(!IsKaraokeMode&&Draft?.IsChanged==true&&_editBurstDelay is null){var delay=new CancellationTokenSource();_editBurstDelay=delay;_=FinalizeBurstAsync(delay.Token);}
         }
     }
     private void RegisterAudioTimingCommands()
@@ -203,11 +204,11 @@ public sealed partial class MainWindowViewModel
         foreach(var (id,label,start,end) in new[]{("time/start/decrease","Start −10 ms",-10L,0L),("time/start/increase","Start +10 ms",10L,0L),
             ("time/length/decrease","Length −10 ms",0L,-10L),("time/length/increase","Length +10 ms",0L,10L),
             ("time/length/decrease/shift","Length −10 ms and shift syllables",0L,-10L),("time/length/increase/shift","Length +10 ms and shift syllables",0L,10L)})
-        {var s=start;var e=end;Register(id,label,(_,_)=>StageAudioTiming(PendingAudioTiming.Adjust(PrimaryAudioRange!.Value,s,e)),Available);}
+        {var s=start;var e=end;Register(id,label,(_,_)=>{if(IsKaraokeMode&&KaraokePlan is {} plan){plan.Adjust(s,e);KaraokeChanged();}else StageAudioTiming(PendingAudioTiming.Adjust(PrimaryAudioRange!.Value,s,e));},Available);}
         foreach(var (id,label,input,output) in new[]{("time/lead/in","Add lead-in",true,false),("time/lead/out","Add lead-out",false,true),("time/lead/both","Add lead-in and out",true,true)})
-        {var leadIn=input;var leadOut=output;Register(id,label,(_,_)=>StageAudioTiming(PendingAudioTiming.Adjust(PrimaryAudioRange!.Value,leadIn?-(_settings.AudioLeadIn??100):0,leadOut?(_settings.AudioLeadOut??350):0)),Available);}
-        Register("time/next","Next timing line",(_,_)=>NavigateAudioTiming(1),()=>!HasGesture&&Events.Count>0);
-        Register("time/prev","Previous timing line",(_,_)=>NavigateAudioTiming(-1),()=>!HasGesture&&Events.Count>0);
+        {var leadIn=input;var leadOut=output;Register(id,label,(_,_)=>{if(IsKaraokeMode&&KaraokePlan is {} plan){plan.Lead(leadIn?-(_settings.AudioLeadIn??100):0,leadOut?(_settings.AudioLeadOut??350):0);KaraokeChanged();}else StageAudioTiming(PendingAudioTiming.Adjust(PrimaryAudioRange!.Value,leadIn?-(_settings.AudioLeadIn??100):0,leadOut?(_settings.AudioLeadOut??350):0));},Available);}
+        Register("time/next","Next timing line",(_,_)=>{if(IsKaraokeMode)NavigateKaraoke(1);else NavigateAudioTiming(1);},()=>!HasGesture&&Events.Count>0);
+        Register("time/prev","Previous timing line",(_,_)=>{if(IsKaraokeMode)NavigateKaraoke(-1);else NavigateAudioTiming(-1);},()=>!HasGesture&&Events.Count>0);
         Register("audio/timing/revert","Revert pending timing",(_,_)=>{if(SelectedEvent is {} line)AudioTiming?.Clear(line);AudioTimingChanged();},()=>!HasGesture&&SelectedEvent is {} line&&AudioTiming?.Get(line) is not null);
         Register("audio/timing/gesture/begin","Begin audio timing drag",(_,_)=>BeginAudioTimingGestureCore(),Available);
         Register("audio/timing/gesture/update","Move audio timing markers",(i,_)=>

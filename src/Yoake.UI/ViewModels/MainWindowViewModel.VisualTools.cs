@@ -9,7 +9,7 @@ public sealed record VisualLine(AssEvent Line,string Text,AssPoint DefaultPositi
 public sealed partial class MainWindowViewModel
 {
     private VisualLine[] _visualBaseline=[];
-    public bool HasGesture=>_gesture is not null||_audioTimingGesture is not null;
+    public bool HasGesture=>_gesture is not null||_audioTimingGesture is not null||_karaokeGesture is not null;
     public event EventHandler? GestureEnded;
     public static readonly string[] VisualToolNames=["Crosshair","Position","RotateZ","RotateXY","Scale","Clip","VectorClip","Distort"];
     public static readonly string[] VectorModes=["Select","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];

@@ -43,6 +43,16 @@ public sealed partial class MainWindowViewModel
             var session=_workspace.CreateUntitled();Attach(session,recovered.Document);
             var state=_documents[session.Id];state.RecoveredUnsaved=true;state.RecoveryProvenance=recovered.Metadata.OriginalPath;
             session.Title="Recovered - "+recovered.Metadata.Title;
+            if(recovered.Metadata.Karaoke is {} karaoke)
+            {
+                state.KaraokeEnabled=true;
+                foreach(var saved in karaoke)
+                {
+                    var line=recovered.Document.Events[saved.Row];
+                    state.Karaoke[line]=new(ToshikiTimingPlan.Restore(saved),line.Text,line.Start,line.End);
+                }
+                state.KaraokeStatus="Recovered uncommitted Toshiki slots and explicit boundaries. Open audio to resume.";
+            }
             if(recovered.Metadata.SelectedRow>=0)state.Selected=recovered.Document.Events[recovered.Metadata.SelectedRow];
             if(recovered.Metadata.Draft is {} draft)
             {
@@ -84,7 +94,7 @@ public sealed partial class MainWindowViewModel
         {
             if(!_documents.TryGetValue(session.Id,out var state)||state.RecoveryWriting is not null)continue;
             var draft=session.Id==_activeId?Draft:state.RetainedDraft;
-            if(!state.Editor.IsDirty&&!state.RecoveredUnsaved&&draft?.IsChanged!=true)continue;
+            if(!state.Editor.IsDirty&&!state.RecoveredUnsaved&&draft?.IsChanged!=true&&!state.Karaoke.Values.Any(e=>e.Plan.Changed))continue;
             if(state.Editor.Undo.IsTransactionActive||(session.Id==_activeId&&HasGesture))continue; // no partially applied edit transaction
             var stamp=$"{state.Editor.Document.Revision}/{state.DraftRevision}/{draft?.IsChanged}/{session.Path}/{session.Title}";
             if(stamp==state.LastRecoveryStamp)continue;
@@ -101,7 +111,8 @@ public sealed partial class MainWindowViewModel
                 }
             }
             var metadata=new RecoveryMetadata{DocumentId=session.Id,Sequence=++state.RecoverySequence,Timestamp=DateTimeOffset.UtcNow,Title=session.Title,
-                OriginalPath=session.Path??state.RecoveryProvenance,Draft=recoveryDraft,SelectedRow=selected is null?-1:state.Editor.Document.Events.IndexOf(selected)};
+                OriginalPath=session.Path??state.RecoveryProvenance,Draft=recoveryDraft,SelectedRow=selected is null?-1:state.Editor.Document.Events.IndexOf(selected),
+                Karaoke=state.Karaoke.Where(p=>p.Value.Plan.Changed&&state.Editor.Document.Events.Contains(p.Key)).Select(p=>p.Value.Plan.Capture(state.Editor.Document.Events.IndexOf(p.Key))).ToArray()};
             var cancellation=new CancellationTokenSource();state.RecoveryWriting=cancellation;
             var generation=state.RecoveryLease.Renew();jobs.Add(WriteRecoveryAsync(state,snapshot,metadata,stamp,generation,cancellation));
         }

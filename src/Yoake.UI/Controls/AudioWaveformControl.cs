@@ -30,6 +30,7 @@ public sealed class AudioWaveformControl : Control
     private double _pointerTime;
     private int _part;
     private bool _drag;
+    private bool _karaokeDrag;
     private IPointer? _timingPointer;
     private AssEvent? _lastLine;
     private Guid? _lastDocument;private bool _restoringDocument;
@@ -111,6 +112,17 @@ public sealed class AudioWaveformControl : Control
             var left=X(preview.StartSeconds);var right=X(preview.EndSeconds);
             if(right>left)context.FillRectangle(new SolidColorBrush(Color.FromArgb(30,240,190,70)),new Rect(left,0,right-left,Bounds.Height));
         }
+        if(model.ShowKaraoke&&model.KaraokePlan is {} karaoke)
+        {
+            foreach(var slot in karaoke.Slots.Where(s=>s.Assigned||s.Index==karaoke.AssignedCount))
+            {
+                var left=X(slot.Start/1000d);var right=X(slot.End/1000d);
+                if(right>left)context.FillRectangle(new SolidColorBrush(Color.FromArgb(slot.Current?(byte)65:(byte)30,slot.Assigned?(byte)75:(byte)180,170,220)),new Rect(left,0,right-left,Bounds.Height));
+                var label=new FormattedText(slot.Text.Length==0?"rest":slot.Text,System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,Typeface.Default,11,slot.Current?Brushes.Gold:Brushes.White);
+                if(right-left>label.Width+4)context.DrawText(label,new(left+2,2));
+            }
+            foreach(var boundary in karaoke.Boundaries){var x=X(boundary/1000d);context.DrawLine(new Pen(Brushes.Gold,1),new(x,0),new(x,Bounds.Height));}
+        }
         if(model.PrimaryAudioRange is {} selected)
         {
             var left=X(selected.StartMilliseconds/1000d);var right=X(selected.EndMilliseconds/1000d);
@@ -134,7 +146,20 @@ public sealed class AudioWaveformControl : Control
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);Focus();if(Model is not {} model)return;
-        var point=e.GetCurrentPoint(this);if(!point.Properties.IsLeftButtonPressed)return;
+        var point=e.GetCurrentPoint(this);
+        if(model.ShowKaraoke)
+        {
+            if(!point.Properties.IsLeftButtonPressed&&!point.Properties.IsRightButtonPressed)return;
+            var ms=(long)Math.Round(Time(point.Position.X)*1000);var sensitivity=(long)Math.Ceiling(7/Math.Max(1,Bounds.Width)*VisibleSeconds*1000);
+            if(model.BeginKaraokePointer(new(ms,sensitivity,point.Properties.IsRightButtonPressed,e.KeyModifiers.HasFlag(KeyModifiers.Control))))
+            {_drag=true;_karaokeDrag=true;_timingPointer=e.Pointer;e.Pointer.Capture(this);}
+            if(point.Properties.IsRightButtonPressed&&e.KeyModifiers.HasFlag(KeyModifiers.Control)&&model.KaraokePlan is not null)
+            {
+                var menu=new ContextMenu();menu.ItemsSource=MainWindowViewModel.KaraokeTags.Select(tag=>new MenuItem{Header="\\"+tag,Command=model.Actions["karaoke/tag"],CommandParameter=new KaraokeTagRequest(tag,true)}).ToArray();menu.Open(this);
+            }
+            e.Handled=true;return;
+        }
+        if(!point.Properties.IsLeftButtonPressed)return;
         _pointerTime=Time(point.Position.X);
         var line=model.SelectedEvent;var range=model.PrimaryAudioRange;var start=(range?.StartMilliseconds??0)/1000d;var end=(range?.EndMilliseconds??0)/1000d;
         var nearStart=Math.Abs(X(start)-point.Position.X)<=7;var nearEnd=Math.Abs(X(end)-point.Position.X)<=7;
@@ -149,12 +174,14 @@ public sealed class AudioWaveformControl : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);if(!_drag)return;
-        try{Model?.UpdateAudioTimingGesture(_part,Time(e.GetPosition(this).X)-_pointerTime);InvalidateVisual();}
+        try{if(_karaokeDrag)Model?.MoveKaraokePointer((long)Math.Round(Time(e.GetPosition(this).X)*1000));else Model?.UpdateAudioTimingGesture(_part,Time(e.GetPosition(this).X)-_pointerTime);InvalidateVisual();}
         catch(Exception exception){Model?.Registry.ReportFailure("timing/drag",exception);Cancel();}
     }
-    protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(_drag){_drag=false;_timingPointer=null;Model?.EndAudioTimingGesture();e.Pointer.Capture(null);e.Handled=true;}}
+    protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(_drag){_drag=false;_timingPointer=null;if(_karaokeDrag)Model?.EndKaraokePointer();else Model?.EndAudioTimingGesture();_karaokeDrag=false;e.Pointer.Capture(null);e.Handled=true;}}
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);Cancel();}
-    private void Cancel(){if(_drag){_drag=false;_timingPointer=null;Model?.CancelGesture();InvalidateVisual();}}
+    private void Cancel(){if(_drag){_drag=false;_karaokeDrag=false;var pointer=_timingPointer;_timingPointer=null;Model?.CancelGesture();pointer?.Capture(null);InvalidateVisual();}}
+    protected override void OnLostFocus(Avalonia.Interactivity.RoutedEventArgs e){base.OnLostFocus(e);Cancel();}
+    protected override void OnKeyDown(KeyEventArgs e){base.OnKeyDown(e);if(e.Key==Key.Escape&&_drag){Cancel();e.Handled=true;}}
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);

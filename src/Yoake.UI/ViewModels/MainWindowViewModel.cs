@@ -27,6 +27,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         public SubtitleEditor Editor { get; } = editor;
         public PendingAudioTiming AudioTiming {get;}=new(editor);
+        public bool KaraokeEnabled;
+        public Dictionary<AssEvent,KaraokeEntry> Karaoke = [];
+        public string KaraokeStatus="";
         public string VisualTool="Position",VectorMode="Select";
         public VideoAspect VideoAspect = new();
         public VideoViewState VideoView = new();
@@ -144,16 +147,17 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         try{SelectedEvent?.ShowDraft(Draft?.Values);}catch(ArgumentException){/* Invalid metadata remains editable, never saved. */}
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
-        if(_activeId is not {} draftOwner||!_documents.TryGetValue(draftOwner,out var draftState)||draftState.MediaDraftPauses==0)
+        if(_activeId is not {} draftOwner||!_documents.TryGetValue(draftOwner,out var draftState)||draftState.MediaDraftPauses==0&&!draftState.KaraokeEnabled)
         {var delay=new CancellationTokenSource();_editBurstDelay=delay;_=FinalizeBurstAsync(delay.Token);}
-        if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||(_documents.GetValueOrDefault(session.Id)?.RecoveredUnsaved??false);
+        if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||(_documents.GetValueOrDefault(session.Id)?.Karaoke.Values.Any(e=>e.Plan.Changed)??false)||(_documents.GetValueOrDefault(session.Id)?.RecoveredUnsaved??false);
         _registry.NotifyStateChanged();
         if(e.PropertyName is nameof(EventEditDraft.Text) or nameof(EventEditDraft.Style))RefreshFormatting();
+        KaraokeDraftChanged();
         if(e.PropertyName is nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))UpdateAudioPlaybackEnd();
     }
     private async Task FinalizeBurstAsync(CancellationToken token)
     {
-        try{await Task.Delay(900,token);Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(!token.IsCancellationRequested&&!_disposed)CommitDraft();});}catch(OperationCanceledException){}
+        try{await Task.Delay(900,token);Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(!token.IsCancellationRequested&&!_disposed&&!IsKaraokeMode)CommitDraft();});}catch(OperationCanceledException){}
     }
     public IReadOnlyList<AssEvent> Events => _activeSubtitleDocument?.Events ?? (IReadOnlyList<AssEvent>)Array.Empty<AssEvent>();
     public IReadOnlyList<string> StyleNames => _activeId is {} id&&_documents.TryGetValue(id,out var state)?state.StyleNames:[];
@@ -166,7 +170,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (ReferenceEquals(_selectedEvent,value)) return;
             CancelGesture();
             if (!CommitDraft()) { OnPropertyChanged(); return; }
-            _selectedEvent?.ShowDraft(null);_selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft();
+            _selectedEvent?.ShowDraft(null);_selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft();EnsureKaraokeSafe();NotifyKaraoke();
             // A programmatic jump outside the bulk selection must select its
             // destination. Moving the current row inside that selection keeps it.
             if(value is null)SetSelectedEvents([]);
@@ -230,6 +234,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterAudioExportCommands();
         RegisterAudioPlaybackCommands();
         RegisterAudioTimingCommands();
+        RegisterKaraokeCommands();
         RegisterMediaOwnershipCommands();
         RegisterVideoUtilityCommands();
         RegisterVideoPresentationCommands();
@@ -245,6 +250,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         if(HasGesture){SubtitleStatus="Finish or cancel the current gesture first.";return false;}
         if (Draft?.IsChanged!=true || SelectedEvent is null || ActiveEditor is null) return true;
+        if(IsKaraokeMode&&KaraokePlan?.Changed==true){SubtitleStatus="Commit or cancel the karaoke plan before publishing this edit draft.";return false;}
         try { ActiveEditor.EditEvent(SelectedEvent,Draft.Values); ReloadDraft(); return true; }
         catch(Exception e) { SubtitleStatus=e.Message; return false; }
     }
@@ -253,10 +259,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
         SelectedEvent?.ShowDraft(null);Draft=SelectedEvent is {} line?new EventEditDraft(line):null;
         RefreshOriginalText();
-        UpdateAudioPlaybackEnd();
+        if(!_publishingKaraoke)EnsureKaraokeSafe();NotifyKaraoke(false);UpdateAudioPlaybackEnd();
         if(AssVisualTags.Clip(Draft?.Text??"") is {} clip)InverseClip=clip.Inverse;
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));OnPropertyChanged(nameof(SelectedIsComment));
-        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(_documents.GetValueOrDefault(session.Id)?.RecoveredUnsaved??false);
+        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(_documents.GetValueOrDefault(session.Id)?.Karaoke.Values.Any(e=>e.Plan.Changed)??false)||(_documents.GetValueOrDefault(session.Id)?.RecoveredUnsaved??false);
     }
     private void CreateNewDocument()
     {
@@ -269,10 +275,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if(_documents.TryGetValue(session.Id,out var previous)){CancelAttachmentWork(session.Id);InvalidateRecovery(session.Id);previous.AudioExport?.Cancel();}
         var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds,Search=new(_settings.SearchPreferences??new())}; _documents[session.Id]=state;
         session.PropertyChanged+=(_,args)=>{if(args.PropertyName is nameof(DocumentSession.Path) or nameof(DocumentSession.Title))InvalidateRecovery(session.Id);};
-        document.Changed+=(_,_)=> { if(!_publishingAttachments)CancelAttachmentWork(session.Id);state.AudioTiming.Reconcile();state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
+        document.Changed+=(_,_)=> { if(!_publishingAttachments)CancelAttachmentWork(session.Id);state.AudioTiming.Reconcile();ReconcileKaraoke(state);state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
-            session.IsDirty=state.Editor.IsDirty||state.RecoveredUnsaved||(_activeId==session.Id&&Draft?.IsChanged==true);
+            session.IsDirty=state.Editor.IsDirty||state.RecoveredUnsaved||state.Karaoke.Values.Any(e=>e.Plan.Changed)||(_activeId==session.Id&&Draft?.IsChanged==true);
             var names=document.Styles.Select(s=>s.Name).ToArray();var namesChanged=!names.SequenceEqual(state.StyleNames);
             if(namesChanged)state.StyleNames=names;
             if(_activeId==session.Id)
@@ -280,7 +286,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                 // Refresh choices before the draft binding selects the renamed
                 // style. Otherwise ComboBox retains an absent/blank selection.
                 if(namesChanged)OnPropertyChanged(nameof(StyleNames));
-                if(!_publishingAudioTiming&&!_publishingPasteOver&&!_publishingAttachments)ReloadDraft();_registry.NotifyStateChanged();
+                if(!_publishingAudioTiming&&!_publishingPasteOver&&!_publishingAttachments&&!_publishingKaraoke)ReloadDraft();_registry.NotifyStateChanged();
             }
         };
         state.Editor.MarkSaved();
@@ -341,10 +347,12 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         CancelGesture();
         if (!CommitDraft()) return false;
         if (!_workspace.Activate(id)) return false;
-        if (state.Editor.IsDirty||state.RecoveredUnsaved)
+        if (state.Editor.IsDirty||state.RecoveredUnsaved||state.Karaoke.Values.Any(e=>e.Plan.Changed))
         {
             var choice=Dialogs is null ? UnsavedChoice.Cancel : await Dialogs.ConfirmUnsavedAsync(_workspace.ActiveDocument!.Title);
-            if (choice==UnsavedChoice.Cancel || choice==UnsavedChoice.Save && !await SaveAsync()) return false;
+            if (choice==UnsavedChoice.Cancel) return false;
+            if(choice==UnsavedChoice.Save&&state.Karaoke.Values.Any(e=>e.Plan.Changed)){SubtitleStatus="Commit or cancel pending karaoke slots before saving and closing this document.";return false;}
+            if(choice==UnsavedChoice.Save&&!await SaveAsync())return false;
         }
         InvalidateRecovery(id);
         CancelAttachmentWork(id);
@@ -375,9 +383,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
             _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft();
             if(state?.RetainedDraft is {} retained&&ReferenceEquals(retained.Line,_selectedEvent)){Draft=retained;PresentRecoveredDraft();}
+            EnsureKaraokeSafe();NotifyKaraoke();
             VideoFrame=null; WaveformSamples=state?.Waveform; MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
             _currentTimeSeconds=state?.Time ?? 0;
-            foreach(var name in new[]{nameof(VideoSourcePath),nameof(AudioSourcePath),nameof(HasEditOperation),nameof(SelectionStatus),nameof(HasAudioExportOperation),nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(ExternalKeyframePath),nameof(HasKeyframeOperation),nameof(ExternalTimecodePath),nameof(HasTimecodeOperation),nameof(CanShiftByFrames),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds)}) OnPropertyChanged(name);
+            foreach(var name in new[]{nameof(VideoSourcePath),nameof(AudioSourcePath),nameof(HasEditOperation),nameof(SelectionStatus),nameof(HasAudioExportOperation),nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(ExternalKeyframePath),nameof(HasKeyframeOperation),nameof(ExternalTimecodePath),nameof(HasTimecodeOperation),nameof(CanShiftByFrames),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds),nameof(IsKaraokeMode),nameof(ShowKaraoke),nameof(KaraokeSlots),nameof(KaraokeStatus),nameof(KaraokeTag)}) OnPropertyChanged(name);
             MediaStatus=_media?.SourcePath ?? "Open video/audio"; InvalidateSubtitlePreview(true); _registry.NotifyStateChanged();
         }
         finally{IsSynchronizingSelection=false;}

@@ -187,7 +187,7 @@ public sealed partial class MainWindowViewModel
         // retains its sample clock even when its companion video disappears.
         if (!IsPlaying && MediaDurationSeconds > 0 && CurrentTimeSeconds > MediaDurationSeconds) CurrentTimeSeconds = MediaDurationSeconds;
         if (videoChanged) { VideoFrame = null; NotifyVideoPresentation(); OnPropertyChanged(nameof(VideoAspectRatio)); }
-        else { WaveformSamples = state.Waveform; OnPropertyChanged(nameof(HasAudio)); }
+        else { WaveformSamples = state.Waveform; OnPropertyChanged(nameof(HasAudio)); EnsureKaraokeSafe(); NotifyKaraoke(); }
         foreach (var name in new[] { nameof(VideoSourcePath), nameof(AudioSourcePath), nameof(FrameTimes), nameof(Keyframes),
             nameof(FramePositionDisplay), nameof(RelativeTimingDisplay), nameof(CanShiftByFrames) }) OnPropertyChanged(name);
         if (playableChanged) OnPropertyChanged(nameof(CanPlayMedia));

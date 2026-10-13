@@ -19,6 +19,7 @@ public sealed partial class MainWindowViewModel
     {
         get
         {
+            if(IsKaraokeMode&&KaraokePlan is {} karaoke)return karaoke.PrimaryRange;
             if(SelectedEvent is not {} line)return null;
             if(_gesture is null&&AudioTiming?.Get(line) is {} pending)return pending;
             if(line.StartMilliseconds is not {} left||line.EndMilliseconds is not {} right||left<0||right<left)return null;
@@ -32,7 +33,7 @@ public sealed partial class MainWindowViewModel
     private AudioPlaybackPlan? PlanAudioPlayback(AudioPlaybackKind kind)
     {
         if(_media?.HasAudio!=true||HasGesture)return null;
-        var range=PrimaryAudioRange;
+        var range=IsKaraokeMode&&KaraokePlan is {} karaoke&&kind==AudioPlaybackKind.Line?new AudioClipInterval(karaoke.Start,karaoke.End):PrimaryAudioRange;
         if(kind!=AudioPlaybackKind.Cursor&&range is null)return null;
         var info=_media.Info;
         var plan=AudioPlaybackPlan.Create(kind,info.SampleRate,info.AudioSamples,range??new(0,0),CurrentTimeSeconds);

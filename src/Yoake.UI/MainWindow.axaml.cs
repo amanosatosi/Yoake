@@ -313,6 +313,7 @@ public partial class MainWindow : Window, IEditorDialogs
         // Captured edit gestures and point/box selections own cancellation.
         // An idle overlay routes Escape normally through the Video context.
         if(e.Key==Key.Escape&&control is VisualOverlayControl {HasTransientInput:true})return;
+        if(e.Key==Key.Escape&&_model.IsKaraokeMode&&_model.HasGesture&&ancestors.Contains(AudioRegion))return;
         foreach(var input in ancestors)
         {
             if(input is TextBox textBox && textBox.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
