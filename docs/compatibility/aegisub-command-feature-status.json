@@ -1244,12 +1244,19 @@
     },
     {
       "id": "edit/insert_original",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Insert the original line text at the cursor",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "edit/insert_original",
+      "status": "already complete",
+      "backend": "Document-owned active-line Original text snapshot, stable through same-line draft reload/commit/history/validation; real semantic selection replacement/insert with Unicode boundaries. Compact optional read-only Original box; current editor selection retained across authoring-control focus.",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow Edit menu",
+        "Original editor controls"
+      ],
+      "tests": [
+        "OriginalAndPasteWorkflowTests",
+        "OriginalAndPasteUiAcceptanceVerification"
+      ],
+      "notes": "Verified implementation 4b82a9a682fdca27ca7c3a036193e8bc9a921ac8. Full push run 38420848401 and PR run 38420854188 passed source policy, 487 Core/120 UI/34 native Automation tests, Windows NativeAOT, all startup profiles, all packaged acceptance and native provider verification. Dedicated Original/Paste Over process exercises actual menu, controls, keyboard, clipboard, field presets, native cancellation, exact one-step undo, IME guards, draft/provider/selection retention and document switching. Original snapshot remains per document/active line, not per keystroke. Show Original preference uses NativeAOT-safe source-generated settings. See docs/compatibility/aegisub-original-paste-reference.md. Hardware IME/DPI QA remains manual.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1425,12 +1432,20 @@
     },
     {
       "id": "edit/line/paste/over",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Paste subtitles over others",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "edit/line/paste/over",
+      "status": "already complete",
+      "backend": "Format-aware clipboard parsing and validated per-field SubtitleEditor transaction; Aegisub single-active/downward versus sorted multi-selection targeting; unknown fields and raw source retained; one undo including a valid active draft; stale/cancelled input cannot publish.",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow Edit menu",
+        "Native Paste Over field-selection dialog; contextual Ctrl-Shift-V"
+      ],
+      "tests": [
+        "SubtitlePasteOverTests",
+        "OriginalAndPasteWorkflowTests",
+        "OriginalAndPasteUiAcceptanceVerification"
+      ],
+      "notes": "Super Paste is the user-confirmed nickname for this workflow. Real eleven-field dialog including Comment, with All/None/Times/Text and persisted choices. Deliberate improvements: full/custom-Format ASS clipboard, Actor/Name aliases, malformed structured input rejected, Text-first preference instead of the upstream ten-flag mismatch, Unicode-safe source retention. Verified implementation 4b82a9a682fdca27ca7c3a036193e8bc9a921ac8. Full push run 38420848401 and PR run 38420854188 passed source policy, 487 Core/120 UI/34 native Automation tests, Windows NativeAOT, all startup profiles, all packaged acceptance and native provider verification. Dedicated Original/Paste Over process exercises actual menu, controls, keyboard, clipboard, field presets, native cancellation, exact one-step undo, IME guards, draft/provider/selection retention and document switching. See docs/compatibility/aegisub-original-paste-reference.md. Hardware IME/DPI/native clipboard contention remain manual QA.",
       "yoake_default_hotkeys": {
         "Default": [
           "Ctrl-Shift-V"
@@ -1593,24 +1608,20 @@
     },
     {
       "id": "edit/revert",
-      "yoake_command": "edit/cancel",
-      "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Revert the active line to its initial state (shown in the upper editor)",
+      "yoake_command": "edit/revert",
+      "status": "already complete",
+      "backend": "Document-owned active-line Original text snapshot, stable through same-line draft reload/commit/history/validation; real semantic restore Original text, distinct from draft/gesture cancel. Compact optional read-only Original box; current editor selection retained across authoring-control focus.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "MainWindow Edit menu",
+        "Original editor controls"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "OriginalAndPasteWorkflowTests",
+        "OriginalAndPasteUiAcceptanceVerification"
       ],
-      "notes": "Draft/gesture cancel exists; actual edit-text reset and active-line behavior need parity tests.",
-      "yoake_default_hotkeys": {
-        "Default": [
-          "Escape"
-        ]
-      }
+      "notes": "Verified implementation 4b82a9a682fdca27ca7c3a036193e8bc9a921ac8. Full push run 38420848401 and PR run 38420854188 passed source policy, 487 Core/120 UI/34 native Automation tests, Windows NativeAOT, all startup profiles, all packaged acceptance and native provider verification. Dedicated Original/Paste Over process exercises actual menu, controls, keyboard, clipboard, field presets, native cancellation, exact one-step undo, IME guards, draft/provider/selection retention and document switching. Original snapshot remains per document/active line, not per keystroke. Show Original preference uses NativeAOT-safe source-generated settings. Existing Escape remains edit/cancel; the source-backed edit/revert is a separate real command and is unbound by default. See docs/compatibility/aegisub-original-paste-reference.md. Hardware IME/DPI QA remains manual.",
+      "yoake_default_hotkeys": {}
     },
     {
       "id": "edit/style/bold",
