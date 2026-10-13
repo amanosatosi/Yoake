@@ -101,7 +101,7 @@ public sealed record AppSettings
             ToolbarVisible=ToolbarVisible??true,
             AutosaveEnabled=AutosaveEnabled??true,
             AutosaveIntervalSeconds=AutosaveIntervalSeconds is >=1 and <=86400?AutosaveIntervalSeconds:60,
-            RecoveryDirectory=string.IsNullOrWhiteSpace(RecoveryDirectory)?null:RecoveryDirectory,
+            RecoveryDirectory=NormalizeRecoveryDirectory(RecoveryDirectory,report),
             GridTagDisplay=GridTagDisplay is {} tags&&Enum.IsDefined(tags)?tags:GridTagDisplayMode.Simplified,
             SearchPreferences=SearchPreferences?.Normalize()??new SubtitleSearchPreferences(),
             SelectionPreferences=SelectionPreferences?.Normalize()??new SubtitleSelectionOptions(),
@@ -123,6 +123,13 @@ public sealed record AppSettings
             MainSplitRatio = ratio, GridHeight = height, SchemaVersion = SchemaVersion > 0 ? SchemaVersion : defaults.SchemaVersion };
     }
     private static string[]? NormalizePaths(string[]? paths) => paths?.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+    private static string? NormalizeRecoveryDirectory(string? path,Action<string>? report)
+    {
+        if(string.IsNullOrWhiteSpace(path))return null;
+        try{_ = System.IO.Path.GetFullPath(path);return path;}
+        catch(Exception error)when(error is ArgumentException or NotSupportedException or System.IO.PathTooLongException)
+        {report?.Invoke("Invalid recovery directory; using this profile's default recovery directory.");return null;}
+    }
 }
 
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,

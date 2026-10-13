@@ -7,6 +7,12 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public async Task DamagedRecoveryPathCannotCrashStartupAndRelativeDirectoriesBelongToProfile()
+    {
+        var settings=new AppSettings{RecoveryDirectory="bad\0path",AutosaveIntervalSeconds=-1};var warnings=new List<string>();
+        var normalized=settings.Normalize(warnings.Add);Assert.Null(normalized.RecoveryDirectory);Assert.Equal(60,normalized.AutosaveIntervalSeconds);Assert.NotEmpty(warnings);
+        await Command("settings/autosave",new AutosaveOptions(true,60,"relative-recovery"));Assert.Equal(Path.Combine(_root,"relative-recovery"),_model.RecoveryDirectory);
+    }
     [Fact] public async Task AutosavePreservesDirtyHistorySelectionOriginalAndUncommittedDraftAndDeduplicates()
     {
         await Command(CommandIds.GridInsertAfter);var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;var line=_model.SelectedEvent;

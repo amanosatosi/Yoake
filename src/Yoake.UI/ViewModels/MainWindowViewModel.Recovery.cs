@@ -12,7 +12,7 @@ public sealed partial class MainWindowViewModel
     private SubtitleRecoveryStore _recoveryStore = null!;
     public bool AutosaveEnabled => _settings.AutosaveEnabled ?? true;
     public int AutosaveIntervalSeconds => _settings.AutosaveIntervalSeconds ?? 60;
-    public string RecoveryDirectory => _settings.RecoveryDirectory ?? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(_settingsStore.Path))!, "recovery");
+    public string RecoveryDirectory => Path.GetFullPath(_settings.RecoveryDirectory??"recovery",Path.GetDirectoryName(Path.GetFullPath(_settingsStore.Path))!);
     public string? RecoveryProvenance => _activeId is {} id && _documents.TryGetValue(id,out var state) ? state.RecoveryProvenance : null;
 
     private void InitializeRecovery()
@@ -24,7 +24,7 @@ public sealed partial class MainWindowViewModel
         {
             token.ThrowIfCancellationRequested();
             if(invocation.Parameter is not AutosaveOptions options || options.IntervalSeconds is <1 or >86400) throw new ArgumentException("Autosave interval must be between 1 and 86400 seconds.");
-            var directory=string.IsNullOrWhiteSpace(options.Directory)?null:Path.GetFullPath(options.Directory);
+            var directory=string.IsNullOrWhiteSpace(options.Directory)?null:Path.GetFullPath(options.Directory,Path.GetDirectoryName(Path.GetFullPath(_settingsStore.Path))!);
             var settings=_settings with{AutosaveEnabled=options.Enabled,AutosaveIntervalSeconds=options.IntervalSeconds,RecoveryDirectory=directory};
             _settingsStore.Save(settings);
             foreach(var id in _documents.Keys)InvalidateRecovery(id);
