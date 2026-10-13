@@ -169,9 +169,9 @@ public sealed partial class MainWindowViewModel
             try{EnsureKaraoke();}catch{KaraokeState.KaraokeEnabled=old;NotifyKaraoke();throw;}
             _editBurstDelay?.Cancel();NotifyKaraoke();
             if(!IsKaraokeMode&&Draft?.IsChanged==true){var delay=new CancellationTokenSource();_editBurstDelay=delay;_=FinalizeBurstAsync(delay.Token);}
-        }, () => HasAudio && SelectedEvent is not null, () => IsKaraokeMode);
+        }, () => (HasAudio||IsKaraokeMode) && SelectedEvent is not null, () => IsKaraokeMode);
         Register("karaoke/commit", "Commit karaoke", (_, token) => CommitKaraoke(token), () => Available() && KaraokeMatchesDraft && ValidAudioTimingDraft());
-        Register("karaoke/cancel", "Cancel timing edits", (_, _) => ResetKaraoke(), Available);
+        Register("karaoke/cancel", "Cancel timing edits", (_, _) => ResetKaraoke(), () => KaraokePlan is not null&&!HasGesture);
         Register("karaoke/auto-cut", "Auto Cut", (_, _) => { _settings = _settings with { KaraokeAutoCut = !KaraokeAutoCut }; _settingsStore.Save(_settings); if (KaraokeAutoCut) KaraokePlan?.AutoCut(); OnPropertyChanged(nameof(KaraokeAutoCut)); KaraokeChanged(); }, Available, () => KaraokeAutoCut);
         Register("karaoke/split", "Split timing text", (i, _) => { if (i.Parameter is not KaraokeCutRequest p) throw new ArgumentException("Choose a text split."); KaraokePlan!.Split(p.Slot, p.Position); KaraokeChanged(); }, () => Available() && KaraokeMatchesDraft);
         Register("karaoke/join", "Join timing groups", (i, _) => { if (i.Parameter is not int index) throw new ArgumentException("Choose a timing boundary."); KaraokePlan!.Join(index); KaraokeChanged(); }, () => Available() && KaraokeMatchesDraft);

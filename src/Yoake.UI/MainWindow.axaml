@@ -239,6 +239,7 @@
 <MenuItem Name="CloseAudioMenu" Header="Close audio" InputGesture="{Binding Actions[audio/close].InputGesture}" Command="{Binding Actions[audio/close]}" />
 <MenuItem Name="RecentAudioMenu" Header="Recent audio" />
 <MenuItem Name="KaraokeMenu" Header="Toshiki K-Timing" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/karaoke].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/karaoke]}" InputGesture="{Binding Actions[audio/karaoke].InputGesture}" />
+<MenuItem Name="KaraokeCancelMenu" Header="Cancel pending karaoke edits" Command="{Binding Actions[karaoke/cancel]}" InputGesture="{Binding Actions[karaoke/cancel].InputGesture}" />
 <MenuItem Name="AudioTimingMenu" Header="Timing">
 <MenuItem Name="AudioCommitMenu" Header="Commit timing" Command="{Binding Actions[audio/commit]}" InputGesture="{Binding Actions[audio/commit].InputGesture}" />
 <MenuItem Name="AudioCommitStayMenu" Header="Commit and stay" Command="{Binding Actions[audio/commit/stay]}" InputGesture="{Binding Actions[audio/commit/stay].InputGesture}" />
