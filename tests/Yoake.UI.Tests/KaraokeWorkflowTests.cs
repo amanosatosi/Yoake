@@ -28,7 +28,7 @@ public sealed partial class EditorWorkflowTests
         Assert.True(_workspace.Activate(recoveredId!.Value));Assert.Equal(plan.PreviewText,_model.KaraokePlan!.PreviewText);Assert.Equal("unfinished",_model.Draft!.Start);
         _model.ActiveEditor!.SetField(_model.SelectedEvent!,"Text","changed externally","External edit");
         Assert.Equal(plan.PreviewText,_model.KaraokePlan!.PreviewText);Assert.Contains("retained",_model.KaraokeStatus);Assert.Equal("unfinished",_model.Draft!.Start);
-        await _model.RunAutosaveAsync();var versions=await _model.ListRecoveryAsync();Assert.Contains(versions,e=>e.Metadata?.DocumentId==recoveredId&&e.Metadata.Karaoke?.Length==1);
+        await _model.RunAutosaveAsync();var versions=await _model.ListRecoveryAsync();Assert.Contains(versions,e=>e.Metadata?.DocumentId==recoveredId&&e.Metadata.Karaoke?.Length==1&&e.Metadata.Karaoke[0].StoredValues?.GetValueOrDefault("Text")==doc.Events[0].Text);
     }
     [Fact] public async Task RecoveryRejectsForeignKaraokeRowsAndPreservesTheOpenDocument()
     {

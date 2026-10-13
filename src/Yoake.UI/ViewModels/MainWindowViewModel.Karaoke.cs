@@ -10,7 +10,11 @@ public sealed record KaraokePointerRequest(long Milliseconds, long Sensitivity, 
 public sealed record KaraokeTagRequest(string Tag, bool CurrentOnly);
 public sealed partial class MainWindowViewModel
 {
-    private sealed record KaraokeEntry(ToshikiTimingPlan Plan, string StoredText, string StoredStart, string StoredEnd);
+    private sealed record KaraokeEntry(ToshikiTimingPlan Plan, string[] Fields);
+    private static string[] KaraokeFields(AssEvent line)=>line.FieldNames.Select(line.Get).ToArray();
+    private static bool KaraokeOwns(AssEvent line,KaraokeEntry entry)=>entry.Fields.SequenceEqual(KaraokeFields(line));
+    private static ToshikiRecovery CaptureKaraoke(AssEvent line,KaraokeEntry entry,int row)=>entry.Plan.Capture(row) with
+    {StoredValues=line.FieldNames.Select((name,index)=>(name,value:entry.Fields[index])).GroupBy(p=>p.name,StringComparer.OrdinalIgnoreCase).ToDictionary(g=>g.Key,g=>g.First().value,StringComparer.OrdinalIgnoreCase)};
     private DocumentState? KaraokeState => _activeId is {} id ? _documents.GetValueOrDefault(id) : null;
     public bool IsKaraokeMode => KaraokeState?.KaraokeEnabled == true;
     public bool ShowKaraoke => IsKaraokeMode && HasAudio;
@@ -22,10 +26,13 @@ public sealed partial class MainWindowViewModel
     public static readonly string[] KaraokeTags = ["k", "K", "kf", "ko", "kO"];
     private bool _publishingKaraoke;
     private ToshikiRecovery? _karaokeGesture;
+    private KaraokeEntry? _karaokeGestureEntry;
+    private AssEvent? _karaokeGestureLine;
+    private Guid? _karaokeGestureOwner;
     private int[] _karaokeDragMarkers = [];
     private int _karaokeDragMarker = -1;
     private bool KaraokeMatchesDraft => SelectedEvent is {} line && KaraokeState?.Karaoke.TryGetValue(line,out var entry)==true &&
-        line.Text==entry.StoredText && line.Start==entry.StoredStart && line.End==entry.StoredEnd && (Draft?.Text??line.Text)==entry.Plan.Source;
+        KaraokeOwns(line,entry) && (Draft?.Text??line.Text)==entry.Plan.Source;
     private void EnsureKaraoke()
     {
         if (!IsKaraokeMode || SelectedEvent is not {} line || KaraokeState is not {} state || state.Karaoke.ContainsKey(line)) return;
@@ -33,7 +40,7 @@ public sealed partial class MainWindowViewModel
         AssTime.TryParse(Draft?.Start ?? line.Start, out var start); AssTime.TryParse(Draft?.End ?? line.End, out var end);
         var range = AudioTiming?.Get(line) ?? new AudioClipInterval(start, end);
         var plan = new ToshikiTimingPlan(Draft?.Text ?? line.Text, range.StartMilliseconds, range.EndMilliseconds, KaraokeAutoCut);
-        state.Karaoke[line] = new(plan, line.Text, line.Start, line.End); state.KaraokeStatus = "Click the next boundary; click a timed slot to listen. Split or join text below.";
+        state.Karaoke[line] = new(plan, KaraokeFields(line)); state.KaraokeStatus = "Click the next boundary; click a timed slot to listen. Split or join text below.";
         if(plan.Changed){state.DraftRevision++;if(_workspace.ActiveDocument is {} session)session.IsDirty=true;}
     }
     private void EnsureKaraokeSafe()
@@ -71,13 +78,13 @@ public sealed partial class MainWindowViewModel
         {
             var line = pair.Key; var entry = pair.Value;
             if (!state.Editor.Document.Events.Contains(line)) state.Karaoke.Remove(line);
-            else if (line.Text != entry.StoredText || line.Start != entry.StoredStart || line.End != entry.StoredEnd)
+            else if (!KaraokeOwns(line,entry))
             {
-                // An ordinary draft publication rebases a matching slot plan.
-                // Foreign text/timing edits (including undo) invalidate it.
-                if (line.Text == entry.Plan.Source && line.StartMilliseconds == entry.Plan.Start && line.EndMilliseconds == entry.Plan.End)
-                    state.Karaoke[line] = entry with { StoredText = line.Text, StoredStart = line.Start, StoredEnd = line.End };
-                else if(entry.Plan.Changed)state.KaraokeStatus="The stored line changed outside karaoke. Pending timing is retained for recovery; Cancel to cut the new source.";
+                if(_karaokeGestureLine==line&&ReferenceEquals(state,KaraokeState))
+                {FinishKaraokeGesture(false);entry=state.Karaoke[line];}
+                // Retain unique pending work, but never rebase its fingerprint
+                // onto an unrelated newer edit (including metadata changes).
+                if(entry.Plan.Changed)state.KaraokeStatus="The stored line changed outside karaoke. Pending timing is retained for recovery; Cancel to cut the new source.";
                 else state.Karaoke.Remove(line);
             }
         }
@@ -92,7 +99,7 @@ public sealed partial class MainWindowViewModel
         NotifyKaraoke();
     }
     private void ReplaceKaraoke(ToshikiTimingPlan plan)
-    { if (SelectedEvent is {} line && KaraokeState is {} state) state.Karaoke[line] = new(plan, line.Text, line.Start, line.End); }
+    { if (SelectedEvent is {} line && KaraokeState is {} state) state.Karaoke[line] = new(plan, KaraokeFields(line)); }
     private void CommitKaraoke(CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
@@ -144,7 +151,8 @@ public sealed partial class MainWindowViewModel
             if (!plan.Append(request.Milliseconds)) return; marker = plan.Boundaries.Count - 1;
         }
         var position = plan.Boundaries[marker]; _karaokeDragMarkers = Enumerable.Range(0, plan.Boundaries.Count).Where(i => plan.Boundaries[i] == position).ToArray();
-        plan.Select(_karaokeDragMarkers[0] + 1); _karaokeDragMarker = _karaokeDragMarkers.Length == 1 ? marker : -1; _karaokeGesture = before; KaraokeChanged();
+        plan.Select(_karaokeDragMarkers[0] + 1); _karaokeDragMarker = _karaokeDragMarkers.Length == 1 ? marker : -1;
+        _karaokeGesture = before;_karaokeGestureEntry=KaraokeState!.Karaoke[SelectedEvent!];_karaokeGestureLine=SelectedEvent;_karaokeGestureOwner=_activeId;KaraokeChanged();
     }
     private void MoveKaraokePointerCore(long ms)
     {
@@ -160,7 +168,9 @@ public sealed partial class MainWindowViewModel
     private void FinishKaraokeGesture(bool commit)
     {
         var before = _karaokeGesture; if (before is null) return; _karaokeGesture = null; _karaokeDragMarkers = []; _karaokeDragMarker = -1;
-        if (!commit) ReplaceKaraoke(ToshikiTimingPlan.Restore(before));
+        if (!commit&&_karaokeGestureOwner is {} owner&&_karaokeGestureLine is {} line&&_karaokeGestureEntry is {} entry&&_documents.TryGetValue(owner,out var state)&&state.Editor.Document.Events.Contains(line))
+            state.Karaoke[line]=entry with{Plan=ToshikiTimingPlan.Restore(before)};
+        _karaokeGestureOwner=null;_karaokeGestureLine=null;_karaokeGestureEntry=null;
         if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||KaraokeState?.RecoveredUnsaved==true||KaraokeState?.Karaoke.Values.Any(e=>e.Plan.Changed)==true;
         NotifyKaraoke(); GestureEnded?.Invoke(this, EventArgs.Empty);
     }

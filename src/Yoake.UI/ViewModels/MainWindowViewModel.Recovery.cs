@@ -49,7 +49,7 @@ public sealed partial class MainWindowViewModel
                 foreach(var saved in karaoke)
                 {
                     var line=recovered.Document.Events[saved.Row];
-                    state.Karaoke[line]=new(ToshikiTimingPlan.Restore(saved),line.Text,line.Start,line.End);
+                    state.Karaoke[line]=new(ToshikiTimingPlan.Restore(saved),saved.StoredValues is {} values?line.FieldNames.Select(n=>values.GetValueOrDefault(n,line.Get(n))).ToArray():KaraokeFields(line));
                 }
                 state.KaraokeStatus="Recovered uncommitted Toshiki slots and explicit boundaries. Open audio to resume.";
             }
@@ -112,7 +112,7 @@ public sealed partial class MainWindowViewModel
             }
             var metadata=new RecoveryMetadata{DocumentId=session.Id,Sequence=++state.RecoverySequence,Timestamp=DateTimeOffset.UtcNow,Title=session.Title,
                 OriginalPath=session.Path??state.RecoveryProvenance,Draft=recoveryDraft,SelectedRow=selected is null?-1:state.Editor.Document.Events.IndexOf(selected),
-                Karaoke=state.Karaoke.Where(p=>p.Value.Plan.Changed&&state.Editor.Document.Events.Contains(p.Key)).Select(p=>p.Value.Plan.Capture(state.Editor.Document.Events.IndexOf(p.Key))).ToArray()};
+                Karaoke=state.Karaoke.Where(p=>p.Value.Plan.Changed&&state.Editor.Document.Events.Contains(p.Key)).Select(p=>CaptureKaraoke(p.Key,p.Value,state.Editor.Document.Events.IndexOf(p.Key))).ToArray()};
             var cancellation=new CancellationTokenSource();state.RecoveryWriting=cancellation;
             var generation=state.RecoveryLease.Renew();jobs.Add(WriteRecoveryAsync(state,snapshot,metadata,stamp,generation,cancellation));
         }

@@ -179,7 +179,12 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
         {
             if(karaoke.Length > document.Events.Count || karaoke.Any(k=>k is null || k.Row<0 || k.Row>=document.Events.Count) || karaoke.Select(k=>k.Row).Distinct().Count()!=karaoke.Length)
                 throw new InvalidDataException("Invalid recovered karaoke row identity.");
-            foreach(var plan in karaoke) ToshikiTimingPlan.Restore(plan);
+            foreach(var plan in karaoke)
+            {
+                if(plan.StoredValues is {} values&&(values.Count>1024||values.Any(p=>p.Value is null||!document.Events[plan.Row].FieldNames.Contains(p.Key,StringComparer.OrdinalIgnoreCase))))
+                    throw new InvalidDataException("Invalid recovered karaoke source ownership.");
+                ToshikiTimingPlan.Restore(plan);
+            }
         }
         if (m.Draft is {} draft)
         {

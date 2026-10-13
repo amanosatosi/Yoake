@@ -110,6 +110,9 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
                     _media=model.OpenAudioAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 12:
                     if(_media?.IsCompleted!=true){_stage--;return;}Require(await _media,"Audio reopens independently.");Require(model.ShowKaraoke&&model.KaraokePlan!.PreviewText==_plan,"Reopening audio resumes the same timing plan.");
+                    _editor!.SetField(model.SelectedEvent!,"Name","newer external metadata","External edit");
+                    Require(!model.Actions["karaoke/commit"].CanExecute(null)&&model.KaraokePlan!.PreviewText==_plan,"Newer metadata fences the whole commit while retaining unique timing.");
+                    _editor.Undo.Undo();Require(model.Actions["karaoke/commit"].CanExecute(null),"Restoring the captured source resolves the timing conflict.");
                     model.Draft!.MarginV="unfinished";await Invoke("settings/autosave",new AutosaveOptions(true,1,null));return;
                 case 13:
                     var entries=await model.ListRecoveryAsync();var entry=entries.FirstOrDefault(e=>e.Metadata?.OriginalPath==Script&&e.Metadata.Karaoke?.Any(p=>p.Row==1&&p.Boundaries.SequenceEqual(new long[]{2300}))==true&&e.Metadata.Draft?.Values.GetValueOrDefault("MarginV")=="unfinished");

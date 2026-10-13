@@ -19,7 +19,7 @@ using Yoake.Core.Audio;
 namespace Yoake.Core.Subtitles;
 
 public sealed record ToshikiSlot(int Index, int TextStart, string Text, string Tag, long Start, long End, bool Assigned, bool Current);
-public sealed record ToshikiRecovery(int Row, string Source, long Start, long End, int[] Cuts, string[] Tags, long[] Boundaries, int[] Recuts, int Current, bool Existing, bool Changed);
+public sealed record ToshikiRecovery(int Row, string Source, long Start, long End, int[] Cuts, string[] Tags, long[] Boundaries, int[] Recuts, int Current, bool Existing, bool Changed, Dictionary<string,string>? StoredValues = null);
 public sealed record KaraokeSource(string Raw, string Text, int[] Offsets, int[] Cuts, string[] Tags, long[] Durations)
 {
     public bool Existing => Tags.Length > 0;
