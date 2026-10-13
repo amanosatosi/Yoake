@@ -61,6 +61,7 @@ public sealed class SettingsStore(string path)
         bool? videoAutoSeek=null;
         var videoOverscan=false;Yoake.Core.Media.DummyVideoOptions? lastDummy=null;
         var showOriginal=false;PasteOverFields? pasteOverFields=null;
+        bool? autosaveEnabled=null;int? autosaveInterval=null;string? recoveryDirectory=null;
         SubtitleShiftPreferences? shift=null;List<SubtitleShiftHistoryEntry> shiftHistory=[];
         var globalTiming=false;bool? toolbar=null; List<HotkeyOverride> hotkeys=[];
         var audioStopMigrated=false;
@@ -76,6 +77,9 @@ public sealed class SettingsStore(string path)
         {
             switch (member.Name)
             {
+                case "autosaveEnabled":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)autosaveEnabled=member.Value.GetBoolean();break;
+                case "autosaveIntervalSeconds":if(TryReadInt(member.Value,out var interval))autosaveInterval=interval;break;
+                case "recoveryDirectory":if(member.Value.ValueKind==JsonValueKind.String)recoveryDirectory=member.Value.GetString();break;
                 case "toolbarVisible":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)toolbar=member.Value.GetBoolean();break;
                 case "gridTagDisplay":if(TryReadInt(member.Value,out var tags))tagDisplay=(GridTagDisplayMode)tags;break;
                 case "searchPreferences":try{search=JsonSerializer.Deserialize(member.Value,SettingsJsonContext.Default.SubtitleSearchPreferences);}catch(JsonException){}break;
@@ -131,6 +135,7 @@ public sealed class SettingsStore(string path)
             }
         }
         return new AppSettings { Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
+            AutosaveEnabled=autosaveEnabled,AutosaveIntervalSeconds=autosaveInterval,RecoveryDirectory=recoveryDirectory,
             HotkeyOverrides=hotkeys.ToArray(),AudioStopHotkeysMigrated=audioStopMigrated,GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,SelectionPreferences=selection,VideoAutoSeek=videoAutoSeek,VideoOverscan=videoOverscan,LastDummyVideo=lastDummy,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
             GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, RecentVideo=recentVideo, RecentAudio=recentAudio, FutureSettings = future,ShowOriginal=showOriginal,PasteOverFields=pasteOverFields,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,AudioSpectrum=audioSpectrum,AudioAutoScroll=audioAutoScroll,

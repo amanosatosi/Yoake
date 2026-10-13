@@ -5,6 +5,8 @@ namespace Yoake.UI.Services;
 public enum UnsavedChoice { Cancel, Discard, Save }
 public interface IEditorDialogs
 {
+    Task ShowRecoveryAsync(Yoake.UI.ViewModels.MainWindowViewModel model,CancellationToken token)=>throw new NotSupportedException("Recovery manager is unavailable.");
+    Task<bool> ConfirmRecoveryDiscardAsync(string name,CancellationToken token)=>Task.FromResult(false);
     Task SetVideoDetachedAsync(bool detached, CancellationToken token) => throw new NotSupportedException("Detached Video is unavailable.");
     Task ShowOptionsAsync(Yoake.UI.ViewModels.MainWindowViewModel model) => throw new NotSupportedException("Options are unavailable.");
     Task ShowLogAsync(string path)=>throw new NotSupportedException("Log window is unavailable.");

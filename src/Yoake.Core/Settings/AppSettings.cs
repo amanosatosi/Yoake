@@ -41,6 +41,9 @@ public sealed record AppSettings
     public bool? VideoAutoSeek {get;init;}
     public bool VideoOverscan { get; init; }
     public bool ShowOriginal { get; init; }
+    public bool? AutosaveEnabled { get; init; }
+    public int? AutosaveIntervalSeconds { get; init; }
+    public string? RecoveryDirectory { get; init; }
     public PasteOverFields? PasteOverFields { get; init; }
     public Yoake.Core.Media.DummyVideoOptions? LastDummyVideo { get; init; }
     public int? VideoFastJumpStep {get;init;}
@@ -96,6 +99,9 @@ public sealed record AppSettings
             HotkeyOverrides=HotkeyProfile.Normalize(AudioStopHotkeysMigrated?HotkeyOverrides:AegisubHotkeyDefaults.MigrateAudioStopOverrides(HotkeyOverrides), report),
             AudioStopHotkeysMigrated=true,
             ToolbarVisible=ToolbarVisible??true,
+            AutosaveEnabled=AutosaveEnabled??true,
+            AutosaveIntervalSeconds=AutosaveIntervalSeconds is >=1 and <=86400?AutosaveIntervalSeconds:60,
+            RecoveryDirectory=string.IsNullOrWhiteSpace(RecoveryDirectory)?null:RecoveryDirectory,
             GridTagDisplay=GridTagDisplay is {} tags&&Enum.IsDefined(tags)?tags:GridTagDisplayMode.Simplified,
             SearchPreferences=SearchPreferences?.Normalize()??new SubtitleSearchPreferences(),
             SelectionPreferences=SelectionPreferences?.Normalize()??new SubtitleSelectionOptions(),

@@ -289,6 +289,45 @@ try {
   $process.Dispose()
 }
 
+# Recovery is intentionally two independent native processes. The first is
+# terminated without Closing/Dispose; the second must use only persisted data.
+$recoveryRoot = Join-Path $root ('recovery-' + [Guid]::NewGuid().ToString('N'))
+$recoveryProfile = Join-Path $recoveryRoot 'profile'
+New-Item -ItemType Directory -Force -Path $recoveryProfile | Out-Null
+$captureReport = Join-Path $recoveryRoot 'capture.txt'
+$captureLogs = Join-Path $recoveryRoot 'capture-logs'
+$arguments = @('--verify-ui-recovery-capture', ('"{0}"' -f $captureReport), '--profile-directory', ('"{0}"' -f $recoveryProfile), '--diagnostics-directory', ('"{0}"' -f $captureLogs))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  $deadline = [DateTime]::UtcNow.AddSeconds(150)
+  while (-not (Test-Path -LiteralPath $captureReport) -and -not $process.HasExited -and [DateTime]::UtcNow -lt $deadline) { Start-Sleep -Milliseconds 200 }
+  $text = if (Test-Path -LiteralPath $captureReport) { Get-Content -LiteralPath $captureReport -Raw } else { '' }
+  if ($process.HasExited -or -not $text.StartsWith('READY:')) { throw "Recovery capture failed before forced termination:`n$text" }
+  $process.Kill(); $process.WaitForExit(); Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $captureLogs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
+$report = Join-Path $recoveryRoot 'recovered.txt'
+$logs = Join-Path $recoveryRoot 'restart-logs'
+$arguments = @('--verify-ui-recovery', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $recoveryProfile), '--diagnostics-directory', ('"{0}"' -f $logs))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged restarted Recovery acceptance timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged Recovery acceptance failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
+
 $videoPresentationRoot = Join-Path $root ('video-presentation-' + [Guid]::NewGuid().ToString('N'))
 $videoPresentationProfile = Join-Path $videoPresentationRoot 'profile'
 New-Item -ItemType Directory -Force -Path $videoPresentationProfile | Out-Null

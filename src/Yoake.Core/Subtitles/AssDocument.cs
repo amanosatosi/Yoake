@@ -100,8 +100,10 @@ public sealed class AssDocument
         return string.Concat(source.AsSpan(0,span.Start),clone.Serialize().AsSpan(),source.AsSpan(span.Start+span.Length));
     }
     public static AssDocument Load(string path)
+        => LoadBytes(File.ReadAllBytes(path));
+    public static AssDocument LoadBytes(byte[] bytes)
     {
-        var bytes = File.ReadAllBytes(path); Encoding encoding; var skip = 0;
+        Encoding encoding; var skip = 0;
         if (bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF })) { encoding = new UTF8Encoding(true, true); skip = 3; }
         else if (bytes.AsSpan().StartsWith(new byte[] { 0xFF, 0xFE, 0x00, 0x00 })) { encoding = new UTF32Encoding(false,true,true); skip=4; }
         else if (bytes.AsSpan().StartsWith(new byte[] { 0x00, 0x00, 0xFE, 0xFF })) { encoding = new UTF32Encoding(true,true,true); skip=4; }
@@ -110,6 +112,24 @@ public sealed class AssDocument
         else encoding = new UTF8Encoding(false, true);
         try { var doc = Parse(encoding.GetString(bytes, skip, bytes.Length - skip)); doc._encoding = encoding; doc._bom = skip > 0; return doc; }
         catch (DecoderFallbackException e) { throw new InvalidDataException("Unsupported legacy encoding. Convert the file to UTF-8 before opening; the original file has not been changed.", e); }
+    }
+    // Capture on the document's owner thread. Immutable source strings are
+    // shared; only editable field arrays are copied. Serialization and encoding
+    // belong to the background consumer, never to this capture operation.
+    public AssDocumentSnapshot CaptureSnapshot()
+    {
+        var copy = new AssDocument { _encoding = _encoding, _bom = _bom, _newline = _newline };
+        copy.Source = Source.Select(line => line with { Record = line.Record switch
+        { AssEvent e => e.Clone(), AssStyle s => s.Clone(), _ => null } }).ToList();
+        return new(copy, Revision);
+    }
+    internal byte[] SerializeBytes()
+    {
+        var body = _encoding.GetBytes(Serialize());
+        if (!_bom) return body;
+        var preamble = _encoding.GetPreamble();
+        var result = new byte[preamble.Length + body.Length];
+        preamble.CopyTo(result, 0); body.CopyTo(result, preamble.Length); return result;
     }
     public void Save(string path)
         => Save(path, _encoding, _bom);

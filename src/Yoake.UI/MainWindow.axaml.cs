@@ -433,6 +433,18 @@ public partial class MainWindow : Window, IEditorDialogs
         var result=await AskAsync("Unsaved changes",$"Save changes to {title}?",["Save","Discard","Cancel"]);return result==0?UnsavedChoice.Save:result==1?UnsavedChoice.Discard:UnsavedChoice.Cancel;
     }
     public async Task<bool> ConfirmRevertAsync()=>await AskAsync("Reload subtitle","Discard edits and reload the file from disk?",["Reload","Cancel"])==0;
+    public async Task ShowRecoveryAsync(MainWindowViewModel model,CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new RecoveryWindow(model);
+        using var registration=token.Register(()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close();}));
+        await dialog.ShowDialog(this);
+    }
+    public async Task<bool> ConfirmRecoveryDiscardAsync(string name,CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();
+        var answer=await AskAsync("Discard recovery version",$"Permanently discard {name}? This may be the only recoverable copy.",["Cancel","Discard"]);
+        token.ThrowIfCancellationRequested();return answer==1;
+    }
     private async Task<int> AskAsync(string title,string message,string[] choices)
     {
         var dialog=new Window{Title=title,Width=440,SizeToContent=SizeToContent.Height,CanResize=false,WindowStartupLocation=WindowStartupLocation.CenterOwner};

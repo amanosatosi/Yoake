@@ -72,6 +72,24 @@ public sealed class OptionsWindow : Window
         _model.HotkeyProfile.Changed+=ProfileChanged;_model.Registry.StateChanged+=CommandStateChanged;
         Closed+=(_,_)=>{_model.HotkeyProfile.Changed-=ProfileChanged;_model.Registry.StateChanged-=CommandStateChanged;};
         RefreshCommands();
+        var autosave=new StackPanel{Margin=new Thickness(12),Spacing=8};
+        var enabled=new CheckBox{Name="AutosaveEnabled",Content="Automatically save recovery snapshots",IsChecked=model.AutosaveEnabled};
+        var interval=new NumericUpDown{Name="AutosaveInterval",Minimum=1,Maximum=86400,Value=model.AutosaveIntervalSeconds,Width=120,HorizontalAlignment=HorizontalAlignment.Left};
+        var directory=new TextBox{Name="RecoveryDirectory",Text=model.RecoveryDirectory,PlaceholderText="Blank uses this profile's recovery directory"};
+        var applyAutosave=new Button{Name="AutosaveApply",Content="Apply autosave settings",HorizontalAlignment=HorizontalAlignment.Left};
+        var autosaveStatus=new TextBlock{Name="AutosaveOptionsStatus",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
+        foreach(var control in new Control[]{enabled,interval,directory,applyAutosave,autosaveStatus})names.Register(control.Name!,control);
+        autosave.Children.Add(enabled);autosave.Children.Add(new TextBlock{Text="Interval (seconds)"});autosave.Children.Add(interval);
+        autosave.Children.Add(new TextBlock{Text="Recovery directory"});autosave.Children.Add(directory);
+        autosave.Children.Add(new TextBlock{Text="Defaults: enabled, every 60 seconds. Keeps up to 10 versions per document, with a 512 MiB profile budget. Originals, dirty state and undo are unaffected. Recovery versions remain until pruned or explicitly discarded.",TextWrapping=Avalonia.Media.TextWrapping.Wrap});
+        autosave.Children.Add(applyAutosave);autosave.Children.Add(autosaveStatus);
+        applyAutosave.Click+=async(_,_)=>
+        {
+            var success=await model.Registry.InvokeAsync("settings/autosave",new(),new AutosaveOptions(enabled.IsChecked==true,(int)(interval.Value??60),directory.Text));
+            autosaveStatus.Text=success?"Autosave settings saved.":model.SubtitleStatus;
+        };
+        var tabs=new TabControl{Name="OptionsTabs",ItemsSource=new TabItem[]{new(){Header="Keyboard shortcuts",Content=root},new(){Header="Autosave / Recovery",Content=autosave}}};
+        names.Register(tabs.Name!,tabs);Content=tabs;Title="Options";Height=650;
         names.Complete();
     }
 

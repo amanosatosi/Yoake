@@ -13,6 +13,11 @@ public sealed class EventEditDraft : INotifyPropertyChanged
         _line = line;
         foreach (var name in line.FieldNames) _values[name] = line.Get(name);
     }
+    internal AssEvent Line => _line;
+    internal EventEditDraft(AssEvent line, IReadOnlyDictionary<string,string> recovered) : this(line)
+    {
+        foreach(var pair in recovered) if(_values.ContainsKey(pair.Key)) _values[pair.Key]=pair.Value;
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
     public IReadOnlyDictionary<string,string> Values => _values;
     public bool IsChanged => _values.Any(p => _line.Get(p.Key) != p.Value);

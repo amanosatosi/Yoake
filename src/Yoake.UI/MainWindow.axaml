@@ -52,10 +52,11 @@
     </Border>
 
     <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}"><Grid RowDefinitions="24,*"><Menu>
-<MenuItem Header="File">
+<MenuItem Name="FileMenu" Header="File">
 <MenuItem Header="Recent files" ItemsSource="{Binding RecentFiles}"><MenuItem.ItemTemplate><DataTemplate x:DataType="x:String"><Button Content="{Binding}" Click="RecentFileClick" /></DataTemplate></MenuItem.ItemTemplate></MenuItem>
 <MenuItem Name="NewMenu" Header="New" InputGesture="{Binding Actions[subtitle/new].InputGesture}" Command="{Binding Actions[subtitle/new]}" />
 <MenuItem Header="Open…" InputGesture="{Binding Actions[subtitle/open].InputGesture}" Command="{Binding Actions[subtitle/open]}" />
+<MenuItem Name="RecoveryMenu" Header="Recover Subtitles…" InputGesture="{Binding Actions[subtitle/open/autosave].InputGesture}" Command="{Binding Actions[subtitle/open/autosave]}" />
 <MenuItem Header="Save" InputGesture="{Binding Actions[subtitle/save].InputGesture}" Command="{Binding Actions[subtitle/save]}" />
 <MenuItem Header="Save As…" InputGesture="{Binding Actions[subtitle/save-as].InputGesture}" Command="{Binding Actions[subtitle/save-as]}" />
 <MenuItem Header="Export subtitles…" InputGesture="{Binding Actions[automation/export].InputGesture}" Command="{Binding Actions[automation/export]}" />
@@ -400,7 +401,7 @@
           <Grid Name="MetadataOtherFields" Width="336" ColumnDefinitions="*,*,86" ColumnSpacing="12" Margin="0,0,0,8">
             <AutoCompleteBox Name="LineActor" Height="26" VerticalAlignment="Center" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
             <TextBox Name="LineEffect" Grid.Column="1" Height="26" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
-            <NumericUpDown Name="LineLayer" Grid.Column="2" Value="{Binding EditorDraft.LayerNumber, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
+            <NumericUpDown Name="LineLayer" Grid.Column="2" Text="{Binding EditorDraft.Layer, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
           </Grid>
         </WrapPanel>
         <WrapPanel Grid.Row="1" Name="TimingFields">
@@ -410,9 +411,9 @@
             <TextBlock Grid.Column="4" Text="Dur." FontSize="10" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding EditorDraft.Duration}" FontSize="11" VerticalAlignment="Center" />
           </Grid>
           <Grid Name="LineMarginGroup" ColumnDefinitions="Auto,86,Auto,86,Auto,86" ColumnSpacing="3" Margin="0,0,0,8">
-            <TextBlock Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Value="{Binding EditorDraft.LeftMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
-            <TextBlock Grid.Column="2" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Value="{Binding EditorDraft.RightMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
-            <TextBlock Grid.Column="4" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Value="{Binding EditorDraft.VerticalMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
+            <TextBlock Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Text="{Binding EditorDraft.MarginL, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
+            <TextBlock Grid.Column="2" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Text="{Binding EditorDraft.MarginR, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
+            <TextBlock Grid.Column="4" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Text="{Binding EditorDraft.MarginV, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
           </Grid>
         </WrapPanel>
         <WrapPanel Grid.Row="2" Name="FormattingToolbar" Margin="0,0,0,4">
