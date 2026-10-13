@@ -286,7 +286,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                 // Refresh choices before the draft binding selects the renamed
                 // style. Otherwise ComboBox retains an absent/blank selection.
                 if(namesChanged)OnPropertyChanged(nameof(StyleNames));
-                if(!_publishingAudioTiming&&!_publishingPasteOver&&!_publishingAttachments&&!_publishingKaraoke)ReloadDraft();_registry.NotifyStateChanged();
+                if(!_publishingAudioTiming&&!_publishingPasteOver&&!_publishingAttachments&&!_publishingKaraoke&&
+                    !(state.KaraokeEnabled&&state.Karaoke.Values.Any(p=>p.Plan.Changed)&&Draft?.IsChanged==true))ReloadDraft();_registry.NotifyStateChanged();
             }
         };
         state.Editor.MarkSaved();
