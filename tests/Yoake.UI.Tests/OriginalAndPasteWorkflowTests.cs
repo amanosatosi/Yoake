@@ -79,4 +79,12 @@ public sealed partial class EditorWorkflowTests
         var store=new SettingsStore(path);var settings=store.Load();Assert.True(settings.ShowOriginal);Assert.Equal(PasteOverFields.Text,settings.PasteOverFields);Assert.True(settings.FutureSettings!.ContainsKey("future"));
         store.Save(settings);Assert.True(store.Load().ShowOriginal);Assert.Equal(PasteOverFields.Text,store.Load().PasteOverFields);
     }
+    [Fact] public async Task OriginalToggleReportsPersistenceFailureWithoutInconsistentViewOrDraftLoss()
+    {
+        await SeedOriginal();var source=_model.ActiveEditor!.Document.Serialize();var draft=_model.Draft;var notifications=0;
+        _model.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(Yoake.UI.ViewModels.MainWindowViewModel.ShowOriginal))notifications++;};
+        Directory.CreateDirectory(Path.Combine(_root,"settings.json"));
+        Assert.False(await _model.Registry.InvokeAsync("edit/show_original",new()));Assert.True(_model.ShowOriginal);Assert.Equal(1,notifications);
+        Assert.True(_model.Registry.GetRequired("edit/show_original").IsChecked(new()));Assert.Same(draft,_model.Draft);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.NotEmpty(_model.SubtitleStatus);
+    }
 }

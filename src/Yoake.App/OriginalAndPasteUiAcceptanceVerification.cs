@@ -21,6 +21,8 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
     private int _stage;private bool _ticking;private Task<bool>? _opening;
     private PasteOverWindow? _dialog;private AssEvent[] _rows=[];
     private string _original="",_source="";private object? _draft,_times,_samples;private Guid? _document;
+    private bool _prepareOriginalInsert;
+    private string _insertSelection="";
     private TextBox Text=>window.FindControl<TextBox>("SubtitleText")!;
     private T Field<T>(string name)where T:Control=>_dialog!.FindControl<T>(name)??throw new InvalidOperationException("Missing paste control: "+name);
     public void Start(){_timer.Tick+=Tick;_timer.Start();}
@@ -50,10 +52,17 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
                     Require(window.FindControl<MenuItem>("ShowOriginalMenu")!.IsChecked,"Show Original menu reflects toggle.");
                     model.Draft!.Text="translated";await Invoke(CommandIds.EditCommit);await Invoke(CommandIds.EditUndo);await Invoke(CommandIds.EditRedo);
                     Require(model.OriginalText==_original,"Typing, commit, undo and redo keep Original stable.");
-                    Text.Focus();Text.SelectionStart=0;Text.SelectionEnd=Text.Text!.Length;
-                    Press(window.FindControl<Button>("OriginalInsert")!,Key.Enter);return;
+                    _prepareOriginalInsert=true;return;
                 case 3:
-                    Require(model.Draft!.Text==_original,"Actual Insert Original button replaces the current selection.");
+                    if(_prepareOriginalInsert)
+                    {
+                        Require(Text.Text=="translated","The visible undo/redo binding must settle before selecting text.");
+                        Text.Focus();Text.SelectAll();
+                        Require(model.TextSelectionStart==0&&model.TextSelectionEnd==model.Draft!.Text.Length,"Native Select All must reach the semantic editor selection.");
+                        _insertSelection=$"UI {Text.SelectionStart}:{Text.SelectionEnd}, model {model.TextSelectionStart}:{model.TextSelectionEnd}";
+                        _prepareOriginalInsert=false;Press(window.FindControl<Button>("OriginalInsert")!,Key.Enter);_stage--;return;
+                    }
+                    Require(model.Draft!.Text==_original,$"Actual Insert Original button replaces the current selection. Before: {_insertSelection}; after UI {Text.SelectionStart}:{Text.SelectionEnd}, model {model.TextSelectionStart}:{model.TextSelectionEnd}; expected '{_original}', actual '{model.Draft.Text}'.");
                     model.Draft.Text="{\\future(x)}visible{\\p1}m 0 0 l 5 5{\\p0}";
                     Press(window.FindControl<Button>("OriginalClearText")!,Key.Enter);return;
                 case 4:

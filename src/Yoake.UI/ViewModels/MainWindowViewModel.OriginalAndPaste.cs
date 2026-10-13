@@ -27,8 +27,12 @@ public sealed partial class MainWindowViewModel
         bool HasLine()=>SelectedEvent is not null&&!HasGesture;
         R("edit/show_original","Show Original",()=>
         {
-            _settings=_settings with{ShowOriginal=!ShowOriginal};_settingsStore.Save(_settings);
-            OnPropertyChanged(nameof(ShowOriginal));_registry.NotifyStateChanged();return ValueTask.CompletedTask;
+            _settings=_settings with{ShowOriginal=!ShowOriginal};
+            // The view changes immediately even if persistence fails. Report
+            // that failure centrally without leaving checked state and layout
+            // disagreeing or disturbing the editor's pending draft.
+            OnPropertyChanged(nameof(ShowOriginal));_registry.NotifyStateChanged();
+            _settingsStore.Save(_settings);return ValueTask.CompletedTask;
         },()=>true,()=>ShowOriginal);
         R("edit/revert","Revert to original",()=>{FormatText("Revert to original",(_,_,_,_)=>new(OriginalText,0,OriginalText.Length));return ValueTask.CompletedTask;},HasLine);
         R("edit/insert_original","Insert Original",()=>
