@@ -45,6 +45,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public WaveformData? Waveform;
         public double Time;
         public AssEvent? Selected;
+        public AssEvent? OriginalLine;
+        public string OriginalText="";
         public CancellationTokenSource? Loading;
         public CancellationTokenSource? VideoLoading, AudioLoading;
         public int MediaDraftPauses;
@@ -237,6 +239,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
         SelectedEvent?.ShowDraft(null);Draft=SelectedEvent is {} line?new EventEditDraft(line):null;
+        RefreshOriginalText();
         UpdateAudioPlaybackEnd();
         if(AssVisualTags.Clip(Draft?.Text??"") is {} clip)InverseClip=clip.Inverse;
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));OnPropertyChanged(nameof(SelectedIsComment));

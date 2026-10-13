@@ -40,6 +40,8 @@ public sealed record AppSettings
     public SubtitleSelectionOptions? SelectionPreferences {get;init;}
     public bool? VideoAutoSeek {get;init;}
     public bool VideoOverscan { get; init; }
+    public bool ShowOriginal { get; init; }
+    public PasteOverFields? PasteOverFields { get; init; }
     public Yoake.Core.Media.DummyVideoOptions? LastDummyVideo { get; init; }
     public int? VideoFastJumpStep {get;init;}
     public SubtitleShiftPreferences? ShiftPreferences {get;init;}

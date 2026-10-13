@@ -15,6 +15,7 @@ public sealed partial class MainWindowViewModel
     }
     private void RegisterLineCommands()
     {
+        RegisterOriginalAndPasteCommands();
         bool Applies(CommandContext context)=>context.DocumentId is null||context.DocumentId==_activeId;
         foreach(var (id,label,preserve) in new[]{("edit/clear","Clear line text",false),("edit/clear/text","Clear visible text",true)})
         {

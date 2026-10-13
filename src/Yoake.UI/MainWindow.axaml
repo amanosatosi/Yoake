@@ -70,6 +70,10 @@
 <MenuItem Header="Copy lines" InputGesture="{Binding Actions[grid/copy].InputGesture}" Command="{Binding Actions[grid/copy]}" />
 <MenuItem Header="Cut lines" InputGesture="{Binding Actions[grid/cut].InputGesture}" Command="{Binding Actions[grid/cut]}" />
 <MenuItem Header="Paste lines" InputGesture="{Binding Actions[grid/paste].InputGesture}" Command="{Binding Actions[grid/paste]}" />
+<MenuItem Name="PasteOverMenu" Header="Paste Lines Over…" InputGesture="{Binding Actions[edit/line/paste/over].InputGesture}" Command="{Binding Actions[edit/line/paste/over]}" />
+<MenuItem Name="ShowOriginalMenu" Header="Show Original" ToggleType="CheckBox" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" />
+<MenuItem Header="Insert Original" Command="{Binding Actions[edit/insert_original]}" InputGesture="{Binding Actions[edit/insert_original].InputGesture}" />
+<MenuItem Header="Revert to original" Command="{Binding Actions[edit/revert]}" InputGesture="{Binding Actions[edit/revert].InputGesture}" />
 <MenuItem Header="Select all lines" InputGesture="{Binding Actions[grid/select-all].InputGesture}" Command="{Binding Actions[grid/select-all]}" />
 <MenuItem Name="SelectLinesMenu" Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" />
 <MenuItem Name="SelectVisibleMenu" Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" />
@@ -432,7 +436,19 @@
           </StackPanel>
         </WrapPanel>
 
-        <controls:AssTextBox Name="SubtitleText" Grid.Row="3" ToolTip.Tip="Edit ASS source · Configure keyboard shortcuts in Options" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+        <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto" RowSpacing="3">
+          <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="36" MaxHeight="76" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
+          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS source · Configure keyboard shortcuts in Options" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+          <WrapPanel Grid.Row="2">
+            <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" MinHeight="24" FontSize="11" Margin="0,0,8,0" />
+            <StackPanel IsVisible="{Binding ShowOriginal}" Orientation="Horizontal" Spacing="3">
+              <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="11" />
+              <Button Name="OriginalClear" Content="Clear" Command="{Binding Actions[edit/clear]}" Padding="5,0" FontSize="11" />
+              <Button Name="OriginalClearText" Content="Clear Text" Command="{Binding Actions[edit/clear/text]}" Padding="5,0" FontSize="11" />
+              <Button Name="OriginalInsert" Content="Insert Original" Command="{Binding Actions[edit/insert_original]}" Padding="5,0" FontSize="11" />
+            </StackPanel>
+          </WrapPanel>
+        </Grid>
       </Grid>
     </Border>
   </Grid>

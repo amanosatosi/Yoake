@@ -268,6 +268,27 @@ try {
 }
 
 # Video presentation input uses a separate real-input acceptance process.
+# Original/Paste Over uses its own native process and modal clipboard workflow.
+$originalPasteRoot = Join-Path $root ('original-paste-' + [Guid]::NewGuid().ToString('N'))
+$originalPasteProfile = Join-Path $originalPasteRoot 'profile'
+New-Item -ItemType Directory -Force -Path $originalPasteProfile | Out-Null
+$logs = Join-Path $originalPasteRoot 'logs'
+$report = Join-Path $originalPasteRoot 'acceptance.txt'
+$arguments = @('--verify-ui-original-paste', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $originalPasteProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged Original/Paste Over acceptance timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged Original/Paste Over acceptance failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
+
 $videoPresentationRoot = Join-Path $root ('video-presentation-' + [Guid]::NewGuid().ToString('N'))
 $videoPresentationProfile = Join-Path $videoPresentationRoot 'profile'
 New-Item -ItemType Directory -Force -Path $videoPresentationProfile | Out-Null
