@@ -39,7 +39,7 @@ public sealed class AudioWaveformControl : Control
 
     public bool Spectrogram=>Model?.IsAudioSpectrum==true;
     public bool SpectrumTileReady=>_spectrum is not null;
-    public AudioWaveformControl() { Focusable=true;ClipToBounds=true; }
+    public AudioWaveformControl() { Focusable=true;ClipToBounds=true;LostFocus+=(_,_)=>Cancel(); }
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -180,7 +180,6 @@ public sealed class AudioWaveformControl : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(_drag){_drag=false;_timingPointer=null;if(_karaokeDrag)Model?.EndKaraokePointer();else Model?.EndAudioTimingGesture();_karaokeDrag=false;e.Pointer.Capture(null);e.Handled=true;}}
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);Cancel();}
     private void Cancel(){if(_drag){_drag=false;_karaokeDrag=false;var pointer=_timingPointer;_timingPointer=null;Model?.CancelGesture();pointer?.Capture(null);InvalidateVisual();}}
-    protected override void OnLostFocus(Avalonia.Interactivity.RoutedEventArgs e){base.OnLostFocus(e);Cancel();}
     protected override void OnKeyDown(KeyEventArgs e){base.OnKeyDown(e);if(e.Key==Key.Escape&&_drag){Cancel();e.Handled=true;}}
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
