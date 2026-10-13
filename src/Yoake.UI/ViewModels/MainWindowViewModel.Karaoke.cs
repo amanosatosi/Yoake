@@ -24,7 +24,8 @@ public sealed partial class MainWindowViewModel
     private ToshikiRecovery? _karaokeGesture;
     private int[] _karaokeDragMarkers = [];
     private int _karaokeDragMarker = -1;
-    private bool KaraokeMatchesDraft => KaraokePlan is {} plan && (Draft?.Text ?? SelectedEvent?.Text) == plan.Source;
+    private bool KaraokeMatchesDraft => SelectedEvent is {} line && KaraokeState?.Karaoke.TryGetValue(line,out var entry)==true &&
+        line.Text==entry.StoredText && line.Start==entry.StoredStart && line.End==entry.StoredEnd && (Draft?.Text??line.Text)==entry.Plan.Source;
     private void EnsureKaraoke()
     {
         if (!IsKaraokeMode || SelectedEvent is not {} line || KaraokeState is not {} state || state.Karaoke.ContainsKey(line)) return;
@@ -76,6 +77,7 @@ public sealed partial class MainWindowViewModel
                 // Foreign text/timing edits (including undo) invalidate it.
                 if (line.Text == entry.Plan.Source && line.StartMilliseconds == entry.Plan.Start && line.EndMilliseconds == entry.Plan.End)
                     state.Karaoke[line] = entry with { StoredText = line.Text, StoredStart = line.Start, StoredEnd = line.End };
+                else if(entry.Plan.Changed)state.KaraokeStatus="The stored line changed outside karaoke. Pending timing is retained for recovery; Cancel to cut the new source.";
                 else state.Karaoke.Remove(line);
             }
         }

@@ -26,6 +26,8 @@ public sealed partial class EditorWorkflowTests
         Assert.Equal("unfinished",_model.Draft!.Start);Assert.Equal("stable original",_model.OriginalText);Assert.False(_model.Actions["karaoke/commit"].CanExecute(null));
         Assert.True(_workspace.Activate(firstId!.Value));Assert.Same(original,_model.ActiveEditor);Assert.False(_model.IsKaraokeMode);
         Assert.True(_workspace.Activate(recoveredId!.Value));Assert.Equal(plan.PreviewText,_model.KaraokePlan!.PreviewText);Assert.Equal("unfinished",_model.Draft!.Start);
+        _model.ActiveEditor!.SetField(_model.SelectedEvent!,"Text","changed externally","External edit");
+        Assert.Equal(plan.PreviewText,_model.KaraokePlan!.PreviewText);Assert.Contains("retained",_model.KaraokeStatus);
         await _model.RunAutosaveAsync();var versions=await _model.ListRecoveryAsync();Assert.Contains(versions,e=>e.Metadata?.DocumentId==recoveredId&&e.Metadata.Karaoke?.Length==1);
     }
     [Fact] public async Task RecoveryRejectsForeignKaraokeRowsAndPreservesTheOpenDocument()
