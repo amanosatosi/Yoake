@@ -511,12 +511,21 @@
     },
     {
       "id": "audio/karaoke",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Toggle karaoke mode",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "audio/karaoke",
+      "status": "already complete",
+      "backend": "Document-owned Toshiki explicit slot/boundary plans, shared lossless source scanner, Mangetsu reading/opaque-slot mapping, native waveform/spectrum input, existing timeline/playback and one-operation subtitle commit with draft recovery.",
+      "exposure": [
+        "CommandRegistry",
+        "Audio menu and karaoke toggle",
+        "Native slot splitter, tag/Auto Cut/Rest/Commit/Cancel controls",
+        "Waveform/spectrum pointer and contextual timing keys"
+      ],
+      "tests": [
+        "ToshikiTimingTests",
+        "KaraokeWorkflowTests",
+        "KaraokeUiAcceptanceVerification"
+      ],
+      "notes": "Checkpoint 3 verified at c913cd70996c42c95f698f63d822be063471c067. Full branch run 38463019959 passed 587 Core/133 UI/34 Automation tests (754 total, 39 new, no skips), Windows NativeAOT, startup, all packaged acceptance and providers. Native real menu/keyboard/pointer/capture/IME, per-group Use tag and commit, source-derived kana/ruby cuts, rest/cancel, live Mangetsu pixels, one-step undo/redo, document isolation, Audio Close/reopen and forced termination/restart recovery passed. Primary audio/karaoke deliberately uses Toshiki rather than original karaoke or 39 Mode. See toshiki-k-timing-reference.md for literal-pipe/space preservation, uppercase K and ambiguity policies. Physical IME, audible latency and high-DPI long-lyric QA remain manual. Matching PR run 38463025211 was pending at this documentation checkpoint.",
       "yoake_default_hotkeys": {}
     },
     {
