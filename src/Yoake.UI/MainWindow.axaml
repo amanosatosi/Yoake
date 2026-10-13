@@ -439,7 +439,7 @@
 
         <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto">
           <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="36" MaxHeight="76" Margin="0,0,0,3" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
-          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS source · Configure keyboard shortcuts in Options" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS source · Configure keyboard shortcuts in Options" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
           <WrapPanel Grid.Row="2" IsVisible="{Binding ShowOriginal}" Margin="0,3,0,0">
             <StackPanel IsVisible="{Binding ShowOriginal}" Orientation="Horizontal" Spacing="3">
               <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="11" />

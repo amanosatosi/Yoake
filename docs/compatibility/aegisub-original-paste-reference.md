@@ -13,6 +13,8 @@ Inspected Aegisub 3.5 files/functions:
 
 Yoake implementation uses one original snapshot per document's currently active line. Draft reloads and history changes on that same object retain it. Returning to a different line captures its current committed text; switching tabs restores the owning document's snapshot. The read-only box sits above the edited text, below the existing Audio region. Show Original uses a semantic command and persists in the existing source-generated settings.
 
+The ASS editor explicitly retains selection when focus moves to authoring controls. [Avalonia 12.1.3 `TextBox`](https://raw.githubusercontent.com/AvaloniaUI/Avalonia/12.1.3/src/Avalonia.Controls/TextBox.cs) defaults `ClearSelectionOnLostFocus` to true, which collapsed the selected range before keyboard activation of Insert Original. The packaged assertion exposed this real workflow defect; the input policy and selection retention were fixed, with the assertion retained.
+
 Paste Over parses on a background task and captures document, revision, active line, selection and draft values before reading the clipboard or showing the modal field selector. A changed owner/input cannot receive the delayed result. Every combined destination is validated before any mutation. A valid active draft participates in the same transaction as the paste; cancel/None/failure leave it pending. Untouched columns, records, tags and source newline spelling remain exact.
 
 Deliberate differences:
