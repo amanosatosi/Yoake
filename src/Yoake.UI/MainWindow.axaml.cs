@@ -446,6 +446,12 @@ public partial class MainWindow : Window, IEditorDialogs
         using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close();}));
         await dialog.ShowDialog(this);
     }
+    public async Task ShowResampleAsync(MainWindowViewModel model,Guid id,CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new ResampleWindow(model,id);
+        using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close();}));
+        await dialog.ShowDialog(this);
+    }
     public async Task<bool> ConfirmAttachmentOverwriteAsync(string path,CancellationToken token)
     {
         token.ThrowIfCancellationRequested();var dialog=new Window{Name="AttachmentOverwriteDialog",Title="Replace extracted file?",Width=480,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};

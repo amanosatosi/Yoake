@@ -5,6 +5,7 @@ namespace Yoake.UI.Services;
 public enum UnsavedChoice { Cancel, Discard, Save }
 public interface IEditorDialogs
 {
+    Task ShowResampleAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid id,CancellationToken token)=>throw new NotSupportedException("Resolution resampling is unavailable.");
     Task ShowAttachmentsAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid id,CancellationToken token)=>throw new NotSupportedException("Attachment manager is unavailable.");
     Task<bool> ConfirmAttachmentOverwriteAsync(string path,CancellationToken token)=>Task.FromResult(false);
     Task ShowRecoveryAsync(Yoake.UI.ViewModels.MainWindowViewModel model,CancellationToken token)=>throw new NotSupportedException("Recovery manager is unavailable.");
