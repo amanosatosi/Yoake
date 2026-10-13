@@ -2396,12 +2396,20 @@
     },
     {
       "id": "subtitle/attachment",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open the attachment manager dialog",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "subtitle/attachment",
+      "status": "already complete",
+      "backend": "Contextual lossless ASS attachment parsing, bounded six-bit codec, source-sharing undo transactions, owned background import/extraction and native attachment manager.",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow File menu",
+        "Native attachment manager and import/extraction/overwrite dialogs"
+      ],
+      "tests": [
+        "AssAttachmentTests",
+        "AttachmentWorkflowTests",
+        "AttachmentsUiAcceptanceVerification"
+      ],
+      "notes": "Stage 2B verified at d8a4a94cbb28a28f517154f91b497fcd35eb8184. Full branch run 38445656501 and PR run 38445663128 passed 551 Core/130 UI/34 Automation tests (715 total, no skips), Windows NativeAOT, all startup profiles, packaged acceptance and native providers. Real manager import/list/extract/overwrite/remove/undo/redo/Save/reopen/tab isolation and independent forced-termination/restart recovery preserve binary payloads plus pending drafts. Hardened safe leaf names, case-insensitive collision checks and atomic extraction. See docs/architecture/ass-attachments.md and the Checkpoint 2 source audit. Hardware IME/DPI and large payload/filesystem contention remain manual QA.",
       "yoake_default_hotkeys": {}
     },
     {
