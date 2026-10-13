@@ -98,7 +98,7 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
                     await Invoke(CommandIds.WorkspaceActivateTab,_document);Require(model.KaraokePlan!.PreviewText==_plan&&model.IsKaraokeMode,"Returning to the tab retains pending explicit slots and provider.");
                     Require(ReferenceEquals(_editor,model.ActiveEditor)&&ReferenceEquals(_waveform,model.WaveformSamples)&&ReferenceEquals(_times,model.FrameTimes)&&ReferenceEquals(_keyframes,model.Keyframes),"Timing retains editor, native media and external timeline state.");return;
                 case 11:
-                    await Invoke("audio/close");Require(!model.HasAudio&&model.HasVideo&&!model.ShowKaraoke&&!model.Actions["karaoke/commit"].CanExecute(null)&&model.KaraokePlan!.PreviewText==_plan,"Audio Close hides/disables input and retains video and pending plans.");
+                    await Invoke("audio/close");Require(!model.HasAudio&&model.VideoSourcePath is not null&&model.VideoFrame is not null&&!model.ShowKaraoke&&!model.Actions["karaoke/commit"].CanExecute(null)&&model.KaraokePlan!.PreviewText==_plan,"Audio Close hides/disables input and retains video and pending plans.");
                     _media=model.OpenAudioAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 12:
                     if(_media?.IsCompleted!=true){_stage--;return;}Require(await _media,"Audio reopens independently.");Require(model.ShowKaraoke&&model.KaraokePlan!.PreviewText==_plan,"Reopening audio resumes the same timing plan.");

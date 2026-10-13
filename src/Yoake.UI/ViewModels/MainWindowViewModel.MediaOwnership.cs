@@ -164,7 +164,7 @@ public sealed partial class MainWindowViewModel
         state.AudioLoading?.Cancel(); state.Loading?.Cancel(); state.AudioExport?.Cancel();
         // Cancel an uncommitted audio drag without discarding previously pending
         // markers or the text draft. Video gestures and frame state stay intact.
-        FinishAudioTimingGesture(false);
+        FinishKaraokeGesture(false);FinishAudioTimingGesture(false);
         StopPlayback(); ResetAudioAnalysis(state);
         var old = state.Media;
         if (old?.HasAudio != true) { _registry.NotifyStateChanged(); return; }
