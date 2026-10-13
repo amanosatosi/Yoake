@@ -15,6 +15,8 @@ Yoake implementation uses one original snapshot per document's currently active 
 
 The ASS editor explicitly retains selection when focus moves to authoring controls. [Avalonia 12.1.3 `TextBox`](https://raw.githubusercontent.com/AvaloniaUI/Avalonia/12.1.3/src/Avalonia.Controls/TextBox.cs) defaults `ClearSelectionOnLostFocus` to true, which collapsed the selected range before keyboard activation of Insert Original. The packaged assertion exposed this real workflow defect; the input policy and selection retention were fixed, with the assertion retained.
 
+Availability acceptance opens the real Edit menu and checks both the semantic command and `IsEffectivelyEnabled`. [Avalonia 12.1.3 `MenuItem`](https://raw.githubusercontent.com/AvaloniaUI/Avalonia/12.1.3/src/Avalonia.Controls/MenuItem.cs) combines command availability in `IsEnabledCore` and defers command reevaluation while a parent menu is closed; its raw `IsEnabled` property alone is not the visible disabled state. The packaged test retains the no-selection assertion against the actual exposed menu.
+
 Paste Over parses on a background task and captures document, revision, active line, selection and draft values before reading the clipboard or showing the modal field selector. A changed owner/input cannot receive the delayed result. Every combined destination is validated before any mutation. A valid active draft participates in the same transaction as the paste; cancel/None/failure leave it pending. Untouched columns, records, tags and source newline spelling remain exact.
 
 Deliberate differences:

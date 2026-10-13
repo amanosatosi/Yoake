@@ -22,6 +22,7 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
     private PasteOverWindow? _dialog;private AssEvent[] _rows=[];
     private string _original="",_source="";private object? _draft,_times,_samples;private Guid? _document;
     private bool _prepareOriginalInsert;
+    private bool _checkEmptySelection;
     private string _insertSelection="";
     private Task<bool>? _cancelCommand;
     private CancellationTokenSource? _pasteCancellation;
@@ -113,8 +114,17 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
                     Press(Field<Button>("PasteCancel"),Key.Enter);return;
                 case 13:
                     if(window.OwnedWindows.OfType<PasteOverWindow>().Any()){_stage--;return;}
-                    Require(ReferenceEquals(model.Draft,_draft)&&model.Draft!.Text=="pending draft"&&model.ActiveEditor!.Document.Serialize()==_source,"Cancel preserves uncommitted draft and source.");
-                    await Invoke(CommandIds.EditCancel);model.SetSelectedEvents([]);Require(!window.FindControl<MenuItem>("PasteOverMenu")!.IsEnabled,"No selection disables Paste Over.");
+                    if(!_checkEmptySelection)
+                    {
+                        Require(ReferenceEquals(model.Draft,_draft)&&model.Draft!.Text=="pending draft"&&model.ActiveEditor!.Document.Serialize()==_source,"Cancel preserves uncommitted draft and source.");
+                        await Invoke(CommandIds.EditCancel);model.SetSelectedEvents([]);
+                        // MenuItem combines CanExecute with IsEnabledCore and
+                        // evaluates commands only when its parent menu is open.
+                        window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen=true;_checkEmptySelection=true;_stage--;return;
+                    }
+                    var pasteMenu=window.FindControl<MenuItem>("PasteOverMenu")!;
+                    Require(model.SelectedEvents.Count==0&&!model.Actions["edit/line/paste/over"].CanExecute(null)&&pasteMenu.IsEffectivelyVisible&&!pasteMenu.IsEffectivelyEnabled,"No selection disables the actual visible Paste Over menu.");
+                    window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen=false;
                     model.SetSelectedEvents([_rows[0]]);await window.WriteClipboardAsync("Dialogue: malformed");Require(!await model.Registry.InvokeAsync("edit/line/paste/over",new(model.ActiveDocumentId)),"Malformed clipboard is UI-safe failure.");
                     Require(model.ActiveEditor!.Document.Serialize()==_source&&!window.OwnedWindows.OfType<PasteOverWindow>().Any(),"Malformed data cannot open a publication dialog or alter source.");
                     await window.WriteClipboardAsync("cancelled replacement");_pasteCancellation=new CancellationTokenSource();
