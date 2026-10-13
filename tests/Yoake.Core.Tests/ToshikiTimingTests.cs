@@ -52,6 +52,12 @@ public sealed class ToshikiTimingTests
         Assert.Equal(new long[]{200,200},plan.Boundaries);Assert.Equal(0,plan.RecutAt(150));Assert.Equal(-1,plan.RecutAt(250));
         plan.MoveBoundary(0,150);Assert.Equal(new long[]{150,200},plan.Boundaries);Assert.Equal("{\\k5}a{\\k5}b{\\k10}c",plan.PreviewText);
     }
+    [Fact] public void ExistingCentisecondDurationsMayBeAnchoredToMillisecondLineTimes()
+    {
+        var plan=new ToshikiTimingPlan("{\\k10}a{\\ko20}b",253,553);
+        Assert.Equal(new long[]{353},plan.Boundaries);var recovered=ToshikiTimingPlan.Restore(plan.Capture(0));
+        Assert.Equal(253,recovered.Start);Assert.Equal(553,recovered.End);Assert.Equal(plan.PreviewText,recovered.PreviewText);
+    }
     [Theory][InlineData("k")][InlineData("K")][InlineData("kf")][InlineData("ko")][InlineData("kO")]
     public void TagsAndPerGroupChoicePreserveZeroAndEmptyGroups(string tag)
     {

@@ -59,13 +59,15 @@ public sealed class AudioWaveformControl : Control
         if(Model is not {} model)return;
         if(e.PropertyName==nameof(MainWindowViewModel.HasAudio))
         { _analysis?.Cancel(); _detail=null; _spectrum?.Dispose(); _spectrum=null; RequestSpectrum(); }
-        if(_lastDocument!=model.ActiveDocumentId){_lastDocument=model.ActiveDocumentId;_restoringDocument=true;}
+        if(_lastDocument!=model.ActiveDocumentId){ContextMenu?.Close();_lastDocument=model.ActiveDocumentId;_restoringDocument=true;}
+        if(!model.ShowKaraoke||!model.ShowAudio)ContextMenu?.Close();
         if(e.PropertyName==nameof(MainWindowViewModel.IsAudioSpectrum)){_spectrum?.Dispose();_spectrum=null;RequestSpectrum();}
         if(e.PropertyName==nameof(MainWindowViewModel.AudioViewport)){var viewport=model.AudioViewport;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;}
         if(e.PropertyName==nameof(MainWindowViewModel.AudioIntensity))RequestSpectrum();
         if(e.PropertyName==nameof(MainWindowViewModel.CanPlayMedia)){var viewport=model.AudioViewport;_spectrum?.Dispose();_spectrum=null;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;_lastLine=model.SelectedEvent;_restoringDocument=false;RequestSpectrum();}
         if(!_restoringDocument&&_lastLine!=model.SelectedEvent)
         {
+            ContextMenu?.Close();
             _lastLine=model.SelectedEvent;
             if(model.AudioAutoScroll)model.Actions["audio/go_to"].Execute(null);
         }
@@ -155,7 +157,7 @@ public sealed class AudioWaveformControl : Control
             {_drag=true;_karaokeDrag=true;_timingPointer=e.Pointer;e.Pointer.Capture(this);}
             if(point.Properties.IsRightButtonPressed&&e.KeyModifiers.HasFlag(KeyModifiers.Control)&&model.KaraokePlan is not null)
             {
-                ContextMenu?.Close();var menu=new ContextMenu();menu.ItemsSource=MainWindowViewModel.KaraokeTags.Select(tag=>new MenuItem{Header="\\"+tag,Command=model.Actions["karaoke/tag"],CommandParameter=new KaraokeTagRequest(tag,true)}).ToArray();ContextMenu=menu;menu.Open(this);
+                ContextMenu?.Close();var menu=new ContextMenu();menu.ItemsSource=MainWindowViewModel.KaraokeTags.Select(tag=>new MenuItem{Header="Use \\"+tag+" and commit",Command=model.Actions["karaoke/tag/commit"],CommandParameter=new KaraokeTagRequest(tag,true)}).ToArray();ContextMenu=menu;menu.Open(this);
             }
             e.Handled=true;return;
         }

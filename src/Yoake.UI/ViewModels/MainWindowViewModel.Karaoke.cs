@@ -69,8 +69,9 @@ public sealed partial class MainWindowViewModel
     {
         if (!IsKaraokeMode || !KaraokeMatchesDraft || KaraokePlan is not {} plan || SelectedEvent is not {} line) return values;
         var merged = values is null ? line.FieldNames.ToDictionary(n => n, line.Get, StringComparer.OrdinalIgnoreCase) : new Dictionary<string, string>(values, StringComparer.OrdinalIgnoreCase);
-        merged["Text"] = plan.PreviewText; merged["Start"] = AssTime.Format(plan.Start); merged["End"] = AssTime.Format(plan.End); return merged;
+        merged["Text"] = plan.PreviewText; merged["Start"] = KaraokeTime(plan.Start,Draft?.Start??line.Start); merged["End"] = KaraokeTime(plan.End,Draft?.End??line.End); return merged;
     }
+    private static string KaraokeTime(long milliseconds,string original)=>AssTime.TryParse(original,out var parsed)&&parsed==milliseconds?original:AssTime.Format(milliseconds);
     private void ReconcileKaraoke(DocumentState state)
     {
         if (_publishingKaraoke) return;
@@ -106,7 +107,7 @@ public sealed partial class MainWindowViewModel
         if (KaraokePlan is not {} plan || SelectedEvent is not {} line || ActiveEditor is not {} editor || !KaraokeMatchesDraft) throw new ArgumentException("The text changed after timing began. Cancel the slot plan and cut the new text before committing.");
         if (!ValidAudioTimingDraft()) throw new ArgumentException("Correct invalid draft values before committing karaoke. Nothing was changed.");
         var values = new Dictionary<string, string>(Draft?.Values ?? line.FieldNames.ToDictionary(n => n, line.Get), StringComparer.OrdinalIgnoreCase);
-        values["Text"] = plan.PreviewText; values["Start"] = AssTime.Format(plan.Start); values["End"] = AssTime.Format(plan.End);
+        values["Text"] = plan.PreviewText; values["Start"] = KaraokeTime(plan.Start,Draft?.Start??line.Start); values["End"] = KaraokeTime(plan.End,Draft?.End??line.End);
         _publishingKaraoke = true;
         try { editor.CommitKaraoke(line, values, token); AudioTiming?.Clear(line); KaraokeState!.Karaoke.Remove(line); ReloadDraft(); EnsureKaraoke(); }
         finally { _publishingKaraoke = false; }
@@ -197,6 +198,18 @@ public sealed partial class MainWindowViewModel
         Register("karaoke/join", "Join timing groups", (i, _) => { if (i.Parameter is not int index) throw new ArgumentException("Choose a timing boundary."); KaraokePlan!.Join(index); KaraokeChanged(); }, () => Available() && KaraokeMatchesDraft);
         Register("karaoke/select", "Select timing group", (i, _) => { if (i.Parameter is int index) KaraokePlan!.Select(index); NotifyKaraoke(); }, Available);
         Register("karaoke/tag", "Karaoke tag type", (i, _) => { if (i.Parameter is not KaraokeTagRequest p) throw new ArgumentException("Choose a karaoke tag type."); KaraokePlan!.SetTag(p.Tag, p.CurrentOnly); KaraokeChanged(); }, () => Available() && KaraokeMatchesDraft);
+        Register("karaoke/tag/commit", "Use tag and commit", (i, token) =>
+        {
+            if(i.Parameter is not KaraokeTagRequest request)throw new ArgumentException("Choose a karaoke tag type.");
+            var before=KaraokePlan!.Capture(0);
+            try{KaraokePlan.SetTag(request.Tag,true);KaraokeChanged();CommitKaraoke(token);}
+            catch
+            {
+                ReplaceKaraoke(ToshikiTimingPlan.Restore(before));
+                if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||KaraokeState?.RecoveredUnsaved==true||KaraokeState?.Karaoke.Values.Any(e=>e.Plan.Changed)==true;
+                NotifyKaraoke();throw;
+            }
+        },()=>Available()&&KaraokeMatchesDraft&&ValidAudioTimingDraft());
         Register("karaoke/pointer/begin", "Place or audition a boundary", (i, _) => { if (i.Parameter is KaraokePointerRequest p && p.Sensitivity >= 0) BeginKaraokePointerCore(p); }, () => Available() && KaraokeMatchesDraft);
         Register("karaoke/pointer/move", "Drag karaoke boundary", (i, _) => { try { if (i.Parameter is long ms) MoveKaraokePointerCore(ms); } catch { FinishKaraokeGesture(false); throw; } }, () => _karaokeGesture is not null, gesture: true);
         Register("karaoke/pointer/end", "Finish karaoke boundary", (_, _) => FinishKaraokeGesture(true), () => _karaokeGesture is not null, gesture: true);

@@ -33,6 +33,7 @@ public sealed partial class MainWindowViewModel
     private void SelectViewMode(WorkspaceViewMode mode)
     {
         if (ViewMode == mode) return;
+        if(mode==WorkspaceViewMode.Video)FinishKaraokeGesture(false);
         // Presentation only: do not commit drafts, seek, or synchronize sessions.
         _settings = _settings with { ViewMode = mode };
         foreach (var name in new[] { nameof(ViewMode), nameof(ShowAudio), nameof(ShowVideo), nameof(ShowEmbeddedVideo),

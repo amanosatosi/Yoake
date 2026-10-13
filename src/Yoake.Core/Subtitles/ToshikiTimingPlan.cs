@@ -253,7 +253,7 @@ public sealed class ToshikiTimingPlan
         var plan = new ToshikiTimingPlan(recovery.Source, recovery.Start, recovery.End, false);
         var safe = plan.SafeCuts().ToHashSet();
         if (recovery.Cuts[0] != 0 || recovery.Cuts.Any(c => !safe.Contains(c)) || !recovery.Cuts.SequenceEqual(recovery.Cuts.Order()) ||
-            recovery.Boundaries.Length >= recovery.Cuts.Length || recovery.Boundaries.Any(b => b < recovery.Start || b > recovery.End || b % 10 != 0) || !recovery.Boundaries.SequenceEqual(recovery.Boundaries.Order()) ||
+            recovery.Boundaries.Length >= recovery.Cuts.Length || recovery.Boundaries.Any(b => b < recovery.Start || b > recovery.End) || !recovery.Boundaries.SequenceEqual(recovery.Boundaries.Order()) ||
             recovery.Current < 0 || recovery.Current >= recovery.Cuts.Length || recovery.Recuts.Any(i => i < 0 || i >= recovery.Boundaries.Length) || recovery.Tags.Any(t => t is not ("k" or "K" or "kf" or "ko" or "kO")))
             throw new InvalidDataException("Invalid karaoke recovery boundaries.");
         plan._cuts.Clear(); plan._cuts.AddRange(recovery.Cuts); plan._tags.Clear(); plan._tags.AddRange(recovery.Tags);

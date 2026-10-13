@@ -69,7 +69,7 @@ public sealed class KaraokeTextCutsControl : Control
     public KaraokeTextCutsControl() { Focusable = true; Height = 22; }
     private FormattedText Label(string text, IBrush brush) => new(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, Typeface.Default, 12, brush);
     protected override Size MeasureOverride(Size availableSize) => new(Math.Max(80, MeasureText()), 22);
-    private double MeasureText() => Model?.KaraokePlan is {} plan ? plan.Slots.Sum(s => Math.Max(18, Label(s.Text.Length == 0 ? "∅" : s.Text, Brushes.White).Width + 12)) + 8 : 80;
+    private double MeasureText() => Model?.KaraokePlan is {} plan ? plan.Slots.Sum(s => s.Text.Length==0?24:Math.Max(18,Label(s.Text,Brushes.White).Width+12)) + 8 : 80;
     public override void Render(DrawingContext context)
     {
         base.Render(context); _positions.Clear(); _boundaries.Clear(); _groups.Clear();
@@ -90,7 +90,7 @@ public sealed class KaraokeTextCutsControl : Control
                     _positions.Add((begin + Label(plan.Text[slot.TextStart..cut], brush).Width, cut));
                 x = begin + Label(slot.Text, brush).Width;
             }
-            x += 6; var area = new Rect(start, 0, Math.Max(18, x - start), 22); _groups.Add((area, slot.Index));
+            x=Math.Max(start+18,x+6);var area = new Rect(start, 0, x - start, 22); _groups.Add((area, slot.Index));
             if (slot.Current) context.DrawRectangle(null, new Pen(Brushes.Gold, 1), area);
             if (slot.Index > 0) context.DrawLine(new Pen(Brushes.SlateGray, 1), new(start, 0), new(start, 22));
         }

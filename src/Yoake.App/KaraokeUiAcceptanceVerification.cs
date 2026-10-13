@@ -24,7 +24,7 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(120)};
     private bool _ready,_ticking,_tagMenuOpened;private int _stage;private Task<bool>? _media;
-    private SubtitleEditor? _editor;private string _source="",_committed="",_plan="";private Guid _document;
+    private SubtitleEditor? _editor;private string _source="",_committed="",_rubyCommitted="",_plan="";private Guid _document;
     private object? _waveform,_times,_keyframes;private byte[]? _pixels;private Pointer? _pointer;
     private string Script=>Path.Combine(options.ProfileDirectory!,"karaoke.ass");
     private AudioWaveformControl Audio=>window.FindControl<AudioWaveformControl>("AudioDisplay")!;
@@ -61,6 +61,7 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Drag(.4,.5,true);Require(model.KaraokePlan!.Boundaries.SequenceEqual(new long[]{500}),"Pointer places and drags an explicit boundary.");
                     Drag(.5,.65,false);Require(model.KaraokePlan.Boundaries.SequenceEqual(new long[]{500}),"Capture loss restores the pending timing checkpoint.");
                     Drag(.5,.7,false,true);Require(!model.HasGesture&&model.KaraokePlan.Boundaries[0]==500,"Actual Escape cancels and releases pointer capture.");
+                    Drag(.5,.75,false,viewMode:CommandIds.ViewVideo);Require(model.KaraokePlan.Boundaries[0]==500,"Hiding Audio rolls back its captured karaoke drag.");await Invoke(CommandIds.ViewAudioVideo);
                     Drag(1.2,1.2,true);Require(model.KaraokePlan.Boundaries.SequenceEqual(new long[]{500,1200}),"Next pending slot receives only an explicit boundary.");return;
                 case 5:
                     var cursor=model.KaraokePlan!.Current;Click(Audio,new((.2-Audio.ViewportStart)/Audio.VisibleSeconds*Audio.Bounds.Width,Audio.Bounds.Height/2));
@@ -92,14 +93,15 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
                         _tagMenuOpened=true;_stage--;return;
                     }
                     var menu=Audio.ContextMenu!;Require(menu.IsOpen,"Ctrl+right opens the real per-group tag menu.");
-                    Press(menu.Items.OfType<MenuItem>().Single(m=>m.Header as string=="\\ko"),Key.Enter);
-                    Require(model.KaraokePlan.Slots[0].Tag=="ko"&&model.KaraokePlan.Slots[1].Tag=="k","Real context-menu tag choice changes only the selected group.");
+                    Press(menu.Items.OfType<MenuItem>().Single(m=>m.Header as string=="Use \\ko and commit"),Key.Enter);
+                    Require(model.KaraokePlan.Slots[0].Tag=="ko"&&model.KaraokePlan.Slots[1].Tag=="k"&&model.SelectedEvent!.Text.Contains("\\ko30"),"Real context-menu tag choice commits and changes only the selected group's type.");
+                    _rubyCommitted=_editor!.Document.Serialize();
                     var bar=window.FindControl<KaraokeSlotsControl>("KaraokeSlots")!;Press(bar.GetVisualDescendants().OfType<Button>().Single(b=>b.Name=="KaraokeRest"),Key.Enter);
                     Require(model.KaraokePlan.Count==4&&model.KaraokePlan.Slots.Any(s=>s.Text.Length==0),"Real Rest button inserts a timing slot without corrupting ruby.");
-                    Press(bar.GetVisualDescendants().OfType<Button>().Single(b=>b.Name=="KaraokeCancel"),Key.Enter);Require(model.KaraokePlan.Count==3&&model.KaraokePlan.Boundaries.Count==0,"Actual Cancel restores slot planning without modifying source.");
+                    Press(bar.GetVisualDescendants().OfType<Button>().Single(b=>b.Name=="KaraokeCancel"),Key.Enter);Require(model.KaraokePlan.Count==3&&model.KaraokePlan.Boundaries.SequenceEqual(new long[]{2300,3000})&&_editor.Document.Serialize()==_rubyCommitted,"Actual Cancel restores the committed source and exact prior boundaries.");
                     await Invoke("audio/view/spectrum");return;
                 case 10:
-                    if(!Audio.SpectrumTileReady){_stage--;return;}Drag(2.3,2.3,true);Require(model.KaraokePlan!.Boundaries[0]==2300,"Real spectrogram uses the same timing input.");
+                    if(!Audio.SpectrumTileReady){_stage--;return;}Drag(2.3,2.45,true);Require(model.KaraokePlan!.Boundaries[0]==2450,"Real spectrogram uses the same timing input.");
                     _plan=model.KaraokePlan.PreviewText;
                     Require(await model.Registry.InvokeAsync(CommandIds.SubtitleNew,new()),"Open another actual document tab.");Require(!model.IsKaraokeMode&&model.KaraokeSlots.Length==0,"New tab has independent karaoke state.");
                     await Invoke(CommandIds.WorkspaceActivateTab,_document);Require(model.KaraokePlan!.PreviewText==_plan&&model.IsKaraokeMode,"Returning to the tab retains pending explicit slots and provider.");
@@ -115,7 +117,7 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
                     _editor.Undo.Undo();Require(model.Actions["karaoke/commit"].CanExecute(null),"Restoring the captured source resolves the timing conflict.");
                     model.Draft!.MarginV="unfinished";await Invoke("settings/autosave",new AutosaveOptions(true,1,null));return;
                 case 13:
-                    var entries=await model.ListRecoveryAsync();var entry=entries.FirstOrDefault(e=>e.Metadata?.OriginalPath==Script&&e.Metadata.Karaoke?.Any(p=>p.Row==1&&p.Boundaries.SequenceEqual(new long[]{2300}))==true&&e.Metadata.Draft?.Values.GetValueOrDefault("MarginV")=="unfinished");
+                    var entries=await model.ListRecoveryAsync();var entry=entries.FirstOrDefault(e=>e.Metadata?.OriginalPath==Script&&e.Metadata.Karaoke?.Any(p=>p.Row==1&&p.Boundaries.SequenceEqual(new long[]{2450,3000}))==true&&e.Metadata.Draft?.Values.GetValueOrDefault("MarginV")=="unfinished");
                     if(entry is null){_stage--;return;}
                     Require(File.ReadAllText(Script)==_source,"Original file was not overwritten by uncommitted karaoke or autosave.");
                     _timer.Stop();options.FinishVerification("READY: real Toshiki native menu, checked/enabled controls, source-derived kana/ruby slots, real text splitter/rest/cancel, waveform/spectrum click/drag/capture loss/Escape, keyboard adjustment/commit/undo/redo, live Mangetsu pixels, audition through the central clock, IME/invalid draft isolation, document tabs and Audio Close/reopen; production autosave holds explicit pending boundaries plus raw invalid draft.\n");return;
@@ -133,13 +135,13 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
             case 2:
                 var recovery=window.OwnedWindows.OfType<RecoveryWindow>().SingleOrDefault();if(recovery is null){_stage--;return;}
                 var versions=recovery.FindControl<ListBox>("RecoveryVersions")!;var rows=versions.Items.OfType<RecoveryEntry>().ToArray();
-                var selected=rows.FirstOrDefault(e=>e.Metadata?.Karaoke?.Any(k=>k.Row==1&&k.Boundaries.SequenceEqual(new long[]{2300}))==true);
+                var selected=rows.FirstOrDefault(e=>e.Metadata?.Karaoke?.Any(k=>k.Row==1&&k.Boundaries.SequenceEqual(new long[]{2450,3000}))==true);
                 if(selected is null){var groups=recovery.FindControl<ListBox>("RecoveryFiles")!;groups.SelectedIndex=0;_stage--;return;}
                 versions.SelectedItem=selected;Press(recovery.FindControl<Button>("RecoveryOpen")!,Key.Enter);return;
             case 3:
                 if(model.KaraokePlan is null){_stage--;return;}
                 Require(model.ActiveSubtitlePath is null&&model.RecoveryProvenance==Script&&model.IsKaraokeMode&&!model.ShowKaraoke,"Restart recovery creates an unsaved owned tab without native providers.");
-                Require(model.Draft!.MarginV=="unfinished"&&model.KaraokePlan.Text=="やまい"&&model.KaraokePlan.Boundaries.SequenceEqual(new long[]{2300}),"Raw invalid draft and exact uncommitted reading timing survive forced termination.");
+                Require(model.Draft!.MarginV=="unfinished"&&model.KaraokePlan.Text=="やまい"&&model.KaraokePlan.Boundaries.SequenceEqual(new long[]{2450,3000}),"Raw invalid draft and exact uncommitted reading timing survive forced termination.");
                 Require(model.ActiveEditor!.Document.Serialize().Contains("[X-Opaque]")&&model.Events[2].Text.Contains("\\distort(1,2,3,4,5,6,7,8)"),"Unknown source and Mangetsu template remain lossless.");
                 Require(File.ReadAllText(Script).Contains("さまよう")&&!File.ReadAllText(Script).Contains("\\kf85"),"Original subtitle is untouched across both processes.");
                 Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"No native binding/framework failures.");
@@ -147,12 +149,13 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
         }
     }
     private async Task Invoke(string id,object? value=null)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId),value),"Native preparation: "+id);
-    private void Drag(double from,double to,bool release,bool escape=false)
+    private void Drag(double from,double to,bool release,bool escape=false,string? viewMode=null)
     {
         var control=Audio;var local=new Point((from-control.ViewportStart)/control.VisibleSeconds*control.Bounds.Width,control.Bounds.Height/2);var point=control.TranslatePoint(local,window)!.Value;var end=point+new Vector((to-from)/control.VisibleSeconds*control.Bounds.Width,0);
         _pointer=new Pointer(937,PointerType.Mouse,true);control.RaiseEvent(new PointerPressedEventArgs(control,_pointer,window,point,0,new(RawInputModifiers.LeftMouseButton,PointerUpdateKind.LeftButtonPressed),KeyModifiers.None));Require(model.HasGesture,"Real audio pointer acquires a karaoke checkpoint.");
         control.RaiseEvent(new PointerEventArgs(InputElement.PointerMovedEvent,control,_pointer,window,end,0,new(RawInputModifiers.LeftMouseButton,PointerUpdateKind.Other),KeyModifiers.None));
-        if(escape)Press(control,Key.Escape);
+        if(viewMode is not null)Require(model.Registry.InvokeAsync(viewMode,new(model.ActiveDocumentId)).GetAwaiter().GetResult(),"Real view command cancels hidden karaoke input.");
+        else if(escape)Press(control,Key.Escape);
         else if(release)control.RaiseEvent(new PointerReleasedEventArgs(control,_pointer,window,end,0,new(RawInputModifiers.None,PointerUpdateKind.LeftButtonReleased),KeyModifiers.None,MouseButton.Left));
         else _pointer.Capture(null);
         Require(!model.HasGesture&&_pointer.Captured is null,"Released/lost/canceled pointer cannot leave a timing drag stuck.");
