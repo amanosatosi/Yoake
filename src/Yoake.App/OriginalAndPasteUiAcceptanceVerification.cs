@@ -23,6 +23,8 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
     private string _original="",_source="";private object? _draft,_times,_samples;private Guid? _document;
     private bool _prepareOriginalInsert;
     private string _insertSelection="";
+    private Task<bool>? _cancelCommand;
+    private CancellationTokenSource? _pasteCancellation;
     private TextBox Text=>window.FindControl<TextBox>("SubtitleText")!;
     private T Field<T>(string name)where T:Control=>_dialog!.FindControl<T>(name)??throw new InvalidOperationException("Missing paste control: "+name);
     public void Start(){_timer.Tick+=Tick;_timer.Start();}
@@ -115,9 +117,18 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
                     await Invoke(CommandIds.EditCancel);model.SetSelectedEvents([]);Require(!window.FindControl<MenuItem>("PasteOverMenu")!.IsEnabled,"No selection disables Paste Over.");
                     model.SetSelectedEvents([_rows[0]]);await window.WriteClipboardAsync("Dialogue: malformed");Require(!await model.Registry.InvokeAsync("edit/line/paste/over",new(model.ActiveDocumentId)),"Malformed clipboard is UI-safe failure.");
                     Require(model.ActiveEditor!.Document.Serialize()==_source&&!window.OwnedWindows.OfType<PasteOverWindow>().Any(),"Malformed data cannot open a publication dialog or alter source.");
+                    await window.WriteClipboardAsync("cancelled replacement");_pasteCancellation=new CancellationTokenSource();
+                    _cancelCommand=model.Registry.InvokeAsync("edit/line/paste/over",new(model.ActiveDocumentId),cancellationToken:_pasteCancellation.Token).AsTask();return;
+                case 14:
+                    _dialog=window.OwnedWindows.OfType<PasteOverWindow>().SingleOrDefault();if(_dialog is null){_stage--;return;}
+                    Require(_dialog.IsVisible,"Cancellation must operate on the real modal field dialog.");_pasteCancellation!.Cancel();return;
+                case 15:
+                    if(!_cancelCommand!.IsCompleted||window.OwnedWindows.OfType<PasteOverWindow>().Any()){_stage--;return;}
+                    Require(!await _cancelCommand&&model.ActiveEditor!.Document.Serialize()==_source&&model.OriginalText==_original,"Scoped cancellation closes the native dialog without publishing or changing Original.");
+                    _pasteCancellation!.Dispose();
                     await Invoke(CommandIds.SubtitleNew);await Invoke(CommandIds.GridInsertAfter);Require(model.OriginalText=="","New document owns its own Original.");await Invoke(CommandIds.WorkspaceActivateTab,_document);
                     Require(model.OriginalText==_original&&ReferenceEquals(model.FrameTimes,_times),"Tab switching restores original owner and media.");
-                    _timer.Stop();options.FinishVerification("PASS: separate native Original/Paste Over acceptance; real toggle, read-only snapshot, insert/revert/clear buttons, stable undo/redo/validation lifecycle; actual native dialog/menu/keyboard/clipboard; all field presets; custom Format Unicode and comments; single/multiple target rules; one-step exact-source undo; persisted fields; cancellation/draft retention; IME isolation; empty selection and malformed clipboard failure; independent media and document switching.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    _timer.Stop();options.FinishVerification("PASS: separate native Original/Paste Over acceptance; real toggle, read-only snapshot, insert/revert/clear buttons, stable undo/redo/validation lifecycle; actual native dialog/menu/keyboard/clipboard; all field presets; custom Format Unicode and comments; single/multiple target rules; one-step exact-source undo; persisted fields; button and scoped native-dialog cancellation/draft retention; IME isolation; empty selection and malformed clipboard failure; independent media and document switching.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error){_timer.Stop();Program.Fatal("Packaged Original/Paste Over acceptance at stage "+(_stage-1),error);desktop.Shutdown(1);}
