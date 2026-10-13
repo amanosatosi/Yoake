@@ -25,7 +25,7 @@ public sealed partial class MainWindowViewModel
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
         bool HasLine()=>SelectedEvent is not null&&!HasGesture;
-        R("edit/show_original","Show Original",_=>
+        R("edit/show_original","Show Original",ignoredToken=>
         {
             _settings=_settings with{ShowOriginal=!ShowOriginal};
             // The view changes immediately even if persistence fails. Report
@@ -34,8 +34,8 @@ public sealed partial class MainWindowViewModel
             OnPropertyChanged(nameof(ShowOriginal));_registry.NotifyStateChanged();
             _settingsStore.Save(_settings);return ValueTask.CompletedTask;
         },()=>true,()=>ShowOriginal);
-        R("edit/revert","Revert to original",_=>{FormatText("Revert to original",(_,_,_,_)=>new(OriginalText,0,OriginalText.Length));return ValueTask.CompletedTask;},HasLine);
-        R("edit/insert_original","Insert Original",_=>
+        R("edit/revert","Revert to original",ignoredToken=>{FormatText("Revert to original",(_,_,_,_)=>new(OriginalText,0,OriginalText.Length));return ValueTask.CompletedTask;},HasLine);
+        R("edit/insert_original","Insert Original",ignoredToken=>
         {
             FormatText("Insert original",(text,start,end,_)=>
             {
