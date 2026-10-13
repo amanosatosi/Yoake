@@ -434,13 +434,13 @@
           <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
             <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="5,0" FontSize="11" ToolTip.Tip="Reset to line style at caret / selection" />
           </StackPanel>
+          <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" Height="24" MinHeight="24" FontSize="11" Margin="8,0,0,4" />
         </WrapPanel>
 
-        <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto" RowSpacing="3">
-          <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="36" MaxHeight="76" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
+        <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto">
+          <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="36" MaxHeight="76" Margin="0,0,0,3" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
           <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS source · Configure keyboard shortcuts in Options" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
-          <WrapPanel Grid.Row="2">
-            <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" MinHeight="24" FontSize="11" Margin="0,0,8,0" />
+          <WrapPanel Grid.Row="2" IsVisible="{Binding ShowOriginal}" Margin="0,3,0,0">
             <StackPanel IsVisible="{Binding ShowOriginal}" Orientation="Horizontal" Spacing="3">
               <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="11" />
               <Button Name="OriginalClear" Content="Clear" Command="{Binding Actions[edit/clear]}" Padding="5,0" FontSize="11" />

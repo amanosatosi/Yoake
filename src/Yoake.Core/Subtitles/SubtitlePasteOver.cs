@@ -21,13 +21,16 @@ public static class SubtitlePasteClipboard
         var rows=text.Split(['\r','\n'],StringSplitOptions.RemoveEmptyEntries);
         if(rows.Length>100000)throw new ArgumentException("Clipboard contains too many lines.");
         if(rows.Length==0)return [];
-        var structured=rows.Any(r=>r.TrimStart().StartsWith("Dialogue:",StringComparison.OrdinalIgnoreCase)||r.TrimStart().StartsWith("Comment:",StringComparison.OrdinalIgnoreCase)||r.TrimStart().StartsWith("Format:",StringComparison.OrdinalIgnoreCase)||r.TrimStart().StartsWith('['));
+        var structured=rows.Any(r=>r.TrimStart().StartsWith("Dialogue:",StringComparison.OrdinalIgnoreCase)||r.TrimStart().StartsWith("Comment:",StringComparison.OrdinalIgnoreCase)||r.TrimStart().StartsWith("Format:",StringComparison.OrdinalIgnoreCase)||r.Trim().Equals("[Events]",StringComparison.OrdinalIgnoreCase)||r.Trim().Equals("[Script Info]",StringComparison.OrdinalIgnoreCase));
         if(!structured)
         {
             var defaults=AssDocument.CreateEmpty();
             return rows.Select(r=>{var line=defaults.NewEvent();line.Start=line.End="0:00:00.00";line.Text=r.Trim();return line;}).ToArray();
         }
-        var source=rows.Any(r=>r.TrimStart().StartsWith('['))?text:"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+text;
+        var fullDocument=rows.Any(r=>r.Trim().Equals("[Events]",StringComparison.OrdinalIgnoreCase)||r.Trim().Equals("[Script Info]",StringComparison.OrdinalIgnoreCase));
+        if(!fullDocument&&rows.Any(r=>!r.TrimStart().StartsWith(';')&&!r.Contains(':')))
+            throw new ArgumentException("Clipboard mixes subtitle records and unformatted text.");
+        var source=fullDocument?text:"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+text;
         var document=AssDocument.Parse(source);
         if(document.Events.Count==0)throw new ArgumentException("Clipboard contains no subtitle dialogue records.");
         foreach(var line in document.Events)

@@ -73,4 +73,10 @@ public sealed partial class EditorWorkflowTests
         await Command("edit/line/paste/over");Assert.Same(draft,_model.Draft);Assert.Equal("keep this pending draft",draft.Text);Assert.Equal(source,active.Text);
         Assert.Equal(new[]{"first","second"},_model.Events.Where(l=>!ReferenceEquals(l,active)).Select(l=>l.Text));
     }
+    [Fact] public void OriginalAndPastePreferencesSurviveUnrelatedMalformedSettings()
+    {
+        var path=Path.Combine(_root,"damaged-settings.json");File.WriteAllText(path,"""{"showOriginal":true,"pasteOverFields":1024,"theme":{},"future":{"keep":true}}""");
+        var store=new SettingsStore(path);var settings=store.Load();Assert.True(settings.ShowOriginal);Assert.Equal(PasteOverFields.Text,settings.PasteOverFields);Assert.True(settings.FutureSettings!.ContainsKey("future"));
+        store.Save(settings);Assert.True(store.Load().ShowOriginal);Assert.Equal(PasteOverFields.Text,store.Load().PasteOverFields);
+    }
 }

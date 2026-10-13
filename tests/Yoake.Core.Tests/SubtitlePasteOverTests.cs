@@ -43,7 +43,12 @@ public sealed class SubtitlePasteOverTests
     [InlineData("Dialogue: broken")]
     [InlineData("Format: Start,End,Text\nDialogue: invalid,0:00:01.00,hello")]
     [InlineData("[Events]\nFormat: Text,Text\nDialogue: a,b")]
+    [InlineData("Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,hello\nplain second")]
     public void MalformedStructuredClipboardIsRejected(string text)=>Assert.Throws<ArgumentException>(()=>SubtitlePasteClipboard.Parse(text));
+    [Fact] public void BracketedLyricsRemainPlainText()
+    {
+        var lines=SubtitlePasteClipboard.Parse("[Chorus]\r\n日本語");Assert.Equal(new[]{"[Chorus]","日本語"},lines.Select(l=>l.Text));
+    }
     [Fact] public void InvalidLaterResultRollsBackBeforeFirstRowAndKeepsDraft()
     {
         var editor=new SubtitleEditor(AssDocument.Parse(Source));var rows=editor.Document.Events.ToArray();
