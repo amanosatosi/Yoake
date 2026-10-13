@@ -2579,12 +2579,21 @@
     },
     {
       "id": "subtitle/open/autosave",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open a previous version of a file which was autosaved by Aegisub",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "subtitle/open/autosave",
+      "status": "already complete",
+      "backend": "Document-owned immutable ASS/encoding snapshots and separate raw valid/invalid draft metadata; production background timer, atomic checked recovery bundles, publication fencing, bounded history and separate unsaved recovery tabs.",
+      "exposure": [
+        "CommandRegistry",
+        "MainWindow File menu",
+        "Options Autosave / Recovery page",
+        "Native recovery manager"
+      ],
+      "tests": [
+        "SubtitleRecoveryTests",
+        "RecoveryWorkflowTests",
+        "RecoveryUiAcceptanceVerification"
+      ],
+      "notes": "Stage 2A verified at 6e163f3ec55960c4dc3600020ce3b56c5c786eed. Full branch run 38430992706 and PR run 38430999731 passed 504 Core/126 UI/34 Automation tests (664 total, no skips), Windows NativeAOT, all startup profiles, all packaged acceptance and native providers. Two independent native processes prove real production timer publication, forced termination, actual File menu/version-list recovery, same-basename and never-saved document identities, UTF-16 BOM, styles/metadata/raw attachments, multiline uncommitted text, invalid timing/margin and IME preedit isolation, with originals and already-open invalid draft retained. See docs/architecture/subtitle-recovery.md and docs/compatibility/aegisub-recovery-attachments-reference.md. Hardware IME, filesystem contention/disk-full scenarios and high-DPI QA remain manual.",
       "yoake_default_hotkeys": {}
     },
     {
