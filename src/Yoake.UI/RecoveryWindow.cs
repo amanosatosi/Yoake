@@ -17,6 +17,7 @@ public sealed class RecoveryWindow : Window
     private readonly Button _discard = new(){Name="RecoveryDiscard",Content="Discard version…"};
     private RecoveryEntry[] _entries=[];
     private bool _busy;
+    private string? _operationError;
     public RecoveryWindow(MainWindowViewModel model)
     {
         _model=model;Name="RecoveryDialog";Title="Recover Subtitles";Width=850;Height=450;MinWidth=650;MinHeight=340;
@@ -31,7 +32,7 @@ public sealed class RecoveryWindow : Window
         buttons.Children.Add(_discard);buttons.Children.Add(_open);
         var cancel=new Button{Name="RecoveryCancel",Content="Cancel",IsCancel=true};buttons.Children.Add(cancel);cancel.Click+=(_,_)=>Close();
         foreach(var control in new Control[]{_files,_versions,_status,_open,_discard,cancel})names.Register(control.Name!,control);names.Complete();
-        _files.SelectionChanged+=(_,_)=>SelectFile();_versions.SelectionChanged+=(_,_)=>UpdateSelection();
+        _files.SelectionChanged+=(_,_)=>SelectFile();_versions.SelectionChanged+=(_,_)=>{_operationError=null;UpdateSelection();};
         _open.Click+=async(_,_)=>await ActAsync("recovery/open-version");
         _discard.Click+=async(_,_)=>await ActAsync("recovery/discard-version");
         Opened+=async(_,_)=>await LoadAsync();Closed+=(_,_)=>{_loading.Cancel();_loading.Dispose();};UpdateSelection();
@@ -55,15 +56,16 @@ public sealed class RecoveryWindow : Window
     {
         var entry=_versions.SelectedItem as RecoveryEntry;_open.IsEnabled=!_busy&&entry?.CanRecover==true;_discard.IsEnabled=!_busy&&entry is not null;
         if(entry is {} selected)_status.Text=selected.Metadata is {} m?$"{m.OriginalPath??"Never saved"}\nDocument {m.DocumentId} · {selected.SavedFileComparison}\n{selected.Error??"Validated committed ASS and separate editor draft."}":selected.Error;
+        if(_operationError is {} error)_status.Text=error;
     }
     private async Task ActAsync(string command)
     {
-        if(_busy||_versions.SelectedItem is not RecoveryEntry entry)return;_busy=true;UpdateSelection();
+        if(_busy||_versions.SelectedItem is not RecoveryEntry entry)return;_operationError=null;_busy=true;UpdateSelection();
         try
         {
             var success=await _model.Registry.InvokeAsync(command,new(),entry.Path,_loading.Token);
             if(success&&command=="recovery/open-version"){Close();return;}
-            if(success)await LoadAsync();else _status.Text=_model.SubtitleStatus;
+            if(success)await LoadAsync();else _operationError=_model.SubtitleStatus;
         }
         finally{_busy=false;UpdateSelection();}
     }

@@ -46,10 +46,10 @@ internal sealed class RecoveryUiAcceptanceVerification(IClassicDesktopStyleAppli
                 Require(window.TryGetPlatformHandle() is {Handle:not 0},"Real native capture window.");
                 Directory.CreateDirectory(Path.GetDirectoryName(PathA)!);Directory.CreateDirectory(Path.GetDirectoryName(PathB)!);
                 File.WriteAllText(PathA,Source,new UnicodeEncoding(false,true));File.WriteAllText(PathB,Source,new UTF8Encoding(true));
-                Require(model.OpenSubtitle(PathA),"Open first original.");Text.Text="committed translation 日本語";return;
+                Require(model.OpenSubtitle(PathA),"Open first original.");Text.SetCurrentValue(TextBox.TextProperty,"committed translation 日本語");return;
             case 1:
                 Require(model.Draft!.Text=="committed translation 日本語","Real TextBox binding.");await Invoke(CommandIds.EditCommit);
-                await Invoke(CommandIds.SubtitleNew);await Invoke(CommandIds.GridInsertAfter);Text.Text="never saved";return;
+                await Invoke(CommandIds.SubtitleNew);await Invoke(CommandIds.GridInsertAfter);Text.SetCurrentValue(TextBox.TextProperty,"never saved");return;
             case 2:
                 await Invoke(CommandIds.EditCommit);Require(model.OpenSubtitle(PathB),"Open same basename in another directory.");
                 window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen=true;Press(window.FindControl<MenuItem>("OptionsMenu")!,Key.Enter);return;
@@ -62,10 +62,10 @@ internal sealed class RecoveryUiAcceptanceVerification(IClassicDesktopStyleAppli
                 Press(_options.FindControl<Button>("AutosaveApply")!,Key.Enter);return;
             case 5:
                 Require(model.AutosaveEnabled&&model.AutosaveIntervalSeconds==1,"Actual Options settings command.");
-                _options!.Close();Text.Text="pending\r\n日本語 é";window.FindControl<TextBox>("LineStart")!.Text="unfinished";return;
+                _options!.Close();Text.SetCurrentValue(TextBox.TextProperty,"pending\r\n日本語 é");window.FindControl<TextBox>("LineStart")!.SetCurrentValue(TextBox.TextProperty,"unfinished");return;
             case 6:
                 var margin=window.FindControl<NumericUpDown>("MarginLeft")!;
-                var input=margin.GetVisualDescendants().OfType<TextBox>().Single();input.Focus();input.Text="-";return;
+                var input=margin.GetVisualDescendants().OfType<TextBox>().Single();input.Focus();input.SetCurrentValue(TextBox.TextProperty,"-");return;
             case 7:
                 Require(model.Draft!.Text=="pending\r\n日本語 é"&&model.Draft.Start=="unfinished"&&model.Draft.MarginL=="-","Invalid timing/margin and raw multiline input reach the draft.");
                 Text.GetVisualDescendants().OfType<TextPresenter>().Single().PreeditText="IME_UNCOMMITTED";
@@ -89,7 +89,7 @@ internal sealed class RecoveryUiAcceptanceVerification(IClassicDesktopStyleAppli
                 _entries=(await model.ListRecoveryAsync()).Where(e=>e.CanRecover).GroupBy(e=>e.Metadata!.DocumentId).Select(g=>g.OrderByDescending(e=>e.Metadata!.Sequence).First()).ToArray();
                 Require(_entries.Length==3,"Independent process finds three originating documents.");
                 Require(model.OpenSubtitle(PathA),"Keep original open while recovering.");_originalId=model.ActiveDocumentId;_originalSource=model.ActiveEditor!.Document.Serialize();
-                Text.Text="already open pending draft";window.FindControl<TextBox>("LineStart")!.Text="still invalid";return;
+                Text.SetCurrentValue(TextBox.TextProperty,"already open pending draft");window.FindControl<TextBox>("LineStart")!.SetCurrentValue(TextBox.TextProperty,"still invalid");return;
             case 1:
                 _originalDraft=model.Draft;OpenManager();return;
             case 2:
