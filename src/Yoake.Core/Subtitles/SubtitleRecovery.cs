@@ -59,7 +59,7 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
     public const long MaximumSourceBytes = 256L * 1024 * 1024;
     private const int MaximumMetadataBytes = 16 * 1024 * 1024;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    public string DirectoryPath { get; } = System.IO.Path.GetFullPath(directory);
+    public string DirectoryPath { get; } = System.IO.Path.TrimEndingDirectorySeparator(System.IO.Path.GetFullPath(directory));
 
     public async Task<string> WriteAsync(AssDocumentSnapshot snapshot, RecoveryMetadata metadata, RecoveryLease lease, long generation, CancellationToken token = default)
     {
@@ -79,6 +79,10 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
             {
                 Directory.CreateDirectory(DirectoryPath);
                 using var storageLock = await LockStorageAsync(token).ConfigureAwait(false);
+                // Holding the cross-process publication lock proves that no
+                // production writer owns these temporary recovery bundles.
+                foreach(var abandoned in Directory.EnumerateFiles(DirectoryPath,"*.yoake-recovery.tmp"))
+                {token.ThrowIfCancellationRequested();File.Delete(abandoned);}
                 var name = $"{metadata.DocumentId:N}.{metadata.Sequence:D20}.{Guid.NewGuid():N}.yoake-recovery";
                 var target = System.IO.Path.Combine(DirectoryPath, name);
                 temporary = target + ".tmp";
@@ -87,6 +91,7 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
                     using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, true))
                     {
                         Write(archive, "document.ass", source); Write(archive, "recovery.json", manifest);
+                        Write(archive, "metadata.sha256", SHA256.HashData(manifest));
                     }
                     stream.Flush(true);
                 }
@@ -160,9 +165,10 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
         using var file = File.OpenRead(path);
         if (file.Length > MaximumSourceBytes + MaximumMetadataBytes) throw new InvalidDataException("Recovery bundle is too large.");
         using var archive = new ZipArchive(file, ZipArchiveMode.Read);
-        if (archive.Entries.Count != 2) throw new InvalidDataException("Unexpected recovery entries.");
+        if (archive.Entries.Count != 3) throw new InvalidDataException("Unexpected recovery entries.");
         var source = Read(archive, "document.ass", MaximumSourceBytes, token);
         var json = Read(archive, "recovery.json", MaximumMetadataBytes, token);
+        if(!Read(archive,"metadata.sha256",32,token).AsSpan().SequenceEqual(SHA256.HashData(json)))throw new InvalidDataException("Recovery metadata checksum mismatch.");
         var m = JsonSerializer.Deserialize(json, RecoveryJsonContext.Default.RecoveryMetadata) ?? throw new InvalidDataException("Missing recovery metadata.");
         if (m.Schema != 1 || m.DocumentId == Guid.Empty || m.Sequence < 1 || m.Title is null || m.Title.Length > 4096 ||
             m.SourceHash != Convert.ToHexString(SHA256.HashData(source))) throw new InvalidDataException("Invalid recovery identity or checksum.");

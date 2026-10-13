@@ -262,7 +262,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     private void Attach(DocumentSession session, AssDocument document)
     {
-        if(_documents.TryGetValue(session.Id,out var previous))previous.AudioExport?.Cancel();
+        if(_documents.TryGetValue(session.Id,out var previous)){InvalidateRecovery(session.Id);previous.AudioExport?.Cancel();}
         var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds,Search=new(_settings.SearchPreferences??new())}; _documents[session.Id]=state;
         session.PropertyChanged+=(_,args)=>{if(args.PropertyName is nameof(DocumentSession.Path) or nameof(DocumentSession.Title))InvalidateRecovery(session.Id);};
         document.Changed+=(_,_)=> { state.AudioTiming.Reconcile();state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };

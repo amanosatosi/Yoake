@@ -1,4 +1,5 @@
 using System.Text;
+using System.IO.Compression;
 using Xunit;
 using Yoake.Core.Subtitles;
 
@@ -78,6 +79,30 @@ public sealed class SubtitleRecoveryTests : IDisposable
     {
         var store=new SubtitleRecoveryStore(_root);var document=AssDocument.Parse(Source);var metadata=Metadata(Guid.NewGuid(),draft:new(){Row=999});
         await Assert.ThrowsAsync<InvalidDataException>(()=>Write(store,document,metadata));Assert.Empty(await store.ListAsync());Assert.Empty(Directory.GetFiles(_root,"*.tmp"));
+    }
+    [Fact] public async Task MetadataTamperingIsRejectedEvenWhenZipAndCommittedAssAreValid()
+    {
+        var store=new SubtitleRecoveryStore(_root);var path=await Write(store,AssDocument.Parse(Source),Metadata(Guid.NewGuid()));
+        using(var archive=ZipFile.Open(path,ZipArchiveMode.Update))
+        {
+            var old=archive.GetEntry("recovery.json")!;string json;using(var reader=new StreamReader(old.Open()))json=reader.ReadToEnd();old.Delete();
+            using var writer=new StreamWriter(archive.CreateEntry("recovery.json").Open());writer.Write(json.Replace("same.ass","changed.ass"));
+        }
+        var entry=Assert.Single(await store.ListAsync());Assert.False(entry.CanRecover);Assert.Contains("checksum",entry.Error);
+        await Assert.ThrowsAsync<InvalidDataException>(()=>store.ReadAsync(path));
+    }
+    [Fact] public async Task InterruptedTemporaryBundlesAreRemovedOnlyUnderPublicationLock()
+    {
+        Directory.CreateDirectory(_root);var abandoned=Path.Combine(_root,"abandoned.yoake-recovery.tmp");File.WriteAllText(abandoned,"interrupted");
+        var store=new SubtitleRecoveryStore(_root);await Write(store,AssDocument.Parse(Source),Metadata(Guid.NewGuid()));Assert.False(File.Exists(abandoned));Assert.Single(await store.ListAsync());
+    }
+    [Fact] public async Task WindowsReadOnlyPublicationLockReportsPermissionFailureWithoutLosingRecovery()
+    {
+        if(!OperatingSystem.IsWindows())return;
+        var store=new SubtitleRecoveryStore(_root);var metadata=Metadata(Guid.NewGuid());var path=await Write(store,AssDocument.Parse(Source),metadata);
+        var lockPath=Path.Combine(_root,".publication-lock");File.SetAttributes(lockPath,FileAttributes.ReadOnly);
+        try{await Assert.ThrowsAsync<UnauthorizedAccessException>(()=>Write(store,AssDocument.Parse(Source),metadata with{Sequence=2}));Assert.True(File.Exists(path));}
+        finally{File.SetAttributes(lockPath,FileAttributes.Normal);}
     }
     public void Dispose(){if(Directory.Exists(_root))Directory.Delete(_root,true);}
 }

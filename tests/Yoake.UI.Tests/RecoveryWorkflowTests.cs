@@ -36,7 +36,10 @@ public sealed partial class EditorWorkflowTests
     [Fact] public async Task MultipleTabsAndSaveAsFenceDoNotReviveOldPathsOrOverwriteOriginals()
     {
         await Command(CommandIds.GridInsertAfter);var first=_model.ActiveDocumentId;_model.Draft!.Text="first";await Command(CommandIds.EditCommit);var save=Path.Combine(_root,"first.ass");Assert.True(_model.SaveActiveSubtitle(save));
-        _model.Draft!.Text="modified";await Command(CommandIds.EditCommit);var job=_model.RunAutosaveAsync();var newPath=Path.Combine(_root,"renamed.ass");Assert.True(_model.SaveActiveSubtitle(newPath));await job;
+        _model.Draft!.Text="modified";await Command(CommandIds.EditCommit);
+        Directory.CreateDirectory(_model.RecoveryDirectory);
+        var publicationLock=new FileStream(Path.Combine(_model.RecoveryDirectory,".publication-lock"),FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.None);
+        var job=_model.RunAutosaveAsync();var newPath=Path.Combine(_root,"renamed.ass");Assert.True(_model.SaveActiveSubtitle(newPath));publicationLock.Dispose();await job;
         await Command(CommandIds.SubtitleNew);await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="second";_model.Draft.Start="invalid";await _model.RunAutosaveAsync();
         Assert.DoesNotContain(await _model.ListRecoveryAsync(),e=>e.Metadata!.DocumentId==first);Assert.DoesNotContain("modified",File.ReadAllText(save));Assert.Contains("modified",File.ReadAllText(newPath));
         await Command("recovery/open-version",(await _model.ListRecoveryAsync()).Single().Path);Assert.Null(_model.ActiveSubtitlePath);Assert.Equal("second",_model.Draft!.Text);
