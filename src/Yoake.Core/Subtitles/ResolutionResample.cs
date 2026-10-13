@@ -237,7 +237,7 @@ internal static class ResampleTags
         {if(source[syntax.Start]=='{')opening=syntax.Start;else if(opening>=0){blocks.Add((opening,syntax.Start+1));opening=-1;}}
         if(opening>=0)blocks.Add((opening,source.Length));
         var level=0;var cursor=0;
-        foreach(var block in blocks.Append((source.Length,source.Length)))
+        foreach(var block in blocks.Append((Start:source.Length,End:source.Length)))
         {
             token.ThrowIfCancellationRequested();
             if(level>0&&block.Start>cursor)
