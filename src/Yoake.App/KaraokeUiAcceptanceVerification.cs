@@ -23,7 +23,7 @@ namespace Yoake.App;
 internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplicationLifetime desktop, MainWindow window, MainWindowViewModel model, StartupOptions options)
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(120)};
-    private bool _ready,_ticking;private int _stage;private Task<bool>? _media;
+    private bool _ready,_ticking,_tagMenuOpened;private int _stage;private Task<bool>? _media;
     private SubtitleEditor? _editor;private string _source="",_committed="",_plan="";private Guid _document;
     private object? _waveform,_times,_keyframes;private byte[]? _pixels;private Pointer? _pointer;
     private string Script=>Path.Combine(options.ProfileDirectory!,"karaoke.ass");
@@ -86,7 +86,14 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Press(window.FindControl<ListBox>("SubtitleRows")!,Key.Y,KeyModifiers.Control);Require(_editor.Document.Serialize()==_committed,"Real Redo restores karaoke source.");return;
                 case 9:
                     model.SelectedEvent=model.Events[1];Require(model.KaraokePlan!.Text=="やまい"&&model.KaraokePlan.Count==3,"Renderer furigana exposes reading slots.");
-                    Drag(2.3,2.3,true);await Invoke("karaoke/tag",new KaraokeTagRequest("ko",true));
+                    if(!_tagMenuOpened)
+                    {
+                        Drag(2.3,2.3,true);RightClick(2.3);Require(model.KaraokePlan.Current==0,"Ctrl+right on a boundary selects its left timing group, matching the source.");
+                        _tagMenuOpened=true;_stage--;return;
+                    }
+                    var menu=Audio.ContextMenu!;Require(menu.IsOpen,"Ctrl+right opens the real per-group tag menu.");
+                    Press(menu.Items.OfType<MenuItem>().Single(m=>m.Header as string=="\\ko"),Key.Enter);
+                    Require(model.KaraokePlan.Slots[0].Tag=="ko"&&model.KaraokePlan.Slots[1].Tag=="k","Real context-menu tag choice changes only the selected group.");
                     var bar=window.FindControl<KaraokeSlotsControl>("KaraokeSlots")!;Press(bar.GetVisualDescendants().OfType<Button>().Single(b=>b.Name=="KaraokeRest"),Key.Enter);
                     Require(model.KaraokePlan.Count==4&&model.KaraokePlan.Slots.Any(s=>s.Text.Length==0),"Real Rest button inserts a timing slot without corrupting ruby.");
                     Press(bar.GetVisualDescendants().OfType<Button>().Single(b=>b.Name=="KaraokeCancel"),Key.Enter);Require(model.KaraokePlan.Count==3&&model.KaraokePlan.Boundaries.Count==0,"Actual Cancel restores slot planning without modifying source.");
@@ -99,6 +106,7 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Require(ReferenceEquals(_editor,model.ActiveEditor)&&ReferenceEquals(_waveform,model.WaveformSamples)&&ReferenceEquals(_times,model.FrameTimes)&&ReferenceEquals(_keyframes,model.Keyframes),"Timing retains editor, native media and external timeline state.");return;
                 case 11:
                     await Invoke("audio/close");Require(!model.HasAudio&&model.VideoSourcePath is not null&&model.VideoFrame is not null&&!model.ShowKaraoke&&!model.Actions["karaoke/commit"].CanExecute(null)&&model.KaraokePlan!.PreviewText==_plan,"Audio Close hides/disables input and retains video and pending plans.");
+                    Require(model.Actions["karaoke/cancel"].CanExecute(null)&&model.Actions["audio/karaoke"].CanExecute(null),"Cancellation and mode exit remain accessible without reopening audio.");
                     _media=model.OpenAudioAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 12:
                     if(_media?.IsCompleted!=true){_stage--;return;}Require(await _media,"Audio reopens independently.");Require(model.ShowKaraoke&&model.KaraokePlan!.PreviewText==_plan,"Reopening audio resumes the same timing plan.");
@@ -151,6 +159,13 @@ internal sealed class KaraokeUiAcceptanceVerification(IClassicDesktopStyleApplic
         var point=control.TranslatePoint(local,window)!.Value;var pointer=new Pointer(938,PointerType.Mouse,true);
         control.RaiseEvent(new PointerPressedEventArgs(control,pointer,window,point,0,new(RawInputModifiers.LeftMouseButton,PointerUpdateKind.LeftButtonPressed),KeyModifiers.None));
         control.RaiseEvent(new PointerReleasedEventArgs(control,pointer,window,point,0,new(RawInputModifiers.None,PointerUpdateKind.LeftButtonReleased),KeyModifiers.None,MouseButton.Left));
+    }
+    private void RightClick(double seconds)
+    {
+        var point=Audio.TranslatePoint(new Point((seconds-Audio.ViewportStart)/Audio.VisibleSeconds*Audio.Bounds.Width,Audio.Bounds.Height/2),window)!.Value;
+        var pointer=new Pointer(939,PointerType.Mouse,true);
+        Audio.RaiseEvent(new PointerPressedEventArgs(Audio,pointer,window,point,0,new(RawInputModifiers.RightMouseButton|RawInputModifiers.Control,PointerUpdateKind.RightButtonPressed),KeyModifiers.Control));
+        Audio.RaiseEvent(new PointerReleasedEventArgs(Audio,pointer,window,point,0,new(RawInputModifiers.Control,PointerUpdateKind.RightButtonReleased),KeyModifiers.Control,MouseButton.Right));
     }
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
     {

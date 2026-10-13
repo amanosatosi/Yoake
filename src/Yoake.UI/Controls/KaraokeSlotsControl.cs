@@ -73,6 +73,7 @@ public sealed class KaraokeTextCutsControl : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context); _positions.Clear(); _boundaries.Clear(); _groups.Clear();
+        context.FillRectangle(new SolidColorBrush(Color.FromRgb(20,23,29)),new Rect(Bounds.Size));
         if (Model?.KaraokePlan is not {} plan) return;
         var safe = plan.SafeCuts(); var x = 4d;
         foreach (var slot in plan.Slots)

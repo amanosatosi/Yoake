@@ -155,7 +155,7 @@ public sealed class AudioWaveformControl : Control
             {_drag=true;_karaokeDrag=true;_timingPointer=e.Pointer;e.Pointer.Capture(this);}
             if(point.Properties.IsRightButtonPressed&&e.KeyModifiers.HasFlag(KeyModifiers.Control)&&model.KaraokePlan is not null)
             {
-                var menu=new ContextMenu();menu.ItemsSource=MainWindowViewModel.KaraokeTags.Select(tag=>new MenuItem{Header="\\"+tag,Command=model.Actions["karaoke/tag"],CommandParameter=new KaraokeTagRequest(tag,true)}).ToArray();menu.Open(this);
+                ContextMenu?.Close();var menu=new ContextMenu();menu.ItemsSource=MainWindowViewModel.KaraokeTags.Select(tag=>new MenuItem{Header="\\"+tag,Command=model.Actions["karaoke/tag"],CommandParameter=new KaraokeTagRequest(tag,true)}).ToArray();ContextMenu=menu;menu.Open(this);
             }
             e.Handled=true;return;
         }

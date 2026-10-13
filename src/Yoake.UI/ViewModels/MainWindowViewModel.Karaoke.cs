@@ -123,7 +123,17 @@ public sealed partial class MainWindowViewModel
     private void BeginKaraokePointerCore(KaraokePointerRequest request)
     {
         var plan = KaraokePlan!;
-        if (request.Right) { var slot = plan.AssignedAt(request.Milliseconds); if (request.Control && slot >= 0) { plan.Select(slot); NotifyKaraoke(); } else if (slot >= 0) PlayKaraoke(new(plan.Slots[slot].Start, plan.Slots[slot].End)); return; }
+        if (request.Right)
+        {
+            if(request.Control)
+            {
+                var slot=plan.Nearby(request.Milliseconds,request.Sensitivity);
+                if(slot<0)slot=Array.FindIndex(plan.Slots,s=>request.Milliseconds>=s.Start&&request.Milliseconds<s.End);
+                if(slot>=0){plan.Select(slot);NotifyKaraoke();}
+            }
+            else {var slot=plan.AssignedAt(request.Milliseconds);if(slot>=0)PlayKaraoke(new(plan.Slots[slot].Start,plan.Slots[slot].End));}
+            return;
+        }
         var before = plan.Capture(0); var marker = plan.Nearby(request.Milliseconds, request.Sensitivity);
         if (marker < 0)
         {
