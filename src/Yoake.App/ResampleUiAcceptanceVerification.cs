@@ -21,6 +21,7 @@ internal sealed class ResampleUiAcceptanceVerification(IClassicDesktopStyleAppli
     private bool _ready,_ticking;private int _stage;private Task<bool>? _opening;private ResampleWindow? _dialog;
     private SubtitleEditor? _editor;private AssEvent? _line;private Guid? _document;private string _source="",_path="",_audio="";
     private object? _waveform,_times,_keys;private VideoFrameCapture? _before;private int _frame;
+    private Yoake.Core.Audio.AudioClipInterval? _pending;
     private T In<T>(string name)where T:Control=>_dialog!.FindControl<T>(name)??throw new InvalidOperationException("Missing resampling control: "+name);
     public void Start(){window.LayoutUpdated+=(_,_)=>_ready=window.IsVisible&&window.Bounds.Width>0;_timer.Tick+=Tick;_timer.Start();}
     private async void Tick(object? sender,EventArgs args)
@@ -59,7 +60,8 @@ internal sealed class ResampleUiAcceptanceVerification(IClassicDesktopStyleAppli
                     In<TextBox>("ResampleTargetX").Text="1280";In<TextBox>("ResampleTargetY").Text="960";model.Draft!.Start="unfinished";Press(In<Button>("ResamplePreview"),Key.Enter);return;
                 case 6:
                     Require(model.ResamplePreview is null&&model.Draft!.Start=="unfinished","Invalid raw timing is retained and cannot enter ASS serialization.");Unchanged();
-                    model.Draft!.Start=_line!.Start;_before=await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Subtitles);Press(In<Button>("ResamplePreview"),Key.Enter);return;
+                    model.Draft!.Start=_line!.Start;await Invoke("time/lead/out");_pending=model.PrimaryAudioRange;Require(model.HasPendingAudioTiming,"Native audio timing remains a pending transaction before resampling.");
+                    _before=await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Subtitles);Press(In<Button>("ResamplePreview"),Key.Enter);return;
                 case 7:
                     if(model.HasEditOperation){_stage--;return;}
                     Require(model.ResamplePreview is {ChangedEvents:1,ChangedStyles:1}&&In<ListBox>("ResampleWarnings").ItemCount>=1,"Real preview lists edits and preserved extension warnings.");Unchanged();
@@ -101,7 +103,7 @@ internal sealed class ResampleUiAcceptanceVerification(IClassicDesktopStyleAppli
         finally{_ticking=false;}
     }
     private void Unchanged()=>Require(_editor!.Document.Serialize()==_source&&ReferenceEquals(_line,model.SelectedEvent),"Preview/cancel/Undo retains original source and active row.");
-    private void MediaUnchanged()=>Require(ReferenceEquals(_editor,model.ActiveEditor)&&model.AudioSourcePath==_audio&&ReferenceEquals(_waveform,model.WaveformSamples)&&ReferenceEquals(_times,model.FrameTimes)&&ReferenceEquals(_keys,model.Keyframes)&&model.CurrentFrame==_frame,"Resampling must preserve document and independent media/timeline state.");
+    private void MediaUnchanged()=>Require(ReferenceEquals(_editor,model.ActiveEditor)&&model.AudioSourcePath==_audio&&ReferenceEquals(_waveform,model.WaveformSamples)&&ReferenceEquals(_times,model.FrameTimes)&&ReferenceEquals(_keys,model.Keyframes)&&model.CurrentFrame==_frame&&model.HasPendingAudioTiming&&model.PrimaryAudioRange==_pending,"Resampling must preserve document and independent media/timeline and pending timing state.");
     private static int Coverage(byte[] pixels)=>pixels.Where((_,i)=>i%4==3).Count(a=>a>0);
     private static Rect Bounds(byte[] pixels,int width)
     {var points=Enumerable.Range(0,pixels.Length/4).Where(i=>pixels[i*4+3]>0).ToArray();return points.Length==0?default:new(points.Min(i=>i%width),points.Min(i=>i/width),points.Max(i=>i%width)-points.Min(i=>i%width)+1,points.Max(i=>i/width)-points.Min(i=>i/width)+1);}

@@ -44,6 +44,8 @@ public sealed class ResolutionResampleTests
     {Assert.Equal("{\\p2}M 0 0\tl 40 20\ns 4 8 12 16 20 24 p 28 32 c{\\p0}text",Text("{\\p2}M 0 0\tl 20 10\ns 2 4 6 8 10 12 p 14 16 c{\\p0}text"));}
     [Fact] public void DrawingsUseIndependentTextStretchWhileClipDoesNot()
     {Assert.Equal(@"{\p1\clip(m 0 0 l 20 15)}m 0 0 l 15 15",Text(@"{\p1\clip(m 0 0 l 10 10)}m 0 0 l 10 10",width:1280,height:720));}
+    [Fact] public void AdjacentOverrideBlocksAndEmptyCommentsDoNotDesynchronizeDrawingState()
+    {Assert.Equal(@"{\p1}{}{\bord2}m 0 0 l 20 20{\p0}{\pos(20,40)}text",Text(@"{\p1}{}{\bord1}m 0 0 l 10 10{\p0}{\pos(10,20)}text"));}
     [Fact] public void RelativePositionsDoNotAcquireBorderOffsets()
     {Assert.Equal(@"{\pos(~+20,~-40)\clippos(6,-8)\fs+12}x",Text(@"{\pos(~+10,~-20)\clippos(3,-4)\fs+6}x",ResampleAspect.Manual,1320,1000,10,10,10,10));}
     [Theory] [InlineData("0,0,1,0,1,1")] [InlineData("0,0,1,0,1,1,0,1")]

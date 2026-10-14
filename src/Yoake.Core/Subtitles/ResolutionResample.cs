@@ -234,7 +234,11 @@ internal static class ResampleTags
         // shared syntax scanner for block boundaries and drawing-level state.
         var blocks=new List<(int Start,int End)>();var opening=-1;
         foreach(var syntax in AssSyntax.Tokenize(source).Where(t=>t.Kind==AssSyntaxKind.Brace))
-        {if(source[syntax.Start]=='{')opening=syntax.Start;else if(opening>=0){blocks.Add((opening,syntax.Start+1));opening=-1;}}
+        {
+            // Adjacent braces are coalesced by the shared tokenizer.
+            for(var index=syntax.Start;index<syntax.Start+syntax.Length;index++)
+            {if(source[index]=='{')opening=index;else if(opening>=0){blocks.Add((opening,index+1));opening=-1;}}
+        }
         if(opening>=0)blocks.Add((opening,source.Length));
         var level=0;var cursor=0;
         foreach(var block in blocks.Append((Start:source.Length,End:source.Length)))
@@ -281,7 +285,7 @@ public sealed partial class SubtitleEditor
         AssEvent? probe=null;string[]? baseline=null;
         if(draft is not null){if(draftLine is null)throw new ArgumentException("The edit draft needs its owning row.");Require(draftLine);probe=ValidateEventValues(draftLine,draft);baseline=(string[])draftLine.Fields.Clone();}
         var rows=Document.Styles.Select((s,i)=>new ResampleSnapshot.Row(s,(string[])s.Format.Clone(),(string[])s.Fields.Clone(),i,true,false,""))
-            .Concat(Document.Events.Select((e,i)=>new ResampleSnapshot.Row(e,(string[])e.Format.Clone(),ReferenceEquals(e,draftLine)&&probe is not null?(string[])probe.Fields.Clone():(string[])e.Fields.Clone(),i,false,e.IsComment,e.Effect))).ToArray();
+            .Concat(Document.Events.Select((e,i)=>new ResampleSnapshot.Row(e,(string[])e.Format.Clone(),ReferenceEquals(e,draftLine)&&probe is not null?(string[])probe.Fields.Clone():(string[])e.Fields.Clone(),i,false,e.IsComment,ReferenceEquals(e,draftLine)&&probe is not null?probe.Effect:e.Effect))).ToArray();
         var info=new[]{"PlayResX","PlayResY","LayoutResX","LayoutResY"}.ToDictionary(k=>k,Document.GetScriptInfo,StringComparer.OrdinalIgnoreCase);
         return new(this,rows,info,draftLine,baseline);
     }
