@@ -7,13 +7,14 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
-    [Fact] public async Task FontCheckKeepsInvalidDraftSourceHistoryAndSelectionAndCachesBetweenModes()
+    [Fact] public async Task FontCheckKeepsInvalidDraftRefreshesFontSystemAndCachesCopyReports()
     {
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\fnControlled}日本語 မြန်မာ";_model.Draft.Start="unfinished";var draft=_model.Draft;var line=_model.SelectedEvent;var source=_model.ActiveEditor!.Document.Serialize();var undo=_model.ActiveEditor.Undo.NextUndoName;
         var resolver=new ControlledFontFactory();_model.FontResolvers=resolver;await Command("fonts/start",new FontCollectorRequest(FontCollectionMode.Check,""));
         Assert.Equal(1,resolver.Calls);Assert.Equal(1,resolver.Disposed);Assert.Equal("Controlled",Assert.Single(_model.FontReport!.Fonts).Usage.Request.Family);Assert.Same(draft,_model.Draft);Assert.Same(line,_model.SelectedEvent);Assert.Equal("unfinished",draft.Start);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(undo,_model.ActiveEditor.Undo.NextUndoName);
-        await Command("fonts/start",new FontCollectorRequest(FontCollectionMode.Check,""));Assert.Equal(1,resolver.Calls);
-        draft.Text="{\\fnChanged}a";await Command("fonts/start",new FontCollectorRequest(FontCollectionMode.Check,""));Assert.Equal(2,resolver.Calls);Assert.Equal("Changed",Assert.Single(_model.FontReport!.Fonts).Usage.Request.Family);
+        await Command("fonts/start",new FontCollectorRequest(FontCollectionMode.Check,""));Assert.Equal(2,resolver.Calls);
+        Assert.False(await _model.Registry.InvokeAsync("fonts/start",new(),new FontCollectorRequest(FontCollectionMode.Folder,_root,RightsAcknowledged:true)));Assert.Equal(2,resolver.Calls);
+        draft.Text="{\\fnChanged}a";await Command("fonts/start",new FontCollectorRequest(FontCollectionMode.Check,""));Assert.Equal(3,resolver.Calls);Assert.Equal("Changed",Assert.Single(_model.FontReport!.Fonts).Usage.Request.Family);
     }
     [Fact] public async Task FontCommandsRejectForeignContextAndMissingDestinationsWithoutDocumentMutations()
     {

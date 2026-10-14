@@ -47,7 +47,9 @@ public sealed partial class MainWindowViewModel
             if(request.Mode!=FontCollectionMode.Check&&string.IsNullOrWhiteSpace(destination))throw new ArgumentException("Choose a destination parent folder or ZIP filename.");
             if(request.Mode!=FontCollectionMode.Check&&!request.RightsAcknowledged)throw new InvalidOperationException("Confirm font redistribution permission before copying.");
             var snapshot=FontUsageSnapshot.Capture(state.Editor.Document,SelectedEvent,Draft?.Values);var factory=FontResolvers;
-            var cached=state.FontReportRevision==revision&&state.FontReportDraftRevision==draftRevision&&state.FontReportUnused==request.IncludeUnusedStyles?state.FontReport:null;
+            // An explicit check refreshes installed fonts. Copy modes can
+            // reuse an unchanged report; UI selection/log updates never scan.
+            var cached=request.Mode!=FontCollectionMode.Check&&state.FontReportRevision==revision&&state.FontReportDraftRevision==draftRevision&&state.FontReportUnused==request.IncludeUnusedStyles?state.FontReport:null;
             using var cancellation=CancellationTokenSource.CreateLinkedTokenSource(token);state.FontWork=cancellation;var generation=state.FontLease.Renew();
             state.FontOutput=null;state.FontLog.Clear();state.FontProgress=0;state.FontStatus="Scanning required fonts…";NotifyFonts();
             IProgress<FontProgress> progress=new Progress<FontProgress>(update=>
