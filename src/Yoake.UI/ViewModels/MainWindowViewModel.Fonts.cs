@@ -50,7 +50,7 @@ public sealed partial class MainWindowViewModel
             var cached=state.FontReportRevision==revision&&state.FontReportDraftRevision==draftRevision&&state.FontReportUnused==request.IncludeUnusedStyles?state.FontReport:null;
             using var cancellation=CancellationTokenSource.CreateLinkedTokenSource(token);state.FontWork=cancellation;var generation=state.FontLease.Renew();
             state.FontOutput=null;state.FontLog.Clear();state.FontProgress=0;state.FontStatus="Scanning required fonts…";NotifyFonts();
-            var progress=new Progress<FontProgress>(update=>
+            IProgress<FontProgress> progress=new Progress<FontProgress>(update=>
             {
                 void Publish(){if(!_disposed&&_activeId==id&&ReferenceEquals(state.FontWork,cancellation)&&state.FontLease.IsCurrent(generation)){state.FontLog.Add(update.Level+": "+update.Message);state.FontProgress=update.Fraction;NotifyFonts();}}
                 if(Dispatcher.UIThread.CheckAccess())Publish();else Dispatcher.UIThread.Post(Publish);
