@@ -142,11 +142,14 @@ public sealed partial class MainWindowViewModel
             if (video && dummy is null && old?.HasAudio != true && replacement!.HasAudio)
                 historyWarning ??= RememberMedia(full, false);
             if (_activeId == id && state.Media?.HasVideo == true) await RefreshVideoFrameAsync(CurrentTimeSeconds);
-            // Publishing the provider and refreshing its frame are separate async
-            // steps. Another Open/Close can supersede this operation during the
-            // frame await. Never report an obsolete request as successful.
-            if (token.IsCancellationRequested || _disposed ||
-                !_documents.TryGetValue(id, out var current) || !ReferenceEquals(state, current) ||
+            // Media publication is the commit boundary. After a frame refresh,
+            // use the current owner AND request identity to decide completion.
+            // An unrelated cancellation can arrive after publication without
+            // undoing the committed provider. Conversely a newer Open/Close
+            // must not make this request report success.
+            if (_disposed || !_documents.TryGetValue(id, out var current) ||
+                !ReferenceEquals(state, current) ||
+                !ReferenceEquals(state.Media, replacement) ||
                 !ReferenceEquals(video ? state.VideoLoading : state.AudioLoading, cancellation))
                 return false;
             if (historyWarning is not null && _activeId == id && ReferenceEquals(state.Media,replacement) &&

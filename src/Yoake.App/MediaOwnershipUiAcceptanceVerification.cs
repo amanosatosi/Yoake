@@ -91,10 +91,13 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     _editor = model.ActiveEditor; _source = model.ActiveEditor!.Document.Serialize(); _undo = model.ActiveEditor.Undo.NextUndoName ?? "";
                     model.Draft!.Layer = "unfinished"; model.Draft.Text += " retained draft";
                     _draft = model.Draft; _selected = model.SelectedEvent; _pending = model.PrimaryAudioRange; _samples = model.WaveformSamples;
-                    Require(await model.OpenVideoAsync(_video),
-                        "A non-overlapping Video Open must report success after the concurrent ownership test.");
-                    Require(model.VideoSourcePath == _video && model.AudioSourcePath == _audio,
-                        "Serial Video Open must retain the independently loaded audio path.");
+                    var previousVideoRevision = model.VideoProviderRevision;
+                    var serialSucceeded = await model.OpenVideoAsync(_video);
+                    Require(serialSucceeded,
+                        $"A non-overlapping Video Open must report success; revision before={previousVideoRevision}, after={model.VideoProviderRevision}, video={model.VideoSourcePath}, audio={model.AudioSourcePath}, status={model.MediaStatus}.");
+                    Require(model.VideoProviderRevision > previousVideoRevision &&
+                            model.VideoSourcePath == _video && model.AudioSourcePath == _audio,
+                        "Serial Video Open must publish a new provider and retain the independent audio path.");
                     Unchanged();
                     var map = Path.Combine(options.ProfileDirectory!, "external.txt"); File.WriteAllText(map, "# timecode format v2\n" + string.Join('\n', Enumerable.Range(0, model.FrameTimes.Count).Select(i => i * 150)) + "\n");
                     await Invoke("timecode/open", map);

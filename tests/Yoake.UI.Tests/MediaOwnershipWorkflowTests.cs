@@ -6,6 +6,41 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public async Task ReopeningVideoAfterCommittedPublicationReportsSuccess()
+    {
+        var first = new Yoake.Core.Media.DummyVideoOptions { Width=320, Height=180, FrameCount=12 };
+        Assert.True(await _model.OpenDummyVideoAsync(first));
+        var firstRevision = _model.VideoProviderRevision;
+        Assert.True(await _model.OpenDummyVideoAsync(new(){Width=640,Height=360,FrameCount=12}));
+        Assert.True(_model.VideoProviderRevision > firstRevision);
+        Assert.Equal(640,_model.CurrentVideoDetails!.Width);
+        Assert.Equal(Yoake.Core.Settings.WorkspaceViewMode.Video,_model.ViewMode);
+    }
+
+    [Fact] public async Task ReentrantVideoOpenSupersedesPublishedRequestAndLatestWins()
+    {
+        Task<bool>? latest = null;
+        System.ComponentModel.PropertyChangedEventHandler? published = null;
+        published = (_, e) =>
+        {
+            if (e.PropertyName != nameof(Yoake.UI.ViewModels.MainWindowViewModel.VideoSourcePath) ||
+                _model.VideoSourcePath is null) return;
+            _model.PropertyChanged -= published;
+            latest = _model.OpenDummyVideoAsync(new(){Width=640,Height=360,FrameCount=12});
+        };
+        _model.PropertyChanged += published;
+        try
+        {
+            var superseded = _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=12});
+            Assert.False(await superseded);
+            Assert.NotNull(latest);
+            Assert.True(await latest!);
+            Assert.Equal(640,_model.CurrentVideoDetails!.Width);
+            Assert.Equal(Yoake.Core.Settings.WorkspaceViewMode.Video,_model.ViewMode);
+        }
+        finally { _model.PropertyChanged -= published; }
+    }
+
     [Fact] public async Task MissingVideoAndAudioOpensLeaveDocumentDraftPendingTimingSelectionAndUndoIntact()
     {
         await TimingRows(); await Command("time/lead/out"); _model.Draft!.Text += " retained 日本語 မြန်မာ";
