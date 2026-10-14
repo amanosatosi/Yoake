@@ -9,7 +9,7 @@ public sealed class AssDrawLauncherTests:IDisposable
     public AssDrawLauncherTests()=>Directory.CreateDirectory(_root);
     public void Dispose()=>Directory.Delete(_root,true);
     private string Exe(string relative)
-    {var path=Path.Combine(_root,relative);Directory.CreateDirectory(Path.GetDirectoryName(path)!);File.WriteAllText(path,"Controlled path fixture; never executed.");return path;}
+    {var path=Path.GetFullPath(Path.Combine(_root,relative));Directory.CreateDirectory(Path.GetDirectoryName(path)!);File.WriteAllText(path,"Controlled path fixture; never executed.");return path;}
     [Fact] public void ConfiguredUnicodePathPrecedesBothBundledLocations()
     {var configured=Exe("日本語 custom/Draw.exe");Exe("ASSDraw3.exe");Exe("data/ASSDraw3.exe");var found=AssDrawLauncher.Discover(configured,_root);Assert.Equal(configured,found!.Path);Assert.True(found.Configured);}
     [Fact] public void InstalledAndPortableRootDiscoveryUseTheExecutableDirectory()
