@@ -48,7 +48,13 @@ foreach ($case in @('clean', 'legacy', 'damaged', 'null-collections', 'irrecover
     } else {
       if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Real UI startup failed for $case (exit $($process.ExitCode)):`n$text" }
       $views = Get-Content -LiteralPath ($report + '.views.txt') -Raw
-      if (-not $views.Contains('empty media') -or -not $views.Contains('loaded native media')) { throw "Workspace modes were not verified with empty and loaded media: $case" }
+      # Both modes must be exercised: no-media startup permits subtitles only,
+      # while a real A/V fixture enables all four view choices.
+      # Match the verification's current, behavior-specific report text.
+      if (-not $views.Contains('subtitles-only view with unavailable media choices disabled') -or
+          -not $views.Contains('all four loaded-media views')) {
+        throw "Workspace views were not verified with subtitles-only startup and loaded audio/video: $case"
+      }
       Write-Host "$case : $text"
       Write-Host $views
     }
