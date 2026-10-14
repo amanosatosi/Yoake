@@ -6,27 +6,6 @@ namespace Yoake.Core.Tests;
 
 public sealed class VideoPresentationTests
 {
-    [Fact]
-    public void EmptyVideoReservesUsableDefaultTypesettingCanvas()
-    {
-        // The startup verification runs before its real video fixture opens.
-        // Empty media still needs a >=600x300 logical-pixel overlay at 1440x900.
-        var placeholder = EmbeddedVideoSizing.Placeholder(610, 400);
-        Assert.True(placeholder.Width >= 600 && placeholder.Height >= 300);
-        Assert.Equal(610, placeholder.Width, 8);
-        Assert.Equal(610d * 9 / 16, placeholder.Height, 8);
-    }
-
-    [Fact]
-    public void EmptyVideoResizesToNarrowWorkspaceWithoutForcingMinimums()
-    {
-        var narrow = EmbeddedVideoSizing.Placeholder(360, 180);
-        Assert.Equal(320, narrow.Width, 8);
-        Assert.Equal(180, narrow.Height, 8);
-        Assert.Equal(default, EmbeddedVideoSizing.Placeholder(0, 300));
-        Assert.Equal(default, EmbeddedVideoSizing.Placeholder(double.NaN, 300));
-    }
-
     [Theory]
     [InlineData(.5, 320, 240)]
     [InlineData(1, 640, 480)]

@@ -110,10 +110,15 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     await Invoke("video/detach");model.Draft!.Layer="0";await Invoke(CommandIds.SubtitleNew);await Invoke("video/open/dummy",new DummyVideoOptions{Width=160,Height=90,FrameCount=30});return;
                 case 14:
                     Require(window.DetachedVideoWindow is null&&!model.IsVideoDetached&&model.VideoView!.PanX==0,"New tab has independent embedded presentation.");
+                    Require(model.IsVideoView && !model.HasAudio && !model.Actions[CommandIds.ViewAudio].CanExecute(null),
+                        "Dummy-video document automatically selects video-only view.");
                     await Invoke(CommandIds.WorkspaceActivateTab,_document);return;
                 case 15:
                     if(model.VideoFrame is null){_stage--;return;}
                     Require(window.DetachedVideoWindow is not null&&model.IsVideoDetached&&ReferenceEquals(_state,model.VideoView)&&ReferenceEquals(_map,model.FrameTimes),"Returning to tab restores detached host and exact owner.");
+                    Require(model.IsAudioVideoView && model.HasAudio &&
+                        model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Returning to a document with both providers automatically restores the valid combined view.");
                     await Invoke(CommandIds.ViewAudio);Require(window.DetachedVideoWindow.IsVisible,"Audio view does not dispose detached Video.");
                     await Invoke("video/focus_seek");Require(model.IsAudioView&&window.FindControl<VideoFrameSlider>("VideoSeekBar")!.IsKeyboardFocusWithin,"Detached seek focus does not replace the main Audio view.");await Invoke(CommandIds.ViewAudioVideo);
                     Pan(new(100,80),new(111,85));Down(new(100,80),true);Move(new(120,90),RawInputModifiers.MiddleMouseButton);

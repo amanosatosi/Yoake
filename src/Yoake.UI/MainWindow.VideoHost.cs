@@ -114,7 +114,9 @@ public partial class MainWindow
     private void UpdateEmbeddedVideoHost()
     {
         if (_movingVideo) return;
-        if (_model is not { ShowEmbeddedVideo: true } model || DetachedVideoWindow is not null)
+        // No media means subtitles-only; never manufacture an empty video canvas.
+        if (_model is not { ShowEmbeddedVideo: true, CurrentVideoDetails: { } video } model ||
+            DetachedVideoWindow is not null)
             return;
 
         var workspaceWidth = UpperWorkspace.Bounds.Width;
@@ -140,21 +142,13 @@ public partial class MainWindow
         if (_videoSplitterOverride)
             availableWidth = Math.Min(availableWidth, Math.Max(1, columns[0].ActualWidth - chrome));
 
-        // Startup and new documents have no video metadata yet. An Auto row
-        // with no measured canvas would collapse to the height of the tool
-        // buttons, breaking the default 1440x900 typesetting workspace.
-        // Keep the current star/splitter column width until a video is loaded.
-        var video = model.CurrentVideoDetails;
-        var size = video is null
-            ? EmbeddedVideoSizing.Placeholder(
-                Math.Max(1, columns[0].ActualWidth - chrome), rowHeight)
-            : EmbeddedVideoSizing.Viewport(availableWidth, rowHeight,
-                video.Height, model.VideoAspectRatio,
-                TopLevel.GetTopLevel(VideoCanvasHost)?.RenderScaling ?? 1,
-                model.VideoView?.WindowZoom);
+        var size = EmbeddedVideoSizing.Viewport(availableWidth, rowHeight,
+            video.Height, model.VideoAspectRatio,
+            TopLevel.GetTopLevel(VideoCanvasHost)?.RenderScaling ?? 1,
+            model.VideoView?.WindowZoom);
         if (size.Width <= 0 || size.Height <= 0) return;
 
-        if (video is not null && !_videoSplitterOverride)
+        if (!_videoSplitterOverride)
         {
             var columnWidth = Math.Clamp(size.Width + chrome,
                 columns[0].MinWidth, maxColumn);

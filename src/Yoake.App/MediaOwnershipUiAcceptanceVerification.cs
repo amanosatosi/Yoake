@@ -36,6 +36,11 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
             {
                 case 0:
                     Require(!model.Actions["video/close"].CanExecute(null), "Close requires video.");
+                    Require(model.IsDefaultView && !model.ShowVideo && !model.ShowAudio &&
+                        !model.Actions[CommandIds.ViewAudio].CanExecute(null) &&
+                        !model.Actions[CommandIds.ViewVideo].CanExecute(null) &&
+                        !model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "No media means subtitles-only with disabled media views.");
                     var root = options.ProfileDirectory!;
                     _video = Path.Combine(root, "日本語 မြန်မာ video.avi"); _audio = Path.Combine(root, "独立 audio.avi");
                     var fixture = Path.Combine(options.VerificationMedia!, "av.avi"); File.Copy(fixture, _video); File.Copy(fixture, _audio);
@@ -56,6 +61,8 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                 case 1:
                     if (_opening?.IsCompleted != true) { _stage--; return; } Require(await _opening, "Real combined baseline opens once.");
                     Require(_racingVideo is not null && await _racingVideo && model.WaveformSamples is not null, "Video replacement retains in-flight audio peak publication.");
+                    Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Independent audio and video automatically select the combined view.");
                     await Invoke(CommandIds.ViewAudioVideo); model.Draft!.Text += " stored checkpoint"; await Invoke(CommandIds.EditCommit); await Invoke("time/lead/out");
                     _editor = model.ActiveEditor; _source = model.ActiveEditor!.Document.Serialize(); _undo = model.ActiveEditor.Undo.NextUndoName ?? "";
                     model.Draft!.Layer = "unfinished"; model.Draft.Text += " retained draft";
@@ -72,6 +79,10 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     Press(window.FindControl<MenuItem>("CloseVideoMenu")!, Key.Enter); return;
                 case 3:
                     Require(model.VideoSourcePath is null && model.VideoFrame is null && model.AudioSourcePath == _audio, "Native Close releases only video.");
+                    Require(model.IsAudioView && model.ShowAudio && !model.ShowVideo &&
+                        !model.Actions[CommandIds.ViewVideo].CanExecute(null) &&
+                        !model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Video Close automatically selects audio-only view and disables missing video choices.");
                     Require(!model.Actions["video/play"].CanExecute(null) && model.Actions["audio/play/current"].CanExecute(null), "Audio remains usable and Video-only commands disable."); Unchanged();
                     Press(window.FindControl<AudioWaveformControl>("AudioDisplay")!, Key.S); Require(model.IsPlaying && model.ActiveAudioPlayback is not null, "Actual focused Audio playback works after Video Close.");
                     Press(window.FindControl<AudioWaveformControl>("AudioDisplay")!, Key.H);
@@ -82,7 +93,10 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     Press(recent, Key.Enter); return;
                 case 6:
                     if (model.VideoSourcePath != _video || model.VideoFrame is null) { Require(++_waiting < 100, "Recent Video must complete through real semantic open."); _stage--; return; }
-                    Require(model.ExternalTimecodePath is not null && model.ExternalKeyframePath is not null && model.Keyframes.SequenceEqual(new[] { 0, 2 }), "External frame metadata survives close/reopen."); Unchanged();
+                    Require(model.ExternalTimecodePath is not null && model.ExternalKeyframePath is not null && model.Keyframes.SequenceEqual(new[] { 0, 2 }), "External frame metadata survives close/reopen.");
+                    Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Reopening Video with existing Audio automatically restores their combined view.");
+                    Unchanged();
                     var times = model.FrameTimes;
                     Require(await model.OpenAudioAsync(_video), "Audio replacement succeeds independently.");
                     Require(model.VideoSourcePath == _video && model.AudioSourcePath == _video && ReferenceEquals(times, model.FrameTimes), "Audio replacement retains the video/frame map.");
@@ -118,6 +132,10 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                 case 8:
                     Require(model.AudioSourcePath is null && model.VideoSourcePath == _video && !model.HasAudio && model.WaveformSamples is null,
                         "Audio Close releases only Audio and clears its overview.");
+                    Require(model.IsVideoView && model.ShowVideo && !model.ShowAudio &&
+                        !model.Actions[CommandIds.ViewAudio].CanExecute(null) &&
+                        !model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Audio Close automatically selects video-only view and disables absent audio choices.");
                     Require(!model.IsPlaying && model.ActiveAudioPlayback is null && !model.Actions["audio/play/current"].CanExecute(null) && model.Actions["video/play"].CanExecute(null),
                         "Audio Close stops audition and keeps Video playback enabled.");
                     Require(ReferenceEquals(_retainedFrame, model.VideoFrame) && ReferenceEquals(_retainedTimes, model.FrameTimes) &&
@@ -132,6 +150,9 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     Require(model.IsPlaying && model.VideoFrame is not null, "Retained native Video seeks and plays without Audio.");
                     await Invoke("video/stop"); Require(await model.OpenAudioAsync(_audio), "Audio reopens after Close.");
                     Require(model.AudioSourcePath == _audio && model.WaveformSamples is not null && ReferenceEquals(_retainedTimes, model.FrameTimes), "Reopening Audio retains native Video and restores analysis.");
+                    Require(model.IsAudioVideoView && model.ShowVideo && model.ShowAudio &&
+                        model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Reopening Audio automatically selects Audio + Video.");
                     DocumentUnchanged();
                     Require(StartupDiagnostics.BindingWarningCount == 0 && StartupDiagnostics.FrameworkErrorCount == 0, "Ownership menus/layout must have no binding errors.");
                     _timer.Stop(); options.FinishVerification("PASS: separate real-window independent media ownership; native track transfer and release; Unicode Video Open; transactional failed and superseded replacement; real Close menu Enter; focused Audio S/H after Video Close; real Recent Video menu Enter through shared backend; Audio replacement retains Video; independent persisted MRUs; external timecodes/keyframes and document/draft/pending/selection/undo retention. Existing Video playback/EOF and visual acceptance run separately. Audible output remains manual QA.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;

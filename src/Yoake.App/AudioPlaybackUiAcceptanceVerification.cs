@@ -75,6 +75,9 @@ internal sealed class AudioPlaybackUiAcceptanceVerification(IClassicDesktopStyle
                 case 6:
                     if(_media?.IsCompleted!=true){_stage--;return;}Require(await _media,"Video-only fixture must load.");
                     Require(Commands.All(id=>!model.Actions[id].CanExecute(null))&&!model.IsPlaying,"Video-only media must not enable audio previews.");
+                    Require(model.IsVideoView && !model.HasAudio && model.ShowVideo && !model.ShowAudio &&
+                        !model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Video-only media must select video-only view, not a blank audio panel.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Playback routing must have no binding/framework errors.");
                     _timer.Stop();options.FinishVerification("PASS: separate real-window audio playback routing; real focused Q/W/E/D/R/S/Space/T/B/H; real native Playback submenu Enter; exact bounded sample ranges independent of longer VFR video; live selection end versus captured endpoint; stop/toggle enable/check state; canceled/foreign invocation; text typing and Video D isolation; no-audio/video-only state; retained draft/source/selection/undo/provider metadata. Audible output/device latency remains manual hardware QA.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
