@@ -47,7 +47,18 @@ internal sealed class AssDrawUiAcceptanceVerification(IClassicDesktopStyleApplic
                     _stage=18;window.FindControl<MenuItem>("ToolsMenu")!.IsSubMenuOpen=true;return;
                 case 1:Press(window.FindControl<MenuItem>("AssDrawMenu")!,Key.Enter);return;
                 case 2:
-                    _missing=window.OwnedWindows.Single(w=>w.Name=="AssDrawMissingDialog");Require(_missing.FindControl<TextBlock>("AssDrawMissingMessage")!.Text=="ASSDraw3.exe doesn't exist.","Native missing dialog shows the exact required message.");Unchanged();_optionsOpeningAt=Stopwatch.GetTimestamp();Press(_missing.FindControl<Button>("AssDrawConfigure")!,Key.Enter);return;
+                    _missing=window.OwnedWindows.Single(w=>w.Name=="AssDrawMissingDialog");Require(_missing.FindControl<TextBlock>("AssDrawMissingMessage")!.Text=="ASSDraw3.exe doesn't exist.","Native missing dialog shows the exact required message.");Unchanged();
+                    var configureButton=_missing.FindControl<Button>("AssDrawConfigure")!;
+                    Require(configureButton.Focus()&&configureButton.IsKeyboardFocusWithin,"The native Configure button receives focus.");
+                    var configureClicked=false;
+                    configureButton.Click+=(_,_)=>configureClicked=true;
+                    _optionsOpeningAt=Stopwatch.GetTimestamp();
+                    // Press() sends only synthetic KeyDown, which is not a reliable
+                    // button activation in Avalonia. Route the native Click event
+                    // and independently assert its handler fired.
+                    configureButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent){Source=configureButton});
+                    Require(configureClicked,"The native Configure button click was dispatched.");
+                    return;
                 case 3:
                     var optionsWindows=window.OwnedWindows.OfType<OptionsWindow>().ToArray();
                     if(optionsWindows.Length==0)
