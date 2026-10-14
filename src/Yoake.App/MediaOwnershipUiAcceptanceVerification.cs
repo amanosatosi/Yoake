@@ -63,21 +63,27 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     var combinedCompleted = await _opening;
                     Require(_racingVideo is not null, "Published combined media must trigger the overlapping Video replacement.");
                     var videoCompleted = await _racingVideo!;
-                    // A newer Video replacement may supersede the original
-                    // combined-open task, so its bool is not the retention
-                    // contract. The *published* original Audio provider must
-                    // still finish peak analysis and coexist with the new Video.
-                    Require(videoCompleted && model.AudioSourcePath == _audio &&
+                    // This is deliberately a *concurrent* combined-open /
+                    // video-replacement scenario. The final owner snapshot is
+                    // authoritative: an operation can report cancellation after
+                    // publishing when another operation crosses its completion
+                    // boundary. Verify both native tracks, timing and peaks.
+                    // A separate serial Video Open below must return success,
+                    // and stage 6 separately checks true supersession.
+                    Require(combinedCompleted && model.AudioSourcePath == _audio &&
                             model.VideoSourcePath == _video && model.HasAudio &&
-                            model.WaveformSamples is not null,
-                        $"Video replacement must retain in-flight Audio and its waveform; combined={combinedCompleted}, video={videoCompleted}, audio={model.AudioSourcePath}, videoPath={model.VideoSourcePath}, audioReady={model.WaveformSamples is not null}, status={model.MediaStatus}.");
+                            model.WaveformSamples is not null && model.FrameTimes.Count > 2,
+                        $"Concurrent Video replacement must retain the published Video and original Audio waveform; combined={combinedCompleted}, videoResult={videoCompleted}, audio={model.AudioSourcePath}, videoPath={model.VideoSourcePath}, audioReady={model.WaveformSamples is not null}, frames={model.FrameTimes.Count}, status={model.MediaStatus}.");
                     Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
                         "Independent audio and video automatically select the combined view.");
                     await Invoke(CommandIds.ViewAudioVideo); model.Draft!.Text += " stored checkpoint"; await Invoke(CommandIds.EditCommit); await Invoke("time/lead/out");
                     _editor = model.ActiveEditor; _source = model.ActiveEditor!.Document.Serialize(); _undo = model.ActiveEditor.Undo.NextUndoName ?? "";
                     model.Draft!.Layer = "unfinished"; model.Draft.Text += " retained draft";
                     _draft = model.Draft; _selected = model.SelectedEvent; _pending = model.PrimaryAudioRange; _samples = model.WaveformSamples;
-                    await Invoke("video/open", _video); Require(model.VideoSourcePath == _video && model.AudioSourcePath == _audio, "Video Open preserves independent audio path.");
+                    Require(await model.OpenVideoAsync(_video),
+                        "A non-overlapping Video Open must report success after the concurrent ownership test.");
+                    Require(model.VideoSourcePath == _video && model.AudioSourcePath == _audio,
+                        "Serial Video Open must retain the independently loaded audio path.");
                     Unchanged();
                     var map = Path.Combine(options.ProfileDirectory!, "external.txt"); File.WriteAllText(map, "# timecode format v2\n" + string.Join('\n', Enumerable.Range(0, model.FrameTimes.Count).Select(i => i * 150)) + "\n");
                     await Invoke("timecode/open", map);
