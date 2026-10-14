@@ -23,6 +23,8 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
     private object? _samples, _draft, _selected, _editor;
     private Yoake.Core.Audio.AudioClipInterval? _pending;
     private Task<bool>? _opening, _racingVideo;
+    private string? _initialVideoFailure;
+    private EventHandler<CommandFailureEventArgs>? _initialVideoFailureListener;
     private object? _retainedFrame, _retainedTimes;
     private Task<WaveformData?>? _obsoleteWaveform;
     private Task<Avalonia.Media.Imaging.WriteableBitmap?>? _obsoleteSpectrum;
@@ -57,12 +59,21 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                         _racingVideo = model.OpenVideoAsync(_video);
                     };
                     model.PropertyChanged += published;
+                    _initialVideoFailureListener = (_, failure) =>
+                    {
+                        if (failure.CommandId == "video/open")
+                            _initialVideoFailure = failure.Exception.ToString();
+                    };
+                    model.Registry.CommandFailed += _initialVideoFailureListener;
                     _opening = model.OpenMediaAsync(_audio); return;
                 case 1:
                     if (_opening?.IsCompleted != true) { _stage--; return; }
                     var combinedCompleted = await _opening;
                     Require(_racingVideo is not null, "Published combined media must trigger the overlapping Video replacement.");
                     var videoCompleted = await _racingVideo!;
+                    model.Registry.CommandFailed -= _initialVideoFailureListener;
+                    Require(_initialVideoFailure is null,
+                        "Concurrent Video replacement must not produce an unexpected provider error: " + _initialVideoFailure);
                     // This is deliberately a *concurrent* combined-open /
                     // video-replacement scenario. The final owner snapshot is
                     // authoritative: an operation can report cancellation after
