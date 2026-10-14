@@ -68,6 +68,13 @@ public sealed partial class MainWindowViewModel
         if (video) state.VideoLoading = cancellation; else state.AudioLoading = cancellation;
         var token = cancellation.Token;
         var external = state.ExternalTimecodes; var keyframes = state.ExternalKeyframes;
+        // Replacing Video must not index a second Audio stream while the
+        // document's existing independent Audio provider is decoding peaks.
+        // Index embedded audio only when opening Video into an audio-less
+        // document; keep the existing provider, waveform and audio path otherwise.
+        var tracks = video
+            ? state.Media?.HasAudio == true ? MediaTracks.Video : MediaTracks.Both
+            : MediaTracks.Audio;
         DocumentMedia? candidate = null, prepared = null; FrameTiming? nativeTiming = null; WaveformData? peaks = null;
         MediaStatus = dummy is null ? "FFMS2 indexing " + Path.GetFileName(path) : "Preparing dummy video";
         try
@@ -79,7 +86,7 @@ public sealed partial class MainWindowViewModel
             var full = dummy is null ? Path.GetFullPath(path) : "";
             var job = _jobs.Run(video ? "Open video" : "Open audio", ct =>
             {
-                candidate = dummy is null ? DocumentMedia.Open(full, ct, video ? MediaTracks.Both : MediaTracks.Audio)
+                candidate = dummy is null ? DocumentMedia.Open(full, ct, tracks)
                     : DocumentMedia.FromVideo(new DummyVideoProvider(dummy, ct));
                 if (video && !candidate.HasVideo)
                     throw new InvalidOperationException("The selected file contains no video stream.");

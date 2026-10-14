@@ -59,8 +59,18 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     model.PropertyChanged += published;
                     _opening = model.OpenMediaAsync(_audio); return;
                 case 1:
-                    if (_opening?.IsCompleted != true) { _stage--; return; } Require(await _opening, "Real combined baseline opens once.");
-                    Require(_racingVideo is not null && await _racingVideo && model.WaveformSamples is not null, "Video replacement retains in-flight audio peak publication.");
+                    if (_opening?.IsCompleted != true) { _stage--; return; }
+                    var combinedCompleted = await _opening;
+                    Require(_racingVideo is not null, "Published combined media must trigger the overlapping Video replacement.");
+                    var videoCompleted = await _racingVideo!;
+                    // A newer Video replacement may supersede the original
+                    // combined-open task, so its bool is not the retention
+                    // contract. The *published* original Audio provider must
+                    // still finish peak analysis and coexist with the new Video.
+                    Require(videoCompleted && model.AudioSourcePath == _audio &&
+                            model.VideoSourcePath == _video && model.HasAudio &&
+                            model.WaveformSamples is not null,
+                        $"Video replacement must retain in-flight Audio and its waveform; combined={combinedCompleted}, video={videoCompleted}, audio={model.AudioSourcePath}, videoPath={model.VideoSourcePath}, audioReady={model.WaveformSamples is not null}, status={model.MediaStatus}.");
                     Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
                         "Independent audio and video automatically select the combined view.");
                     await Invoke(CommandIds.ViewAudioVideo); model.Draft!.Text += " stored checkpoint"; await Invoke(CommandIds.EditCommit); await Invoke("time/lead/out");
