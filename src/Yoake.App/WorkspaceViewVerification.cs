@@ -24,6 +24,7 @@ internal sealed class WorkspaceViewVerification
     private readonly MainWindowViewModel _model;
     private readonly Action _unchanged;
     private readonly bool _loaded;
+    private readonly (string Id, string Menu, WorkspaceViewMode Mode, bool Audio, bool Video)[] _modes;
     private readonly string _report;
     private readonly GridLength _videoWidth, _textWidth;
     private readonly double _audioHeight;
@@ -33,6 +34,7 @@ internal sealed class WorkspaceViewVerification
     public WorkspaceViewVerification(MainWindow window, MainWindowViewModel model, string report, bool loaded)
     {
         _window=window; _model=model; _report=report; _loaded=loaded;
+        _modes=loaded ? Modes : [Modes[0]];
         var workspace=Named<Grid>("UpperWorkspace");
         _videoWidth=workspace.ColumnDefinitions[0].Width; _textWidth=workspace.ColumnDefinitions[2].Width;
         _audioHeight=model.AudioDisplayHeight;
@@ -59,8 +61,8 @@ internal sealed class WorkspaceViewVerification
 
     public bool Tick()
     {
-        if(_mode==Modes.Length)return true;
-        var mode=Modes[_mode];
+        if(_mode==_modes.Length)return true;
+        var mode=_modes[_mode];
         if(!_waiting)
         {
             var item=Named<MenuItem>(mode.Menu);
@@ -74,10 +76,12 @@ internal sealed class WorkspaceViewVerification
             var item=Named<MenuItem>(choice.Menu);
             Require(item.ToggleType==MenuItemToggleType.Radio&&item.IsChecked==(choice.Mode==mode.Mode)&&
                 _model.Registry.GetRequired(choice.Id).IsChecked(new())==(choice.Mode==mode.Mode),"Exactly one View menu/command must be checked.");
+            Require(item.Command is not null && item.Command.CanExecute(null)==(_loaded||choice.Mode==WorkspaceViewMode.Default),
+                "Only views backed by loaded media may be selected.");
         }
         var workspace=Named<Grid>("UpperWorkspace"); var pane=Named<Grid>("TemporalTextColumn");
         Require(Named<Grid>("VideoRegion").IsEffectivelyVisible==mode.Video&&Named<Grid>("AudioRegion").IsEffectivelyVisible==mode.Audio,
-            "Only the selected media regions must be visible, even without loaded files.");
+            "Only the selected, loaded media regions must be visible.");
         Require(Named<GridSplitter>("VideoSplitter").IsVisible==mode.Video&&Named<GridSplitter>("AudioSplitter").IsVisible==mode.Audio,"Hidden media must hide its splitter.");
         Require(mode.Video?workspace.ColumnDefinitions[0].ActualWidth>=340:workspace.ColumnDefinitions[0].ActualWidth==0,"Video column must restore or fully collapse.");
         Require(mode.Audio?pane.RowDefinitions[0].ActualHeight>=160:pane.RowDefinitions[0].ActualHeight==0,"Audio row must restore or fully collapse.");
@@ -95,12 +99,12 @@ internal sealed class WorkspaceViewVerification
             var audio=Named<Grid>("AudioRegion"); var editor=Named<Grid>("EventEditorRegion");
             Require(audio.TranslatePoint(new Point(0,audio.Bounds.Height),_window)!.Value.Y<=editor.TranslatePoint(default,_window)!.Value.Y,"Audio must remain above the text editor.");
         }
-        if(_mode==Modes.Length-1&&_loaded)
+        if(_mode==_modes.Length-1&&_loaded)
             Require(workspace.ColumnDefinitions[0].Width==_videoWidth&&workspace.ColumnDefinitions[2].Width==_textWidth&&_model.AudioDisplayHeight==_audioHeight,
                 "Repeated mode changes must preserve splitter sizes.");
         _mode++; _waiting=false;
-        if(_mode!=Modes.Length)return false;
-        File.AppendAllText(_report+".views.txt",$"PASS: all four workspace modes ({(_loaded?"loaded native media":"empty media")}); radio commands, retained document/draft/selection/history/media/Automation, collapsed regions, usable CI layout, audio above editor and restored splitters.\n");
+        if(_mode!=_modes.Length)return false;
+        File.AppendAllText(_report+".views.txt",$"PASS: {(_loaded?"all four loaded-media views":"subtitles-only view with unavailable media choices disabled")}; radio commands, retained document/draft/selection/history/media/Automation, collapsed regions, usable CI layout.\n");
         return true;
     }
 

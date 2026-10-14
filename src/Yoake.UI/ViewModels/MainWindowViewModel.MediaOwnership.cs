@@ -79,13 +79,20 @@ public sealed partial class MainWindowViewModel
             var full = dummy is null ? Path.GetFullPath(path) : "";
             var job = _jobs.Run(video ? "Open video" : "Open audio", ct =>
             {
-                candidate = dummy is null ? DocumentMedia.Open(full, ct, video ? MediaTracks.Video : MediaTracks.Audio)
+                candidate = dummy is null ? DocumentMedia.Open(full, ct, video ? MediaTracks.Both : MediaTracks.Audio)
                     : DocumentMedia.FromVideo(new DummyVideoProvider(dummy, ct));
+                if (video && !candidate.HasVideo)
+                    throw new InvalidOperationException("The selected file contains no video stream.");
                 if (video)
                 {
                     nativeTiming = new(candidate.FrameTimes, candidate.Info.FramesPerSecond, ct);
                     if (external is not null) candidate.SetExternalTimecodes(external.ForVideoMap(candidate.Info.FrameCount, ct));
                     candidate.SetExternalKeyframes(keyframes);
+                    // Auto-open audio from this video only if this document does
+                    // not already own independently selected audio. Preserve a
+                    // separate audio source when replacing its video companion.
+                    if (candidate.HasAudio && state.Media?.HasAudio != true)
+                        peaks = candidate.BuildWaveform(ct);
                 }
                 else peaks = candidate.BuildWaveform(ct);
                 return Task.CompletedTask;
@@ -98,6 +105,14 @@ public sealed partial class MainWindowViewModel
             if (video && (!ReferenceEquals(external, state.ExternalTimecodes) || !ReferenceEquals(keyframes, state.ExternalKeyframes))) return false;
             var old = state.Media;
             var replacement = prepared = old is null ? candidate : video ? old.WithVideo(candidate) : old.WithAudio(candidate);
+            if (video && old?.HasAudio != true && candidate!.HasAudio && old is not null)
+            {
+                // WithVideo deliberately preserves the old audio slot. When
+                // there was no old audio, retain the discovered audio too.
+                var intermediate = replacement!;
+                replacement = prepared = intermediate.WithAudio(candidate);
+                intermediate.Dispose();
+            }
             if (_activeId == id)
             {
                 CancelGesture(); CancelVisualBounds();
@@ -113,9 +128,12 @@ public sealed partial class MainWindowViewModel
             if (video) { state.FrameExtraction?.Cancel(); state.VideoProviderRevision++; state.VideoView.ResetContent(); state.VideoAspect = InitialVideoAspect(replacement.VideoProvider);
                 _videoPointer=null; state.ProviderFrameTiming = nativeTiming; state.FrameTiming = external?.Timing ?? nativeTiming; }
             else state.Waveform = peaks;
+            if (video && old?.HasAudio != true) state.Waveform = replacement!.HasAudio ? peaks : null;
             if (_activeId == id) PublishMediaPresentation(state, video, old is null);
             if (old is not null) _ = Task.Run(old.Dispose);
             var historyWarning = dummy is null ? RememberMedia(full, video) : RememberDummyVideo(dummy);
+            if (video && dummy is null && old?.HasAudio != true && replacement!.HasAudio)
+                historyWarning ??= RememberMedia(full, false);
             if (_activeId == id && state.Media?.HasVideo == true) await RefreshVideoFrameAsync(CurrentTimeSeconds);
             if (historyWarning is not null && _activeId == id && ReferenceEquals(state.Media,replacement) &&
                 ReferenceEquals(video ? state.VideoLoading : state.AudioLoading,cancellation))
@@ -187,7 +205,10 @@ public sealed partial class MainWindowViewModel
         // retains its sample clock even when its companion video disappears.
         if (!IsPlaying && MediaDurationSeconds > 0 && CurrentTimeSeconds > MediaDurationSeconds) CurrentTimeSeconds = MediaDurationSeconds;
         if (videoChanged) { VideoFrame = null; NotifyVideoPresentation(); OnPropertyChanged(nameof(VideoAspectRatio)); }
-        else { WaveformSamples = state.Waveform; OnPropertyChanged(nameof(HasAudio)); EnsureKaraokeSafe(); NotifyKaraoke(); }
+        WaveformSamples = state.Waveform;
+        OnPropertyChanged(nameof(HasAudio));
+        EnsureKaraokeSafe(); NotifyKaraoke();
+        ReconcileWorkspaceView();
         foreach (var name in new[] { nameof(VideoSourcePath), nameof(AudioSourcePath), nameof(FrameTimes), nameof(Keyframes),
             nameof(FramePositionDisplay), nameof(RelativeTimingDisplay), nameof(CanShiftByFrames) }) OnPropertyChanged(name);
         if (playableChanged) OnPropertyChanged(nameof(CanPlayMedia));

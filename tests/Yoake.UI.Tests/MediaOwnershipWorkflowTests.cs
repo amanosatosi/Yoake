@@ -24,6 +24,8 @@ public sealed partial class EditorWorkflowTests
         Assert.Same(editor, _model.ActiveEditor); Assert.Same(selection, _model.SelectedEvent); Assert.Same(draft, _model.Draft);
         Assert.Equal(range, _model.PrimaryAudioRange); Assert.Equal(source, editor.Document.Serialize()); Assert.Equal(undo, editor.Undo.NextUndoName);
         Assert.Null(_model.VideoSourcePath); Assert.Null(_model.AudioSourcePath); Assert.Empty(_model.RecentVideoItems); Assert.Empty(_model.RecentAudioItems);
+        Assert.True(_model.IsDefaultView); Assert.False(_model.ShowAudio); Assert.False(_model.ShowVideo);
+        Assert.False(_model.Actions[CommandIds.ViewAudioVideo].CanExecute(null));
         Assert.False(_model.Actions["video/close"].CanExecute(null));
         Assert.False(_model.Actions["audio/close"].CanExecute(null));
         Assert.False(await _model.Registry.InvokeAsync("audio/close", new(Guid.NewGuid())));
