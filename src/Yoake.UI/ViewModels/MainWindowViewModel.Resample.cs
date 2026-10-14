@@ -23,7 +23,7 @@ public sealed partial class MainWindowViewModel
             _registry.Register(new(new(id,label,label,"Tools"),action,c=>Owner(c)&&!HasEditOperation&&(enabled?.Invoke()??true)));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
-        Register("tool/resampleres","Resample Resolution…",async(_,token)=>
+        Register("tool/resampleres","Resample Resolution…",async(invocation,token)=>
         {
             if(_activeId is not {} id||Dialogs is null)return;var state=_documents[id];
             _resampleOpen=true;state.MediaDraftPauses++;_editBurstDelay?.Cancel();_resamplePlan=null;_registry.NotifyStateChanged();
