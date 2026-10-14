@@ -7,6 +7,8 @@ public interface IEditorDialogs
 {
     Task ShowResampleAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid id,CancellationToken token)=>throw new NotSupportedException("Resolution resampling is unavailable.");
     Task ShowFontCollectorAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid id,CancellationToken token)=>throw new NotSupportedException("Fonts Collector is unavailable.");
+    Task<bool> ShowAssDrawMissingAsync(CancellationToken token)=>Task.FromResult(false);
+    Task ShowAssDrawOptionsAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>ShowOptionsAsync(model);
     Task ShowAttachmentsAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid id,CancellationToken token)=>throw new NotSupportedException("Attachment manager is unavailable.");
     Task<bool> ConfirmAttachmentOverwriteAsync(string path,CancellationToken token)=>Task.FromResult(false);
     Task ShowRecoveryAsync(Yoake.UI.ViewModels.MainWindowViewModel model,CancellationToken token)=>throw new NotSupportedException("Recovery manager is unavailable.");

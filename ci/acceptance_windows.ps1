@@ -447,6 +447,26 @@ try {
   $process.Dispose()
 }
 
+$assDrawRoot = Join-Path $root ('assdraw-' + [Guid]::NewGuid().ToString('N'))
+$assDrawProfile = Join-Path $assDrawRoot 'profile'
+New-Item -ItemType Directory -Force -Path $assDrawProfile | Out-Null
+$logs = Join-Path $assDrawRoot 'logs'
+$report = Join-Path $assDrawRoot 'acceptance.txt'
+$arguments = @('--verify-ui-assdraw', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $assDrawProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+try {
+  if (-not $process.WaitForExit(150000)) { throw 'Packaged ASSDraw external integration timed out' }
+  $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+  if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged ASSDraw external integration failed (exit $($process.ExitCode)):`n$text" }
+  Write-Host $text
+} catch {
+  Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+  throw
+} finally {
+  if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+  $process.Dispose()
+}
+
 $videoPresentationRoot = Join-Path $root ('video-presentation-' + [Guid]::NewGuid().ToString('N'))
 $videoPresentationProfile = Join-Path $videoPresentationRoot 'profile'
 New-Item -ItemType Directory -Force -Path $videoPresentationProfile | Out-Null

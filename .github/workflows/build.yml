@@ -199,6 +199,9 @@ jobs:
         run: python ci/create_editor_media_fixtures.py artifacts/editor-fixtures
       - name: Generate pinned redistributable font acceptance fixtures
         run: python ci/create_font_collector_fixtures.py artifacts/editor-fixtures
+      - name: Build harmless external-tool acceptance process fixture
+        shell: pwsh
+        run: .\ci\build_assdraw_acceptance_fixture.ps1 -OutputRoot artifacts\editor-fixtures\assdraw
       - name: Configure desktop for default workspace verification
         run: .\ci\set_ui_verification_display.ps1
       - name: Verify real MainWindow startup with clean, legacy and damaged profiles

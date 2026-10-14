@@ -458,6 +458,17 @@ public partial class MainWindow : Window, IEditorDialogs
         using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close();}));
         await dialog.ShowDialog(this);
     }
+    public async Task ShowAssDrawOptionsAsync(MainWindowViewModel model)=>await new OptionsWindow(model,true).ShowDialog(this);
+    public async Task<bool> ShowAssDrawMissingAsync(CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new Window{Name="AssDrawMissingDialog",Title="ASSDraw3",Width=440,SizeToContent=SizeToContent.Height,CanResize=false,WindowStartupLocation=WindowStartupLocation.CenterOwner};
+        var names=new NameScope();NameScope.SetNameScope(dialog,names);var panel=new StackPanel{Margin=new Thickness(12),Spacing=12};dialog.Content=panel;
+        var text=new TextBlock{Name="AssDrawMissingMessage",Text=Yoake.Core.Tools.AssDrawLauncher.MissingMessage};panel.Children.Add(text);names.Register(text.Name!,text);
+        var buttons=new StackPanel{Orientation=Avalonia.Layout.Orientation.Horizontal,Spacing=8,HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Right};panel.Children.Add(buttons);
+        var configure=new Button{Name="AssDrawConfigure",Content="Configure…"};var close=new Button{Name="AssDrawMissingClose",Content="Close",IsDefault=true,IsCancel=true};
+        foreach(var button in new[]{configure,close}){buttons.Children.Add(button);names.Register(button.Name!,button);}configure.Click+=(sender,args)=>dialog.Close(true);close.Click+=(sender,args)=>dialog.Close(false);names.Complete();
+        using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close(false);}));return await dialog.ShowDialog<bool>(this);
+    }
     public async Task<bool> ConfirmAttachmentOverwriteAsync(string path,CancellationToken token)
     {
         token.ThrowIfCancellationRequested();var dialog=new Window{Name="AttachmentOverwriteDialog",Title="Replace extracted file?",Width=480,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};

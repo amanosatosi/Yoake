@@ -67,7 +67,7 @@ public sealed class SettingsStore(string path)
         var audioStopMigrated=false;
         var ratio = defaults.MainSplitRatio; var height = defaults.GridHeight;
         double? volume=null,audioHeight=null,intensity=null,audioSpan=null;var muted=false;var linked=false;double[]? compact=null,styleSplit=null;
-        string[]? autoload=null,includes=null;
+        string[]? autoload=null,includes=null;string? assDrawExecutable=null;
         bool? audioSpectrum=null,audioAutoScroll=null;
         bool? audioAutoCommit=null,audioAutoNext=null;
         int? audioDefaultDuration=null,audioLeadIn=null,audioLeadOut=null;
@@ -77,6 +77,7 @@ public sealed class SettingsStore(string path)
         {
             switch (member.Name)
             {
+                case "assDrawExecutable":if(member.Value.ValueKind==JsonValueKind.String)assDrawExecutable=member.Value.GetString();break;
                 case "autosaveEnabled":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)autosaveEnabled=member.Value.GetBoolean();break;
                 case "autosaveIntervalSeconds":if(TryReadInt(member.Value,out var interval))autosaveInterval=interval;break;
                 case "recoveryDirectory":if(member.Value.ValueKind==JsonValueKind.String)recoveryDirectory=member.Value.GetString();break;
@@ -134,7 +135,7 @@ public sealed class SettingsStore(string path)
                 default: future[member.Name] = member.Value.Clone(); break;
             }
         }
-        return new AppSettings { Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
+        return new AppSettings { AssDrawExecutable=assDrawExecutable,Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
             AutosaveEnabled=autosaveEnabled,AutosaveIntervalSeconds=autosaveInterval,RecoveryDirectory=recoveryDirectory,
             HotkeyOverrides=hotkeys.ToArray(),AudioStopHotkeysMigrated=audioStopMigrated,GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,SelectionPreferences=selection,VideoAutoSeek=videoAutoSeek,VideoOverscan=videoOverscan,LastDummyVideo=lastDummy,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
             GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, RecentVideo=recentVideo, RecentAudio=recentAudio, FutureSettings = future,ShowOriginal=showOriginal,PasteOverFields=pasteOverFields,

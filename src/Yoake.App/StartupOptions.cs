@@ -28,6 +28,7 @@ internal sealed class StartupOptions
     public bool KaraokeRecovery {get;private set;}
     public bool ResampleAcceptance {get;private set;}
     public bool FontCollectorAcceptance {get;private set;}
+    public bool AssDrawAcceptance {get;private set;}
     public bool AudioTimingAcceptance {get;private set;}
     private int _verificationFinished;
     private int _startupVerified;
@@ -36,15 +37,16 @@ internal sealed class StartupOptions
 
     public static StartupOptions Parse(string[] args)
     {
-        var options = new StartupOptions { NonInteractive = args.Contains("--verify-editor") || args.Contains("--verify-ui-startup") || args.Contains("--verify-ui-hotkeys") || args.Contains("--verify-ui-timing") || args.Contains("--verify-ui-timecodes") || args.Contains("--verify-ui-audio-display") || args.Contains("--verify-ui-selection") || args.Contains("--verify-ui-audio-clip") || args.Contains("--verify-ui-audio-playback") || args.Contains("--verify-ui-audio-timing") || args.Contains("--verify-ui-video") || args.Contains("--verify-ui-video-navigation") || args.Contains("--verify-ui-media-ownership") || args.Contains("--verify-ui-video-utilities") || args.Contains("--verify-ui-video-presentation") || args.Contains("--verify-ui-original-paste") || args.Contains("--verify-ui-recovery") || args.Contains("--verify-ui-recovery-capture") || args.Contains("--verify-ui-attachments-capture") || args.Contains("--verify-ui-attachments-recovery") || args.Contains("--verify-ui-karaoke") || args.Contains("--verify-ui-karaoke-recovery") || args.Contains("--verify-ui-resample") || args.Contains("--verify-ui-font-collector") };
+        var options = new StartupOptions { NonInteractive = args.Contains("--verify-editor") || args.Contains("--verify-ui-startup") || args.Contains("--verify-ui-hotkeys") || args.Contains("--verify-ui-timing") || args.Contains("--verify-ui-timecodes") || args.Contains("--verify-ui-audio-display") || args.Contains("--verify-ui-selection") || args.Contains("--verify-ui-audio-clip") || args.Contains("--verify-ui-audio-playback") || args.Contains("--verify-ui-audio-timing") || args.Contains("--verify-ui-video") || args.Contains("--verify-ui-video-navigation") || args.Contains("--verify-ui-media-ownership") || args.Contains("--verify-ui-video-utilities") || args.Contains("--verify-ui-video-presentation") || args.Contains("--verify-ui-original-paste") || args.Contains("--verify-ui-recovery") || args.Contains("--verify-ui-recovery-capture") || args.Contains("--verify-ui-attachments-capture") || args.Contains("--verify-ui-attachments-recovery") || args.Contains("--verify-ui-karaoke") || args.Contains("--verify-ui-karaoke-recovery") || args.Contains("--verify-ui-resample") || args.Contains("--verify-ui-font-collector") || args.Contains("--verify-ui-assdraw") };
         for (var i = 0; i < args.Length; i++)
         {
-            if (args[i] is not ("--verify-ui-startup" or "--verify-ui-hotkeys" or "--verify-ui-timing" or "--verify-ui-timecodes" or "--verify-ui-audio-display" or "--verify-ui-selection" or "--verify-ui-audio-clip" or "--verify-ui-audio-playback" or "--verify-ui-audio-timing" or "--verify-ui-video" or "--verify-ui-video-navigation" or "--verify-ui-media-ownership" or "--verify-ui-video-utilities" or "--verify-ui-video-presentation" or "--verify-ui-original-paste" or "--verify-ui-recovery" or "--verify-ui-recovery-capture" or "--verify-ui-attachments-capture" or "--verify-ui-attachments-recovery" or "--verify-ui-karaoke" or "--verify-ui-karaoke-recovery" or "--verify-ui-resample" or "--verify-ui-font-collector" or "--profile-directory" or "--diagnostics-directory" or "--verification-media")) continue;
+            if (args[i] is not ("--verify-ui-startup" or "--verify-ui-hotkeys" or "--verify-ui-timing" or "--verify-ui-timecodes" or "--verify-ui-audio-display" or "--verify-ui-selection" or "--verify-ui-audio-clip" or "--verify-ui-audio-playback" or "--verify-ui-audio-timing" or "--verify-ui-video" or "--verify-ui-video-navigation" or "--verify-ui-media-ownership" or "--verify-ui-video-utilities" or "--verify-ui-video-presentation" or "--verify-ui-original-paste" or "--verify-ui-recovery" or "--verify-ui-recovery-capture" or "--verify-ui-attachments-capture" or "--verify-ui-attachments-recovery" or "--verify-ui-karaoke" or "--verify-ui-karaoke-recovery" or "--verify-ui-resample" or "--verify-ui-font-collector" or "--verify-ui-assdraw" or "--profile-directory" or "--diagnostics-directory" or "--verification-media")) continue;
             var flag = args[i];
             if (++i >= args.Length || string.IsNullOrWhiteSpace(args[i])) throw new ArgumentException($"{flag} requires a path.");
             var path = Path.GetFullPath(args[i]);
             switch (flag)
             {
+                case "--verify-ui-assdraw":options.VerificationReport=path;options.AssDrawAcceptance=true;break;
                 case "--verify-ui-font-collector":options.VerificationReport=path;options.FontCollectorAcceptance=true;break;
                 case "--verify-ui-resample":options.VerificationReport=path;options.ResampleAcceptance=true;break;
                 case "--verify-ui-karaoke":options.VerificationReport=path;options.KaraokeAcceptance=true;break;

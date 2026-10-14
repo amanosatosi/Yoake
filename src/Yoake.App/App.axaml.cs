@@ -107,6 +107,7 @@ public partial class App : Application
                 else if(_startup.KaraokeAcceptance||_startup.KaraokeRecovery)new KaraokeUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.ResampleAcceptance)new ResampleUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.FontCollectorAcceptance)new FontCollectorUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AssDrawAcceptance)new AssDrawUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.AudioTimingAcceptance)new AudioTimingUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else new UiStartupVerification(desktop, window, viewModel, _startup).Start();
             }

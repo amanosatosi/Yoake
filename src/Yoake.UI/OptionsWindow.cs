@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Yoake.Core.Hotkeys;
 using Yoake.UI.Commands;
 using Yoake.UI.ViewModels;
@@ -28,7 +29,7 @@ public sealed class OptionsWindow : Window
     private HotkeyContext Context=>(HotkeyContext)(_context.SelectedItem??HotkeyContext.Default);
     private CommandChoice? Choice=>_commands.SelectedItem as CommandChoice;
 
-    public OptionsWindow(MainWindowViewModel model)
+    public OptionsWindow(MainWindowViewModel model,bool externalTools=false)
     {
         _model=model;Title="Options — Keyboard shortcuts";Name="OptionsDialog";Width=860;Height=620;MinWidth=650;MinHeight=460;
         var names=new NameScope();NameScope.SetNameScope(this,names);
@@ -88,7 +89,27 @@ public sealed class OptionsWindow : Window
             var success=await model.Registry.InvokeAsync("settings/autosave",new(),new AutosaveOptions(enabled.IsChecked==true,(int)(interval.Value??60),directory.Text));
             autosaveStatus.Text=success?"Autosave settings saved.":model.SubtitleStatus;
         };
-        var tabs=new TabControl{Name="OptionsTabs",ItemsSource=new TabItem[]{new(){Header="Keyboard shortcuts",Content=root},new(){Header="Autosave / Recovery",Content=autosave}}};
+        var tools=new StackPanel{Margin=new Thickness(12),Spacing=8};
+        var assDraw=new TextBox{Name="AssDrawExecutablePath",Text=model.AssDrawExecutable,PlaceholderText="Blank discovers ASSDraw3.exe beside Yoake or in its data folder"};
+        var assDrawBrowse=new Button{Name="AssDrawBrowse",Content="Choose executable…",HorizontalAlignment=HorizontalAlignment.Left};
+        var assDrawApply=new Button{Name="AssDrawPathApply",Content="Save ASSDraw3 path",HorizontalAlignment=HorizontalAlignment.Left,Command=new RegistryCommand(model.Registry,"settings/assdraw/path",()=>new(model.ActiveDocumentId),parameterFactory:()=>assDraw.Text??"")};
+        var assDrawStatus=new TextBlock{Name="AssDrawPathStatus",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
+        foreach(var control in new Control[]{assDraw,assDrawBrowse,assDrawApply,assDrawStatus})names.Register(control.Name!,control);
+        tools.Children.Add(new TextBlock{Text="ASSDraw3 external drawing tool"});tools.Children.Add(assDraw);tools.Children.Add(assDrawBrowse);tools.Children.Add(assDrawApply);
+        tools.Children.Add(new TextBlock{Text="Yoake launches the explicitly chosen executable without subtitle-derived arguments. ASSDraw remains a separate application; no automatic download or ASS import is performed.",TextWrapping=Avalonia.Media.TextWrapping.Wrap});tools.Children.Add(assDrawStatus);
+        assDrawBrowse.Click+=async(sender,args)=>
+        {
+            try{var files=await StorageProvider.OpenFilePickerAsync(new(){Title="Choose ASSDraw3 executable",AllowMultiple=false,FileTypeFilter=[new Avalonia.Platform.Storage.FilePickerFileType("Windows executable"){Patterns=["*.exe"]}]});if(files.FirstOrDefault() is {} file)assDraw.Text=file.Path.LocalPath;}
+            catch(Exception error){model.Registry.ReportFailure("settings/assdraw/path",error);}
+        };
+        void AssDrawFeedback(object? sender,System.ComponentModel.PropertyChangedEventArgs args){if(args.PropertyName==nameof(MainWindowViewModel.SubtitleStatus))assDrawStatus.Text=model.SubtitleStatus;}
+        model.PropertyChanged+=AssDrawFeedback;Closed+=(sender,args)=>model.PropertyChanged-=AssDrawFeedback;
+        tools.AddHandler(InputElement.KeyDownEvent,(sender,args)=>
+        {
+            if(args.Key is not (Key.Enter or Key.Escape))return;
+            if(assDraw.IsKeyboardFocusWithin&&assDraw.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))args.Handled=true;
+        },RoutingStrategies.Tunnel);
+        var tabs=new TabControl{Name="OptionsTabs",ItemsSource=new TabItem[]{new(){Header="Keyboard shortcuts",Content=root},new(){Header="Autosave / Recovery",Content=autosave},new(){Header="External tools",Content=tools}},SelectedIndex=externalTools?2:0};
         names.Register(tabs.Name!,tabs);Content=tabs;Title="Options";Height=650;
         names.Complete();
     }

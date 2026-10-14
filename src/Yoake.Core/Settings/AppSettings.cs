@@ -22,6 +22,7 @@ public enum WorkspaceViewMode
 
 public sealed record AppSettings
 {
+    public string? AssDrawExecutable {get;init;}
     public bool? KaraokeAutoCut { get; init; }
     public double[] GridColumnWidths { get; init; } = [40,65,48,92,92,110,100,90];
     public string[] RecentFiles { get; init; } = [];
