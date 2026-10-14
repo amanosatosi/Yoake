@@ -14,7 +14,9 @@ public sealed partial class MainWindowViewModel
     private AssEvent? _resampleLine;
     public ResamplePlan? ResamplePreview=>_resamplePlan;
     public event EventHandler<ResampleCloseEventArgs>? ResampleCloseRequested;
-    public (int Width,int Height) ScriptResolution=>ActiveEditor?.CaptureResample().Resolution??(384,288);
+    public (int Width,int Height) ScriptResolution=>ActiveEditor is {} editor?ResampleGeometry.ReadResolution(editor.Document.GetScriptInfo("PlayResX"),editor.Document.GetScriptInfo("PlayResY")):(384,288);
+    private void InvalidateResamplePreview(Guid? owner)
+    {if(_resamplePlan is not null&&_resampleOwner==owner){_resamplePlan=null;OnPropertyChanged(nameof(ResamplePreview));}}
     private void RegisterResampleCommands()
     {
         bool Owner(CommandContext context)=>!_disposed&&_activeId is {} id&&_documents.ContainsKey(id)&&(context.DocumentId is null||context.DocumentId==id)&&!HasGesture;

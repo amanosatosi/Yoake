@@ -75,6 +75,12 @@ public sealed class ResolutionResampleTests
     {var editor=Editor();var plan=Plan(editor);Assert.Throws<InvalidOperationException>(()=>Editor().ApplyResample(plan));editor.SetField(editor.Document.Events[0],"Text","new","Edit");var source=editor.Document.Serialize();Assert.Throws<InvalidOperationException>(()=>editor.ApplyResample(plan));Assert.Equal(source,editor.Document.Serialize());}
     [Fact] public void CancellationNeverChangesSource()
     {var editor=Editor();var source=editor.Document.Serialize();var plan=Plan(editor);using var cancellation=new CancellationTokenSource();cancellation.Cancel();Assert.Throws<OperationCanceledException>(()=>editor.CaptureResample().Calculate(new(640,480,1280,960),cancellation.Token));Assert.Throws<OperationCanceledException>(()=>editor.ApplyResample(plan,cancellation.Token));Assert.Equal(source,editor.Document.Serialize());}
+    [Fact] public void CancellationDuringPublicationRollsBackEveryAppliedField()
+    {
+        var editor=Editor(@"{\pos(10,20)}x");var source=editor.Document.Serialize();var plan=Plan(editor);using var cancellation=new CancellationTokenSource();
+        editor.Document.Styles[0].PropertyChanged+=(_,_)=>cancellation.Cancel();Assert.Throws<OperationCanceledException>(()=>editor.ApplyResample(plan,cancellation.Token));
+        Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+    }
     [Fact] public void ValidDraftAndResolutionChangeShareOneUndoAndRetainUnknownSource()
     {
         var suffix="[Fonts]\nfontname: keep.ttf\n!!!!\n[Future]\nraw: keep\n";var editor=Editor(suffix:suffix);var source=editor.Document.Serialize();var line=editor.Document.Events[0];

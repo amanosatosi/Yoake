@@ -84,7 +84,8 @@ internal sealed class ResampleUiAcceptanceVerification(IClassicDesktopStyleAppli
                     await Invoke("settings/hotkeys/set",new HotkeyChange(HotkeyContext.Default,"tool/resampleres",["F9"]));Require(window.FindControl<MenuItem>("ResampleMenu")!.InputGesture?.Key==Key.F9,"Effective menu shortcut reflects user override.");
                     Press(window.FindControl<ListBox>("SubtitleRows")!,Key.F9);return;
                 case 13:
-                    _dialog=window.OwnedWindows.OfType<ResampleWindow>().Single();In<ComboBox>("ResampleAspect").SelectedItem=ResampleAspect.Manual;
+                    _dialog=window.OwnedWindows.OfType<ResampleWindow>().Single();Require(!In<ComboBox>("ResampleAspect").IsEnabled,"Matching aspect ratios disable the source's irrelevant aspect controls.");
+                    In<TextBox>("ResampleTargetY").Text="720";In<ComboBox>("ResampleAspect").SelectedItem=ResampleAspect.Manual;
                     Require(In<TextBox>("ResampleLeft").IsEnabled&&!In<TextBox>("ResampleRight").IsEnabled,"Manual symmetric margins provide meaningful input state.");In<TextBox>("ResampleLeft").Text="20";Require(In<TextBox>("ResampleRight").Text=="20","Symmetric input updates its paired margin.");
                     Press(In<Button>("ResampleCancel"),Key.Enter);return;
                 case 14:

@@ -142,6 +142,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if(_publishingAudioTiming)return;
         if(e.PropertyName is nameof(EventEditDraft.IsChanged) or nameof(EventEditDraft.Duration))return;
         if(_activeId is {} recoveryId&&_documents.TryGetValue(recoveryId,out var recoveryState))recoveryState.DraftRevision++;
+        InvalidateResamplePreview(_activeId);
         if((e.PropertyName is nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))&&SelectedEvent is {} timed)AudioTiming?.Clear(timed);
         if(_activeId is {} editingId&&_documents.TryGetValue(editingId,out var editingState))editingState.Editing?.Cancel();
         try{SelectedEvent?.ShowDraft(Draft?.Values);}catch(ArgumentException){/* Invalid metadata remains editable, never saved. */}

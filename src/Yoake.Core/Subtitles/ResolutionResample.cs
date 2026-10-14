@@ -21,6 +21,11 @@ public sealed record ResampleWarning(string Location,string Tag,string Reason)
 { public override string ToString()=>$"{Location} · {Tag}: {Reason}"; }
 public sealed record ResampleGeometry(double X,double Y,double Stretch,int Left,int Right,int Top,int Bottom)
 {
+    public static (int Width,int Height) ReadResolution(string width,string height)
+    {
+        var x=int.TryParse(width,out var parsedX)&&parsedX>0?parsedX:0;var y=int.TryParse(height,out var parsedY)&&parsedY>0?parsedY:0;
+        if(x==0&&y==0)return(384,288);if(x==0)x=y==1024?1280:y*4/3;if(y==0)y=x==1280?1024:x*3/4;return(x,y);
+    }
     public static ResampleGeometry Calculate(ResampleOptions options)
     {
         if(options.SourceWidth is <1 or >999999||options.SourceHeight is <1 or >999999||options.Width is <1 or >999999||options.Height is <1 or >999999||!Enum.IsDefined(options.Aspect)||
@@ -61,15 +66,7 @@ public sealed class ResampleSnapshot
     private readonly Dictionary<string,string> _info;
     internal ResampleSnapshot(SubtitleEditor editor,Row[] rows,Dictionary<string,string> info,AssEvent? draftLine,string[]? draftFields)
     {Editor=editor;Revision=editor.Document.Revision;Rows=rows;_info=info;DraftLine=draftLine;DraftFields=draftFields;}
-    public (int Width,int Height) Resolution
-    {
-        get
-        {
-            int Read(string key)=>int.TryParse(_info[key],out var n)&&n>0?n:0;
-            var x=Read("PlayResX");var y=Read("PlayResY");
-            if(x==0&&y==0)return(384,288);if(x==0)x=y==1024?1280:y*4/3;if(y==0)y=x==1280?1024:x*3/4;return(x,y);
-        }
-    }
+    public (int Width,int Height) Resolution=>ResampleGeometry.ReadResolution(_info["PlayResX"],_info["PlayResY"]);
     public ResamplePlan Calculate(ResampleOptions options,CancellationToken token=default)
     {
         token.ThrowIfCancellationRequested();var geometry=ResampleGeometry.Calculate(options);var edits=new List<ResamplePlan.Edit>();var warnings=new List<ResampleWarning>();

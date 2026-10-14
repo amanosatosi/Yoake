@@ -26,6 +26,7 @@ public sealed class ResampleWindow:Window
     private readonly TextBlock _summary=new(){Name="ResampleSummary",TextWrapping=TextWrapping.Wrap};
     private readonly ListBox _warnings=new(){Name="ResampleWarnings",MinHeight=60};
     private readonly Button _video=new(){Name="ResampleFromVideo",Content="From video"};
+    private readonly Button _script=new(){Name="ResampleFromScript",Content="From script"};
     private readonly Control[] _inputs;
     private bool _changing,_closed;
     public ResampleWindow(MainWindowViewModel model,Guid document)
@@ -38,7 +39,7 @@ public sealed class ResampleWindow:Window
         StackPanel Dimensions(string label,TextBox x,TextBox y)
         {var p=new StackPanel{Spacing=5};p.Children.Add(new TextBlock{Text=label});var row=new Grid{ColumnDefinitions=new("*,Auto,*"),ColumnSpacing=7};row.Children.Add(x);var cross=new TextBlock{Text="×",VerticalAlignment=VerticalAlignment.Center};Grid.SetColumn(cross,1);row.Children.Add(cross);Grid.SetColumn(y,2);row.Children.Add(y);p.Children.Add(row);return p;}
         var source=Dimensions("Source script resolution",_sourceX,_sourceY);dimensions.Children.Add(source);var target=Dimensions("Target resolution",_targetX,_targetY);Grid.SetColumn(target,1);dimensions.Children.Add(target);
-        var script=new Button{Name="ResampleFromScript",Content="From script"};names.Register(script.Name!,script);source.Children.Add(script);target.Children.Add(_video);
+        names.Register(_script.Name!,_script);source.Children.Add(_script);target.Children.Add(_video);
         var aspectPanel=new StackPanel{Spacing=5};Grid.SetRow(aspectPanel,1);root.Children.Add(aspectPanel);aspectPanel.Children.Add(new TextBlock{Text="Aspect-ratio change"});aspectPanel.Children.Add(_aspect);
         _aspect.ItemTemplate=new FuncDataTemplate<object>((item,_)=>new TextBlock{Text=item switch{ResampleAspect.AddBorders=>"Add borders",ResampleAspect.RemoveBorders=>"Remove borders",ResampleAspect.Manual=>"Manual margin offsets",_=>"Stretch"}});
         var margins=new Grid{ColumnDefinitions=new("*,*,*,*"),RowDefinitions=new("Auto,Auto,Auto"),ColumnSpacing=8,RowSpacing=4};Grid.SetRow(margins,2);root.Children.Add(margins);
@@ -54,7 +55,7 @@ public sealed class ResampleWindow:Window
         var cancel=new Button{Name="ResampleCancel",Content="Cancel",IsCancel=true,Command=new RegistryCommand(model.Registry,"resample/cancel",()=>new(_document))};
         foreach(var button in new[]{preview,apply,cancel}){names.Register(button.Name!,button);buttons.Children.Add(button);}
         _changing=true;SetDimensions(_sourceX,_sourceY,model.ScriptResolution);var video=model.CurrentVideoDetails;SetDimensions(_targetX,_targetY,video is null?model.ScriptResolution:(video.Width,video.Height));_changing=false;
-        script.Click+=(_,_)=>{SetDimensions(_sourceX,_sourceY,model.ScriptResolution);Invalidate();};
+        _script.Click+=(_,_)=>{SetDimensions(_sourceX,_sourceY,model.ScriptResolution);Invalidate();};
         _video.Click+=(_,_)=>{if(model.CurrentVideoDetails is {} current){SetDimensions(_targetX,_targetY,(current.Width,current.Height));Invalidate();}};
         foreach(var field in _inputs.OfType<TextBox>())field.TextChanged+=(_,_)=>Invalidate();_aspect.SelectionChanged+=(_,_)=>Invalidate();_symmetric.Click+=(_,_)=>Invalidate();
         model.PropertyChanged+=ModelChanged;model.ResampleCloseRequested+=CloseRequested;
@@ -73,7 +74,7 @@ public sealed class ResampleWindow:Window
     {
         int Number(TextBox field,bool margin=false)
         {if(!int.TryParse(field.Text,NumberStyles.Integer,CultureInfo.InvariantCulture,out var n)||(margin?n is <-9999 or >9999:n is <1 or >999999))throw new ArgumentException(margin?"Margin offsets must be −9999–9999.":"Dimensions must be integers between 1 and 999999.");return n;}
-        var aspect=(ResampleAspect)(_aspect.SelectedItem??ResampleAspect.Stretch);var manual=aspect==ResampleAspect.Manual;
+        var aspect=AspectChanged()?(ResampleAspect)(_aspect.SelectedItem??ResampleAspect.Stretch):ResampleAspect.Stretch;var manual=aspect==ResampleAspect.Manual;
         return new ResampleOptions(Number(_sourceX),Number(_sourceY),Number(_targetX),Number(_targetY),aspect,manual?Number(_left,true):0,manual?Number(_right,true):0,manual?Number(_top,true):0,manual?Number(_bottom,true):0);
     }
     private void Invalidate()
@@ -84,9 +85,16 @@ public sealed class ResampleWindow:Window
     private void Refresh()
     {
         var busy=_model.HasEditOperation;foreach(var control in _inputs)control.IsEnabled=!busy;
-        var manual=_aspect.SelectedItem is ResampleAspect.Manual;_left.IsEnabled=_top.IsEnabled=_symmetric.IsEnabled=manual&&!busy;_right.IsEnabled=_bottom.IsEnabled=manual&&!busy&&_symmetric.IsChecked!=true;
-        _video.IsEnabled=!busy&&_model.CurrentVideoDetails is not null;
+        var different=AspectChanged();_aspect.IsEnabled=different&&!busy;
+        var manual=different&&_aspect.SelectedItem is ResampleAspect.Manual;_left.IsEnabled=_top.IsEnabled=_symmetric.IsEnabled=manual&&!busy;_right.IsEnabled=_bottom.IsEnabled=manual&&!busy&&_symmetric.IsChecked!=true;
+        var script=_model.ScriptResolution;_script.IsEnabled=!busy&&(_sourceX.Text!=script.Width.ToString(CultureInfo.InvariantCulture)||_sourceY.Text!=script.Height.ToString(CultureInfo.InvariantCulture));
+        _video.IsEnabled=!busy&&_model.CurrentVideoDetails is {} video&&(_targetX.Text!=video.Width.ToString(CultureInfo.InvariantCulture)||_targetY.Text!=video.Height.ToString(CultureInfo.InvariantCulture));
         _summary.Text=busy?"Calculating on an immutable document snapshot…":_model.ResamplePreview?.Summary??"Set dimensions and choose Preview.";_warnings.ItemsSource=_model.ResamplePreview?.Warnings;
+    }
+    private bool AspectChanged()
+    {
+        if(!int.TryParse(_sourceX.Text,out var x)||!int.TryParse(_sourceY.Text,out var y)||!int.TryParse(_targetX.Text,out var tx)||!int.TryParse(_targetY.Text,out var ty)||x<=0||y<=0||tx<=0||ty<=0)return false;
+        var a=x/(double)y;var b=tx/(double)ty;return Math.Abs(a-b)/b>.01;
     }
     private void ModelChanged(object? sender,PropertyChangedEventArgs args)
     {
