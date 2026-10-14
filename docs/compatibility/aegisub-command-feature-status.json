@@ -3306,12 +3306,21 @@
     },
     {
       "id": "tool/resampleres",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Resample subtitles to maintain their current appearance at a different script resolution",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "tool/resampleres",
+      "status": "already complete",
+      "backend": "Source-backed Aegisub 3.5 axis/aspect/style/drawing resampling on immutable background snapshots; structured Mangetsu geometry classification and exact preserved-expression warnings; fenced valid-draft publication in one rollback-capable undo transaction.",
+      "exposure": [
+        "Tools menu",
+        "Native Preview/Apply/Cancel dialog with source/video resolution and aspect/margins",
+        "Contextual remappable keyboard routing"
+      ],
+      "tests": [
+        "ResolutionResampleTests",
+        "ResampleWorkflowTests",
+        "ResampleUiAcceptanceVerification (separate packaged native process)",
+        "All existing native/media/karaoke acceptance"
+      ],
+      "notes": "Verified code 5f2ce6ffc07ccceacbf8bb555be83cf37c33a67a: full PR workflow https://github.com/amanosatosi/Yoake/actions/runs/38569865551 passed 624 Core / 137 UI / 34 Automation (795 total), NativeAOT, startup, real Tools dialog validation/IME/preview/apply/cancel/Undo/Redo, source-resolution Mangetsu geometry and independent media/pending timing/tab retention, all prior acceptance and native providers. Matching push 38569856289 was finishing at this documentation checkpoint. Source audit: docs/compatibility/aegisub-resample-reference.md. Colors/matrix are preserved; normalized distort pins stay exact; unsupported expressions warn; scaled clip margins use actual drawing units; draft/input fences and synchronous input invalidation retain error feedback.",
       "yoake_default_hotkeys": {}
     },
     {

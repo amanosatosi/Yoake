@@ -77,3 +77,17 @@ Verified final code HEAD c913cd70996c42c95f698f63d822be063471c067. Full [branch 
 Implementation 35f9737 plus focused repairs 43d400d, 9cdf56c, dd4e216, f2fc9ee, f3b9646, 6598c4b, ef66339, c70258e, c913cd7. Compile API mismatches and genuine default audio layout regressions were repaired without changing any prior assertions. Full typed timing plans and raw-anchor/fingerprint metadata preserve invalid drafts, opaque drawing/comment slots, decomposed kana and millisecond endpoints. The source audit documents deliberate literal-pipe/space and uppercase-K preservation, ambiguity guards and the all-group dropdown; the per-group menu follows upstream immediate commit. Hardware audio latency, physical IME and dense long-lyric/DPI behavior remain manual QA.
 
 Checkpoint 4 is next. Read the completed research audit aegisub-resample-reference.md before implementation. Checkpoints 4–8 remain missing and have no implementation yet. Stay sequential; no local compilation, new branch, native version change or Automation rewrite. Current assignment's five-hour window began at 2026-10-13 18:42 UTC; finish a coherent verified checkpoint or record precise pending work before 23:42 UTC.
+
+## Scoped continuation — 14 October 2026
+
+The latest user assignment is exactly Checkpoint 4 Resample, Checkpoint 5 Font Collector and Checkpoint 8 external ASSDraw3. Styling Assistant and Kanji Timer are excluded. The earlier five-hour window ended with resumable resampling work; this new assignment starts from 142b256f64761f6776b6ae095741f3764635f740. Fetched remote and confirmed it matched before editing; unrelated agents.md and luna.md state remain untouched.
+
+Checkpoint 3 matching PR 38463025211 also passed all jobs.
+
+### Checkpoint 4 — verified
+
+Verified code 5f2ce6ffc07ccceacbf8bb555be83cf37c33a67a. Full [PR run 38569865551](https://github.com/amanosatosi/Yoake/actions/runs/38569865551) is green: 624 Core / 137 UI / 34 Automation, 795 total, no skips; source policy; NativeAOT; all startup profiles; actual Tools Resample dialog/IME/validation/Preview/Apply/Cancel/one-step Undo/Redo; Mangetsu rendered geometry; native Audio/dummy Video/frame/timeline/pending marker ownership; document isolation; all earlier native acceptance and provider checks. Matching push 38569856289 is still finishing when recorded. Only tool/resampleres is promoted. Totals: 145 complete, 51 partial, 27 missing, 13 N/A, 1 superseded; Video remains 55 complete.
+
+Implementation 52b2a84; focused repairs 142b256, b540d10 (named underscore lambda), 26d052a (coalesced braces/draft effect/pending timing), 9df4bb1 (valid full-record spline fixture with assertion retained), d1a3023 (source control availability, cheap dimension reads, draft fences, mid-publication rollback), 5f2ce6f (synchronous input invalidation retains validation feedback). See aegisub-resample-reference.md and architecture/resolution-resampling.md for contracts and deliberate differences.
+
+Next: Font Collector, with 3.2.2 as behavioral oracle. Research-only font/ASSDraw audits have been prepared; neither command is promoted. Implement/check/copy-folder/copy-script-folder/ZIP with native exact font-file/glyph resolution and controlled OFL fixtures, verify a separate packaged process and full CI, then implement the external ASSDraw launcher and verify separately. Do not begin Styling Assistant or Kanji Timer. No local compilation or dependency version changes.
