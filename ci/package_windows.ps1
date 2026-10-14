@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory = $true)][string]$PublishRoot,
   [Parameter(Mandatory = $true)][string]$NativeRoot,
+  [Parameter(Mandatory = $true)][string]$AssDrawRoot,
   [Parameter(Mandatory = $true)][string]$OutputRoot
 )
 $ErrorActionPreference = 'Stop'
@@ -177,6 +178,18 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Aegisub-BSD-3-
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $portable 'LICENSE') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $portable 'THIRD_PARTY_NOTICES.md') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'automation') -Destination $portable -Recurse -Force
+
+$AssDrawRoot = [IO.Path]::GetFullPath($AssDrawRoot)
+$assDrawManifest = Get-Content -LiteralPath (Join-Path $AssDrawRoot 'assdraw-manifest.json') -Raw | ConvertFrom-Json
+$assDrawPin = Get-Content -LiteralPath (Join-Path $repoRoot 'third_party/assdraw.json') -Raw | ConvertFrom-Json
+if ($assDrawManifest.commit -cne $assDrawPin.commit -or $assDrawManifest.repository -cne $assDrawPin.repository) { throw 'ASSDraw artifact source identity differs from the packaging pin.' }
+if ((Get-FileHash -LiteralPath (Join-Path $AssDrawRoot 'ASSDraw3.exe') -Algorithm SHA256).Hash.ToLowerInvariant() -cne $assDrawManifest.sha256) { throw 'ASSDraw artifact executable hash mismatch.' }
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'ASSDraw3.exe') -Destination $portable
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'assdraw-manifest.json') -Destination $portable
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'licenses') -Destination (Join-Path $licenseTarget 'assdraw') -Recurse
+$sourceTarget = Join-Path $portable 'sources'
+New-Item -ItemType Directory -Force -Path $sourceTarget | Out-Null
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'sources') -Destination (Join-Path $sourceTarget 'assdraw') -Recurse
 
 $zip = Join-Path $OutputRoot 'Yoake-Windows-x64-portable.zip'
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }

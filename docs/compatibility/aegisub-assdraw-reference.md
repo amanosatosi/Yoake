@@ -1,4 +1,4 @@
-# ASSDraw3 external integration source audit
+# ASSDraw3 bundled fork source audit
 
 Research record. No launcher implementation or parity promotion is claimed until its independent full packaged verification passes.
 
@@ -6,8 +6,18 @@ Primary oracle: supplied Aegisub 3.2.2 `src/command/tool.cpp`, `tool_assdraw::op
 
 The requested Yoake policy deliberately keeps the command discoverable when missing and shows the exact message `ASSDraw3.exe doesn't exist.`. A configured existing executable takes precedence over supported application-data locations; profile settings use the existing installed/portable resolution. Launch must use an explicit `ProcessStartInfo.FileName`, no shell-command concatenation, no subtitle-derived arguments and no attachment-derived path. Release the local process handle without waiting for the external application or coupling its lifetime to Yoake.
 
-Tests must use a harmless dedicated process stub compiled only in GitHub Actions, not ASSDraw sources or downloads. Verify actual Tools menu and remapped keyboard routing, missing-message and configuration controls, Unicode/spaces, fallback discovery, removed/inaccessible executables, launch errors and unchanged document/media/draft/history. Real ASSDraw desktop drawing behavior remains manual QA because this checkpoint supplies a launcher, not an embedded replacement application.
+The steering correction requires the user's ASSDraw fork to accompany Yoake. The harmless process stub covers negative/custom-launch cases only; packaged acceptance must also discover and launch the real bundled executable through Tools with no configuration. It must preserve document/media/draft/history and pending Toshiki state.
 
 ## Implementation awaiting verification
 
 The launcher is implemented through an explicit configured path, application root and supported data subdirectory, with background startup, no shell arguments, independent process lifetime and central failure handling. The command stays visible when missing; its native exact-message dialog opens the actual External tools options tab. Existing source-generated settings persist the new member, including damaged-profile recovery. Managed regressions and a separate real native acceptance process are present; do not promote until the full pipeline passes.
+
+## Fork audit and distribution
+
+Read-only inspected `amanosatosi/assdraw` master; actual HEAD matches `dda58f913e16743d63ef13bef1beeea0323bd653`. Inspected `CMakeLists.txt`, `.github/workflows/windows.yml`, `ci/verify-windows-binary.ps1`, `ci/smoke-test-windows.ps1`, `README.md`, `LICENSE`, `NOTICE.md`, `src/agg_bcspline.h` and `src/assdraw.cpp` (`ASSDrawApp::OnInit`, `ASSDrawFrame` construction, `OnSelect_CopyCommands`, `OnClose`). The fork creates a separate wx native window; Copy ASS writes canonicalized command text to the Windows clipboard. Closing can confirm exit. No IPC/import protocol is established or added.
+
+The supported build is Visual Studio 2022 x64 CMake 3.24+, static wxWidgets 3.2.11 from its official SHA1-verified release archive, static AGG at `c4f36b4432142f22c0bf82c6fbdb41567a236be2`, and static MSVC `/MT`. The upstream verifier rejects wx/AGG/MSVC/MinGW runtime imports and verifies embedded version 3.0.0.0, icon, asInvoker/Common Controls/PerMonitorV2 manifest. The upstream smoke test starts the real EXE in an otherwise empty directory and requires a visible native window for ten seconds. Yoake runs both before packaging and again against the packaged bytes.
+
+GPL notices in `src/agg_bcspline.*`, `src/agg_conv_bcspline.h`, `src/agg_vcgen_bcspline.*` remain authoritative for those files; the historical root BSD notice does not supersede them. Consulted the complete GPL-2.0 text in wxWidgets v3.2.11 `docs/gpl.txt` (source accompaniment, section 3(a)) and official wxWindows Library Licence, including its binary exception and retained GPL notices. The executable is distributed with complete corresponding fork and static-dependency source archives, unchanged license headers, rebuild scripts/instructions, copyright notices and full GPL/wx/AGG texts. No source relicense, download-on-first-use, expiring-artifact dependency, ASSDraw GUI rewrite or Yoake/ASSDraw linkage is introduced.
+
+Bundled location is the portable application's root. Configured existing `.exe` takes priority, followed by the bundled fork, followed by exact missing error; the supported data-directory fallback remains for alternate deployments. This is the deliberate improvement over Aegisub's conditional command registration and user-installed executable assumptions. Verification remains pending; `tool/assdraw` remains missing until real bundled acceptance and the full Windows pipeline are green.

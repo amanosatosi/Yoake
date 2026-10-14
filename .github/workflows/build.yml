@@ -16,6 +16,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  assdraw-fork:
+    name: Build pinned standalone ASSDraw fork
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Build test and verify pinned ASSDraw with corresponding source
+        shell: pwsh
+        run: .\ci\build_assdraw.ps1 -OutputRoot artifacts\assdraw
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ASSDraw-pinned-tested-distribution
+          path: artifacts/assdraw
+          if-no-files-found: error
+          compression-level: 0
+
   source-policy:
     runs-on: ubuntu-latest
     steps:
@@ -92,7 +109,7 @@ jobs:
   windows-nativeaot:
     runs-on: windows-latest
     timeout-minutes: 180
-    needs: [source-policy, managed-tests, automation-provider-tests]
+    needs: [source-policy, managed-tests, automation-provider-tests, assdraw-fork]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -190,8 +207,18 @@ jobs:
       - name: Publish Windows NativeAOT
         run: dotnet publish src/Yoake.App/Yoake.App.csproj -c Release -r win-x64 --self-contained true --no-restore -p:PublishAot=true -p:SourceRevisionId=${{ github.event.pull_request.head.sha || github.sha }} -o artifacts/publish
       - name: Package portable application
+        # Only a tested build from this exact workflow is accepted. Every run
+        # has a pinned source rebuild path; no durable-release/artifact assumption.
+        uses: actions/download-artifact@v8
+        with:
+          name: ASSDraw-pinned-tested-distribution
+          path: artifacts/assdraw
+      - name: Stage portable application and bundled ASSDraw
         shell: pwsh
-        run: .\ci\package_windows.ps1 -PublishRoot artifacts\publish -NativeRoot .ci-cache\native -OutputRoot artifacts
+        run: .\ci\package_windows.ps1 -PublishRoot artifacts\publish -NativeRoot .ci-cache\native -AssDrawRoot artifacts\assdraw -OutputRoot artifacts
+      - name: Verify actual bundled ASSDraw identity standalone window and dependencies
+        shell: pwsh
+        run: .\ci\verify_assdraw_package.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable
       - name: Verify staged native runtime closure
         shell: pwsh
         run: .\ci\verify_windows_runtime.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable

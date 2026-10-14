@@ -90,13 +90,13 @@ public sealed class OptionsWindow : Window
             autosaveStatus.Text=success?"Autosave settings saved.":model.SubtitleStatus;
         };
         var tools=new StackPanel{Margin=new Thickness(12),Spacing=8};
-        var assDraw=new TextBox{Name="AssDrawExecutablePath",Text=model.AssDrawExecutable,PlaceholderText="Blank discovers ASSDraw3.exe beside Yoake or in its data folder"};
+        var assDraw=new TextBox{Name="AssDrawExecutablePath",Text=model.AssDrawExecutable,PlaceholderText="Blank uses the ASSDraw fork bundled with Yoake"};
         var assDrawBrowse=new Button{Name="AssDrawBrowse",Content="Choose executable…",HorizontalAlignment=HorizontalAlignment.Left};
         var assDrawApply=new Button{Name="AssDrawPathApply",Content="Save ASSDraw3 path",HorizontalAlignment=HorizontalAlignment.Left,Command=new RegistryCommand(model.Registry,"settings/assdraw/path",()=>new(model.ActiveDocumentId),parameterFactory:()=>assDraw.Text??"")};
         var assDrawStatus=new TextBlock{Name="AssDrawPathStatus",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
         foreach(var control in new Control[]{assDraw,assDrawBrowse,assDrawApply,assDrawStatus})names.Register(control.Name!,control);
         tools.Children.Add(new TextBlock{Text="ASSDraw3 external drawing tool"});tools.Children.Add(assDraw);tools.Children.Add(assDrawBrowse);tools.Children.Add(assDrawApply);
-        tools.Children.Add(new TextBlock{Text="Yoake launches the explicitly chosen executable without subtitle-derived arguments. ASSDraw remains a separate application; no automatic download or ASS import is performed.",TextWrapping=Avalonia.Media.TextWrapping.Wrap});tools.Children.Add(assDrawStatus);
+        tools.Children.Add(new TextBlock{Text="Yoake includes ASSDraw3. Leave the path blank to use the bundled fork, or choose another existing build. ASSDraw opens separately; use its Copy ASS action to copy a drawing into subtitle text.",TextWrapping=Avalonia.Media.TextWrapping.Wrap});tools.Children.Add(assDrawStatus);
         assDrawBrowse.Click+=async(sender,args)=>
         {
             try{var files=await StorageProvider.OpenFilePickerAsync(new(){Title="Choose ASSDraw3 executable",AllowMultiple=false,FileTypeFilter=[new Avalonia.Platform.Storage.FilePickerFileType("Windows executable"){Patterns=["*.exe"]}]});if(files.FirstOrDefault() is {} file)assDraw.Text=file.Path.LocalPath;}

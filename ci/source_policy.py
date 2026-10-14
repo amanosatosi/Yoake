@@ -16,6 +16,11 @@ for pattern in ('*.csproj', '*.axaml'):
         except Exception as exc: fail(f"invalid XML {path.relative_to(ROOT)}: {exc}")
 
 versions=json.loads((ROOT/'third_party/versions.json').read_text())
+assdraw=json.loads((ROOT/'third_party/assdraw.json').read_text())
+for pin in (assdraw['commit'], assdraw['agg']['commit']):
+    if not re.fullmatch(r'[0-9a-f]{40}', pin): fail('ASSDraw source must use immutable commit pins')
+if assdraw['repository'] != 'https://github.com/amanosatosi/assdraw.git': fail('ASSDraw must use the user fork')
+if not re.fullmatch(r'[0-9a-f]{40}', assdraw['wxWidgets']['sha1']): fail('Official wxWidgets source must be hash checked')
 provenance=json.loads((ROOT/'third_party/automation/provenance.json').read_text(encoding='utf-8'))
 for entry in provenance['files']:
     path=ROOT/entry['yoakePath']

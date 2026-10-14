@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
+using System.Text.Json;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Presenters;
@@ -18,7 +20,7 @@ namespace Yoake.App;
 internal sealed class AssDrawUiAcceptanceVerification(IClassicDesktopStyleApplicationLifetime desktop,MainWindow window,MainWindowViewModel model,StartupOptions options)
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
-    private bool _ready,_ticking,_dataCreated;private int _stage,_pid;private Window? _missing;private OptionsWindow? _configuration;
+    private bool _ready,_ticking,_dataCreated;private int _stage,_pid;private Window? _missing;private OptionsWindow? _configuration;private Process? _bundledProcess;
     private string _stub="",_custom="",_rootExe="",_dataExe="",_marker="",_source="",_history="",_plan="";private object? _draft,_selected,_waveform,_times,_keys,_karaoke;
     private string? _audio,_video;private int _frame;private SubtitleEditor? _editor;
     public void Start(){window.LayoutUpdated+=(sender,args)=>_ready=window.IsVisible&&window.Bounds.Width>0;_timer.Tick+=Tick;_timer.Start();}
@@ -35,8 +37,14 @@ internal sealed class AssDrawUiAcceptanceVerification(IClassicDesktopStyleApplic
                     var document=AssDocument.CreateEmpty();var fixture=new SubtitleEditor(document);var line=fixture.Insert(null,false,0);fixture.SetField(line,"Text","あい","Fixture");var file=Path.Combine(options.ProfileDirectory!,"assdraw.ass");File.WriteAllText(file,document.Serialize());Require(model.OpenSubtitle(file),"Open ASSDraw state fixture.");
                     Require(await model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi")),"Load independent native media.");await Invoke(CommandIds.ViewAudioVideo);await Invoke("audio/karaoke");await Invoke("time/lead/out");Require(model.KaraokePlan!.Changed,"Prepare actual uncommitted Toshiki timing.");model.Draft!.MarginV="unfinished";
                     _editor=model.ActiveEditor;_source=_editor!.Document.Serialize();_history=_editor.Undo.NextUndoName??"";_draft=model.Draft;_selected=model.SelectedEvent;_waveform=model.WaveformSamples;_times=model.FrameTimes;_keys=model.Keyframes;_audio=model.AudioSourcePath;_video=model.VideoSourcePath;_frame=model.CurrentFrame;_karaoke=model.KaraokePlan;_plan=model.KaraokePlan.PreviewText;
-                    _rootExe=Path.Combine(AppContext.BaseDirectory,"ASSDraw3.exe");_dataExe=Path.Combine(AppContext.BaseDirectory,"data","ASSDraw3.exe");Require(!File.Exists(_rootExe)&&!File.Exists(_dataExe),"The test must never replace an existing bundled tool.");
-                    window.FindControl<MenuItem>("ToolsMenu")!.IsSubMenuOpen=true;return;
+                    Require(model.AssDrawExecutable is null,"Fresh profile must discover the real bundle without configuration.");
+                    var bundled=Path.Combine(AppContext.BaseDirectory,"ASSDraw3.exe");Require(File.Exists(bundled),"The portable package includes the real fork executable.");
+                    using(var manifest=JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory,"assdraw-manifest.json"))))
+                    {
+                        Require(manifest.RootElement.GetProperty("commit").GetString()=="dda58f913e16743d63ef13bef1beeea0323bd653","Bundle identity is the exact audited fork revision.");
+                        using var bytes=File.OpenRead(bundled);Require(Convert.ToHexString(SHA256.HashData(bytes)).Equals(manifest.RootElement.GetProperty("sha256").GetString(),StringComparison.OrdinalIgnoreCase),"Actual bundled executable matches its verified build hash.");
+                    }
+                    _stage=18;window.FindControl<MenuItem>("ToolsMenu")!.IsSubMenuOpen=true;return;
                 case 1:Press(window.FindControl<MenuItem>("AssDrawMenu")!,Key.Enter);return;
                 case 2:
                     _missing=window.OwnedWindows.Single(w=>w.Name=="AssDrawMissingDialog");Require(_missing.FindControl<TextBlock>("AssDrawMissingMessage")!.Text=="ASSDraw3.exe doesn't exist.","Native missing dialog shows the exact required message.");Unchanged();Press(_missing.FindControl<Button>("AssDrawConfigure")!,Key.Enter);return;
@@ -59,7 +67,7 @@ internal sealed class AssDrawUiAcceptanceVerification(IClassicDesktopStyleApplic
                 case 9:
                     if(!Started()){_stage--;return;}Require(Alive(_pid),"Real remapped keyboard launches another independent process.");Unchanged();return;
                 case 10:
-                    if(Alive(_pid)){_stage--;return;}File.Delete(_custom);File.Copy(_stub,_rootExe,false);_marker=Path.Combine(AppContext.BaseDirectory,"assdraw-started.txt");window.FindControl<MenuItem>("ToolsMenu")!.IsSubMenuOpen=true;return;
+                    if(Alive(_pid)){_stage--;return;}File.Delete(_custom);File.Copy(_stub,_rootExe,false);_marker=Path.Combine(Path.GetDirectoryName(_rootExe)!,"assdraw-started.txt");window.FindControl<MenuItem>("ToolsMenu")!.IsSubMenuOpen=true;return;
                 case 11:Press(window.FindControl<MenuItem>("AssDrawMenu")!,Key.Enter);return;
                 case 12:
                     if(!Started()){_stage--;return;}Require(model.SubtitleStatus.EndsWith(_rootExe,StringComparison.OrdinalIgnoreCase),"Removed configured executable falls back to the portable/installed application root.");Unchanged();return;
@@ -73,10 +81,30 @@ internal sealed class AssDrawUiAcceptanceVerification(IClassicDesktopStyleApplic
                 case 16:Press(window.FindControl<MenuItem>("AssDrawMenu")!,Key.Enter);return;
                 case 17:
                     Require(model.SubtitleStatus.StartsWith("Could not launch ASSDraw3",StringComparison.Ordinal),"Real Windows process-start failure is reported without escaping ICommand.");Unchanged();
-                    Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"ASSDraw integration introduces no binding/framework errors.");_timer.Stop();options.FinishVerification("PASS: actual native Tools ASSDraw3 menu and remapped grid F8; exact missing-message dialog and accessible External tools configuration; invalid path and IME guards; NativeAOT settings persistence; explicit Unicode/spaces executable launch returning while an independent native stub lives; repeat launch, process exit independent of editor, removed configured path, installed/portable root and data discovery, real Windows invalid-executable failure; exact source/invalid draft/selection/undo/native media/frame/timecodes/keyframes and uncommitted Toshiki plan retained. No ASSDraw source was downloaded or built.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"ASSDraw integration introduces no binding/framework errors.");_timer.Stop();options.FinishVerification("PASS: actual packaged pinned ASSDraw fork, revision/hash verified, default Tools menu discovery without configuration, responsive separate native window and independent process exit; actual remapped grid F8; exact missing-message dialog and accessible External tools configuration; invalid path and IME guards; NativeAOT settings persistence; explicit Unicode/spaces executable launch returning while an independent native stub lives; repeat launch, process exit independent of editor, removed configured path, installed/portable root and data discovery, real Windows invalid-executable failure; exact source/invalid draft/selection/undo/native media/frame/timecodes/keyframes and uncommitted Toshiki plan retained. The negative-case stub never replaces the bundled fork.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                case 18:Press(window.FindControl<MenuItem>("AssDrawMenu")!,Key.Enter);return;
+                case 19:
+                    foreach(var candidate in Process.GetProcessesByName("ASSDraw3"))
+                    {
+                        try
+                        {
+                            if(_bundledProcess is null&&!candidate.HasExited&&candidate.MainModule?.FileName?.Equals(Path.Combine(AppContext.BaseDirectory,"ASSDraw3.exe"),StringComparison.OrdinalIgnoreCase)==true&&candidate.MainWindowHandle!=0&&candidate.Responding)_bundledProcess=candidate;
+                        }
+                        finally{if(!ReferenceEquals(candidate,_bundledProcess))candidate.Dispose();}
+                    }
+                    if(_bundledProcess is null){_stage--;return;}
+                    Require(model.AssDrawExecutable is null&&model.SubtitleStatus.EndsWith(Path.Combine(AppContext.BaseDirectory,"ASSDraw3.exe"),StringComparison.OrdinalIgnoreCase),"Actual Tools command launched the bundled fork without user configuration.");Unchanged();return;
+                case 20:
+                    Require(_bundledProcess is not null&&!_bundledProcess.HasExited&&_bundledProcess.Responding,"Actual fork window remains usable after launcher returns.");Unchanged();
+                    // CI cleanup of the specific process just proven to be the bundle.
+                    // The product launcher never kills an external application.
+                    _bundledProcess!.Kill();_bundledProcess.WaitForExit();_bundledProcess.Dispose();_bundledProcess=null;Unchanged();
+                    var negativeRoot=Path.Combine(options.ProfileDirectory!,"isolated application");Directory.CreateDirectory(negativeRoot);model.AssDrawApplicationDirectory=negativeRoot;
+                    _rootExe=Path.Combine(negativeRoot,"ASSDraw3.exe");_dataExe=Path.Combine(negativeRoot,"data","ASSDraw3.exe");Require(!File.Exists(_rootExe)&&!File.Exists(_dataExe),"Negative-case discovery uses an owned empty directory and preserves the bundle.");
+                    _stage=1;window.FindControl<MenuItem>("ToolsMenu")!.IsSubMenuOpen=true;return;
             }
         }
-        catch(Exception error){_timer.Stop();Program.Fatal("Packaged ASSDraw integration at stage "+(_stage-1),error);desktop.Shutdown(1);}
+        catch(Exception error){_timer.Stop();if(_bundledProcess is not null){try{if(!_bundledProcess.HasExited)_bundledProcess.Kill();}finally{_bundledProcess.Dispose();_bundledProcess=null;}}Program.Fatal("Packaged ASSDraw integration at stage "+(_stage-1),error);desktop.Shutdown(1);}
         finally{_ticking=false;}
     }
     private bool Started()=>File.Exists(_marker)&&int.TryParse(File.ReadAllText(_marker),out _pid)&&_pid>0;
