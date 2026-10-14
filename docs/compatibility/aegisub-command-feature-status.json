@@ -3277,12 +3277,21 @@
     },
     {
       "id": "tool/font_collector",
-      "yoake_command": null,
-      "status": "missing",
-      "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open fonts collector",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "yoake_command": "tool/font_collector",
+      "status": "already complete",
+      "backend": "Immutable structured ASS font/text projection and document/draft-owned jobs; exact Windows DirectWrite/GDI face, TTC index, physical file and Unicode glyph resolution; bounded OpenType embedding metadata; deduplicated streaming atomic folder/script-folder/ZIP publication with cancellation and collision-safe outputs.",
+      "exposure": [
+        "Tools Fonts Collector menu",
+        "Native four-mode dialog with picker, report, progress/log, rights acknowledgement and cancellation",
+        "Live remappable contextual hotkeys"
+      ],
+      "tests": [
+        "FontCollectorTests",
+        "FontCollectorWorkflowTests",
+        "FontCollectorUiAcceptanceVerification (real native process with pinned OFL TTF/TTC fixtures)",
+        "All previous packaged/native regressions"
+      ],
+      "notes": "Verified code aa914223a78818d8a2001d62963f0ac2b8bcd3ca: full PR workflow https://github.com/amanosatosi/Yoake/actions/runs/38579848904 passed 654 Core / 141 UI / 34 Automation (829 total), NativeAOT, startup, actual Windows font/file/glyph resolution and bold TTC index, menu/keyboard/dialog, all four modes, exact bytes, rights/IME guards, cancellation, invalid-draft/source/selection/history/media retention and all prior native acceptance/providers. Primary behavior: supplied 3.2.2 fontconfig/dialog source; 3.5 GDI source supplies additional supported Windows API evidence. Windows symlink mode absent upstream. Whole-batch new-directory/ZIP publication, explicit fresh checks, unused-style option and current Mangetsu fn0/reset semantics are documented improvements. Source audit: docs/compatibility/aegisub-font-collector-reference.md.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3320,7 +3329,7 @@
         "ResampleUiAcceptanceVerification (separate packaged native process)",
         "All existing native/media/karaoke acceptance"
       ],
-      "notes": "Verified code 5f2ce6ffc07ccceacbf8bb555be83cf37c33a67a: full PR workflow https://github.com/amanosatosi/Yoake/actions/runs/38569865551 passed 624 Core / 137 UI / 34 Automation (795 total), NativeAOT, startup, real Tools dialog validation/IME/preview/apply/cancel/Undo/Redo, source-resolution Mangetsu geometry and independent media/pending timing/tab retention, all prior acceptance and native providers. Matching push 38569856289 was finishing at this documentation checkpoint. Source audit: docs/compatibility/aegisub-resample-reference.md. Colors/matrix are preserved; normalized distort pins stay exact; unsupported expressions warn; scaled clip margins use actual drawing units; draft/input fences and synchronous input invalidation retain error feedback.",
+      "notes": "Verified code 5f2ce6ffc07ccceacbf8bb555be83cf37c33a67a: full PR workflow https://github.com/amanosatosi/Yoake/actions/runs/38569865551 passed 624 Core / 137 UI / 34 Automation (795 total), NativeAOT, startup, real Tools dialog validation/IME/preview/apply/cancel/Undo/Redo, source-resolution Mangetsu geometry and independent media/pending timing/tab retention, all prior acceptance and native providers. Matching push 38569856289 also passed all jobs. Source audit: docs/compatibility/aegisub-resample-reference.md. Colors/matrix are preserved; normalized distort pins stay exact; unsupported expressions warn; scaled clip margins use actual drawing units; draft/input fences and synchronous input invalidation retain error feedback.",
       "yoake_default_hotkeys": {}
     },
     {
