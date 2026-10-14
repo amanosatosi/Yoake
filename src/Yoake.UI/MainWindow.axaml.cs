@@ -24,6 +24,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private MainWindowViewModel? _model;
     private bool _videoRegionShown = true;
     private GridLength _videoWidth = new(6, GridUnitType.Star), _textWidth = new(7, GridUnitType.Star);
+    private bool _videoSplitterOverride;
     private static readonly FilePickerFileType SubtitleFiles=new("ASS/SSA subtitles"){Patterns=["*.ass","*.ssa"]};
     private static readonly FilePickerFileType MediaFiles=new("Video/audio"){Patterns=["*.mkv","*.mp4","*.webm","*.avi","*.mov","*.m2ts","*.ts","*.mp3","*.flac","*.wav","*.m4a","*.ogg","*.opus"]};
     public MainWindow()
@@ -38,12 +39,17 @@ public partial class MainWindow : Window, IEditorDialogs
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DragOverEvent, HandleFileDragOver, RoutingStrategies.Tunnel);
         AddHandler(DragDrop.DropEvent, HandleFileDrop, RoutingStrategies.Tunnel);
-        Opened+=(_,_)=>UpdateChrome();
+        Opened+=(_,_)=>{UpdateChrome();UpdateEmbeddedVideoHost();};
         Opened+=StartAutomation;
         LayoutUpdated+=(_,_)=>UpdateChrome();
         ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(()=>{UpdateChrome();RefreshVideoScaling();});
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
         TemporalTextColumn.SizeChanged+=(_,_)=>ClampAudioBounds();
+        UpperWorkspace.SizeChanged+=(_,_)=>UpdateEmbeddedVideoHost();
+        VideoRegion.SizeChanged+=(_,_)=>UpdateEmbeddedVideoHost();
+        VideoSplitter.AddHandler(PointerPressedEvent,(_,_)=>_videoSplitterOverride=true,RoutingStrategies.Tunnel);
+        VideoSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();},RoutingStrategies.Bubble);
+        VideoSplitter.KeyUp+=(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();};
         AudioSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;},RoutingStrategies.Tunnel);
         AudioSplitter.KeyUp+=(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;};
         TitleTabStrip.SizeChanged+=(_,_)=>UpdateTabLimit();
@@ -113,7 +119,7 @@ public partial class MainWindow : Window, IEditorDialogs
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
-            UpdateWorkspaceView();
+            UpdateWorkspaceView();UpdateEmbeddedVideoHost();
             _model.PropertyChanged+=ModelChanged;_model.WindowCloseRequested+=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
             RefreshAutomationMenu(); StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
     }
@@ -209,6 +215,7 @@ public partial class MainWindow : Window, IEditorDialogs
             columns[1].Width = new GridLength(_model.ShowEmbeddedVideo ? 4 : 0);
             columns[2].Width = _model.ShowEmbeddedVideo ? _textWidth : new GridLength(1, GridUnitType.Star);
             _videoRegionShown = _model.ShowEmbeddedVideo;
+            _videoSplitterOverride = false;
         }
         var rows = TemporalTextColumn.RowDefinitions;
         rows[0].MinHeight = _model.ShowAudio ? 160 : 0;
@@ -216,6 +223,7 @@ public partial class MainWindow : Window, IEditorDialogs
         rows[1].Height = new GridLength(_model.ShowAudio ? 4 : 0);
         rows[2].Height = new GridLength(1, GridUnitType.Star);
         ClampAudioBounds();
+        UpdateEmbeddedVideoHost();
     }
     private void ClampAudioBounds()
     {
@@ -280,6 +288,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight))UpdateAudioBounds();
         if(e.PropertyName==nameof(MainWindowViewModel.ViewMode)){VisualOverlay.CancelInput();_model?.NotifyVideoPresentation();UpdateWorkspaceView();}
         if(e.PropertyName is nameof(MainWindowViewModel.IsVideoDetached) or nameof(MainWindowViewModel.VideoSourcePath))SynchronizeVideoHost();
+        if(e.PropertyName is nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.VideoSourcePath))UpdateEmbeddedVideoHost();
         if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }

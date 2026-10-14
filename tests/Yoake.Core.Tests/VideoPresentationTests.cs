@@ -7,6 +7,56 @@ namespace Yoake.Core.Tests;
 public sealed class VideoPresentationTests
 {
     [Theory]
+    [InlineData(.5, 320, 240)]
+    [InlineData(1, 640, 480)]
+    [InlineData(2, 800, 600)]
+    public void EmbeddedWindowZoomResizesItsActualViewportBeforeContentPan(double zoom, double width, double height)
+    {
+        // There is room for 800x600. Zooming 640x480 must resize the
+        // canvas rather than leaving it as one permanently stretched cell.
+        var canvas = EmbeddedVideoSizing.Viewport(800, 600, 480, 4d / 3, 1, zoom);
+        Assert.Equal(width, canvas.Width, 8);
+        Assert.Equal(height, canvas.Height, 8);
+        var state = new VideoViewState();
+        state.SetWindowZoom(zoom);
+        var image = state.Layout(canvas.Width, canvas.Height, 1, 480, 4d / 3);
+        Assert.Equal(480 * zoom, image.Height, 8);
+        Assert.Equal(640 * zoom, image.Width, 8);
+        state.Pan(21, -13);
+        var moved = state.Layout(canvas.Width, canvas.Height, 1, 480, 4d / 3);
+        Assert.Equal(image.X + 21, moved.X, 8);
+        Assert.Equal(image.Y - 13, moved.Y, 8);
+    }
+
+    [Fact] public void EmbeddedZoomClipsOnlyTheViewportInsteadOfSilentlyShrinkingImageScale()
+    {
+        var canvas = EmbeddedVideoSizing.Viewport(420, 260, 1080, 16d / 9, 1, 2);
+        Assert.Equal(420, canvas.Width);
+        Assert.Equal(260, canvas.Height);
+        var state = new VideoViewState();state.SetWindowZoom(2);
+        var frame = state.Layout(canvas.Width, canvas.Height, 1, 1080, 16d / 9);
+        Assert.Equal(3840, frame.Width, 8);
+        Assert.Equal(2160, frame.Height, 8);
+        var script = frame.ToScript(110, 150, 1920, 1080);
+        state.Pan(22, -7);
+        var panned = state.Layout(canvas.Width, canvas.Height, 1, 1080, 16d / 9);
+        var samePixel = panned.FromScript(script, 1920, 1080);
+        Assert.Equal(132, samePixel.X, 8);
+        Assert.Equal(143, samePixel.Y, 8);
+    }
+
+    [Fact] public void EmbeddedInitialFitAndDpiUseLogicalViewportPixels()
+    {
+        var auto = EmbeddedVideoSizing.Viewport(800, 400, 480, 16d / 9, 1, null);
+        Assert.Equal(400 * 16d / 9, auto.Width, 8);
+        Assert.Equal(400, auto.Height, 8);
+        var exact = EmbeddedVideoSizing.Viewport(800, 400, 480, 4d / 3, 2, 1);
+        Assert.Equal(320, exact.Width, 8);
+        Assert.Equal(240, exact.Height, 8);
+        Assert.Equal(default, EmbeddedVideoSizing.Viewport(800, 400, 480, 4d / 3, double.NaN, 1));
+    }
+
+    [Theory]
     [InlineData(.5, 1)] [InlineData(1, 1)] [InlineData(2, 1)]
     [InlineData(.5, 1.25)] [InlineData(1, 1.5)] [InlineData(2, 2)]
     public void PercentagesMeanSourcePhysicalHeightNotFit(double zoom, double dpi)

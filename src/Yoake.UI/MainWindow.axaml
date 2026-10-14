@@ -326,7 +326,7 @@
   <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
   <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn" IsVisible="{Binding ShowEmbeddedVideo}">
     <Border Name="VideoDock" Grid.Row="0" Background="{DynamicResource PanelBrush}">
-      <Grid Name="VideoRegion" Margin="6" RowDefinitions="*,22,26,Auto" RowSpacing="4">
+      <Grid Name="VideoRegion" Margin="6" VerticalAlignment="Top" RowDefinitions="Auto,22,26,Auto" RowSpacing="4">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*">      <StackPanel Name="VisualPrimaryTools" Grid.Column="0" Orientation="Vertical" Spacing="3" Margin="0,0,8,0">
         <ToggleButton Name="VisualToolCrosshair" Classes="authoring" IsChecked="{Binding Actions[video/tool/crosshair].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" Padding="5,2" ToolTip.Tip="Crosshair"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualCrosshair}" /></ToggleButton>
         <ToggleButton Name="VisualToolPosition" Classes="authoring" IsChecked="{Binding Actions[video/tool/position].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/position]}" Padding="5,2" ToolTip.Tip="Position"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualPosition}" /></ToggleButton>
@@ -339,7 +339,7 @@
         <ToggleButton Name="VisualToolVectorClip" Classes="authoring" IsChecked="{Binding Actions[video/tool/vectorclip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" Padding="5,2" ToolTip.Tip="VectorClip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualVector}" /></ToggleButton>
         <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
         <ToggleButton Name="VisualToolDistort" Classes="authoring" IsChecked="{Binding Actions[video/tool/distort].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/distort]}" Padding="5,2" ToolTip.Tip="Distort"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualDistort}" /></ToggleButton>
-      </StackPanel><Border Grid.Column="1" Background="Black" ClipToBounds="True"><Grid><controls:VideoPresentationControl Name="VideoImage" Model="{Binding}" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
+      </StackPanel><Border Name="VideoCanvasHost" Grid.Column="1" Background="Black" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Top"><Grid><controls:VideoPresentationControl Name="VideoImage" Model="{Binding}" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
         <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="1" Model="{Binding}" />
         <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="8">        <StackPanel Orientation="Horizontal" Spacing="4">
           <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />

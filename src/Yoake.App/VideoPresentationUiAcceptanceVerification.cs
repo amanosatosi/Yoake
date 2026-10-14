@@ -147,7 +147,18 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
         try{bitmap.CopyPixels(new PixelRect(bitmap.PixelSize),pinned.AddrOfPinnedObject(),pixels.Length,bitmap.PixelSize.Width*4);}finally{pinned.Free();}return pixels;
     }
     private void Zoom(double scale,string suffix)
-    {Require(model.VideoWindowZoom==scale&&window.FindControl<MenuItem>("VideoZoom"+suffix+"Menu")!.IsChecked,"Zoom radio: "+suffix);Require(Math.Abs(Image.VideoArea.Height-180*scale/window.RenderScaling)<.01,"Zoom is source height in physical pixels.");Require(Math.Abs(Area().Height-180*scale/window.RenderScaling)<.01,"Shared image/tool rectangle.");}
+    {
+        Require(model.VideoWindowZoom==scale&&window.FindControl<MenuItem>("VideoZoom"+suffix+"Menu")!.IsChecked,"Zoom radio: "+suffix);
+        var host=window.FindControl<Border>("VideoCanvasHost")!;
+        var expectedHeight=180*scale/window.RenderScaling;
+        var row=window.FindControl<Grid>("VideoRegion")!.RowDefinitions[0].ActualHeight;
+        Require(Math.Abs(host.Bounds.Height-Math.Min(expectedHeight,row))<1,
+            "Window zoom must resize the video *canvas*, not just the image inside the old cell.");
+        Require(Math.Abs(Image.VideoArea.Height-expectedHeight)<.01,"Zoom is source height in physical pixels.");
+        Require(Math.Abs(Area().Height-expectedHeight)<.01,"Image and visual tool use the same source zoom geometry.");
+        Require(Math.Abs(Image.Bounds.Height-Overlay.Bounds.Height)<.01&&Math.Abs(Image.Bounds.Width-Overlay.Bounds.Width)<.01,
+            "Image and visual tool have the same actual viewport bounds.");
+    }
     private void OpenZoom(){window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen=true;window.FindControl<MenuItem>("VideoZoomMenu")!.IsSubMenuOpen=true;}
     private void Unchanged()=>Require(model.ActiveEditor!.Document.Serialize()==_source&&(model.ActiveEditor.Undo.NextUndoName??"")==_undo&&ReferenceEquals(model.Draft,_draft)&&ReferenceEquals(model.SelectedEvent,_selection)&&model.PrimaryAudioRange==_pending&&ReferenceEquals(model.WaveformSamples,_samples)&&model.AudioSourcePath==_audio,"Presentation preserves ASS, draft, selection, pending timing, undo and independent Audio.");
     private async Task Invoke(string id,object? p=null)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId),p),"Presentation command: "+id);
