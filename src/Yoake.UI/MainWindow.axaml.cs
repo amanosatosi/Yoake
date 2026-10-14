@@ -465,7 +465,11 @@ public partial class MainWindow : Window, IEditorDialogs
         var names=new NameScope();NameScope.SetNameScope(dialog,names);var panel=new StackPanel{Margin=new Thickness(12),Spacing=12};dialog.Content=panel;
         var text=new TextBlock{Name="AssDrawMissingMessage",Text=Yoake.Core.Tools.AssDrawLauncher.MissingMessage};panel.Children.Add(text);names.Register(text.Name!,text);
         var buttons=new StackPanel{Orientation=Avalonia.Layout.Orientation.Horizontal,Spacing=8,HorizontalAlignment=Avalonia.Layout.HorizontalAlignment.Right};panel.Children.Add(buttons);
-        var configure=new Button{Name="AssDrawConfigure",Content="Configure…"};var close=new Button{Name="AssDrawMissingClose",Content="Close",IsDefault=true,IsCancel=true};
+        // Enter should open configuration, while Escape dismisses the dialog.
+        // Giving Close both IsDefault and IsCancel caused Enter to dismiss the
+        // dialog instead of proceeding to the External tools options window.
+        var configure=new Button{Name="AssDrawConfigure",Content="Configure…",IsDefault=true};
+        var close=new Button{Name="AssDrawMissingClose",Content="Close",IsCancel=true};
         foreach(var button in new[]{configure,close}){buttons.Children.Add(button);names.Register(button.Name!,button);}configure.Click+=(sender,args)=>dialog.Close(true);close.Click+=(sender,args)=>dialog.Close(false);names.Complete();
         using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>{if(dialog.IsVisible)dialog.Close(false);}));return await dialog.ShowDialog<bool>(this);
     }
