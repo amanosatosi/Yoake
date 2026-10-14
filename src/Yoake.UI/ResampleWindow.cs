@@ -57,7 +57,11 @@ public sealed class ResampleWindow:Window
         _changing=true;SetDimensions(_sourceX,_sourceY,model.ScriptResolution);var video=model.CurrentVideoDetails;SetDimensions(_targetX,_targetY,video is null?model.ScriptResolution:(video.Width,video.Height));_changing=false;
         _script.Click+=(_,_)=>{SetDimensions(_sourceX,_sourceY,model.ScriptResolution);Invalidate();};
         _video.Click+=(_,_)=>{if(model.CurrentVideoDetails is {} current){SetDimensions(_targetX,_targetY,(current.Width,current.Height));Invalidate();}};
-        foreach(var field in _inputs.OfType<TextBox>())field.TextChanged+=(_,_)=>Invalidate();_aspect.SelectionChanged+=(_,_)=>Invalidate();_symmetric.Click+=(_,_)=>Invalidate();
+        // TextChanged is deferred by Avalonia. Invalidate synchronously when
+        // Text changes so a queued edit notification cannot erase a validation
+        // error or leave an older reviewed plan enabled after fast input.
+        foreach(var field in _inputs.OfType<TextBox>())field.PropertyChanged+=(_,args)=>{if(args.Property==TextBox.TextProperty)Invalidate();};
+        _aspect.SelectionChanged+=(_,_)=>Invalidate();_symmetric.Click+=(_,_)=>Invalidate();
         model.PropertyChanged+=ModelChanged;model.ResampleCloseRequested+=CloseRequested;
         AddHandler(InputElement.KeyDownEvent,(_,args)=>
         {

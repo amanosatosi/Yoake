@@ -56,7 +56,7 @@ internal sealed class ResampleUiAcceptanceVerification(IClassicDesktopStyleAppli
                     Require(_dialog!.IsVisible&&model.ResamplePreview is null,"IME Enter/Escape do not preview, apply or close.");
                     In<TextBox>("ResampleTargetX").Text="0";Press(In<Button>("ResamplePreview"),Key.Enter);return;
                 case 5:
-                    Require(model.ResamplePreview is null&&In<TextBlock>("ResampleSummary").Text!.Contains("Dimensions"),"Invalid dimensions produce actionable feedback.");Unchanged();
+                    Require(model.ResamplePreview is null&&In<TextBlock>("ResampleSummary").Text!.Contains("Dimensions"),"Invalid dimensions produce actionable feedback; displayed: "+In<TextBlock>("ResampleSummary").Text);Unchanged();
                     In<TextBox>("ResampleTargetX").Text="1280";In<TextBox>("ResampleTargetY").Text="960";model.Draft!.Start="unfinished";Press(In<Button>("ResamplePreview"),Key.Enter);return;
                 case 6:
                     Require(model.ResamplePreview is null&&model.Draft!.Start=="unfinished","Invalid raw timing is retained and cannot enter ASS serialization.");Unchanged();
