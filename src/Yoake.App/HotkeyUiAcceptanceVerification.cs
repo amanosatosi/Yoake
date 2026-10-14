@@ -58,7 +58,11 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     model.SelectedEvent=model.Events[0];model.Draft!.Text=Source;Invoke(CommandIds.EditCommit);
                     _document=model.ActiveDocumentId;_line=model.SelectedEvent;_editor=model.ActiveEditor;
                     _savedPath=Path.Combine(options.ProfileDirectory!,"keyboard-fixture.ass");Require(model.SaveActiveSubtitle(_savedPath),"Prepare a saved Unicode fixture.");
-                    Invoke(CommandIds.ViewAudioVideo);return;
+                    Require(model.IsDefaultView && !model.ShowVideo && !model.ShowAudio,
+                        "No-media keyboard acceptance must start in subtitles-only view.");
+                    Require(!model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Audio + Video must not be selectable until both tracks are loaded.");
+                    return;
                 case 1:
                     Press(Grid,Key.O,KeyModifiers.Alt);return;
                 case 2:
@@ -116,6 +120,9 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 10:
                     if(!_media!.IsCompleted){_stage--;return;}
                     Require(_media.Result&&model.FrameTimes.Count>2&&model.VideoFrame is not null&&model.WaveformSamples is not null,"Keyboard media acceptance needs loaded native providers.");
+                    Require(model.IsAudioVideoView && model.ShowVideo && model.ShowAudio &&
+                        model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Loading real audio and video must automatically enable and select their combined view.");
                     _frame=model.CurrentFrame;Press(Grid,Key.Right);return;
                 case 11:
                     Require(model.CurrentFrame==_frame+1,"Grid Right must advance exactly one media frame.");
