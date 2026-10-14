@@ -20,7 +20,7 @@ namespace Yoake.App;
 internal sealed class AssDrawUiAcceptanceVerification(IClassicDesktopStyleApplicationLifetime desktop,MainWindow window,MainWindowViewModel model,StartupOptions options)
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
-    private bool _ready,_ticking,_dataCreated;private int _stage,_pid;private Window? _missing;private OptionsWindow? _configuration;private Process? _bundledProcess;
+    private bool _ready,_ticking,_dataCreated;private int _stage,_pid;private long _optionsOpeningAt;private Window? _missing;private OptionsWindow? _configuration;private Process? _bundledProcess;
     private string _stub="",_custom="",_rootExe="",_dataExe="",_marker="",_source="",_history="",_plan="";private object? _draft,_selected,_waveform,_times,_keys,_karaoke;
     private string? _audio,_video;private int _frame;private SubtitleEditor? _editor;
     public void Start(){window.LayoutUpdated+=(sender,args)=>_ready=window.IsVisible&&window.Bounds.Width>0;_timer.Tick+=Tick;_timer.Start();}
@@ -47,9 +47,18 @@ internal sealed class AssDrawUiAcceptanceVerification(IClassicDesktopStyleApplic
                     _stage=18;window.FindControl<MenuItem>("ToolsMenu")!.IsSubMenuOpen=true;return;
                 case 1:Press(window.FindControl<MenuItem>("AssDrawMenu")!,Key.Enter);return;
                 case 2:
-                    _missing=window.OwnedWindows.Single(w=>w.Name=="AssDrawMissingDialog");Require(_missing.FindControl<TextBlock>("AssDrawMissingMessage")!.Text=="ASSDraw3.exe doesn't exist.","Native missing dialog shows the exact required message.");Unchanged();Press(_missing.FindControl<Button>("AssDrawConfigure")!,Key.Enter);return;
+                    _missing=window.OwnedWindows.Single(w=>w.Name=="AssDrawMissingDialog");Require(_missing.FindControl<TextBlock>("AssDrawMissingMessage")!.Text=="ASSDraw3.exe doesn't exist.","Native missing dialog shows the exact required message.");Unchanged();_optionsOpeningAt=Stopwatch.GetTimestamp();Press(_missing.FindControl<Button>("AssDrawConfigure")!,Key.Enter);return;
                 case 3:
-                    _configuration=window.OwnedWindows.OfType<OptionsWindow>().Single();Require(_configuration.FindControl<TabControl>("OptionsTabs")!.SelectedIndex==2,"Configure opens the actual External tools options tab.");
+                    var optionsWindows=window.OwnedWindows.OfType<OptionsWindow>().ToArray();
+                    if(optionsWindows.Length==0)
+                    {
+                        if(Stopwatch.GetElapsedTime(_optionsOpeningAt)<TimeSpan.FromSeconds(8)){_stage--;return;}
+                        throw new InvalidOperationException("Configure did not open Options within eight seconds. Owned windows: "+
+                            string.Join(", ",window.OwnedWindows.Select(w=>$"{w.Name ?? w.GetType().Name} (visible={w.IsVisible})")));
+                    }
+                    Require(optionsWindows.Length==1,"Configure must open one Options window.");
+                    _configuration=optionsWindows[0];
+                    Require(_configuration.IsVisible&&_configuration.FindControl<TabControl>("OptionsTabs")!.SelectedIndex==2,"Configure opens the visible External tools options tab.");
                     var invalid=_configuration.FindControl<TextBox>("AssDrawExecutablePath")!;invalid.Text=Path.Combine(options.ProfileDirectory!,"missing.exe");Press(_configuration.FindControl<Button>("AssDrawPathApply")!,Key.Enter);return;
                 case 4:
                     Require(model.AssDrawExecutable is null,"Invalid configuration cannot overwrite settings.");

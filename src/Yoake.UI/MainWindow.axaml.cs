@@ -50,7 +50,7 @@ public partial class MainWindow : Window, IEditorDialogs
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_model.TextCursor=SubtitleText.CaretIndex;_model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;}};
         Closing+=HandleClosing;
         Deactivated+=VideoHostDeactivated;
-        Closed+=(_,_)=>{MoveVideoHost(false);_model?.Dispose();};
+        Closed+=(_,_)=>{MoveVideoHost(false);AudioDisplay.Model=null;_model?.Dispose();};
     }
     private static string[] DropPaths(DragEventArgs e)
     {

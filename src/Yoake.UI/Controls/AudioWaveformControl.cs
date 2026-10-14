@@ -47,6 +47,14 @@ public sealed class AudioWaveformControl : Control
         {
             if(change.OldValue is MainWindowViewModel old){old.PropertyChanged-=ModelChanged;old.AudioZoomChanged-=ZoomChanged;old.GestureEnded-=TimingGestureEnded;}
             if(Model is {} model){model.PropertyChanged+=ModelChanged;model.AudioZoomChanged+=ZoomChanged;model.GestureEnded+=TimingGestureEnded;_lastDocument=model.ActiveDocumentId;_lastLine=model.SelectedEvent;}
+            else
+            {
+                // Closing the native window must detach observers and stop pending
+                // audio reads before MainWindowViewModel releases its media providers.
+                _analysis?.Cancel();_analysis?.Dispose();_analysis=null;
+                _detail=null;_spectrum?.Dispose();_spectrum=null;
+                _lastDocument=null;_lastLine=null;
+            }
         }
         if(change.Property==BoundsProperty)Model?.ReportAudioViewportWidth(Bounds.Width);
         if(change.Property==SamplesProperty||change.Property==ViewportStartProperty||change.Property==VisibleSecondsProperty||change.Property==BoundsProperty)
