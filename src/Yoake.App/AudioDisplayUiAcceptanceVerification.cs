@@ -38,10 +38,14 @@ internal sealed class AudioDisplayUiAcceptanceVerification(IClassicDesktopStyleA
                         "Dialogue: 0,0:00:01.20,0:00:01.40,Default,,0,0,0,,မြန်မာ 👩‍👩‍👧‍👦\n");
                     Require(model.OpenSubtitle(path),"Open audio presentation fixture.");_editor=model.ActiveEditor;_source=_editor!.Document.Serialize();
                     if(model.VideoAutoSeek)await Invoke("video/autoseek");if(!model.AudioAutoScroll)await Invoke("audio/opt/autoscroll");
-                    await Invoke("audio/view/waveform");await Invoke(CommandIds.ViewAudioVideo);_media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
+                    await Invoke("audio/view/waveform");
+                    Require(model.IsDefaultView && !model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Empty media must not enable Audio + Video.");_media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 1:
                     if(!_media!.IsCompleted){_stage--;return;}
                     Require(_media.Result&&Audio.Bounds.Width>128&&model.WaveformSamples is not null&&model.FrameTimes.Count>0,"Loaded audio/video and a usable viewport are required.");
+                    Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Loaded audio/video must select its combined view.");
                     _samples=model.WaveformSamples;_times=model.FrameTimes;_keys=model.Keyframes;_position=model.CurrentTimeSeconds;
                     model.AudioWindowSeconds=.5;Audio.ViewportStart=.4;
                     _right=AudioViewportMath.ScrollPixels(.4,.5,Audio.Bounds.Width,128,model.MediaDurationSeconds);Press(Audio,Key.F);return;

@@ -44,9 +44,12 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
                         "; untouched\rDialogue: 1,0:00:01.00,0:00:02.00,Default,B,04,05,06,fx,second,raw\n"+
                         "Comment: 2,0:00:02.00,0:00:03.00,Default,C,07,08,09,fx,third,keep\n");
                     Require(model.OpenSubtitle(path),"Open fixture.");_rows=model.Events.ToArray();_original=model.OriginalText;_document=model.ActiveDocumentId;
-                    await Invoke(CommandIds.ViewAudioVideo);_opening=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
+                    Require(model.IsDefaultView && !model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Original/Paste starts in subtitles-only view.");_opening=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 1:
-                    if(!_opening!.IsCompleted){_stage--;return;}Require(await _opening,"Native media fixture.");_times=model.FrameTimes;_samples=model.WaveformSamples;
+                    if(!_opening!.IsCompleted){_stage--;return;}Require(await _opening,"Native media fixture.");
+                    Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Opening native media selects Audio + Video.");_times=model.FrameTimes;_samples=model.WaveformSamples;
                     Press(window.FindControl<CheckBox>("ShowOriginalToggle")!,Key.Space);return;
                 case 2:
                     var original=window.FindControl<TextBox>("OriginalText")!;

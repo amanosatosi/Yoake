@@ -95,10 +95,13 @@ internal sealed class SelectionUiAcceptanceVerification(IClassicDesktopStyleAppl
                 case 15:
                     if(model.HasEditOperation){_stage--;return;}
                     Require(!window.OwnedWindows.OfType<SelectLinesWindow>().Any()&&model.SelectedEvents.SequenceEqual(new[]{_rows[0],_rows[2]}),"Actual confirmation must apply and close, persisting successful criteria.");SourceUnchanged();
-                    await Invoke(CommandIds.ViewAudioVideo);_media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
+                    Require(model.IsDefaultView && !model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Selection test starts without video or audio.");_media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 16:
                     if(!_media!.IsCompleted){_stage--;return;}
-                    Require(_media.Result,"Load native media for visible selection.");_samples=model.WaveformSamples;_times=model.FrameTimes;_keys=model.Keyframes;
+                    Require(_media.Result,"Load native media for visible selection.");
+                    Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Loaded selection media selects Audio + Video.");_samples=model.WaveformSamples;_times=model.FrameTimes;_keys=model.Keyframes;
                     if(!model.VideoAutoSeek)await Invoke("video/autoseek");model.CurrentTimeSeconds=model.FrameTimes[3];_position=model.CurrentTimeSeconds;
                     await Invoke("settings/hotkeys/set",new HotkeyChange(HotkeyContext.Default,"subtitle/select/visible",["F11"]));Press(Grid,Key.F11);return;
                 case 17:

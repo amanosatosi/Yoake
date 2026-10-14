@@ -45,7 +45,9 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case -3:
                     _keyPath=Path.Combine(options.ProfileDirectory!,"before-video.key.txt");
                     File.WriteAllText(_keyPath,"# keyframe format v1\nfps 0\n0\n7\n");
-                    await Invoke("keyframe/open",_keyPath);await Invoke(CommandIds.ViewVideo);return;
+                    await Invoke("keyframe/open",_keyPath);
+                    Require(model.IsDefaultView && !model.Actions[CommandIds.ViewVideo].CanExecute(null),
+                        "External keyframes do not enable Video view without a video provider.");return;
                 case -2:
                     Require(model.Keyframes.SequenceEqual(new[]{0,7})&&model.FrameTimes.Count==0&&model.Actions["keyframe/save"].CanExecute(null),"External keyframe metadata must load and remain exportable before video.");
                     Require(window.FindControl<Yoake.UI.Controls.VideoFrameSlider>("VideoSeekBar")!.RenderedKeyframeMarks==0,"Empty video ruler must not draw external cuts without a frame map.");
@@ -92,7 +94,9 @@ internal sealed class TimingUiAcceptanceVerification(IClassicDesktopStyleApplica
                     _media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 7:
                     if(!_media!.IsCompleted){_stage--;return;}Require(_media.Result&&model.CanShiftByFrames,"Real native video must supply the frame map.");
-                    if(model.VideoAutoSeek)await Invoke("video/autoseek");await Invoke(CommandIds.ViewAudioVideo);
+                    Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Loaded audio/video must select their combined workspace.");
+                    if(model.VideoAutoSeek)await Invoke("video/autoseek");
                     await Invoke(CommandIds.VideoFrameNext);_frame=model.CurrentFrame;_providerTimes=model.FrameTimes;_timing=new(model.FrameTimes,25);
                     model.SelectedEvent=_rows[0];model.SetSelectedEvents(_rows);Press(Grid,Key.D3,KeyModifiers.Control);return;
                 case 8:

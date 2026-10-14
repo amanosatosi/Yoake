@@ -35,9 +35,13 @@ internal sealed class AudioClipUiAcceptanceVerification(IClassicDesktopStyleAppl
                     var path=Path.Combine(options.ProfileDirectory!,"audio-clip.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+
                         "Dialogue: 0,0:00:00.30,0:00:01.00,Default,,0,0,0,,{\\future(x)\\distort(1,2,3,4)}日本語 é\n"+
                         "Comment: 0,0:00:01.20,0:00:01.40,Default,,0,0,0,,မြန်မာ 👩‍👩‍👧‍👦\n");
-                    Require(model.OpenSubtitle(path),"Open audio clip fixture.");await Invoke(CommandIds.ViewAudioVideo);_media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
+                    Require(model.OpenSubtitle(path),"Open audio clip fixture.");
+                    Require(model.IsDefaultView && !model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Empty media views must stay disabled before clip media loads.");_media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 1:
-                    if(!_media!.IsCompleted){_stage--;return;}Require(_media.Result,"Load native clip media.");await Invoke(CommandIds.GridSelectAll);
+                    if(!_media!.IsCompleted){_stage--;return;}Require(_media.Result,"Load native clip media.");
+                    Require(model.IsAudioVideoView && model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Loaded clip media must select Audio + Video.");await Invoke(CommandIds.GridSelectAll);
                     _editor=model.ActiveEditor;_source=_editor!.Document.Serialize();_selection=model.SelectedEvents.ToArray();_draft=model.Draft;_draft!.Start="unfinished timing";
                     _samples=model.WaveformSamples;_times=model.FrameTimes;_keys=model.Keyframes;model.CurrentTimeSeconds=.8;_position=model.CurrentTimeSeconds;
                     model.PlaybackVolume=.2;model.PlaybackMuted=true;Require(model.Actions["audio/save/clip"].CanExecute(null)&&!model.Actions["audio/save/cancel"].CanExecute(null),"Clip commands need correct native media/selection state.");
