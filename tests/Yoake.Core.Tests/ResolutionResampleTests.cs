@@ -41,7 +41,7 @@ public sealed class ResolutionResampleTests
     [Fact] public void RectangularAndScaledVectorClipsUseSourceUnits()
     {Assert.Equal(@"{\clip(22,24,26,28)\iclip(3,m 80 80 l 88 96)}x",Text(@"{\clip(1,2,3,4)\iclip(3,m 0 0 l 4 8)}x",ResampleAspect.Manual,1320,980,10,10,10,0));}
     [Fact] public void VectorDrawingSyntaxAndSplineTopologyArePreserved()
-    {Assert.Equal("{\\p2}M 0 0\tl 40 20\ns 4 8 12 16 20 24 p 28 32 c{\\p0}text",Text("{\\p2}M 0 0\tl 20 10\ns 2 4 6 8 10 12 p 14 16 c{\\p0}text"));}
+    {Assert.Equal("{\\p2}M 0 0\tl 40 20  s 4 8 12 16 20 24 p 28 32 c{\\p0}text",Text("{\\p2}M 0 0\tl 20 10  s 2 4 6 8 10 12 p 14 16 c{\\p0}text"));}
     [Fact] public void DrawingsUseIndependentTextStretchWhileClipDoesNot()
     {Assert.Equal(@"{\p1\clip(m 0 0 l 20 15)}m 0 0 l 15 15",Text(@"{\p1\clip(m 0 0 l 10 10)}m 0 0 l 10 10",width:1280,height:720));}
     [Fact] public void AdjacentOverrideBlocksAndEmptyCommentsDoNotDesynchronizeDrawingState()
