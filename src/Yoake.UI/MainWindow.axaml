@@ -132,6 +132,7 @@
 </MenuItem>
 <MenuItem Name="ToolsMenu" Header="Tools">
 <MenuItem Name="ResampleMenu" Header="Resample Resolution…" InputGesture="{Binding Actions[tool/resampleres].InputGesture}" Command="{Binding Actions[tool/resampleres]}" />
+<MenuItem Name="FontCollectorMenu" Header="Fonts Collector…" InputGesture="{Binding Actions[tool/font_collector].InputGesture}" Command="{Binding Actions[tool/font_collector]}" />
 </MenuItem>
 <MenuItem Header="Automation" SubmenuOpened="AutomationMenuOpened">
 <MenuItem Header="Automation Manager…" InputGesture="{Binding Actions[automation/manager].InputGesture}" Command="{Binding Actions[automation/manager]}" />
