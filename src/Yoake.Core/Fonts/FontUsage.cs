@@ -92,8 +92,12 @@ public sealed class FontUsageSnapshot
                 }
                 else if(syntax.Kind==AssSyntaxKind.Escape&&text.Length>=2)
                 {
-                    var escaped=text[1];if(escaped is 'N' or 'n')continue;
-                    Add(current,styleName,line.Number,[escaped=='h'?0xA0:escaped]);
+                    // The shared tokenizer coalesces adjacent escapes.
+                    for(var i=0;i+1<text.Length;)
+                    {
+                        var escaped=text[i+1];if(escaped is not ('N' or 'n'))Add(current,styleName,line.Number,[escaped=='h'?0xA0:escaped]);
+                        i+=escaped=='|'&&i+2<text.Length&&text[i+2]=='\\'?3:2;
+                    }
                 }
             }
         }

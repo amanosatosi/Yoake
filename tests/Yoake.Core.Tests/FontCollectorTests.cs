@@ -47,7 +47,7 @@ public sealed class FontCollectorTests:IDisposable
     [Fact] public void CollectionMetadataUsesAbsoluteOffsetsAndAllFaceRestrictions()
     {var a=FontBytes(0);var b=FontBytes(2);var bytes=Collection(a,b);using var stream=new MemoryStream(bytes);var metadata=OpenTypeMetadata.Read(stream);Assert.Equal(2,metadata.Faces.Length);Assert.Equal(1,metadata.Faces[1].Index);Assert.True(metadata.CopyRestricted);}
     [Theory] [InlineData(0)] [InlineData(11)] [InlineData(30)]
-    public void TruncatedFontMetadataFailsWithoutUnboundedReads(int bytes)=>Assert.ThrowsAny<IOException>(()=>OpenTypeMetadata.Read(new MemoryStream(FontBytes(0)[..bytes])));
+    public void TruncatedFontMetadataFailsWithoutUnboundedReads(int bytes)=>Assert.Throws<InvalidDataException>(()=>OpenTypeMetadata.Read(new MemoryStream(FontBytes(0)[..bytes])));
     [Fact] public void MalformedCollectionAndNameOffsetsAreRejected()
     {var bytes=Collection(FontBytes(0),FontBytes(0));BinaryPrimitives.WriteUInt32BigEndian(bytes.AsSpan(8),uint.MaxValue);Assert.Throws<InvalidDataException>(()=>OpenTypeMetadata.Read(new MemoryStream(bytes)));Assert.Throws<InvalidDataException>(()=>OpenTypeMetadata.ReadNames(new byte[]{0,0,0,1,255,255}));}
     [Fact] public async Task FolderCollectionDeduplicatesFilesAndNeverOverwritesExistingBatches()

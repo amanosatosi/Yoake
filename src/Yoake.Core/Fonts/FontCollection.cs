@@ -16,7 +16,7 @@ public sealed record ResolvedFontFile(string Path,long Length,long LastWriteTick
     {
         var file=new FileInfo(System.IO.Path.GetFullPath(path));var length=file.Length;var modified=file.LastWriteTimeUtc.Ticks;OpenTypeMetadata? metadata=null;string? error=null;
         try{using var stream=new FileStream(file.FullName,FileMode.Open,FileAccess.Read,FileShare.Read);metadata=OpenTypeMetadata.Read(stream,token);}
-        catch(Exception failure)when(failure is IOException or ArgumentException){error=failure.Message;}
+        catch(Exception failure)when(failure is IOException or InvalidDataException or ArgumentException){error=failure.Message;}
         token.ThrowIfCancellationRequested();file.Refresh();if(!file.Exists||file.Length!=length||file.LastWriteTimeUtc.Ticks!=modified)throw new IOException("Font file changed while reading metadata: "+path);
         return new(file.FullName,length,modified,metadata,error);
     }
@@ -53,7 +53,7 @@ public static class FontCollection
         {
             token.ThrowIfCancellationRequested();var usage=requirements.Fonts[i];ResolvedFont font;
             try{font=resolver.Resolve(usage,token);}catch(OperationCanceledException){throw;}
-            catch(Exception error)when(error is IOException or InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
+            catch(Exception error)when(error is IOException or InvalidDataException or InvalidOperationException or System.Runtime.InteropServices.COMException or ArgumentException)
             {font=new(usage,FontMatch.Error,"","",0,false,false,[],[],[error.Message]);}
             result.Add(font);progress?.Report(new((i+1d)/Math.Max(1,requirements.Fonts.Length),font.Match==FontMatch.Exact&&font.MissingGlyphs.Length==0?FontLogLevel.Success:FontLogLevel.Warning,font.ToString()));
         }
@@ -92,6 +92,7 @@ public static class FontCollection
                 AttachmentFileNames.RequireSafe(name);File.Move(temporary,Path.Combine(staging,name));copied.Add((file,name));
                 progress?.Report(new((i+1d)/eligible.Length,FontLogLevel.Information,"Prepared "+name));
             }
+            token.ThrowIfCancellationRequested();
             var notice=new StringBuilder(LicenseNotice+"\n\n");foreach(var font in report.Fonts)notice.AppendLine(font.ToString());
             foreach(var pair in copied)
             {notice.AppendLine("\n"+pair.Name+" ← "+pair.File.Path);if(pair.File.MetadataError is {} error)notice.AppendLine("Embedding metadata unavailable: "+error);foreach(var face in pair.File.Metadata?.Faces??[])foreach(var license in face.License)notice.AppendLine(license);}
