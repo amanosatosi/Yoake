@@ -118,8 +118,43 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     model.Registry.CommandFailed -= historyFailed;
                     using (var canceled = new CancellationTokenSource())
                     { canceled.Cancel(); Require(!await model.Registry.InvokeAsync("video/open", new(model.ActiveDocumentId), _audio, canceled.Token), "Canceled request cannot replace providers."); }
-                    var obsolete = model.OpenVideoAsync(_audio); var latest = model.OpenVideoAsync(_video);
-                    Require(!await obsolete && await latest && model.VideoSourcePath == _video, "Superseded indexing cannot publish old video.");
+                    // Tiny test AVIs can finish indexing before the next call.
+                    // Only require a canceled result if the older task really was
+                    // pending when its replacement started; the latest source must
+                    // win either way.
+                    var obsolete = model.OpenVideoAsync(_audio);
+                    var latest = model.OpenVideoAsync(_video);
+                    var supersededWhilePending = !obsolete.IsCompleted;
+                    var obsoleteResult = await obsolete;
+                    var latestResult = await latest;
+                    Require(latestResult && model.VideoSourcePath == _video &&
+                        (!supersededWhilePending || !obsoleteResult),
+                        $"Latest video must win an overlapping open; pending={supersededWhilePending}, old={obsoleteResult}, latest={latestResult}, source={model.VideoSourcePath}, status={model.MediaStatus}.");
+
+                    // Deterministically exercise the second race: a request
+                    // already published its provider but is still refreshing
+                    // its frame when the next open supersedes it.
+                    Task<bool>? replacementAfterPublish = null;
+                    System.ComponentModel.PropertyChangedEventHandler? onPublished = null;
+                    onPublished = (_, property) =>
+                    {
+                        if (property.PropertyName != nameof(MainWindowViewModel.VideoSourcePath) ||
+                            model.VideoSourcePath != _audio) return;
+                        model.PropertyChanged -= onPublished;
+                        replacementAfterPublish = model.OpenVideoAsync(_video);
+                    };
+                    model.PropertyChanged += onPublished;
+                    try
+                    {
+                        var publishedThenSuperseded = model.OpenVideoAsync(_audio);
+                        var oldPublishedResult = await publishedThenSuperseded;
+                        Require(replacementAfterPublish is not null,
+                            "The previous provider must publish before the forced supersession.");
+                        var newestResult = await replacementAfterPublish!;
+                        Require(!oldPublishedResult && newestResult && model.VideoSourcePath == _video,
+                            $"Post-publication supersession must return false for obsolete request; old={oldPublishedResult}, latest={newestResult}, source={model.VideoSourcePath}, status={model.MediaStatus}.");
+                    }
+                    finally { model.PropertyChanged -= onPublished; }
                     await Invoke("audio/play/current"); Require(model.IsPlaying, "Audio audition starts before Audio Close.");
                     using (var canceledClose = new CancellationTokenSource())
                     { canceledClose.Cancel(); Require(!await model.Registry.InvokeAsync("audio/close",new(model.ActiveDocumentId),cancellationToken:canceledClose.Token) && model.IsPlaying && model.AudioSourcePath == _video,"Canceled Audio Close retains active playback and both resources."); }
@@ -154,8 +189,19 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                         model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
                         "Reopening Audio automatically selects Audio + Video.");
                     DocumentUnchanged();
+                    // Video Open (not just combined Open Media) must pick up
+                    // embedded audio when this document has none.
+                    await Invoke("audio/close");
+                    Require(model.IsVideoView && !model.HasAudio, "Closing the independently selected audio leaves Video view.");
+                    return;
+                case 10:
+                    Require(await model.OpenVideoAsync(_video), "Open video with an embedded audio stream.");
+                    Require(model.VideoSourcePath == _video && model.AudioSourcePath == _video &&
+                        model.HasAudio && model.WaveformSamples is not null && model.IsAudioVideoView,
+                        $"Video Open must auto-attach embedded audio and select Audio + Video; video={model.VideoSourcePath}, audio={model.AudioSourcePath}, view={model.ViewMode}.");
+                    DocumentUnchanged();
                     Require(StartupDiagnostics.BindingWarningCount == 0 && StartupDiagnostics.FrameworkErrorCount == 0, "Ownership menus/layout must have no binding errors.");
-                    _timer.Stop(); options.FinishVerification("PASS: separate real-window independent media ownership; native track transfer and release; Unicode Video Open; transactional failed and superseded replacement; real Close menu Enter; focused Audio S/H after Video Close; real Recent Video menu Enter through shared backend; Audio replacement retains Video; independent persisted MRUs; external timecodes/keyframes and document/draft/pending/selection/undo retention. Existing Video playback/EOF and visual acceptance run separately. Audible output remains manual QA.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;
+                    _timer.Stop(); options.FinishVerification("PASS: separate real-window independent media ownership; native track transfer and release; Unicode Video Open; transactional failed and superseded replacement; real Close menu Enter; focused Audio S/H after Video Close; real Recent Video menu Enter through shared backend; Audio replacement retains Video; independent persisted MRUs; deterministic post-publication supersession; auto-audio on Video Open; external timecodes/keyframes and document/draft/pending/selection/undo retention. Existing Video playback/EOF and visual acceptance run separately. Audible output remains manual QA.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;
             }
         }
         catch (Exception exception) { _timer.Stop(); Program.Fatal("Packaged media ownership at stage " + (_stage - 1), exception); desktop.Shutdown(1); }
