@@ -1,6 +1,7 @@
 using Xunit;
 using Yoake.Core.Commands;
 using Yoake.Core.Fonts;
+using Yoake.UI.ViewModels;
 
 namespace Yoake.UI.Tests;
 
