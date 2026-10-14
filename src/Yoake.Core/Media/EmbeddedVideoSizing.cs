@@ -11,6 +11,20 @@ namespace Yoake.Core.Media;
 /// </summary>
 public static class EmbeddedVideoSizing
 {
+    /// <summary>
+    /// Reserve a useful 16:9 editing canvas before media metadata exists.
+    /// Do not change the workspace's star/splitter column: without a video,
+    /// there is no source-relative window zoom to request a new column width.
+    /// </summary>
+    public static VideoPresentation Placeholder(double availableWidth, double availableHeight)
+    {
+        if (!double.IsFinite(availableWidth) || !double.IsFinite(availableHeight) ||
+            availableWidth <= 0 || availableHeight <= 0)
+            return default;
+        var height = Math.Min(availableHeight, availableWidth * 9 / 16);
+        return new(0, 0, height * 16 / 9, height);
+    }
+
     public static VideoPresentation Viewport(
         double availableWidth, double availableHeight, double sourceHeight,
         double aspect, double dpi, double? windowZoom)
