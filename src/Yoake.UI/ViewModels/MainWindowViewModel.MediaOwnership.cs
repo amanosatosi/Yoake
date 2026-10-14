@@ -72,8 +72,12 @@ public sealed partial class MainWindowViewModel
         // document's existing independent Audio provider is decoding peaks.
         // Index embedded audio only when opening Video into an audio-less
         // document; keep the existing provider, waveform and audio path otherwise.
+        // Snapshot the intended tracks on the UI thread, before launching
+        // work. The old DocumentMedia can be disposed while a worker runs;
+        // never inspect state.Media from the worker.
+        var audioAlreadyOwned = state.Media?.HasAudio == true;
         var tracks = video
-            ? state.Media?.HasAudio == true ? MediaTracks.Video : MediaTracks.Both
+            ? audioAlreadyOwned ? MediaTracks.Video : MediaTracks.Both
             : MediaTracks.Audio;
         DocumentMedia? candidate = null, prepared = null; FrameTiming? nativeTiming = null; WaveformData? peaks = null;
         MediaStatus = dummy is null ? "FFMS2 indexing " + Path.GetFileName(path) : "Preparing dummy video";
@@ -98,7 +102,7 @@ public sealed partial class MainWindowViewModel
                     // Auto-open audio from this video only if this document does
                     // not already own independently selected audio. Preserve a
                     // separate audio source when replacing its video companion.
-                    if (candidate.HasAudio && state.Media?.HasAudio != true)
+                    if (candidate.HasAudio && tracks.HasFlag(MediaTracks.Audio))
                         peaks = candidate.BuildWaveform(ct);
                 }
                 else peaks = candidate.BuildWaveform(ct);
@@ -111,8 +115,11 @@ public sealed partial class MainWindowViewModel
             // publish a candidate prepared against obsolete external metadata.
             if (video && (!ReferenceEquals(external, state.ExternalTimecodes) || !ReferenceEquals(keyframes, state.ExternalKeyframes))) return false;
             var old = state.Media;
+            // Read this BEFORE the old snapshot can be queued for disposal.
+            // Later code uses only this value, never old.HasAudio.
+            var oldHadAudio = old?.HasAudio == true;
             var replacement = prepared = old is null ? candidate : video ? old.WithVideo(candidate) : old.WithAudio(candidate);
-            if (video && old?.HasAudio != true && candidate!.HasAudio && old is not null)
+            if (video && !oldHadAudio && candidate!.HasAudio && old is not null)
             {
                 // WithVideo deliberately preserves the old audio slot. When
                 // there was no old audio, retain the discovered audio too.
@@ -135,11 +142,11 @@ public sealed partial class MainWindowViewModel
             if (video) { state.FrameExtraction?.Cancel(); state.VideoProviderRevision++; state.VideoView.ResetContent(); state.VideoAspect = InitialVideoAspect(replacement.VideoProvider);
                 _videoPointer=null; state.ProviderFrameTiming = nativeTiming; state.FrameTiming = external?.Timing ?? nativeTiming; }
             else state.Waveform = peaks;
-            if (video && old?.HasAudio != true) state.Waveform = replacement!.HasAudio ? peaks : null;
+            if (video && !oldHadAudio) state.Waveform = replacement!.HasAudio ? peaks : null;
             if (_activeId == id) PublishMediaPresentation(state, video, old is null);
             if (old is not null) _ = Task.Run(old.Dispose);
             var historyWarning = dummy is null ? RememberMedia(full, video) : RememberDummyVideo(dummy);
-            if (video && dummy is null && old?.HasAudio != true && replacement!.HasAudio)
+            if (video && dummy is null && !oldHadAudio && replacement!.HasAudio)
                 historyWarning ??= RememberMedia(full, false);
             if (_activeId == id && state.Media?.HasVideo == true) await RefreshVideoFrameAsync(CurrentTimeSeconds);
             // Media publication is the commit boundary. After a frame refresh,
