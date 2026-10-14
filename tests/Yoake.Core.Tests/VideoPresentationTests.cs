@@ -14,7 +14,7 @@ public sealed class VideoPresentationTests
         var placeholder = EmbeddedVideoSizing.Placeholder(610, 400);
         Assert.True(placeholder.Width >= 600 && placeholder.Height >= 300);
         Assert.Equal(610, placeholder.Width, 8);
-        Assert.Equal(610 * 9 / 16, placeholder.Height, 8);
+        Assert.Equal(610d * 9 / 16, placeholder.Height, 8);
     }
 
     [Fact]
