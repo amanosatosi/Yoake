@@ -59,6 +59,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     public async ValueTask<AutomationMacroResult> RunAsync(int macroIndex, AutomationInvocation invocation, CancellationToken cancellationToken)
     {
         var text = await InvokeAsync(macroIndex, "run", invocation, cancellationToken).ConfigureAwait(false);
+        using var measurement = invocation.Diagnostics?.Measure("provider.result_readback");
         using var json = JsonDocument.Parse(text);
         IReadOnlyList<int>? selection = null; int? active = null;
         if (json.RootElement.TryGetProperty("first", out var first) && first.ValueKind == JsonValueKind.Object)
@@ -72,14 +73,16 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         if (selection is not null)
         {
             List<int> valid = [];
+            HashSet<int> seen = [];
             foreach (var index in selection)
             {
+                if (!seen.Add(index)) continue;
                 if (index < 1 || index > invocation.Subtitles.Count || !Equals(invocation.Subtitles.Read(index)["class"], "dialogue"))
                 {
                     invocation.Services.Log($"Selected row {index} is out of bounds or not a dialogue line; stopping selection readback.\n", 1);
                     break;
                 }
-                if (!valid.Contains(index)) valid.Add(index);
+                valid.Add(index);
             }
             selection = valid;
             if (valid.Count > 0)

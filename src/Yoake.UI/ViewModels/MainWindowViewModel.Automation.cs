@@ -209,7 +209,8 @@ public sealed partial class MainWindowViewModel
             {
                 var mapping = subs.Commit(state.Editor, binding.Macro.Name, new(initialSelection, initialActive), result,
                     restored => RestoreAutomationSelection(id, state, restored));
-                var selected = result.Selection is null ? initialSelection.Where(state.Editor.Document.Events.Contains).ToArray()
+                var surviving = result.Selection is null ? mapping.Values.ToHashSet() : null;
+                var selected = surviving is not null ? initialSelection.Where(surviving.Contains).ToArray()
                     : result.Selection.Distinct().Where(mapping.ContainsKey).Select(index => mapping[index]).ToArray();
                 var active = result.ActiveLine is { } index && mapping.TryGetValue(index, out var returned) ? returned
                     : initialActive is not null && state.Editor.Document.Events.Contains(initialActive) ? initialActive : selected.FirstOrDefault() ?? state.Editor.Document.Events.FirstOrDefault();

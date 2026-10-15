@@ -102,7 +102,7 @@ aegisub.register_macro("After", "", function(subs) return {2},2 end)
 aegisub.register_macro('Coerce','',function(subs)
   local line=subs[2]; line.text='generated'; subs.append(line)
   local cycle={}; cycle.self=cycle
-  return {'0x3',true,cycle,'ignored'},'3.9'
+  return {'0x3',3,3.9,true,cycle,'ignored'},'3.9'
 end)
 aegisub.register_macro('Invalid','',function() return {2,999,3},999 end)
 aegisub.register_macro('Non-dialogue','',function() return {1,2} end)
