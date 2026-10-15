@@ -46,3 +46,4 @@ tests/Yoake.Automation.Tests/Fixtures/automation/kara-templater-retime.ass -text
 tests/Yoake.Automation.Tests/Fixtures/automation/basic-export-test.lua -text
 tests/Yoake.Automation.Tests/Fixtures/automation/test-filter-name-clash.lua -text
 tests/Yoake.Automation.Tests/Fixtures/automation/config-dialog-test.lua -text
+tests/Yoake.Automation.Tests/Fixtures/automation/kfx-throughput.ass -text

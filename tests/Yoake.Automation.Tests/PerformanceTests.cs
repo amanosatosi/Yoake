@@ -60,6 +60,12 @@ end)
             source += string.Concat(Enumerable.Repeat("Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,," +
                 (workload == "templater" ? "{\\k20}ab{\\k30}cd" : "{\\distort(1,2)\\future(x)}日本語 မြန်မာ") + ",secret\n", workload == "generate" ? 1 : size));
             source += "[Unknown]\nMystery: untouched\n";
+            if (workload == "templater" && size == 100)
+            {
+                var fixture = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "automation", "kfx-throughput.ass"));
+                Assert.Equal(source, fixture); // Keep the committed input identical to the baseline generator.
+                source = fixture;
+            }
             var document = AssDocument.Parse(source); var editor = new SubtitleEditor(document);
             var before = document.Serialize();
             var diagnostics = reportDirectory is null ? null : new AutomationDiagnostics();
@@ -75,6 +81,13 @@ end)
             subs.Commit(editor, "Benchmark");
             var commitMs = elapsed.Elapsed.TotalMilliseconds - runMs;
             var bytes = GC.GetTotalAllocatedBytes(precise: true) - allocated;
+            output.AppendLine(FormattableString.Invariant($"iteration={iteration}, run_ms={runMs:F3}, commit_ms={commitMs:F3}, allocated_bytes={bytes}"));
+            output.AppendLine(diagnostics?.Report());
+            if (reportDirectory is not null)
+            {
+                Directory.CreateDirectory(reportDirectory);
+                await File.WriteAllTextAsync(Path.Combine(reportDirectory, $"{workload}-{size}.txt"), output.ToString());
+            }
             if (workload == "replace")
             {
                 Assert.Equal(size, document.Events.Count);
@@ -92,7 +105,9 @@ end)
                 Assert.Equal(size * 70, generated.Length);
                 // Derived independently from the release's parse_templates,
                 // retime and per-character branches; no font-dependent positions.
-                var expected = new[] { ("L", "2", 1000L, 2000L), ("Sab", "3", 1000L, 1200L), ("Scd", "3", 1200L, 1500L),
+                // A line template's main text is repeated per syllable; its
+                // pre-line portion would be applied just once (release source).
+                var expected = new[] { ("LL", "2", 1000L, 2000L), ("Sab", "3", 1000L, 1200L), ("Scd", "3", 1200L, 1500L),
                     ("Ca", "4", 1000L, 1200L), ("Cb", "4", 1000L, 1200L), ("Cc", "4", 1200L, 1500L), ("Cd", "4", 1200L, 1500L) };
                 foreach (var (text, layer, start, end) in expected)
                     Assert.Equal(size * 10, generated.Count(e => e.Text == text && e.Layer == layer && e.StartMilliseconds == start && e.EndMilliseconds == end));
@@ -102,8 +117,6 @@ end)
             var after = document.Serialize();
             editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
             editor.Undo.Redo(); Assert.Equal(after, document.Serialize());
-            output.AppendLine(FormattableString.Invariant($"iteration={iteration}, run_ms={runMs:F3}, commit_ms={commitMs:F3}, allocated_bytes={bytes}"));
-            output.AppendLine(diagnostics?.Report());
         }
         if (reportDirectory is not null)
         {
