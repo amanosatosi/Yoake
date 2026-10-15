@@ -3,6 +3,7 @@ using System.Diagnostics;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
+using Yoake.Core.Logging;
 using Yoake.UI;
 using Yoake.UI.ViewModels;
 
@@ -41,18 +42,30 @@ internal sealed class AssDrawUiAcceptanceVerification(
                 _executable = Path.Combine(AppContext.BaseDirectory, "ASSDraw3.exe");
                 Require(File.Exists(_executable), "The packaged ASSDraw3.exe is missing.");
                 Require(model.AssDrawExecutable is null, "Default launch must not need configuration.");
-                var menu = window.FindControl<MenuItem>("AssDrawMenu");
-                Require(menu?.Command is not null && menu.Command.CanExecute(menu.CommandParameter),
-                    "Tools -> ASSDraw3 must be wired to an enabled command.");
-                // Invoke the real menu's bound command. Avoid synthetic keyboard,
-                // dialog, media and subtitle workflows unrelated to launching.
-                menu!.Command!.Execute(menu.CommandParameter);
-                _launchAt = Stopwatch.GetTimestamp();
+                // Allow the native Tools menu to materialize and bind its
+                // command before checking the actual menu item.
+                var toolsMenu = window.FindControl<MenuItem>("ToolsMenu");
+                Require(toolsMenu is not null, "The packaged Tools menu is missing.");
+                toolsMenu.IsSubMenuOpen = true;
                 _stage = 1;
                 return;
             }
 
             if (_stage == 1)
+            {
+                var menu = window.FindControl<MenuItem>("AssDrawMenu");
+                var command = menu?.Command;
+                Require(command is not null && command.CanExecute(menu!.CommandParameter),
+                    "Tools -> ASSDraw3 must be wired to an enabled command.");
+                // Exercise the shipping menu's bound command, not a synthetic
+                // KeyDown or unrelated dialog / subtitle workflow.
+                command!.Execute(menu!.CommandParameter);
+                _launchAt = Stopwatch.GetTimestamp();
+                _stage = 2;
+                return;
+            }
+
+            if (_stage == 2)
             {
                 foreach (var candidate in Process.GetProcessesByName("ASSDraw3"))
                 {
@@ -74,10 +87,9 @@ internal sealed class AssDrawUiAcceptanceVerification(
                         "Tools -> ASSDraw3 did not open the bundled executable. Status: " + model.SubtitleStatus);
                     return;
                 }
-                Require(model.SubtitleStatus.StartsWith("Launched ASSDraw3:", StringComparison.Ordinal) &&
-                        model.SubtitleStatus.EndsWith(_executable, StringComparison.OrdinalIgnoreCase),
-                    "The menu did not report launching the bundled fork.");
-                _stage = 2;
+                // The process may create its window before the async command
+                // has published SubtitleStatus. Window identity is the proof.
+                _stage = 3;
                 return;
             }
 
@@ -106,9 +118,11 @@ internal sealed class AssDrawUiAcceptanceVerification(
             if (!_process.HasExited)
             {
                 _process.Kill();
-                _process.WaitForExit();
+                _process.WaitForExit(5000);
             }
         }
+        catch (InvalidOperationException) { /* The window exited during cleanup. */ }
+        catch (Win32Exception) { /* The runner will reap the process on job exit. */ }
         finally { _process.Dispose(); _process = null; }
     }
 

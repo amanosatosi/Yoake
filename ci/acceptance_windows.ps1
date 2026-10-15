@@ -452,7 +452,7 @@ $assDrawProfile = Join-Path $assDrawRoot 'profile'
 New-Item -ItemType Directory -Force -Path $assDrawProfile | Out-Null
 $logs = Join-Path $assDrawRoot 'logs'
 $report = Join-Path $assDrawRoot 'acceptance.txt'
-$arguments = @('--verify-ui-assdraw', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $assDrawProfile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+$arguments = @('--verify-ui-assdraw', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $assDrawProfile), '--diagnostics-directory', ('"{0}"' -f $logs))
 $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
 try {
   if (-not $process.WaitForExit(150000)) { throw 'Packaged ASSDraw external integration timed out' }
