@@ -52,6 +52,9 @@ luabins tuples (success flag followed by values or an error string); they never
 call the Lua C API. The existing bundled native luabins decoder runs only after
 the managed callback returns, within the protected native frame. The shim releases
 response buffers after decoding or after any protected failure. The callback ABI
+tracks buffers per native frame so GC finalizers can re-enter host calls without
+releasing an outer decoder's input. Unwound buffers are freed at execution cleanup.
+The callback ABI
 uses `ya_create_v2`, so an obsolete DLL fails symbol resolution rather than calling
 the new managed callback with the old signature. Windows x64 uses luabins' existing
 little-endian int32/binary64 wire format. Host replies no longer generate or compile

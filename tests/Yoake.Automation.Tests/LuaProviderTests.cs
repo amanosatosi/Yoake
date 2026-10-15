@@ -809,6 +809,35 @@ end)
         editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
     }
 
+    [Fact]
+    public async Task NativeReplyBuffersSurviveHostCallsFromGcFinalizers()
+    {
+        using var script = await Load("""
+aegisub.register_macro('Finalizer replies','',function(subs)
+  local expected=subs[2].text
+  local finalized=0
+  local pause=collectgarbage('setpause',50)
+  for i=1,1000 do
+    local proxy=newproxy(true)
+    getmetatable(proxy).__gc=function()
+      finalized=finalized+1
+      assert(subs[2].text==expected)
+    end
+    local line=subs[2]
+    assert(line.text==expected and line.extra~=nil)
+  end
+  collectgarbage('collect')
+  collectgarbage('setpause',pause)
+  assert(finalized==1000)
+end)
+""");
+        var document = Document(); document.Events[0].Text = new string('x', 4096) + " 日本語 မြန်မာ";
+        var before = document.Serialize();
+        using var subs = new AutomationSubtitleDocument(document);
+        await script.RunAsync(1, Context(subs), default);
+        Assert.Equal(before, document.Serialize());
+    }
+
     private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null, bool clipboardAvailable = false, int traceLevel = 3) : IAutomationHostServices
     {
         public int TraceLevel => traceLevel;

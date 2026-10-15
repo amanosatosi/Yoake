@@ -18,11 +18,15 @@
 
 typedef char *(*host_callback)(void *, const char *, int, int *);
 extern int ya_safe_preload_modules(lua_State *L);
+typedef struct reply_buffer {
+    char *data;
+    struct reply_buffer *next;
+} reply_buffer;
 typedef struct runtime {
     lua_State *L;
     host_callback host;
     void *context;
-    char *pending_reply;
+    reply_buffer *replies;
     char *result;
     const char *source, *name;
     int source_length;
@@ -35,14 +39,21 @@ typedef struct runtime {
 #endif
 } runtime;
 
-static void release_reply(runtime *r) {
-    if (!r->pending_reply) return;
+static void release_reply(runtime *r, reply_buffer *reply) {
+    reply_buffer **link = &r->replies;
+    while (*link && *link != reply) link = &(*link)->next;
+    if (!*link) return;
+    *link = reply->next;
 #ifdef _WIN32
-    CoTaskMemFree(r->pending_reply);
+    CoTaskMemFree(reply->data);
 #else
-    free(r->pending_reply);
+    free(reply->data);
 #endif
-    r->pending_reply = NULL;
+    free(reply);
+}
+
+static void release_replies(runtime *r) {
+    while (r->replies) release_reply(r, r->replies);
 }
 
 static runtime *owner(lua_State *L) {
@@ -96,15 +107,20 @@ static int dispatch(lua_State *L) {
     size_t length;
     const char *request = luaL_checklstring(L, 1, &length);
     if (length > 0x7fffffff) return luaL_error(L, "Automation request too large");
-    release_reply(r);
+    /* Decoding can collect Lua objects whose finalizers re-enter dispatch.
+       Each protected native frame retains its own buffer. Unwound frames are
+       cleaned at the execute boundary, never by a nested dispatch. */
+    reply_buffer *reply = (reply_buffer *)calloc(1, sizeof(reply_buffer));
+    if (!reply) return luaL_error(L, "Out of memory tracking Automation reply");
+    reply->next = r->replies; r->replies = reply;
     /* No Lua C API calls occur in managed code. Its callback returns before
        allocations/errors below can unwind to the native protected frame. */
     int reply_length = 0, count = 0;
-    r->pending_reply = r->host(r->context, request, (int)length, &reply_length);
-    if (!r->pending_reply) return luaL_error(L, "Automation host could not return a response");
-    if (reply_length < 1) return luaL_error(L, "Invalid Automation response length");
-    int status = luabins_load(L, (const unsigned char *)r->pending_reply, (size_t)reply_length, &count);
-    release_reply(r);
+    reply->data = r->host(r->context, request, (int)length, &reply_length);
+    if (!reply->data) { release_reply(r, reply); return luaL_error(L, "Automation host could not return a response"); }
+    if (reply_length < 1) { release_reply(r, reply); return luaL_error(L, "Invalid Automation response length"); }
+    int status = luabins_load(L, (const unsigned char *)reply->data, (size_t)reply_length, &count);
+    release_reply(r, reply);
     if (status) return lua_error(L);
     if (count < 1) return luaL_error(L, "Empty Automation response tuple");
     return count;
@@ -194,18 +210,18 @@ API void ya_reset_cancellation(runtime *r) {
 
 /* Return strings stay owned by the runtime until its next call/disposal. */
 API int ya_execute(runtime *r, const char *source, int length, const char *name, const char **result) {
-    free(r->result); r->result = NULL; release_reply(r);
+    free(r->result); r->result = NULL; release_replies(r);
     r->source = source; r->source_length = length; r->name = name;
     lua_settop(r->L, 0);
     lua_sethook(r->L, cancellation_hook, LUA_MASKCOUNT | (r->trace_moon ? LUA_MASKLINE : 0), 10000);
     int status = lua_cpcall(r->L, execute, r);
     lua_sethook(r->L, NULL, 0, 0);
-    release_reply(r);
+    release_replies(r);
     *result = status ? (lua_type(r->L, -1) == LUA_TSTRING ? lua_tostring(r->L, -1) : "Lua error without a string message") : r->result;
     return status;
 }
 
 API void ya_destroy(runtime *r) {
     if (!r) return;
-    lua_close(r->L); release_reply(r); free(r->result); free(r->trace_source); free(r);
+    lua_close(r->L); release_replies(r); free(r->result); free(r->trace_source); free(r);
 }
