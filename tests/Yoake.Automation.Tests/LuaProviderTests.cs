@@ -825,6 +825,7 @@ aegisub.register_macro('Finalizer replies','',function(subs)
     end
     local line=subs[2]
     assert(line.text==expected and line.extra~=nil)
+    proxy=nil -- No live VM register may retain the final iteration's userdata.
   end
   collectgarbage('collect')
   collectgarbage('setpause',pause)
