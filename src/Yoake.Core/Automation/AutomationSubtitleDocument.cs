@@ -129,7 +129,17 @@ public sealed class AutomationSubtitleDocument : IDisposable
         var slot = CheckIndex(index);
         if (line is null) { Delete(index); return; }
         var entry = ConvertLine(line, _entries[slot]);
-        _entries[slot] = entry; _changed = true; Reindex();
+        var previous = _entries[slot].Group;
+        _entries[slot] = entry; _changed = true;
+        // The normal read/modify/write path changes neither position nor class.
+        if (previous == entry.Group) return;
+        if (_last[previous] == slot)
+        {
+            _last.Remove(previous);
+            for (var i = slot - 1; i >= 0; i--)
+                if (_entries[i].Group == previous) { _last[previous] = i; break; }
+        }
+        _last[entry.Group] = Math.Max(_last.GetValueOrDefault(entry.Group, -1), slot);
     }
 
     public void Append(params AutomationLine[] lines)
@@ -138,12 +148,18 @@ public sealed class AutomationSubtitleDocument : IDisposable
         RequireWritable();
         // Validate all arguments before modifying the working collection.
         var converted = lines.Select(l => ConvertLine(l, null)).ToArray();
-        foreach (var entry in converted)
+        for (var start = 0; start < converted.Length;)
         {
-            var index = _last.TryGetValue(entry.Group, out var last) ? last + 1 : _entries.Count;
-            _entries.Insert(index, entry);
-            if (index == _entries.Count - 1) _last[entry.Group] = index;
-            else Reindex();
+            var group = converted[start].Group;
+            var end = start + 1;
+            while (end < converted.Length && converted[end].Group == group) end++;
+            var index = _last.TryGetValue(group, out var last) ? last + 1 : _entries.Count;
+            var count = end - start;
+            if (count == 1) _entries.Insert(index, converted[start]);
+            else _entries.InsertRange(index, new ArraySegment<Entry>(converted, start, count));
+            if (index + count < _entries.Count) ShiftBoundaries(index, count);
+            _last[group] = index + count - 1;
+            start = end;
         }
         _changed |= converted.Length > 0;
     }
@@ -155,7 +171,12 @@ public sealed class AutomationSubtitleDocument : IDisposable
         if (before < 1 || before > _entries.Count + 1) throw new ArgumentOutOfRangeException(nameof(before));
         if (before == _entries.Count + 1) { Append(lines); return; }
         var converted = lines.Select(l => ConvertLine(l, null)).ToArray();
-        _entries.InsertRange(before - 1, converted); _changed |= converted.Length > 0; Reindex();
+        if (converted.Length == 0) return;
+        var index = before - 1;
+        _entries.InsertRange(index, converted); _changed = true;
+        ShiftBoundaries(index, converted.Length);
+        for (var i = 0; i < converted.Length; i++)
+            _last[converted[i].Group] = Math.Max(_last.GetValueOrDefault(converted[i].Group, -1), index + i);
     }
 
     public void Delete(params int[] indexes)
@@ -163,15 +184,23 @@ public sealed class AutomationSubtitleDocument : IDisposable
         using var measurement = Diagnostics?.Measure("subtitles.delete");
         RequireWritable();
         var sorted = indexes.Select(CheckIndex).Order().ToArray();
+        if (sorted.Length == 0) return;
+        if (sorted.Length == 1) { DeleteRange(sorted[0] + 1, sorted[0] + 1); return; }
         var cursor = 0; var output = 0;
+        _last.Clear();
         // Preserve 3.2.2's duplicate-index behavior: do not deduplicate.
         for (var i = 0; i < _entries.Count; i++)
         {
             if (cursor < sorted.Length && sorted[cursor] == i) cursor++;
-            else _entries[output++] = _entries[i];
+            else
+            {
+                var entry = _entries[i];
+                _last[entry.Group] = output;
+                _entries[output++] = entry;
+            }
         }
         _changed |= output != _entries.Count;
-        _entries.RemoveRange(output, _entries.Count - output); Reindex();
+        _entries.RemoveRange(output, _entries.Count - output);
     }
 
     public void DeleteRange(int first, int last)
@@ -183,7 +212,16 @@ public sealed class AutomationSubtitleDocument : IDisposable
         if (first < 0 || last < 0) throw new ArgumentOutOfRangeException(nameof(first));
         var start = Math.Max(first, 1) - 1; var end = Math.Min(last, _entries.Count);
         if (start >= end) return;
-        _entries.RemoveRange(start, end - start); _changed = true; Reindex();
+        var count = end - start;
+        for (var group = Group.Info; group <= Group.Dialogue; group++)
+        {
+            if (!_last.TryGetValue(group, out var position) || position < start) continue;
+            if (position >= end) { _last[group] = position - count; continue; }
+            _last.Remove(group);
+            for (var i = start - 1; i >= 0; i--)
+                if (_entries[i].Group == group) { _last[group] = i; break; }
+        }
+        _entries.RemoveRange(start, count); _changed = true;
     }
 
     public void SetUndoPoint(string name)
@@ -201,8 +239,21 @@ public sealed class AutomationSubtitleDocument : IDisposable
         return 0;
     }
 
-    public IReadOnlyList<int> SelectionIndexes(IEnumerable<AssEvent> events) =>
-        events.Select(IndexOf).Where(i => i > 0).Distinct().Order().ToArray();
+    public IReadOnlyList<int> SelectionIndexes(IEnumerable<AssEvent> events)
+    {
+        RequireAlive();
+        var selected = events.ToHashSet();
+        if (selected.Count == 0) return [];
+        if (selected.Count == 1)
+        {
+            var index = IndexOf(selected.First());
+            return index > 0 ? [index] : [];
+        }
+        List<int> indexes = [];
+        for (var i = 0; i < _entries.Count; i++)
+            if (_records.GetValueOrDefault(_entries[i].Id) is AssEvent line && selected.Contains(line)) indexes.Add(i + 1);
+        return indexes;
+    }
 
     // Must run on the host's document thread, only after successful script return.
     public IReadOnlyDictionary<int, AssEvent> Commit(SubtitleEditor editor, string macroName,
@@ -221,28 +272,31 @@ public sealed class AutomationSubtitleDocument : IDisposable
         {
             if (publishing || initialSelection is null || restoreSelection is null) return;
             var available = entries.Select(e => _records.GetValueOrDefault(e.Id)).OfType<AssEvent>().ToArray();
+            var present = available.ToHashSet();
             AssEvent? At(int index) => index > 0 && index <= entries.Length ? _records.GetValueOrDefault(entries[index - 1].Id) as AssEvent : null;
             var selected = final && result?.Selection is { } returned
                 ? returned.Select(At).OfType<AssEvent>().Distinct().ToArray()
-                : initialSelection.Selection.Where(available.Contains).ToArray();
+                : initialSelection.Selection.Where(present.Contains).ToArray();
             var active = final && result?.ActiveLine is { } activeIndex ? At(activeIndex) : null;
-            active ??= available.Contains(initialSelection.ActiveLine) ? initialSelection.ActiveLine : selected.FirstOrDefault() ?? available.FirstOrDefault();
+            active ??= initialSelection.ActiveLine is { } original && present.Contains(original) ? original : selected.FirstOrDefault() ?? available.FirstOrDefault();
             var explicitSelection = final && result?.Selection is not null;
             if (explicitSelection && (active is null || !selected.Contains(active))) active = selected.FirstOrDefault();
             restoreSelection(new(!explicitSelection && selected.Length == 0 && active is not null ? [active] : selected, active));
         }
         List<IUndoOperation> operations = [];
+        var previousSource = checkpoints.Count > 0 ? BuildSource(previous) : null;
         for (var pointIndex = 0; pointIndex < checkpoints.Count; pointIndex++)
         {
             var point = checkpoints[pointIndex];
             var before = previous; var after = point.Entries;
             var final = pointIndex == checkpoints.Count - 1;
             // Materialize/validate source before touching the live model.
-            var beforeSource = BuildSource(before); var afterSource = BuildSource(after);
+            var beforeSource = previousSource!; var afterSource = BuildSource(after);
             operations.Add(new DelegateUndoOperation(point.Name,
                 () => { Apply(beforeSource); Restore(before, false); },
                 () => { Apply(afterSource); Restore(after, final); }));
             previous = after;
+            previousSource = afterSource;
         }
         using (_document.BeginUpdate()) editor.Undo.ExecuteBatch(operations);
         publishing = false;
@@ -262,6 +316,12 @@ public sealed class AutomationSubtitleDocument : IDisposable
         using var measurement = Diagnostics?.Measure("subtitles.reindex");
         Diagnostics?.Record("subtitles.reindex_entries", 0, _entries.Count);
         _last.Clear(); for (var i = 0; i < _entries.Count; i++) _last[_entries[i].Group] = i;
+    }
+    private void ShiftBoundaries(int index, int count)
+    {
+        // Exactly three classes, including files with noncontiguous groups.
+        for (var group = Group.Info; group <= Group.Dialogue; group++)
+            if (_last.TryGetValue(group, out var last) && last >= index) _last[group] = last + count;
     }
     private static AssRecord? Clone(AssRecord? record) => record switch { AssEvent e => e.Clone(), AssStyle s => s.Clone(), _ => null };
     private static string Header(Group group) => group switch { Group.Info => "[Script Info]", Group.Style => "[V4+ Styles]", _ => "[Events]" };

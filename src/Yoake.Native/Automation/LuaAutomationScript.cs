@@ -36,7 +36,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         _owner = GCHandle.Alloc(this);
         try
         {
-            _runtime = Create((IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, int, IntPtr>)&Dispatch, GCHandle.ToIntPtr(_owner));
+            _runtime = Create((IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, int, int*, IntPtr>)&Dispatch, GCHandle.ToIntPtr(_owner));
             if (_runtime == IntPtr.Zero) throw new InvalidOperationException("Could not create the native LuaJIT interpreter.");
         }
         catch { _owner.Free(); throw; }
@@ -143,7 +143,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             ObjectDisposedException.ThrowIf(_disposed, this);
             _mode = method == "run" && _filters.Any(f => f.Index == index) ? "filter" : method;
             _invocation = invocation; _cancellation = cancellationToken; _reads.Clear(); _templates.Clear(); _nextRead = 0;
-            var result = await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)},{Literal(settings)},{Literal(invocation.Diagnostics is not null)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
+            var result = await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)},{Literal(settings)},{Literal(invocation.Diagnostics is not null)},{Literal(invocation.Services.TraceLevel)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
             using var json = JsonDocument.Parse(result);
             if (json.RootElement.TryGetProperty("cancelled", out var cancelled) && cancelled.ValueKind == JsonValueKind.True)
                 throw new OperationCanceledException("Automation script cancelled execution.");
@@ -169,31 +169,45 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-    private static unsafe IntPtr Dispatch(IntPtr owner, IntPtr request, int length)
+    private static unsafe IntPtr Dispatch(IntPtr owner, IntPtr request, int length, int* responseLength)
     {
-        string response;
+        *responseLength = 0;
+        var response = IntPtr.Zero;
         AutomationDiagnostics? diagnostics = null;
         long started = 0;
         try
         {
-            var script = (LuaAutomationScript)GCHandle.FromIntPtr(owner).Target!;
-            diagnostics = script._invocation?.Diagnostics;
-            started = diagnostics?.Start() ?? 0;
-            using var json = JsonDocument.Parse(new ReadOnlySpan<byte>((void*)request, length).ToArray());
-            diagnostics?.Finish("transport.json_parse", started);
-            var root = json.RootElement;
-            var op = root.GetProperty("op").GetString()!;
-            var handling = diagnostics?.Start() ?? 0;
-            var values = script.Handle(op, root.GetProperty("args"));
-            diagnostics?.Finish("host." + op, handling);
-            var encoding = diagnostics?.Start() ?? 0;
-            response = "return {ok=true,values={n=" + values.Length + "," + string.Join(',', values.Select((v, i) => "[" + (i + 1) + "]=" + Literal(v))) + "}}";
-            diagnostics?.Finish("transport.lua_encode", encoding);
+            byte[] data;
+            try
+            {
+                var script = (LuaAutomationScript)GCHandle.FromIntPtr(owner).Target!;
+                diagnostics = script._invocation?.Diagnostics;
+                started = diagnostics?.Start() ?? 0;
+                var reader = new Utf8JsonReader(new ReadOnlySpan<byte>((void*)request, length));
+                using var json = JsonDocument.ParseValue(ref reader);
+                diagnostics?.Finish("transport.json_parse", started);
+                var root = json.RootElement;
+                var op = root.GetProperty("op").GetString()!;
+                var handling = diagnostics?.Start() ?? 0;
+                var values = script.Handle(op, root.GetProperty("args"));
+                diagnostics?.Finish("host." + op, handling);
+                var encoding = diagnostics?.Start() ?? 0;
+                data = AutomationReply.Encode(values);
+                diagnostics?.Finish("transport.binary_encode", encoding);
+            }
+            catch (Exception exception) { data = AutomationReply.Encode([], exception.Message); }
+            response = Marshal.AllocCoTaskMem(data.Length);
+            Marshal.Copy(data, 0, response, data.Length);
+            *responseLength = data.Length;
+            diagnostics?.Finish("transport.callback", started);
+            return response;
         }
-        catch (Exception exception) { response = "return {ok=false,error=" + Literal(exception.Message) + "}"; }
-        try { return Marshal.StringToCoTaskMemUTF8(response); }
-        catch { return IntPtr.Zero; } // Never throw across the native callback.
-        finally { diagnostics?.Finish("transport.callback", started); }
+        catch
+        {
+            if (response != IntPtr.Zero) Marshal.FreeCoTaskMem(response);
+            *responseLength = 0;
+            return IntPtr.Zero; // Includes failures encoding an error/diagnostic.
+        }
     }
 
     private object?[] Handle(string op, JsonElement args)
@@ -212,8 +226,11 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         switch (op)
         {
             case "diagnostics":
+                var samples = Arg(1);
                 foreach (var sample in Arg(1).EnumerateObject())
-                    if (sample.Name != "calls") _invocation?.Diagnostics?.Record("lua." + sample.Name, sample.Value.GetDouble(), Arg(1).GetProperty("calls").GetInt64());
+                    if (sample.Name is not ("calls" or "compilations"))
+                        _invocation?.Diagnostics?.Record("lua." + sample.Name, sample.Value.GetDouble(),
+                            sample.Name == "compile" ? samples.GetProperty("compilations").GetInt64() : samples.GetProperty("calls").GetInt64());
                 return [];
             case "read_file": return [File.ReadAllText(Text(1), new UTF8Encoding(false, true)).TrimStart('\uFEFF')];
             case "include_path": return [_paths.ResolveInclude(Text(1))];
@@ -379,7 +396,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         finally { _gate.Release(); }
     }
 
-    [LibraryImport("yoake-automation.dll", EntryPoint = "ya_create")]
+    [LibraryImport("yoake-automation.dll", EntryPoint = "ya_create_v2")]
     private static partial IntPtr Create(IntPtr callback, IntPtr context);
     [LibraryImport("yoake-automation.dll", EntryPoint = "ya_execute", StringMarshalling = StringMarshalling.Utf8)]
     private static partial int Execute(IntPtr runtime, byte[] source, int length, string name, out IntPtr result);

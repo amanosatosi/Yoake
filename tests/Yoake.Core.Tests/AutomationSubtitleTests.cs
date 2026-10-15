@@ -157,6 +157,61 @@ public sealed class AutomationSubtitleTests
     }
 
     [Fact]
+    public void MixedClassReplacementsAndInsertionsRetainAppendBoundaries()
+    {
+        using var subs = new AutomationSubtitleDocument(AssDocument.Parse(Source));
+        var info = subs.Read(1); var style = subs.Read(2); var dialogue = subs.Read(3);
+        // Classes need not be contiguous after explicit insert/replace.
+        subs.Insert(2, dialogue, info, style);
+        subs.Write(7, info); // Replaces the final dialogue; the previous one wins.
+        subs.Append(dialogue, dialogue, style, info);
+        Assert.Equal(new[] { "info", "dialogue", "info", "style", "style", "style", "dialogue", "dialogue", "dialogue", "info", "info" },
+            Enumerable.Range(1, subs.Count).Select(i => subs.Read(i).String("class")));
+        // Remove last occurrences and append a class which is now absent.
+        subs.DeleteRange(4, 6);
+        subs.Append(style);
+        Assert.Equal("style", subs.Read(subs.Count).String("class"));
+        subs.Delete(subs.Count);
+        subs.Append(style, style);
+        Assert.Equal("style", subs.Read(subs.Count - 1).String("class"));
+        Assert.Equal("style", subs.Read(subs.Count).String("class"));
+    }
+
+    [Fact]
+    public void SameClassWritesDoNotChangeThePositionOfSubsequentAppends()
+    {
+        var document = AssDocument.Parse(Source); var editor = new SubtitleEditor(document);
+        using var subs = new AutomationSubtitleDocument(document);
+        var dialogue = subs.Read(3); var style = subs.Read(2); var info = subs.Read(1);
+        for (var i = 0; i < 1000; i++) { dialogue["layer"] = i; subs.Write(3, dialogue); }
+        subs.Append(style, style, info, info, dialogue, dialogue);
+        Assert.Equal(new[] { "info", "info", "info", "style", "style", "style", "dialogue", "dialogue", "dialogue", "dialogue" },
+            Enumerable.Range(1, subs.Count).Select(i => subs.Read(i).String("class")));
+        subs.Commit(editor, "Mixed append");
+        Assert.Equal("999", document.Events[0].Layer);
+        Assert.All(document.Events.Where(e => e.Text == dialogue.String("text")), e => Assert.Equal("a-secret", e.Get("Future")));
+        editor.Undo.Undo(); Assert.Equal(Source, document.Serialize());
+    }
+
+    [Fact]
+    public void RangeDeletionAndClassChangesRecoverEarlierOrAbsentGroups()
+    {
+        using var subs = new AutomationSubtitleDocument(AssDocument.Parse(Source));
+        var info = subs.Read(1); var style = subs.Read(2); var dialogue = subs.Read(3);
+        subs.Insert(3, info, style, dialogue);
+        subs.DeleteRange(3, 5); // Last info/style disappear; earlier ones survive.
+        subs.Append(info, style, dialogue);
+        Assert.Equal(new[] { "info", "info", "style", "style", "dialogue", "dialogue", "dialogue" },
+            Enumerable.Range(1, subs.Count).Select(i => subs.Read(i).String("class")));
+        subs.Write(4, dialogue); subs.Write(3, dialogue); // No styles remain.
+        subs.Append(style); // Missing classes append at file end, not class order.
+        Assert.Equal("style", subs.Read(subs.Count).String("class"));
+        subs.Append(dialogue);
+        Assert.Equal("dialogue", subs.Read(subs.Count - 1).String("class"));
+        Assert.Equal("style", subs.Read(subs.Count).String("class"));
+    }
+
+    [Fact]
     public void ReorderingAndDuplicatingPreserveProvenanceAndUnknownAnchors()
     {
         var document = AssDocument.Parse(Source); var editor = new SubtitleEditor(document);

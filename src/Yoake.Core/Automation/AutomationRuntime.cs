@@ -25,6 +25,8 @@ public sealed record AutomationFilterSettings(AutomationFilterBinding Binding, I
 // Implementations marshal platform/UI operations; the provider calls on workers.
 public interface IAutomationHostServices
 {
+    // Aegisub 3.2.2's default. The adapter filters before formatting/transport.
+    int TraceLevel => 3;
     string? FileName { get; }
     IReadOnlyDictionary<string, object?> ProjectProperties { get; }
     int? FrameFromMilliseconds(int milliseconds);

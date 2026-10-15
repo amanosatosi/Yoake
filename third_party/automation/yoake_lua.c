@@ -6,6 +6,7 @@
 #include <lauxlib.h>
 #include <lualib.h>
 #include <luajit.h>
+#include "aegisub-3.2.2/vendor/luabins/src/luabins.h"
 #ifdef _WIN32
 #include <windows.h>
 #include <objbase.h>
@@ -15,7 +16,7 @@
 #define API __attribute__((visibility("default")))
 #endif
 
-typedef char *(*host_callback)(void *, const char *, int);
+typedef char *(*host_callback)(void *, const char *, int, int *);
 extern int ya_safe_preload_modules(lua_State *L);
 typedef struct runtime {
     lua_State *L;
@@ -98,11 +99,15 @@ static int dispatch(lua_State *L) {
     release_reply(r);
     /* No Lua C API calls occur in managed code. Its callback returns before
        allocations/errors below can unwind to the native protected frame. */
-    r->pending_reply = r->host(r->context, request, (int)length);
+    int reply_length = 0, count = 0;
+    r->pending_reply = r->host(r->context, request, (int)length, &reply_length);
     if (!r->pending_reply) return luaL_error(L, "Automation host could not return a response");
-    lua_pushstring(L, r->pending_reply);
+    if (reply_length < 1) return luaL_error(L, "Invalid Automation response length");
+    int status = luabins_load(L, (const unsigned char *)r->pending_reply, (size_t)reply_length, &count);
     release_reply(r);
-    return 1;
+    if (status) return lua_error(L);
+    if (count < 1) return luaL_error(L, "Empty Automation response tuple");
+    return count;
 }
 
 static int traceback(lua_State *L) {
@@ -160,7 +165,9 @@ static int execute(lua_State *L) {
     return 0;
 }
 
-API runtime *ya_create(host_callback host, void *context) {
+/* Version the callback ABI: an old packaged DLL must fail symbol resolution,
+   never call a length-returning managed callback with the old signature. */
+API runtime *ya_create_v2(host_callback host, void *context) {
     runtime *r = (runtime *)calloc(1, sizeof(runtime));
     if (!r) return NULL;
     r->host = host; r->context = context; r->L = luaL_newstate();

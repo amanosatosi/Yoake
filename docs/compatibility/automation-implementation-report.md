@@ -120,7 +120,10 @@ manual's reversed order. Owner HWNDs and cancellable dialog hooks stay native.
 
 Progress has actual title/task/percentage, filtered log output, Cancel and
 completed/error Close. The visible log is bounded while centralized logs retain
-full output/tracebacks. Worker Lua remains cancellable through instruction hooks;
+full accepted output/tracebacks. Messages above the invocation trace level are
+filtered before formatting and transport, as in the release (default level 3).
+Opt-in diagnostic summaries use the same log without enabling suppressed script
+traces. Worker Lua remains cancellable through instruction hooks;
 failures pass through UI-safe command reporting. A cancelled/failed interpreter
 can subsequently run another macro.
 
@@ -143,6 +146,11 @@ packaged probe runs a real template after Add, Save As and independent-tab media
 loading, checks actual Mangetsu pixels, and reopens the saved local-script file.
 
 ## Executable verification
+
+The [performance measurement guide](automation-performance.md) identifies the
+instrumented baseline, real-provider workloads, metric boundaries and reference
+output oracle. Each CI run uploads its own measurements; performance numbers
+never replace the existing correctness or packaged NativeAOT gates.
 
 GitHub Actions runs source policy/hash/generated-asset checks, all Core/UI
 workflow tests, real native Automation tests, and Windows NativeAOT/package

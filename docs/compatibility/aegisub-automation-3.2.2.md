@@ -106,6 +106,10 @@ The frozen manual is checked alongside source, with these known discrepancies:
 
 * JIT execution is disabled and `jit.on` is inert so instruction hooks can cancel
   loops reliably. Lua 5.1 language/BitOp/FFI libraries remain native LuaJIT features.
+  Performance stabilization retains that policy. The pinned recorder's optional
+  `LUAJIT_ENABLE_CHECKHOOK` requires a different build and asynchronous hook
+  installation/lifetime policy; it is not enabled or claimed as verified here.
+  See [pinned recorder](https://raw.githubusercontent.com/LuaJIT/LuaJIT/c6ffc141a8762b41703f9287d63d93622a13dd8f/src/lj_record.c).
 * Modified relative `package.path` templates resolve against the master directory,
   protecting other document sessions from process CWD changes.
 * Nonempty Aegisub extradata writes are rejected explicitly; unknown source and text

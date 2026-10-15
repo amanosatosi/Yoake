@@ -36,19 +36,22 @@ local function json(v, visited)
   visited[v] = nil
   return '{' .. table.concat(parts, ',') .. '}'
 end
+local function receive(ok, ...)
+  if not ok then error((...), 2) end
+  return ...
+end
+local function measured_receive(started, ...)
+  profile.transport = profile.transport + diagnostic_clock() - started
+  profile.calls = profile.calls + 1
+  return receive(...)
+end
 local function host(op, ...)
   local args = {n=select('#', ...), ...}
   local started = profile and diagnostic_clock()
   local request = json({op=op, args=args})
-  if profile then profile.json = profile.json + diagnostic_clock() - started; started = diagnostic_clock() end
-  local response = transport(request)
-  if profile then profile.transport = profile.transport + diagnostic_clock() - started; started = diagnostic_clock() end
-  local fn, err = compile(response, '=Yoake host response')
-  if not fn then error(err, 2) end
-  local reply = fn()
-  if profile then profile.compile = profile.compile + diagnostic_clock() - started; profile.calls = profile.calls + 1 end
-  if not reply.ok then error(reply.error, 2) end
-  return unpack(reply.values, 1, reply.values.n)
+  if not profile then return receive(transport(request)) end
+  profile.json = profile.json + diagnostic_clock() - started
+  return measured_receive(diagnostic_clock(), transport(request))
 end
 
 dofile, loadfile = nil, nil
@@ -198,9 +201,16 @@ local function subtitles()
   return subs
 end
 
+local trace_level = 3
 local function log(...)
   local args={...}; local level=3
-  if type(args[1])=='number' then level=table.remove(args,1) end
+  if type(args[1])=='number' then
+    level = args[1] >= 0 and math.floor(args[1]) or math.ceil(args[1])
+    -- Match LuaDebugOut: suppressed traces do not format, cross the bridge or
+    -- open the centralized log file. Templater emits many level-5 messages.
+    if level > trace_level then return end
+    table.remove(args,1)
+  end
   local text = #args>1 and string.format(unpack(args)) or tostring(args[1] or '')
   return host('log',text,level)
 end
@@ -249,8 +259,9 @@ local function script_traceback(message)
   end
   return table.concat(lines,'\n')
 end
-function __yoake_invoke(index, method, settings, diagnostics)
-  profile = diagnostics and {json=0,transport=0,compile=0,calls=0} or nil
+function __yoake_invoke(index, method, settings, diagnostics, trace)
+  trace_level = tonumber(trace) or 3
+  profile = diagnostics and {json=0,transport=0,compile=0,calls=0,compilations=0} or nil
   moon_location(false)
   script_cancelled = false
   generation = generation + 1

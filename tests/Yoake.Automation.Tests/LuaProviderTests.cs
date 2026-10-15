@@ -85,7 +85,7 @@ end)
     public async Task TightLoopCancelsAndInterpreterRemainsUsable()
     {
         using var script = await Load("""
-aegisub.register_macro("Loop", "", function() while true do end end)
+aegisub.register_macro("Loop", "", function() jit.on(); assert(not jit.status()); while true do end end)
 aegisub.register_macro("After", "", function(subs) return {2},2 end)
 """);
         using var subs = new AutomationSubtitleDocument(Document());
@@ -745,8 +745,73 @@ end)
         Assert.Equal(spaced.Height * 2, scaled.Height, precision: 8);
     }
 
-    private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null, bool clipboardAvailable = false) : IAutomationHostServices
+    [Fact]
+    public async Task SuppressedTracesDoNotFormatOrReachTheHost()
     {
+        using var script = await Load("""
+aegisub.register_macro('Trace','',function()
+  aegisub.debug.out(5, '%d', {}) -- Formatting this suppressed value would fail.
+  aegisub.log(4, 'hidden')
+  aegisub.log(3.9, 'visible %s', '日本語') -- lua_tointeger truncation.
+end)
+""");
+        var services = new Services();
+        using var subs = new AutomationSubtitleDocument(Document());
+        await script.RunAsync(1, Context(subs) with { Services = services }, default);
+        Assert.Equal("visible 日本語", Assert.Single(services.Logs));
+    }
+
+    [Theory]
+    [InlineData(3, 1)]
+    [InlineData(6, 2)]
+    public async Task InvocationTraceLevelCanRetainVerboseDiagnostics(int traceLevel, int expected)
+    {
+        using var script = await Load("""
+aegisub.register_macro('Trace','',function()
+  aegisub.debug.out(5, 'verbose %s', 'diagnostic')
+  aegisub.log('visible')
+end)
+""");
+        var services = new Services(traceLevel: traceLevel);
+        using var subs = new AutomationSubtitleDocument(Document());
+        await script.RunAsync(1, Context(subs) with { Services = services }, default);
+        Assert.Equal(expected, services.Logs.Count);
+        Assert.Contains("visible", services.Logs);
+        if (traceLevel == 6) Assert.Contains("verbose diagnostic", services.Logs);
+    }
+
+    [Fact]
+    public async Task NativeRepliesPreserveNilArityBinaryStringsDetachedTablesAndErrorRecovery()
+    {
+        using var script = await Load("""
+aegisub.register_macro('Reply data','',function(subs)
+  local a,b=subs[2],subs[2]
+  assert(a~=b and a.extra~=b.extra)
+  assert(a.text=='quotes " \\ nul\0 日本語 မြန်မာ')
+  a.text='detached'; assert(b.text==subs[2].text)
+  assert(select('#',aegisub.video_size())==1 and aegisub.video_size()==nil)
+  local ok,message=pcall(function() return subs[999999] end)
+  assert(not ok and message:match('out%-of%-range'))
+  assert(subs[2].text==b.text)
+  b.text=b.text..' changed'; subs[2]=b
+  aegisub.set_undo_point('Reply data')
+end)
+""");
+        var source = Document().Serialize();
+        var document = AssDocument.Parse(source);
+        document.Events[0].Text = "quotes \" \\ nul\0 日本語 မြန်မာ";
+        var before = document.Serialize(); var editor = new SubtitleEditor(document);
+        using var subs = new AutomationSubtitleDocument(document);
+        await script.RunAsync(1, Context(subs), default);
+        subs.Commit(editor, "Reply data");
+        Assert.Equal("quotes \" \\ nul\0 日本語 မြန်မာ changed", document.Events[0].Text);
+        Assert.Equal("evidence", document.Events[0].Get("Future"));
+        editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
+    }
+
+    private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null, bool clipboardAvailable = false, int traceLevel = 3) : IAutomationHostServices
+    {
+        public int TraceLevel => traceLevel;
         private string? _clipboard;
         public List<string> Logs { get; } = [];
         public string? FileName => null;

@@ -38,6 +38,7 @@ public sealed partial class MainWindowViewModel
     private readonly Dictionary<Guid, CancellationTokenSource> _automationRuns = [];
     private bool _automationScanning;
     private IAppLog _automationLog = null!;
+    private readonly bool _automationDiagnosticsEnabled = Environment.GetEnvironmentVariable("YOAKE_AUTOMATION_DIAGNOSTICS") == "1";
     public IAutomationRuntimeProvider AutomationRuntimeProvider { get; set; } = new LuaAutomationProvider(Path.Combine(AppContext.BaseDirectory, "automation", "host.lua"));
     public string AutomationBaseDirectory => Path.Combine(AppContext.BaseDirectory, "automation");
     public string AutomationUserDirectory => Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!, "automation");
@@ -182,14 +183,19 @@ public sealed partial class MainWindowViewModel
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, _automationLifetime.Token, item.Lifetime.Token, progress?.CancellationToken ?? CancellationToken.None);
         _automationRuns[id] = cancellation;
         Exception? failure = null;
+        var diagnostics = _automationDiagnosticsEnabled ? new AutomationDiagnostics() : null;
+        var captureStarted = diagnostics?.Start() ?? 0;
         var initialSelection = Selection(); var initialActive = SelectedEvent;
-        using var subs = new AutomationSubtitleDocument(state.Editor.Document);
+        using var subs = new AutomationSubtitleDocument(state.Editor.Document, diagnostics: diagnostics);
         var context = new AutomationInvocation(subs, subs.SelectionIndexes(initialSelection), initialActive is null ? 0 : subs.IndexOf(initialActive),
-            CreateAutomationServices(id, progress, interactive: true));
+            CreateAutomationServices(id, progress, interactive: true)) { Diagnostics = diagnostics };
+        diagnostics?.Finish("ui.capture", captureStarted);
         try
         {
             // Recheck against the finalized draft, even if the menu was validated.
-            using (var view = new AutomationSubtitleDocument(state.Editor.Document, writable: false))
+            if (binding.Macro.HasValidation || binding.Macro.HasToggle)
+            using (var validationMeasurement = diagnostics?.Measure("ui.validation"))
+            using (var view = new AutomationSubtitleDocument(state.Editor.Document, writable: false, diagnostics: diagnostics))
             {
                 var validation = await binding.Script.ValidateAsync(binding.Macro.Index, context with { Subtitles = view }, cancellation.Token);
                 if (!validation.Enabled) return;
@@ -198,6 +204,7 @@ public sealed partial class MainWindowViewModel
             cancellation.Token.ThrowIfCancellationRequested();
             if (!_documents.TryGetValue(id, out var current) || !ReferenceEquals(state, current)) throw new OperationCanceledException("The Automation document was closed or replaced.");
             IsSynchronizingSelection = true;
+            using var publicationMeasurement = diagnostics?.Measure("ui.publish_and_request_preview");
             try
             {
                 var mapping = subs.Commit(state.Editor, binding.Macro.Name, new(initialSelection, initialActive), result,
@@ -220,7 +227,11 @@ public sealed partial class MainWindowViewModel
         }
         catch (OperationCanceledException e) { failure = e; SubtitleStatus = "Automation cancelled; changes discarded"; }
         catch (Exception e) { failure = e; throw; }
-        finally { _automationRuns.Remove(id); progress?.Complete(failure); ScheduleAutomationValidation(); }
+        finally
+        {
+            _automationRuns.Remove(id); progress?.Complete(failure); ScheduleAutomationValidation();
+            if (diagnostics is not null) _automationLog.Info($"Automation diagnostics: {binding.Macro.Name}\n{diagnostics.Report()}");
+        }
     }
 
     public void ScheduleAutomationValidation()
@@ -256,9 +267,14 @@ public sealed partial class MainWindowViewModel
             foreach (var binding in _automationCatalog.Macros(id))
             {
                 token.ThrowIfCancellationRequested();
-                using var subs = new AutomationSubtitleDocument(state.Editor.Document, writable: false);
+                // The catalog already supplies true/null/false when neither
+                // callback exists. Cloning a large document cannot add a result.
+                if (!binding.Macro.HasValidation && !binding.Macro.HasToggle) continue;
+                var diagnostics = _automationDiagnosticsEnabled ? new AutomationDiagnostics() : null;
+                var validationStarted = diagnostics?.Start() ?? 0;
+                using var subs = new AutomationSubtitleDocument(state.Editor.Document, writable: false, diagnostics: diagnostics);
                 var revision = state.Editor.Document.Revision;
-                var context = new AutomationInvocation(subs, subs.SelectionIndexes(Selection()), SelectedEvent is { } active ? subs.IndexOf(active) : 0, CreateAutomationServices(id, null, interactive: false));
+                var context = new AutomationInvocation(subs, subs.SelectionIndexes(Selection()), SelectedEvent is { } active ? subs.IndexOf(active) : 0, CreateAutomationServices(id, null, interactive: false)) { Diagnostics = diagnostics };
                 try
                 {
                     var validation = await binding.Script.ValidateAsync(binding.Macro.Index, context, token);
@@ -266,6 +282,11 @@ public sealed partial class MainWindowViewModel
                 }
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
                 catch (Exception e) { _automationCatalog.UpdateValidation(id, binding, new(false, e.Message, false)); _automationLog.Error($"Validation failed in '{binding.Script.Path}'", e); }
+                finally
+                {
+                    diagnostics?.Finish("ui.background_validation", validationStarted);
+                    if (diagnostics is not null) _automationLog.Info($"Automation validation diagnostics: {binding.Macro.Name}\n{diagnostics.Report()}");
+                }
             }
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }

@@ -47,11 +47,16 @@ receive Lua state pointers, registry references or native handles. A native shim
 must catch Lua errors/longjmp on the native side; a Lua error must never unwind
 through a managed callback. `third_party/automation/yoake_lua.c` protects runtime
 initialization/execution with `lua_cpcall` and calls managed code only with a UTF-8
-data request. Reverse callbacks catch managed exceptions and return byte-escaped
-data-only Lua literals; they never call the Lua C API. The shim releases response
-buffers after returning them or after any protected failure. This transport is a
-correctness-first implementation; its encoding/allocation cost must be measured
-against real KFX before acceptance. NativeAOT uses static interop, no generated
+data request. Reverse callbacks catch managed exceptions and return length-delimited
+luabins tuples (success flag followed by values or an error string); they never
+call the Lua C API. The existing bundled native luabins decoder runs only after
+the managed callback returns, within the protected native frame. The shim releases
+response buffers after decoding or after any protected failure. The callback ABI
+uses `ya_create_v2`, so an obsolete DLL fails symbol resolution rather than calling
+the new managed callback with the old signature. Windows x64 uses luabins' existing
+little-endian int32/binary64 wire format. Host replies no longer generate or compile
+Lua source. Requests remain JSON; line provenance and read-after-write behavior
+are unchanged. NativeAOT uses static interop, no generated
 managed assemblies, reflection-based marshalling, managed plugin loading or
 reflection-heavy serializers. Use the existing safe native search layout.
 
@@ -83,6 +88,12 @@ line endings and unknown Mangetsu text. Never simplify the entire ASS file and
 reparse it. The working state is independent of live record objects; reads are
 copies, writes validate before replacing an entry. Append locates the end of a
 class; large event loops must have amortized constant append cost.
+Ordinary same-class replacements retain the three last-class boundaries. Inserts
+shift those boundaries, adjacent same-class append arguments share one insertion,
+and deletion compacts/reindexes in one pass while retaining the release duplicate
+quirk. Range removal and class replacement search backward only when removing a
+class boundary. Checkpoint source materialization shares the previous checkpoint's
+result rather than constructing the same source twice.
 Detached tables retain their schema identity privately. A table.copy fallback
 uses exact class/raw provenance; if identical raw lines were read under distinct
 Format schemas, copied-table mutations are rejected rather than choosing the
@@ -112,6 +123,23 @@ Colors use Yoake's authoring picker. Dialogs and clipboard marshal to the platfo
 thread; provider execution never manipulates controls. The progress service owns
 title/task/percentage/log output and cancellation. A native instruction hook
 interrupts tight loops without requiring voluntary progress calls.
+The invocation's `IAutomationHostServices.TraceLevel` defaults to the release's 3.
+Lua rejects higher numeric trace levels before formatting, serialization, native
+callbacks or synchronous centralized logging; services can request verbose traces.
+The progress window separately limits visible levels and retained display size.
+
+`AutomationDiagnostics` is an optional invocation-owned collector. The desktop
+enables it at startup with `YOAKE_AUTOMATION_DIAGNOSTICS=1` and writes summaries
+to its existing Automation log. It measures capture, validation, host operations,
+JSON, reply encoding, provider execution, reconciliation and synchronous UI
+publication/preview requests. The provider benchmark reports managed allocation
+deltas and callback/entry-scan counts, with first-use and subsequent runs separate.
+Nested timings overlap: Lua transport contains the managed callback and native
+decode; provider execution also contains Lua JSON and actual script execution.
+Subtracting measured phases estimates remaining Lua/adapter/hook/GC work, not
+pure Lua CPU time. Rendering finishes asynchronously and is verified by the
+existing packaged preview assertions, not equated with publication time.
+Disabled diagnostics perform no clock reads, counter updates or diagnostic locks.
 
 Text metrics use a provider measurement service matching 3.2.2 GDI metrics and
 style scale on Windows; TextBlock.Measure is not a substitute. Complex-script

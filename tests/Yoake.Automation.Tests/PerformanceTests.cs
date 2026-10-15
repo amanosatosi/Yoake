@@ -103,6 +103,7 @@ end)
             {
                 var generated = document.Events.Where(e => e.Effect == "fx").ToArray();
                 Assert.Equal(size * 70, generated.Length);
+                Assert.Equal(size * 71 + 3, document.Events.Count);
                 // Derived independently from the release's parse_templates,
                 // retime and per-character branches; no font-dependent positions.
                 // A line template's main text is repeated per syllable; its
