@@ -35,7 +35,10 @@ public sealed class OptionsWindow : Window
         var names=new NameScope();NameScope.SetNameScope(this,names);
         foreach(var control in new Control[]{_context,_filter,_commands,_bindings,_gesture,_capture,_status,_global})names.Register(control.Name!,control);
         WindowStartupLocation=WindowStartupLocation.CenterOwner;
-        var root=new Grid{Margin=new Thickness(12),RowDefinitions=new("Auto,Auto,*,Auto,Auto"),RowSpacing=8};Content=root;
+        // This grid belongs to the Keyboard shortcuts tab. Do not attach it to
+        // the Window first: Avalonia cannot reparent a live logical child into
+        // TabControl during native dialog layout.
+        var root=new Grid{Margin=new Thickness(12),RowDefinitions=new("Auto,Auto,*,Auto,Auto"),RowSpacing=8};
         var heading=new StackPanel{Orientation=Orientation.Horizontal,Spacing=12};root.Children.Add(heading);
         heading.Children.Add(new TextBlock{Text="Context",VerticalAlignment=VerticalAlignment.Center});heading.Children.Add(_context);heading.Children.Add(_global);
         _context.ItemsSource=Enum.GetValues<HotkeyContext>();_context.SelectedItem=HotkeyContext.Default;
