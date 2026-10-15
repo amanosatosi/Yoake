@@ -1,6 +1,7 @@
 /* Yoake's native Lua error boundary. See the repository LICENSE. */
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
@@ -111,6 +112,20 @@ static int traceback(lua_State *L) {
     return 1;
 }
 
+/* Only called by the private adapter when invocation diagnostics are enabled. */
+static int diagnostic_clock(lua_State *L) {
+#ifdef _WIN32
+    LARGE_INTEGER now, frequency;
+    QueryPerformanceCounter(&now); QueryPerformanceFrequency(&frequency);
+    lua_pushnumber(L, (double)now.QuadPart / (double)frequency.QuadPart * 1000.0);
+#else
+    struct timespec now;
+    timespec_get(&now, TIME_UTC);
+    lua_pushnumber(L, (double)now.tv_sec * 1000.0 + now.tv_nsec / 1000000.0);
+#endif
+    return 1;
+}
+
 static int initialize(lua_State *L) {
     runtime *r = (runtime *)lua_touserdata(L, 1);
     luaL_openlibs(L);
@@ -121,6 +136,8 @@ static int initialize(lua_State *L) {
     lua_setglobal(L, "__yoake_transport");
     lua_pushcfunction(L, moon_location);
     lua_setglobal(L, "__yoake_moon_location");
+    lua_pushcfunction(L, diagnostic_clock);
+    lua_setglobal(L, "__yoake_clock");
     /* Count hooks cannot reliably interrupt compiled tight loops. Disable
        Lua JIT for this cancellable host; this does not affect managed AOT. */
     luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE | LUAJIT_MODE_OFF);

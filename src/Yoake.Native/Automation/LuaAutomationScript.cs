@@ -143,7 +143,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             ObjectDisposedException.ThrowIf(_disposed, this);
             _mode = method == "run" && _filters.Any(f => f.Index == index) ? "filter" : method;
             _invocation = invocation; _cancellation = cancellationToken; _reads.Clear(); _templates.Clear(); _nextRead = 0;
-            var result = await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)},{Literal(settings)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
+            var result = await Task.Run(() => Run($"return __yoake_invoke({index},{Literal(method)},{Literal(settings)},{Literal(invocation.Diagnostics is not null)})", "@" + Path, cancellationToken) ?? "{}", cancellationToken).ConfigureAwait(false);
             using var json = JsonDocument.Parse(result);
             if (json.RootElement.TryGetProperty("cancelled", out var cancelled) && cancelled.ValueKind == JsonValueKind.True)
                 throw new OperationCanceledException("Automation script cancelled execution.");
@@ -154,12 +154,15 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
 
     private string? Run(string source, string name, CancellationToken cancellationToken)
     {
+        var diagnostics = _invocation?.Diagnostics;
+        var started = diagnostics?.Start() ?? 0;
         cancellationToken.ThrowIfCancellationRequested();
         ResetCancellation(_runtime);
         using var registration = cancellationToken.Register(() => Cancel(_runtime));
         var bytes = Encoding.UTF8.GetBytes(source);
         var status = Execute(_runtime, bytes, bytes.Length, name, out var pointer);
         var result = pointer == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(pointer);
+        diagnostics?.Finish("provider.execute", started);
         cancellationToken.ThrowIfCancellationRequested();
         if (status != 0) throw new InvalidOperationException($"Automation script '{Path}' failed:\n{result}");
         return result;
@@ -169,17 +172,28 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     private static unsafe IntPtr Dispatch(IntPtr owner, IntPtr request, int length)
     {
         string response;
+        AutomationDiagnostics? diagnostics = null;
+        long started = 0;
         try
         {
             var script = (LuaAutomationScript)GCHandle.FromIntPtr(owner).Target!;
+            diagnostics = script._invocation?.Diagnostics;
+            started = diagnostics?.Start() ?? 0;
             using var json = JsonDocument.Parse(new ReadOnlySpan<byte>((void*)request, length).ToArray());
+            diagnostics?.Finish("transport.json_parse", started);
             var root = json.RootElement;
-            var values = script.Handle(root.GetProperty("op").GetString()!, root.GetProperty("args"));
+            var op = root.GetProperty("op").GetString()!;
+            var handling = diagnostics?.Start() ?? 0;
+            var values = script.Handle(op, root.GetProperty("args"));
+            diagnostics?.Finish("host." + op, handling);
+            var encoding = diagnostics?.Start() ?? 0;
             response = "return {ok=true,values={n=" + values.Length + "," + string.Join(',', values.Select((v, i) => "[" + (i + 1) + "]=" + Literal(v))) + "}}";
+            diagnostics?.Finish("transport.lua_encode", encoding);
         }
         catch (Exception exception) { response = "return {ok=false,error=" + Literal(exception.Message) + "}"; }
         try { return Marshal.StringToCoTaskMemUTF8(response); }
         catch { return IntPtr.Zero; } // Never throw across the native callback.
+        finally { diagnostics?.Finish("transport.callback", started); }
     }
 
     private object?[] Handle(string op, JsonElement args)
@@ -197,6 +211,10 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         if ((op == "dialog" || op.StartsWith("file_dialog_", StringComparison.Ordinal)) && _mode != "run") throw new InvalidOperationException("This Automation invocation cannot open a dialog.");
         switch (op)
         {
+            case "diagnostics":
+                foreach (var sample in Arg(1).EnumerateObject())
+                    if (sample.Name != "calls") _invocation?.Diagnostics?.Record("lua." + sample.Name, sample.Value.GetDouble(), Arg(1).GetProperty("calls").GetInt64());
+                return [];
             case "read_file": return [File.ReadAllText(Text(1), new UTF8Encoding(false, true)).TrimStart('\uFEFF')];
             case "include_path": return [_paths.ResolveInclude(Text(1))];
             case "package_path": return [_paths.PackagePath];

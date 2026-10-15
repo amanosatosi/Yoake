@@ -1,6 +1,9 @@
 -- Yoake's private native-host adapter. The public surface targets Aegisub 3.2.2.
 -- The managed host never evaluates or marshals raw Lua tables or Lua pointers.
 local transport, compile = __yoake_transport, loadstring
+local diagnostic_clock = __yoake_clock
+__yoake_clock = nil
+local profile
 local moon_location = __yoake_moon_location
 __yoake_moon_location = nil
 local moon_sources = {}
@@ -35,10 +38,15 @@ local function json(v, visited)
 end
 local function host(op, ...)
   local args = {n=select('#', ...), ...}
-  local response = transport(json({op=op, args=args}))
+  local started = profile and diagnostic_clock()
+  local request = json({op=op, args=args})
+  if profile then profile.json = profile.json + diagnostic_clock() - started; started = diagnostic_clock() end
+  local response = transport(request)
+  if profile then profile.transport = profile.transport + diagnostic_clock() - started; started = diagnostic_clock() end
   local fn, err = compile(response, '=Yoake host response')
   if not fn then error(err, 2) end
   local reply = fn()
+  if profile then profile.compile = profile.compile + diagnostic_clock() - started; profile.calls = profile.calls + 1 end
   if not reply.ok then error(reply.error, 2) end
   return unpack(reply.values, 1, reply.values.n)
 end
@@ -241,7 +249,8 @@ local function script_traceback(message)
   end
   return table.concat(lines,'\n')
 end
-function __yoake_invoke(index, method, settings)
+function __yoake_invoke(index, method, settings, diagnostics)
+  profile = diagnostics and {json=0,transport=0,compile=0,calls=0} or nil
   moon_location(false)
   script_cancelled = false
   generation = generation + 1
@@ -271,6 +280,10 @@ function __yoake_invoke(index, method, settings)
     return fn(subtitles(),selected,active)
   end,script_traceback)
   alive=false
+  if profile then
+    local completed = profile; profile = nil
+    host('diagnostics', completed)
+  end
   aegisub.progress, aegisub.debug, aegisub.dialog = nil,nil,nil
   if script_cancelled then return json({cancelled=true}) end
   if not ok then error(a,0) end

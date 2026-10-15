@@ -36,8 +36,11 @@ public sealed class AutomationSubtitleDocument : IDisposable
         "Aegisub Scroll Position", "Aegisub Active Line", "Aegisub Video Position"
     };
 
-    public AutomationSubtitleDocument(AssDocument document, bool writable = true)
+    public AutomationDiagnostics? Diagnostics { get; }
+    public AutomationSubtitleDocument(AssDocument document, bool writable = true, AutomationDiagnostics? diagnostics = null)
     {
+        Diagnostics = diagnostics;
+        using var measurement = Diagnostics?.Measure("subtitles.capture");
         _document = document;
         _revision = document.Revision;
         _source = document.Source.ToArray();
@@ -81,6 +84,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
     public int Count { get { RequireAlive(); return _entries.Count; } }
     public AutomationLine Read(int index)
     {
+        using var measurement = Diagnostics?.Measure("subtitles.read");
         RequireAlive(); var entry = _entries[CheckIndex(index)];
         var line = new AutomationLine { Template = entry.Source.Record };
         line["class"] = entry.Group.ToString().ToLowerInvariant();
@@ -118,6 +122,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
 
     public void Write(int index, AutomationLine? line)
     {
+        using var measurement = Diagnostics?.Measure("subtitles.write");
         RequireWritable();
         if (index == 0) { Append(line ?? throw new ArgumentException("Can't convert nil to AssEntry.")); return; }
         if (index < 0) { Insert(checked(-index), line ?? throw new ArgumentException("Can't convert nil to AssEntry.")); return; }
@@ -129,6 +134,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
 
     public void Append(params AutomationLine[] lines)
     {
+        using var measurement = Diagnostics?.Measure("subtitles.append");
         RequireWritable();
         // Validate all arguments before modifying the working collection.
         var converted = lines.Select(l => ConvertLine(l, null)).ToArray();
@@ -144,6 +150,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
 
     public void Insert(int before, params AutomationLine[] lines)
     {
+        using var measurement = Diagnostics?.Measure("subtitles.insert");
         RequireWritable();
         if (before < 1 || before > _entries.Count + 1) throw new ArgumentOutOfRangeException(nameof(before));
         if (before == _entries.Count + 1) { Append(lines); return; }
@@ -153,6 +160,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
 
     public void Delete(params int[] indexes)
     {
+        using var measurement = Diagnostics?.Measure("subtitles.delete");
         RequireWritable();
         var sorted = indexes.Select(CheckIndex).Order().ToArray();
         var cursor = 0; var output = 0;
@@ -168,6 +176,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
 
     public void DeleteRange(int first, int last)
     {
+        using var measurement = Diagnostics?.Measure("subtitles.delete_range");
         RequireWritable();
         // Source uses unsigned conversion. Negative endpoints are rejected here
         // rather than reproducing platform-dependent unsigned wraparound.
@@ -200,6 +209,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
         AutomationSelectionState? initialSelection = null, AutomationMacroResult? result = null, Action<AutomationSelectionState>? restoreSelection = null)
     {
         RequireWritable();
+        using var measurement = Diagnostics?.Measure("subtitles.commit");
         if (!ReferenceEquals(editor.Document, _document)) throw new InvalidOperationException("Automation editor ownership mismatch.");
         if (_document.Revision != _revision) throw new InvalidOperationException("The document changed while Automation was running.");
         if (editor.Undo.IsTransactionActive) throw new InvalidOperationException("Finish the editor gesture before Automation commit.");
@@ -247,7 +257,12 @@ public sealed class AutomationSubtitleDocument : IDisposable
     private void RequireAlive() { if (_expired) throw new InvalidOperationException("Subtitles object is no longer valid."); }
     private void RequireWritable() { RequireAlive(); if (!_writable) throw new InvalidOperationException("Attempt to modify subtitles in read-only feature context."); }
     private int CheckIndex(int index) => index > 0 && index <= _entries.Count ? index - 1 : throw new ArgumentOutOfRangeException(nameof(index), "Requested out-of-range line from subtitle file.");
-    private void Reindex() { _last.Clear(); for (var i = 0; i < _entries.Count; i++) _last[_entries[i].Group] = i; }
+    private void Reindex()
+    {
+        using var measurement = Diagnostics?.Measure("subtitles.reindex");
+        Diagnostics?.Record("subtitles.reindex_entries", 0, _entries.Count);
+        _last.Clear(); for (var i = 0; i < _entries.Count; i++) _last[_entries[i].Group] = i;
+    }
     private static AssRecord? Clone(AssRecord? record) => record switch { AssEvent e => e.Clone(), AssStyle s => s.Clone(), _ => null };
     private static string Header(Group group) => group switch { Group.Info => "[Script Info]", Group.Style => "[V4+ Styles]", _ => "[Events]" };
     private static int Int(string text) => (int)Math.Clamp(Math.Truncate(Number(text)), int.MinValue, int.MaxValue);
@@ -323,6 +338,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
     private static string Schema(AssRecord record) => (record is AssEvent ? "event:" : "style:") + string.Join('\0', record.Format);
     private Materialized[] BuildSource(Entry[] entries)
     {
+        using var measurement = Diagnostics?.Measure("subtitles.build_source");
         var queues = Enum.GetValues<Group>().ToDictionary(g => g, g => new Queue<Entry>(entries.Where(e => e.Group == g)));
         var lastSlots = _slots.GroupBy(p => p.Value).ToDictionary(g => g.Key, g => g.Max(p => p.Key));
         List<Materialized> output = [];
@@ -350,6 +366,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
 
     private void Apply(Materialized[] state)
     {
+        using var measurement = Diagnostics?.Measure("subtitles.apply");
         using (_document.BeginUpdate())
         {
             var source = new AssDocument.SourceLine[state.Length];

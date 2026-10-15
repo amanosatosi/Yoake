@@ -8,7 +8,10 @@ public sealed record AutomationExportFilter(int Index, string Name, string Descr
 public sealed record AutomationMacroResult(IReadOnlyList<int>? Selection, int? ActiveLine);
 public sealed record AutomationSelectionState(IReadOnlyList<AssEvent> Selection, AssEvent? ActiveLine);
 public sealed record AutomationValidation(bool Enabled, string? Help, bool Active);
-public sealed record AutomationInvocation(AutomationSubtitleDocument Subtitles, IReadOnlyList<int> SelectedLines, int ActiveLine, IAutomationHostServices Services);
+public sealed record AutomationInvocation(AutomationSubtitleDocument Subtitles, IReadOnlyList<int> SelectedLines, int ActiveLine, IAutomationHostServices Services)
+{
+    public AutomationDiagnostics? Diagnostics { get; init; }
+}
 public sealed record AutomationTextMetrics(double Width, double Height, double Descent, double ExternalLeading);
 public sealed record AutomationVideoSize(int Width, int Height, double AspectRatio, int AspectRatioMode);
 public sealed record AutomationDialogRequest(IReadOnlyList<AutomationLine> Controls, IReadOnlyList<string>? Buttons, IReadOnlyDictionary<string, string>? ButtonIds);

@@ -97,7 +97,14 @@ jobs:
           New-Item -ItemType Directory -Force -Path $dlls | Out-Null
           Copy-Item .ci-cache/native/automation/bin/*.dll $dlls
           $env:YOAKE_AUTOMATION_TEST_RUNTIME = $layout
+          $env:YOAKE_AUTOMATION_BENCHMARK_OUTPUT = Join-Path $env:GITHUB_WORKSPACE 'artifacts/automation-performance'
           dotnet test tests/Yoake.Automation.Tests/Yoake.Automation.Tests.csproj -c Release
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: Automation-performance
+          path: artifacts/automation-performance
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v7
         with:
           name: Automation-tested-native-runtime

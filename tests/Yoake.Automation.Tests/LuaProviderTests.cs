@@ -6,7 +6,7 @@ using Yoake.Native.Automation;
 
 namespace Yoake.Automation.Tests;
 
-public sealed class LuaProviderTests : IDisposable
+public sealed partial class LuaProviderTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "yoake-lua-fixture-" + Guid.NewGuid().ToString("N"));
     private readonly LuaAutomationProvider _provider = new(Path.Combine(AppContext.BaseDirectory, "host.lua"));
