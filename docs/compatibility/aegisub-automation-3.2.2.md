@@ -116,6 +116,10 @@ The frozen manual is checked alongside source, with these known discrepancies:
   remain preserved. Full typed extradata projection is pending.
 * Negative deleterange endpoints are rejected instead of reproducing unsigned
   conversion/wraparound. Header/raw class writes are rejected, as in 3.2.2.
+* Multi-argument append validates every argument before changing Yoake's working
+  view. The release's `ObjectAppend` inserts each converted argument immediately,
+  so a Lua `pcall` catching a later conversion error can retain the valid prefix.
+  Yoake's existing atomic validation policy is retained by the grouped fast path.
 * Returned selection values use Lua numeric-string coercion and ignore nonnumeric
   helpers; invalid/non-dialogue indexes log an error and stop readback as in the
   release. An explicit empty selection clears Yoake's active row as well; the
