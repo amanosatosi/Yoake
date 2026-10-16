@@ -46,4 +46,21 @@ public sealed partial class EditorWorkflowTests
         Assert.Equal(@"Hello\N", first.Text); Assert.Equal("World", _model.SelectedEvent!.Text);
         Assert.Contains(second, _model.Events);
     }
+
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    public async Task LegacyPhysicalNewlinesInDraftsKeepFormattingRangeWhenCommitted(string newline)
+    {
+        await Command(CommandIds.GridInsertAfter);
+        _model.Draft!.Text = "Hello" + newline + "World";
+        _model.TextSelectionStart = 5 + newline.Length; _model.TextSelectionEnd = _model.TextCursor = _model.Draft.Text.Length;
+        await Command(CommandIds.FormatBold);
+        Assert.Equal(@"Hello\N{\b1}World{\b0}", _model.SelectedEvent!.Text);
+        await Command(CommandIds.EditUndo);
+        Assert.Equal(@"Hello\NWorld", _model.SelectedEvent.Text);
+        _model.Draft!.Text = "Hello\nWorld"; _model.TextCursor = 6;
+        await Command("edit/line/split/preserve");
+        Assert.Equal("World", _model.SelectedEvent!.Text);
+    }
 }

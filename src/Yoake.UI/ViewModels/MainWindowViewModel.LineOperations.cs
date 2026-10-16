@@ -28,7 +28,7 @@ public sealed partial class MainWindowViewModel
         {
             _registry.Register(new(new(id,label,"Split at text cursor: "+label,"Edit"),(_,_)=>
             {
-                var cursor=TextCursor;
+                var raw=Draft?.Text??"";var cursor=AssEditorProjection.EncodeNewlines(raw[..Math.Clamp(TextCursor,0,raw.Length)]).Length;
                 var timing=_activeId is {} document&&_documents.TryGetValue(document,out var state)?state.FrameTiming:null;
                 RunEdit(editor=>Select(editor.SplitAtCursor(SelectedEvent!,cursor,mode,timing,CurrentFrame,FrameTimes.Count)));return ValueTask.CompletedTask;
             },context=>Applies(context)&&_gesture is null&&CanSplitAtCursor()&&(mode!=CursorSplitTiming.VideoFrame||HasFrameBoundaryTiming)));

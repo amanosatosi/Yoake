@@ -42,7 +42,11 @@ public sealed partial class MainWindowViewModel
     private void FormatText(string name,Func<string,int,int,AssStyle,AssTextEdit> operation)
     {
         if(Draft is null||SelectedEvent is null||ActiveEditor is null)return;
-        var start=TextSelectionStart;var end=TextSelectionEnd;
+        // Older recovery bundles and direct draft callers may still contain
+        // physical newlines. Commit normalizes those; retain the same range.
+        var raw=Draft.Text;
+        int CommittedOffset(int index)=>AssEditorProjection.EncodeNewlines(raw[..Math.Clamp(index,0,raw.Length)]).Length;
+        var start=CommittedOffset(TextSelectionStart);var end=CommittedOffset(TextSelectionEnd);
         if(!CommitDraft())return;
         var edit=operation(SelectedEvent.Text,start,end,FormattingStyle);
         ActiveEditor.SetField(SelectedEvent,"Text",edit.Text,name);ReloadDraft();
