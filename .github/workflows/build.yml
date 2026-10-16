@@ -74,21 +74,67 @@ jobs:
         with:
           dotnet-version: "10.0.401"
       - uses: ilammy/msvc-dev-cmd@v1
+      - name: Resolve compiler-aware Automation cache keys
+        id: automation-keys
+        shell: pwsh
+        run: |
+          # vcpkg binary package ABIs depend on the actual MSVC compiler, not
+          # just the pinned vcpkg/manifest revision. The former v1 cache could
+          # hit while vcpkg restored ZERO packages after a runner image update.
+          $compiler = (Get-Command cl.exe -ErrorAction Stop).Source
+          $compilerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $compiler).Hash.Substring(0,16)
+          $sdk = ($env:WindowsSDKVersion ?? 'unknown').TrimEnd('\') -replace '[^A-Za-z0-9._-]', '_'
+          $toolchain = "$compilerHash-sdk$sdk"
+          $dependencyHash = "${{ hashFiles('third_party/automation/vcpkg.json', 'third_party/automation/vcpkg-configuration.json', 'third_party/versions.json') }}"
+          $runtimeHash = "${{ hashFiles('third_party/automation/**', 'third_party/versions.json', 'third_party/licenses/**', 'ci/build_dependencies.ps1') }}"
+          "dependencies=yoake-automation-dependencies-win-x64-v2-$toolchain-$dependencyHash" >> $env:GITHUB_OUTPUT
+          "runtime=yoake-automation-native-win-x64-v1-$toolchain-$runtimeHash" >> $env:GITHUB_OUTPUT
+          Write-Host "Automation cache fingerprint: $toolchain"
+      - name: Restore pinned Automation native runtime
+        id: automation-runtime
+        uses: actions/cache/restore@v6
+        with:
+          # Entire verified native bundle: DLLs, licenses, binary-size manifest
+          # and .complete marker. Exact key only: NEVER restore an older ABI.
+          path: .ci-cache/native/automation
+          key: ${{ steps.automation-keys.outputs.runtime }}
+      - name: Verify cached Automation runtime is complete
+        if: steps.automation-runtime.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: |
+          foreach ($required in @(
+            '.ci-cache/native/automation/.complete',
+            '.ci-cache/native/automation/bin/lua51.dll',
+            '.ci-cache/native/automation/bin/yoake-automation.dll',
+            '.ci-cache/native/automation/binary-sizes.json',
+            '.ci-cache/native/automation/licenses/LuaJIT-MIT.txt'
+          )) {
+            if (-not (Test-Path -LiteralPath $required -PathType Leaf)) { throw "Cached Automation runtime is incomplete: $required" }
+          }
+          Write-Host 'Verified complete source- and compiler-keyed Automation runtime.'
       - name: Restore Automation native dependency archives
         id: automation-dependencies
+        if: steps.automation-runtime.outputs.cache-hit != 'true'
         uses: actions/cache/restore@v6
         with:
           path: .ci-cache/vcpkg-binaries
-          key: yoake-automation-dependencies-win-x64-v1-${{ hashFiles('third_party/automation/vcpkg.json', 'third_party/versions.json') }}
+          key: ${{ steps.automation-keys.outputs.dependencies }}
       - name: Build pinned LuaJIT and protected native bridge
+        if: steps.automation-runtime.outputs.cache-hit != 'true'
         shell: pwsh
         run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Automation
       - name: Save Automation native dependency archives
-        if: always() && steps.automation-dependencies.outputs.cache-hit != 'true'
+        if: success() && steps.automation-runtime.outputs.cache-hit != 'true' && steps.automation-dependencies.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
           path: .ci-cache/vcpkg-binaries
-          key: yoake-automation-dependencies-win-x64-v1-${{ hashFiles('third_party/automation/vcpkg.json', 'third_party/versions.json') }}
+          key: ${{ steps.automation-keys.outputs.dependencies }}
+      - name: Save pinned Automation native runtime
+        if: success() && steps.automation-runtime.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .ci-cache/native/automation
+          key: ${{ steps.automation-keys.outputs.runtime }}
       - name: Test real native script execution and cancellation
         shell: pwsh
         run: |
