@@ -20,6 +20,10 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
     private bool _opened, _loaded, _inserted, _editorVerified;
     private StylesWindow? _styles;
     private AuthoringUiVerification? _authoring;
+    private AutomationUiVerification? _automation;
+    private bool _authoringCompleted;
+    private WorkspaceViewVerification? _emptyViews, _loadedViews;
+    private bool _emptyViewsCompleted;
 
     public void Start()
     {
@@ -33,6 +37,8 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
     private void Verify(object? sender, EventArgs args)
     {
         if (!_opened || !_loaded || _layouts == 0) return;
+        if (options.MarkStartupVerified())
+            StartupDiagnostics.Checkpoint("UI startup gate passed: opened, loaded, first layout, dispatcher responsive");
         try
         {
             if (!_inserted)
@@ -60,12 +66,12 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             if (!_editorVerified)
             {
                 const string source = "{\\bord2\\1c&H88FF00&\\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦\\NHello";
-                text.SetCurrentValue(TextBox.TextProperty, source);
+                text.SetCurrentValue(AssTextBox.SourceTextProperty, source);
                 Require(model.Draft?.Text == source, "Real ASS TextBox must update the edit draft without rewriting source.");
                 Invoke(CommandIds.EditCommit);
-                text.CaretIndex = source.Length;
-                text.SelectionStart = source.Length - 5;
-                text.SelectionEnd = source.Length;
+                text.CaretIndex = text.DisplayIndex(source.Length);
+                text.SelectionStart = text.DisplayIndex(source.Length - 5);
+                text.SelectionEnd = text.DisplayIndex(source.Length);
                 Invoke(CommandIds.FormatBold);
                 Require(model.SelectedEvent!.Text.EndsWith("{\\b1}Hello{\\b0}", StringComparison.Ordinal), "Real selection formatting must preserve text and restore bold state.");
                 Require(text.Text![Math.Min(text.SelectionStart,text.SelectionEnd)..Math.Max(text.SelectionStart,text.SelectionEnd)]=="Hello", "Native text selection must stay on formatted visible text.");
@@ -81,6 +87,18 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
                 _editorVerified = true;
                 return;
             }
+            if (!_authoringCompleted)
+            {
+            Require(window.FindControl<MenuItem>("UndoMenu")!.Header as string==model.Actions[CommandIds.EditUndo].Label,
+                "Shipping undo menu must display the contextual command label after history changes.");
+            Require(window.FindControl<MenuItem>("RedoMenu")!.Header as string==model.Actions[CommandIds.EditRedo].Label,
+                "Shipping redo menu must display the contextual command label after history changes.");
+            if (!_emptyViewsCompleted)
+            {
+                _emptyViews ??= new(window, model, options.VerificationReport!, false);
+                if (!_emptyViews.Tick()) return;
+                _emptyViewsCompleted = true;
+            }
             if (_styles is null)
             {
                 _styles = new StylesWindow(model.ActiveEditor!, model.StyleLibraryPath, model.SelectedEvent);
@@ -95,6 +113,15 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             _authoring??=new(window,model,_styles,options.VerificationReport!,options.VerificationMedia);
             if(!_authoring.Tick())return;
             _styles.Close();
+            _authoringCompleted = true;
+            }
+            _automation ??= new(window, model, options.VerificationReport!, options.VerificationMedia!);
+            if (!_automation.Tick()) return;
+            // Automation has just restored the original tab. Let its normal
+            // asynchronous preview finish before comparing retained media.
+            if (_loadedViews is null && (model.VideoFrame is null || model.WaveformSamples is null || model.DisplayedPreviewRevision < model.PreviewRevision)) return;
+            _loadedViews ??= new(window, model, options.VerificationReport!, true);
+            if (!_loadedViews.Tick()) return;
             Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
             Require(StartupDiagnostics.BindingWarningCount==0,"Authoring controls logged binding warnings; inspect startup.log.");
             while(model.ActiveEditor!.Undo.CanUndo)Invoke(CommandIds.EditUndo); // Undo the real editing probe before normal shutdown.

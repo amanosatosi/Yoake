@@ -20,6 +20,18 @@ Windows portable packages may include only the x64 Visual C++ runtime DLLs that 
 
 ## Aegisub
 
+The contextual default keyboard table is adapted from
+`TypesettingTools/Aegisub`, `src/libresrc/default_hotkey.json`, at exact
+3.5.0 release commit `43af875ea01e80052cc6c44f24fc8c5258261c6d`.
+`tools/generate_aegisub_hotkeys.py` preserves all common-platform bindings and
+contexts in a C# source table. Separate mapping normalizes key names and
+existing Yoake command IDs; Yoake additions and user overrides remain separate.
+The exact 3.2.2 table at `f743d1411e09cbb2bd34ddd2d4b6738101fab710`
+is retained in the source-derived compatibility inventory for the delta audit.
+Copyright (c) 2004-2012, Aegisub Project; BSD 3-Clause. The upstream `LICENCE`
+applies this license to headerless files. The existing full BSD text below is
+also included in portable distributions for this adaptation.
+
 Yoake adapts five functional style-list SVG paths from
 https://github.com/amanosatosi/Aegisub_Toshi-ban at commit
 `b20d63af149568cbef00f3a22742217ecd915990`:
@@ -58,3 +70,62 @@ unused defs removed. Curves, strokes, caps, joins and fill rules are retained.
 The quadrilateral icon is renamed Distort and denotes Mangetsu bilinear
 four-corner authoring; it does not introduce Aegisub tag semantics.
 No upstream application identity artwork is used.
+
+## Bundled ASSDraw fork
+
+The independent ASSDraw3.exe is built from https://github.com/amanosatosi/assdraw
+at dda58f913e16743d63ef13bef1beeea0323bd653, without source changes. It preserves
+ai-chan's historical BSD attribution and the GPL-2.0-or-later notices in
+src/agg_bcspline.*, src/agg_conv_bcspline.h and src/agg_vcgen_bcspline.*.
+The executable is not described as BSD-only. Its static dependencies are
+wxWidgets 3.2.11 (wxWindows Library Licence plus bundled component notices) and
+AGG c4f36b4432142f22c0bf82c6fbdb41567a236be2 (historical permissive AGG copying notice).
+
+Full license texts and notices ship under licenses/assdraw. Complete corresponding
+source archives, dependency sources, build instructions and integrity manifest
+ship under sources/assdraw in the same portable download. They accompany the
+separate executable rather than relying on an expiring Actions artifact or a
+source-hosting promise. No upstream license header is removed or reassigned.
+This aggregate distribution adds no restriction to users' source modification or
+redistribution rights under the applicable ASSDraw licenses. Yoake does not link
+to ASSDraw, embed its code or introduce IPC; its established Copy ASS clipboard
+workflow is unchanged.
+
+## Automation Lua runtime
+
+LuaJIT 2.1, https://github.com/LuaJIT/LuaJIT,
+commit `c6ffc141a8762b41703f9287d63d93622a13dd8f`.
+Copyright Mike Pall and contributors; MIT. Acquired without source modifications
+by `ci/build_dependencies.ps1`; its complete COPYRIGHT is packaged as
+`licenses/LuaJIT-MIT.txt`. The Yoake bridge and host adapter are original Yoake
+code. Lua execution uses interpreter mode for reliable cancellation; the managed
+application remains NativeAOT. No upstream Automation library is copied by this
+runtime foundation milestone.
+
+## Aegisub 3.2.2 Automation sources
+
+The subsequently integrated include/autoload libraries and LPeg, luabins, regex
+and Unicode sources come from the user's read-only Aegisub 3.2.2 tagged-release
+archive, revision 8635, corresponding to https://github.com/Aegisub/Aegisub.
+`third_party/automation/provenance.json` records every exact original path,
+shipping/source destination, SHA-256 and modification status. This includes
+unmodified release regression fixtures under
+`tests/Yoake.Automation.Tests/Fixtures`. Their original license headers are
+retained; Yoake's module assertion runner is original test code. Source-policy
+checks verify raw SHA-256 hashes, and Git attributes preserve the recorded bytes.
+Source files are unchanged; the native helper boundary and lfs implementation are original Yoake
+code. Original source license/copyright headers are retained.
+
+Aegisub library licenses vary by file: BSD 3-Clause and ISC, with authors including
+Niels Martin Hansen, Rodrigo Braz Monteiro and Thomas Goyne. MoonScript 0.2.5 is
+MIT, Copyright 2013 Leaf Corcoran (license verified against tag v0.2.5,
+`ea282f23d213a2ad8c784f4f04a907b5085443c0`, README.md). LPeg 0.10 is MIT,
+Copyright Lua.org, PUC-Rio; its license is retained from the official 0.10
+distribution's `lpeg.html`, alongside the original source copyright 2007.
+Luabins is MIT, Copyright 2009-2010 Luabins authors, from `src/luabins.h`.
+Full notices are in `third_party/licenses`, copied into the package's `licenses`.
+
+Native module dependencies Boost.Regex/Locale 1.91.0 (BSL-1.0) and ICU 78.3 port 1
+(ICU license and constituent data licenses) use the pinned vcpkg registry
+`f3419f137f1a1e79b33b880ae6845f873d87820b`. Every installed native port's complete
+copyright notice is included by the authoritative dependency builder.

@@ -31,6 +31,23 @@ for frame in range(frames):
     index.extend(struct.pack('<4sIII', b'00db', 0x10, offset, len(payload)))
     offset += len(packet)
 (root / 'video.avi').write_bytes(chunk(b'RIFF', b'AVI ' + header + list_chunk(b'movi', video) + chunk(b'idx1', index)))
+# The same tiny AVI container, with a textured object translating 2px right and
+# 1px down per real decoded frame. Used by the focused tracking window check.
+motion, motion_index, offset = bytearray(), bytearray(), 4
+for frame in range(frames):
+    payload = bytearray()
+    for stored_y in range(height):
+        y = height - 1 - stored_y  # DIB rows are bottom-up.
+        for x in range(width):
+            u, v = x - 40 - frame * 2, y - 45 - frame
+            value = max(0, min(255, int(120 + 50 * math.sin(u * .51) + 45 * math.cos(v * .43)
+                                       + 25 * math.sin((u + v) * .27)))) if abs(u) <= 13 and abs(v) <= 13 else 15
+            payload.extend((value, value, value))
+    packet = chunk(b'00db', payload)
+    motion.extend(packet)
+    motion_index.extend(struct.pack('<4sIII', b'00db', 0x10, offset, len(payload)))
+    offset += len(packet)
+(root / 'motion.avi').write_bytes(chunk(b'RIFF', b'AVI ' + header + list_chunk(b'movi', motion) + chunk(b'idx1', motion_index)))
 with wave.open(str(root / 'audio.wav'), 'wb') as audio:
     audio.setparams((1, 2, 48000, 96000, 'NONE', 'not compressed'))
     def sample(i):

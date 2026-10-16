@@ -14,6 +14,22 @@
     "commit": "25cef14386fcaaa58ee547065deee8f6e82c56a2",
     "linkage": "dynamic"
   },
+  "luajit": {
+    "version": "2.1",
+    "commit": "c6ffc141a8762b41703f9287d63d93622a13dd8f",
+    "repository": "https://github.com/LuaJIT/LuaJIT.git",
+    "license": "MIT",
+    "linkage": "dynamic; lua51.dll",
+    "mode": "interpreter with instruction cancellation hooks"
+  },
+  "automationModules": {
+    "reference": "Aegisub 3.2.2 revision 8635",
+    "lpeg": "0.10 (MIT)",
+    "luabins": "3.2.2 bundled sources (MIT)",
+    "moonscript": "0.2.5 (MIT)",
+    "boost": "1.91.0 (BSL-1.0), pinned vcpkg registry",
+    "icu": "78.3 port 1 (ICU license), pinned vcpkg registry"
+  },
   "mangetsu": {
     "branch": "mangetsu",
     "linkage": "shared with static third-party dependencies",

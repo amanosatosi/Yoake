@@ -3,9 +3,9 @@ using System.Text;
 
 namespace Yoake.Core.Subtitles;
 
-public sealed class AssDocument
+public sealed partial class AssDocument
 {
-    internal sealed record SourceLine(string Raw, string Ending, AssRecord? Record = null);
+    internal sealed record SourceLine(string Raw, string Ending, AssRecord? Record = null,bool IsSectionHeader=false,bool IsAttachmentData=false);
     internal List<SourceLine> Source = [];
     private Encoding _encoding = new UTF8Encoding(false, true);
     private bool _bom;
@@ -13,9 +13,9 @@ public sealed class AssDocument
     private string? _cached;
     private readonly Dictionary<AssEvent,(int Start,int Length)> _eventSpans=[];
     private int _updateDepth;
-    private bool _pendingSync, _pendingChange;
-    private readonly ObservableCollection<AssEvent> _events = [];
-    private readonly ObservableCollection<AssStyle> _styles = [];
+    private bool _pendingSync, _pendingChange, _pendingReset;
+    private readonly RecordCollection<AssEvent> _events = [];
+    private readonly RecordCollection<AssStyle> _styles = [];
     public ReadOnlyObservableCollection<AssEvent> Events { get; }
     public ReadOnlyObservableCollection<AssStyle> Styles { get; }
     public event EventHandler? Changed;
@@ -27,7 +27,7 @@ public sealed class AssDocument
     public static AssDocument Parse(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
-        var doc = new AssDocument(); var section = ""; string[]? format = null;
+        var doc = new AssDocument(); var section = ""; string[]? format = null;var attachmentContext=new AssAttachmentContext();
         for (var start = 0; start < text.Length;)
         {
             var end = start; while (end < text.Length && text[end] is not '\r' and not '\n') end++;
@@ -36,9 +36,10 @@ public sealed class AssDocument
             var raw = text[start..end]; var ending = text[end..after]; var trim = raw.Trim();
             if (doc.Source.Count == 0 && ending.Length > 0) doc._newline = ending;
             AssRecord? record = null;
-            if (trim.StartsWith('[') && trim.EndsWith(']')) { section = trim; format = null; }
-            else if (trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
-            else if (format is { Length: > 0 })
+            var context=attachmentContext.Observe(raw);
+            if (context.Section) { section = trim; format = null; }
+            else if (!context.Data&&trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
+            else if (!context.Data&&format is { Length: > 0 })
             {
                 var colon = raw.IndexOf(':');
                 if (colon > 0)
@@ -51,7 +52,7 @@ public sealed class AssDocument
                         record = new AssStyle(raw[..payload], format, SplitFields(raw[payload..], format, false));
                 }
             }
-            doc.Source.Add(new(raw, ending, record)); start = after;
+            doc.Source.Add(new(raw, ending, record,context.Section,context.Data)); start = after;
         }
         doc.Synchronize(); return doc;
     }
@@ -71,8 +72,8 @@ public sealed class AssDocument
         var output = new StringBuilder(); string[]? format = null;_eventSpans.Clear();
         foreach (var line in Source)
         {
-            var trim = line.Raw.Trim(); if (trim.StartsWith('[')) format = null;
-            if (trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
+            var trim = line.Raw.Trim(); if (line.IsSectionHeader) format = null;
+            if (!line.IsAttachmentData&&trim.StartsWith("Format:", StringComparison.OrdinalIgnoreCase)) format = trim[7..].Split(',').Select(s => s.Trim()).ToArray();
             if (line.Record is { } record)
             {
                 var different=format is null||!format.SequenceEqual(record.Format,StringComparer.OrdinalIgnoreCase);
@@ -100,8 +101,10 @@ public sealed class AssDocument
         return string.Concat(source.AsSpan(0,span.Start),clone.Serialize().AsSpan(),source.AsSpan(span.Start+span.Length));
     }
     public static AssDocument Load(string path)
+        => LoadBytes(File.ReadAllBytes(path));
+    public static AssDocument LoadBytes(byte[] bytes)
     {
-        var bytes = File.ReadAllBytes(path); Encoding encoding; var skip = 0;
+        Encoding encoding; var skip = 0;
         if (bytes.AsSpan().StartsWith(new byte[] { 0xEF, 0xBB, 0xBF })) { encoding = new UTF8Encoding(true, true); skip = 3; }
         else if (bytes.AsSpan().StartsWith(new byte[] { 0xFF, 0xFE, 0x00, 0x00 })) { encoding = new UTF32Encoding(false,true,true); skip=4; }
         else if (bytes.AsSpan().StartsWith(new byte[] { 0x00, 0x00, 0xFE, 0xFF })) { encoding = new UTF32Encoding(true,true,true); skip=4; }
@@ -111,47 +114,88 @@ public sealed class AssDocument
         try { var doc = Parse(encoding.GetString(bytes, skip, bytes.Length - skip)); doc._encoding = encoding; doc._bom = skip > 0; return doc; }
         catch (DecoderFallbackException e) { throw new InvalidDataException("Unsupported legacy encoding. Convert the file to UTF-8 before opening; the original file has not been changed.", e); }
     }
-    public void Save(string path)
+    // Capture on the document's owner thread. Immutable source strings are
+    // shared; only editable field arrays are copied. Serialization and encoding
+    // belong to the background consumer, never to this capture operation.
+    public AssDocumentSnapshot CaptureSnapshot()
     {
+        var copy = new AssDocument { _encoding = _encoding, _bom = _bom, _newline = _newline,_attachmentOwner=_attachmentOwner,Revision=Revision };
+        copy.Source = Source.Select(line => line.Record is null?line:line with { Record = line.Record switch
+        { AssEvent e => e.Clone(), AssStyle s => s.Clone(), _ => null } }).ToList();
+        return new(copy, Revision);
+    }
+    internal byte[] SerializeBytes()
+    {
+        var body = _encoding.GetBytes(Serialize());
+        if (!_bom) return body;
+        var preamble = _encoding.GetPreamble();
+        var result = new byte[preamble.Length + body.Length];
+        preamble.CopyTo(result, 0); body.CopyTo(result, preamble.Length); return result;
+    }
+    public void Save(string path)
+        => Save(path, _encoding, _bom);
+    public void Save(string path, Encoding encoding, bool bom, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
         var full = Path.GetFullPath(path); var temp = full + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try { using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { if (_bom) stream.Write(_encoding.GetPreamble()); stream.Write(_encoding.GetBytes(Serialize())); stream.Flush(true); } File.Move(temp, full, true); }
+        try { using (var stream = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None)) { if (bom) stream.Write(encoding.GetPreamble()); stream.Write(encoding.GetBytes(Serialize())); stream.Flush(true); } cancellationToken.ThrowIfCancellationRequested(); File.Move(temp, full, true); }
         finally { if (File.Exists(temp)) File.Delete(temp); }
     }
     public string GetScriptInfo(string key) => GetSectionValue("[Script Info]", key);
     public string GetSectionValue(string section, string key)
+        => TryGetSectionValue(section, key, out var value) ? value : "";
+    public bool TryGetSectionValue(string section, string key, out string value)
     {
         var inside = false;
-        foreach (var line in Source) { var trim = line.Raw.Trim(); if (trim.StartsWith('[') && trim.EndsWith(']')) inside = trim.Equals(section, StringComparison.OrdinalIgnoreCase); else if (inside && line.Raw.IndexOf(':') is var colon && colon > 0 && line.Raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) return line.Raw[(colon + 1)..].Trim(); }
-        return "";
+        foreach (var line in Source) { var trim = line.Raw.Trim(); if (line.IsSectionHeader) inside = trim.Equals(section, StringComparison.OrdinalIgnoreCase); else if (inside && line.Raw.IndexOf(':') is var colon && colon > 0 && line.Raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { value = line.Raw[(colon + 1)..].Trim(); return true; } }
+        value = ""; return false;
     }
     internal void SetScriptInfo(string key, string value)
+        => SetSectionValue("[Script Info]", key, value);
+    internal void SetSectionValue(string section, string key, string value)
     {
+        if (!section.StartsWith('[') || !section.EndsWith(']') || section.IndexOfAny(['\r', '\n']) >= 0) throw new ArgumentException("Invalid ASS section.");
         if (key.IndexOfAny([':', '\r', '\n']) >= 0 || value.IndexOfAny(['\r', '\n']) >= 0) throw new ArgumentException("Invalid Script Info value.");
-        var header = Source.FindIndex(l => l.Raw.Trim().Equals("[Script Info]", StringComparison.OrdinalIgnoreCase));
-        if (header < 0) { Source.Insert(0, new("[Script Info]", _newline)); header = 0; }
+        var header = Source.FindIndex(l => l.IsSectionHeader&&l.Raw.Trim().Equals(section, StringComparison.OrdinalIgnoreCase));
+        if (header < 0)
+        {
+            if (section.Equals("[Script Info]", StringComparison.OrdinalIgnoreCase)) { Source.Insert(0, new(section, _newline,null,true)); header = 0; }
+            else { Terminate(); Source.Add(new(section, _newline,null,true)); header = Source.Count - 1; }
+        }
         var index = header + 1;
-        for (; index < Source.Count && !Source[index].Raw.TrimStart().StartsWith('['); index++) { var raw = Source[index].Raw; var colon = raw.IndexOf(':'); if (colon > 0 && raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { Source[index] = Source[index] with { Raw = raw[..(colon + 1)] + " " + value }; Touch(); return; } }
+        for (; index < Source.Count && !Source[index].IsSectionHeader; index++) { var raw = Source[index].Raw; var colon = raw.IndexOf(':'); if (colon > 0 && raw[..colon].Trim().Equals(key, StringComparison.OrdinalIgnoreCase)) { Source[index] = Source[index] with { Raw = raw[..(colon + 1)] + " " + value }; Touch(); return; } }
         Source.Insert(index, new(key + ": " + value, _newline)); Touch();
     }
     internal void Insert(AssRecord record, AssRecord? before = null)
     {
         var index = before is null ? -1 : Source.FindIndex(l => ReferenceEquals(l.Record, before));
-        if (index < 0) { var section = record is AssEvent ? "[Events]" : "[V4+ Styles]"; index = Source.FindIndex(l => l.Raw.Trim().Equals(section, StringComparison.OrdinalIgnoreCase)); if (index < 0) { Terminate(); Source.Add(new(section, _newline)); index = Source.Count - 1; } index++; while (index < Source.Count && !Source[index].Raw.TrimStart().StartsWith('[')) index++; }
+        if (index < 0) { var section = record is AssEvent ? "[Events]" : "[V4+ Styles]"; index = Source.FindIndex(l => l.IsSectionHeader&&l.Raw.Trim().Equals(section, StringComparison.OrdinalIgnoreCase)); if (index < 0) { Terminate(); Source.Add(new(section, _newline,null,true)); index = Source.Count - 1; } index++; while (index < Source.Count && !Source[index].IsSectionHeader) index++; }
         if (index > 0 && Source[index - 1].Ending.Length == 0) Source[index - 1] = Source[index - 1] with { Ending = _newline };
         Source.Insert(index, new("", _newline, record)); Synchronize(); Touch();
     }
     private void Terminate() { if (Source.Count > 0 && Source[^1].Ending.Length == 0) Source[^1] = Source[^1] with { Ending = _newline }; }
     internal void Remove(AssRecord record) { Source.RemoveAll(l => ReferenceEquals(l.Record, record)); Synchronize(); Touch(); }
     internal void Swap(AssRecord a, AssRecord b) { var x = Source.FindIndex(l => ReferenceEquals(l.Record, a)); var y = Source.FindIndex(l => ReferenceEquals(l.Record, b)); if (x < 0 || y < 0) return; Source[x] = Source[x] with { Record = b }; Source[y] = Source[y] with { Record = a }; Synchronize(); Touch(); }
-    internal void Restore(IReadOnlyList<SourceLine> source) { Source = [.. source]; Synchronize(); Touch(); }
-    private void Synchronize()
+    internal void Restore(IReadOnlyList<SourceLine> source, bool resetCollections = false) { Source = [.. source]; Synchronize(resetCollections); Touch(); }
+    private void Synchronize(bool resetCollections = false)
     {
-        if(_updateDepth>0){_pendingSync=true;return;}
+        if(_updateDepth>0){_pendingSync=true;_pendingReset|=resetCollections;return;}
         var events = Source.Select(l => l.Record).OfType<AssEvent>().ToArray(); var styles = Source.Select(l => l.Record).OfType<AssStyle>().ToArray();
         foreach (var record in _events.Cast<AssRecord>().Concat(_styles)) record.PropertyChanged -= RecordChanged;
-        Sync(_events, events); Sync(_styles, styles);
+        if (resetCollections) { _events.ReplaceAll(events); _styles.ReplaceAll(styles); }
+        else { Sync(_events, events); Sync(_styles, styles); }
         for (var i = 0; i < events.Length; i++) events[i].Renumber(i + 1);
         foreach (var record in events.Cast<AssRecord>().Concat(styles)) record.PropertyChanged += RecordChanged;
+    }
+    private sealed class RecordCollection<T> : ObservableCollection<T>
+    {
+        public void ReplaceAll(T[] items)
+        {
+            if (this.SequenceEqual(items)) return;
+            Items.Clear(); foreach (var item in items) Items.Add(item);
+            OnPropertyChanged(new("Count")); OnPropertyChanged(new("Item[]"));
+            OnCollectionChanged(new(System.Collections.Specialized.NotifyCollectionChangedAction.Reset));
+        }
     }
     private static void Sync<T>(ObservableCollection<T> target, T[] items)
     {
@@ -178,7 +222,7 @@ public sealed class AssDocument
         public void Dispose()
         {
             if(--owner._updateDepth>0)return;
-            if(owner._pendingSync){owner._pendingSync=false;owner.Synchronize();}
+            if(owner._pendingSync){owner._pendingSync=false;var reset=owner._pendingReset;owner._pendingReset=false;owner.Synchronize(reset);}
             if(owner._pendingChange){owner._pendingChange=false;owner.Touch();}
         }
     }

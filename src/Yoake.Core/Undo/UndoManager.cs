@@ -65,6 +65,27 @@ public sealed class UndoManager
         PushUndo(operation);
     }
 
+    // Publish a successful Automation run as separate logical checkpoints while
+    // retaining atomic rollback and a single history-state notification.
+    public void ExecuteBatch(IReadOnlyList<IUndoOperation> operations)
+    {
+        ArgumentNullException.ThrowIfNull(operations);
+        if (_transaction is not null)
+            throw new InvalidOperationException("Cannot publish checkpoints inside a transaction.");
+        var completed = 0;
+        try
+        {
+            for (; completed < operations.Count; completed++) operations[completed].Redo();
+        }
+        catch
+        {
+            for (var i = completed - 1; i >= 0; i--) operations[i].Undo();
+            throw;
+        }
+        foreach (var operation in operations) PushUndo(operation, notify: false);
+        if (operations.Count > 0) Changed?.Invoke(this, EventArgs.Empty);
+    }
+
     public bool Undo()
     {
         if (_transaction is not null)
@@ -91,12 +112,12 @@ public sealed class UndoManager
         return true;
     }
 
-    private void PushUndo(IUndoOperation operation)
+    private void PushUndo(IUndoOperation operation, bool notify = true)
     {
         _undo.Push(new HistoryItem(operation, _state, ++_nextState));
         _state = _nextState;
         _redo.Clear();
-        Changed?.Invoke(this, EventArgs.Empty);
+        if (notify) Changed?.Invoke(this, EventArgs.Empty);
     }
 
     private void CommitTransaction(UndoTransaction transaction)

@@ -34,7 +34,7 @@ foreach ($case in @('clean', 'legacy', 'damaged', 'null-collections', 'irrecover
   if ($MediaFixturesRoot) { $arguments += @('--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot)))) }
   $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
   try {
-    if (-not $process.WaitForExit(40000)) { throw "UI startup verification timed out: $case" }
+    if (-not $process.WaitForExit(150000)) { throw "Packaged UI verification exceeded its startup/acceptance watchdogs: $case" }
     $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
     if ($case -eq 'fatal-diagnostics') {
       if ($process.ExitCode -eq 0 -or -not $text.StartsWith('FAIL')) { throw 'Expected bootstrap failure did not produce a failing report/exit code.' }
@@ -47,7 +47,16 @@ foreach ($case in @('clean', 'legacy', 'damaged', 'null-collections', 'irrecover
       Write-Host 'PASS: fatal bootstrap diagnostics, nonzero exit, independent full crash report.'
     } else {
       if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Real UI startup failed for $case (exit $($process.ExitCode)):`n$text" }
+      $views = Get-Content -LiteralPath ($report + '.views.txt') -Raw
+      # Both modes must be exercised: no-media startup permits subtitles only,
+      # while a real A/V fixture enables all four view choices.
+      # Match the verification's current, behavior-specific report text.
+      if (-not $views.Contains('subtitles-only view with unavailable media choices disabled') -or
+          -not $views.Contains('all four loaded-media views')) {
+        throw "Workspace views were not verified with subtitles-only startup and loaded audio/video: $case"
+      }
       Write-Host "$case : $text"
+      Write-Host $views
     }
   } catch {
     if (Test-Path -LiteralPath $logs) { Get-ChildItem -LiteralPath $logs -File | ForEach-Object { Write-Host $_.Name; Get-Content -LiteralPath $_.FullName } }

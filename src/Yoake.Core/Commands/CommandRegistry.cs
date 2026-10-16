@@ -26,12 +26,21 @@ public sealed class CommandRegistry(IAppLog? log = null)
 
     public bool TryGet(string id, out AppCommand? command) => _commands.TryGetValue(id, out command);
 
+    // An owner may remove only its exact registration, never another owner's
+    // replacement at the same stable ID.
+    public bool Unregister(AppCommand command)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+        return _commands.TryGetValue(command.Metadata.Id, out var registered) &&
+            ReferenceEquals(command, registered) && _commands.Remove(command.Metadata.Id);
+    }
+
     public AppCommand GetRequired(string id)
         => _commands.TryGetValue(id, out var command)
             ? command
             : throw new KeyNotFoundException($"Unknown command '{id}'.");
 
-    public bool CanExecute(string id, CommandContext context) => GetRequired(id).CanExecute(context);
+    public bool CanExecute(string id, CommandContext context) => _commands.TryGetValue(id, out var command) && command.CanExecute(context);
 
     public void NotifyStateChanged() => StateChanged?.Invoke(this, EventArgs.Empty);
 
@@ -49,10 +58,9 @@ public sealed class CommandRegistry(IAppLog? log = null)
         object? parameter = null,
         CancellationToken cancellationToken = default)
     {
-        var command = GetRequired(id);
-
         try
         {
+            if (!_commands.TryGetValue(id, out var command)) return false;
             if (!command.CanExecute(context))
                 return false;
 

@@ -90,7 +90,7 @@ public sealed class UxCorrectionTests
     [Fact] public void FrameNavigationUsesVfrTimesNearestKeysAndSignedOffsets()
     {
         double[] times=[0,0.033,0.074,0.120];Assert.Equal(2,FrameNavigation.AtTime(times,0.08));Assert.Equal(3,FrameNavigation.AtTime(times,10));
-        int[] keys=[0,10,30];Assert.Equal(10,FrameNavigation.NearestKeyframe(keys,19));Assert.Equal(30,FrameNavigation.NearestKeyframe(keys,26));Assert.Equal(10,FrameNavigation.NearestKeyframe(keys,20));Assert.Equal(30,FrameNavigation.StepKeyframe(keys,10,1));Assert.Equal(0,FrameNavigation.StepKeyframe(keys,10,-1));Assert.Equal("+7482ms; +4772ms",FrameNavigation.Relative(8.482,1000,3710));
+        int[] keys=[0,10,30];Assert.Equal(10,FrameNavigation.NearestKeyframe(keys,19));Assert.Equal(30,FrameNavigation.NearestKeyframe(keys,26));Assert.Equal(10,FrameNavigation.NearestKeyframe(keys,20));Assert.Equal(30,FrameNavigation.StepKeyframe(keys,10,1,50));Assert.Equal(0,FrameNavigation.StepKeyframe(keys,10,-1,50));Assert.Equal("+7482ms; +4772ms",FrameNavigation.Relative(8.482,1000,3710));
     }
     [Fact] public void VisualStandbyTracksStaticAlignmentAndMovingAnchors()
     {

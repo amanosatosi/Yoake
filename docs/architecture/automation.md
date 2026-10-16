@@ -1,0 +1,295 @@
+# Automation 4 implementation contract
+
+Status: implemented on `automation-4-layer`, with explicit compatibility gaps.
+The final submission requires green CI on its exact revision.
+Acceptance is meaningful old 3.2.2 macro/KFX work in the packaged NativeAOT app,
+not merely a runtime or a Manager window. See the
+[compatibility ledger](../compatibility/aegisub-automation-3.2.2.md).
+The specification is the frozen manual `C:\aegisub source\3.2` together with
+the exact `v3.2.2` source. Historical `automation/v4-docs/*` is excluded.
+
+## Runtime decision
+
+Use a native LuaJIT provider with Lua 5.1 semantics. The reference release bundles
+LuaJIT 2.0.3. Yoake pins the maintained LuaJIT 2.1 branch at
+`c6ffc141a8762b41703f9287d63d93622a13dd8f` in `third_party/versions.json`.
+The native-provider CI job exercises its real interpreter, isolation, Unicode
+loaders, mutation, validation/toggle and tight-loop cancellation. Unmodified release regex/Unicode suites, luabins, MoonScript, karaskel and
+Karaoke Templater fixtures provide native integration evidence. No Lua 5.2 compatibility build flag is
+enabled. The interpreter runs with JIT disabled, and `jit.on` cannot re-enable it,
+so count hooks can interrupt otherwise non-cooperative scripts.
+The private adapter restores `math.mod`/`string.gfind`, enabled by the release's
+LuaJIT 2.0.3 `LUA_COMPAT_MOD/GFIND` flags but absent from maintained 2.1 defaults.
+These aliases retain the exact fmod/gmatch functions; native language regressions
+assert them alongside environment, coroutine, module, BitOp and FFI behavior.
+
+LuaJIT is MIT licensed, implements the Lua 5.1 API/ABI, supports Windows x64,
+and has Linux/macOS implementations. Its native DLL and modules add package size,
+build time, native lifetime and ABI responsibilities. Measure the shipping binary
+cost from CI. .NET/Avalonia do not implement Lua, LPeg or luabins. A managed Lua
+package would require independent evidence of Lua 5.1/C-module parity, AOT/trimming
+safety, and performance before substitution; no such dependency has been added.
+References: [LuaJIT compatibility](https://luajit.org/extensions.html),
+[platform and maintenance status](https://luajit.org/status.html),
+[Windows DLL naming/installation](https://luajit.org/install.html),
+[license](https://luajit.org/luajit.html).
+
+The verified native-runtime artifact from workflow `38081459480` measured
+`lua51.dll` at 558,592 bytes and `yoake-automation.dll` at 36,952,576 bytes
+(37,511,168 bytes combined; 15,531,620-byte compressed artifact). The bridge
+includes the static Boost/ICU regex and Unicode implementations required by the
+unchanged release wrappers. Artifact SHA-256 was independently checked as
+`72770e891a6774f5e847d920810e2d3a2ce989ae8f8226c0385183926dd3ed6d`.
+This is native-runtime size evidence, not a passing packaged application claim.
+
+Native state and C ABI calls belong in `Yoake.Native`. Core contracts and UI never
+receive Lua state pointers, registry references or native handles. A native shim
+must catch Lua errors/longjmp on the native side; a Lua error must never unwind
+through a managed callback. `third_party/automation/yoake_lua.c` protects runtime
+initialization/execution with `lua_cpcall` and calls managed code only with a UTF-8
+data request. Reverse callbacks catch managed exceptions and return length-delimited
+luabins tuples (success flag followed by values or an error string); they never
+call the Lua C API. The existing bundled native luabins decoder runs only after
+the managed callback returns, within the protected native frame. The shim releases
+response buffers after decoding or after any protected failure. The bridge
+tracks buffers per native frame so GC finalizers can re-enter host calls without
+releasing an outer decoder's input. Unwound buffers are freed at execution cleanup.
+The callback ABI uses `ya_create_v2`, so an obsolete DLL fails symbol resolution rather than calling
+the new managed callback with the old signature. Windows x64 uses luabins' existing
+little-endian int32/binary64 wire format. Host replies no longer generate or compile
+Lua source. Requests remain JSON; line provenance and read-after-write behavior
+are unchanged. NativeAOT uses static interop, no generated
+managed assemblies, reflection-based marshalling, managed plugin loading or
+reflection-heavy serializers. Use the existing safe native search layout.
+
+## Lifetimes, commands and threading
+
+One loaded master script owns one provider state. Globals do not cross scripts.
+Commands and filters are staged during loading. Reload unregisters old features,
+disposes the old state, and publishes new features as a unit; a failed reload has
+no executable stale callbacks. Explicit script ownership must remove commands,
+filters and handlers on document close/disposal. IDs include canonical script
+identity and macro name with collision-safe deterministic encoding.
+
+Document-local execution receives an explicit host context: editor, selected
+events, active event, media timeline, paths, dialogs, progress and clipboard.
+Finalize the current draft before capture. Capture/commit on the UI thread;
+execute Lua and mutate a private projection on a worker. A script state is used
+serially; validation/toggle calls also run off the UI thread with cached results
+keyed by document/selection revision and script generation. Cancel obsolete work.
+UI notifications marshal through Avalonia's dispatcher. Command failures use
+central reporting and cannot escape ICommand.Execute.
+
+## Lossless subtitle projection and undo
+
+3.2.2 indexes Script Info, styles, then events. Raw headers, Format lines, blank
+lines, other comments, attachments and unknown sections are not Lua entries.
+Keep them anchored in Yoake source storage. Store original record provenance so
+read/modify/write retains unrecognized columns, field order, syntax, whitespace,
+line endings and unknown Mangetsu text. Never simplify the entire ASS file and
+reparse it. The working state is independent of live record objects; reads are
+copies, writes validate before replacing an entry. Append locates the end of a
+class; large event loops must have amortized constant append cost.
+Ordinary same-class replacements retain the three last-class boundaries. Inserts
+shift those boundaries, adjacent same-class append arguments share one insertion,
+and deletion compacts/reindexes in one pass while retaining the release duplicate
+quirk. Range removal and class replacement search backward only when removing a
+class boundary. Checkpoint source materialization shares the previous checkpoint's
+result rather than constructing the same source twice.
+Detached tables retain their schema identity privately. A table.copy fallback
+uses exact class/raw provenance; if identical raw lines were read under distinct
+Format schemas, copied-table mutations are rejected rather than choosing the
+wrong unknown columns. Original detached tables remain writable in that case.
+
+`set_undo_point` saves an immutable checkpoint in the private working state.
+Earlier points are **not** persistent when a later error/cancellation occurs.
+Only successful processing reconciles changes. Multiple checkpoints produce
+separate named operations in the document's existing UndoManager; the unmarked
+tail produces a macro-named point. No point per table assignment. Commit guards
+against a stale document revision, batches notifications, retains the session
+and existing undo history, and resolves selection against resulting indexes.
+Undo and redo restore both document and selection/draft coherently.
+
+## Services and workflow
+
+Installation and user roots each contain `automation/include` and
+`automation/autoload`. Paths are explicit platform service values, not implicit
+working-directory or hardcoded AppData values. Discovery is bounded, cancellable,
+deterministic and independent per failure. Document-local `~`, `$`, `/` references
+retain their metadata when missing. Include resolution is master-relative and
+require preserves 3.2.2 MoonScript precedence and Unicode filesystem access.
+
+Dialog descriptors are Core data. Avalonia builds all source-defined controls in
+script grid units, with typed defaults and exact result/button conversions.
+Colors use Yoake's authoring picker. Dialogs and clipboard marshal to the platform
+thread; provider execution never manipulates controls. The progress service owns
+title/task/percentage/log output and cancellation. A native instruction hook
+interrupts tight loops without requiring voluntary progress calls.
+The invocation's `IAutomationHostServices.TraceLevel` defaults to the release's 3.
+Lua rejects higher numeric trace levels before formatting, serialization, native
+callbacks or synchronous centralized logging; services can request verbose traces.
+The progress window separately limits visible levels and retained display size.
+
+`AutomationDiagnostics` is an optional invocation-owned collector. The desktop
+enables it at startup with `YOAKE_AUTOMATION_DIAGNOSTICS=1` and writes summaries
+to its existing Automation log. It measures capture, validation, host operations,
+JSON, reply encoding, provider execution, reconciliation and synchronous UI
+publication/preview requests. The provider benchmark reports managed allocation
+deltas and callback/entry-scan counts, with first-use and subsequent runs separate.
+Nested timings overlap: Lua transport contains the managed callback and native
+decode; provider execution also contains Lua JSON and actual script execution.
+Subtracting measured phases estimates remaining Lua/adapter/hook/GC work, not
+pure Lua CPU time. Rendering finishes asynchronously and is verified by the
+existing packaged preview assertions, not equated with publication time.
+Disabled diagnostics perform no clock reads, counter updates or diagnostic locks.
+
+Text metrics use a provider measurement service matching 3.2.2 GDI metrics and
+style scale on Windows; TextBlock.Measure is not a substitute. Complex-script
+handling and any necessary divergence from legacy UTF-16 spacing are tested and
+documented. Media APIs read the existing central timeline, timecodes, keyframes,
+dimensions and aspect ratio; there is no Automation playback clock.
+
+The Manager exposes paths, metadata, counts, origin, errors and load/reload/remove
+commands. Registered macros participate in menus and hotkeys through command IDs.
+Export filters configure and run in priority order against a working copy; export
+does not dirty the open document or reuse Save as an implicit filter operation.
+
+## Packaging, provenance and trust
+
+`AutomationCommandCatalog` owns command registrations, while the workspace UI
+controller owns script instances, loads and cancellation lifetimes. A stable
+path/name command resolves through explicit `CommandContext.DocumentId` to a
+local script or the autoload fallback; validation/toggle caches belong to that
+document and exact interpreter instance. Reload/unload removes old commands
+before disposal, and native disposal waits only on background workers. The
+registry can remove only an owner's exact registration.
+Macro menus use native checkable MenuItem state for isactive callbacks. Cached
+validation changes update help/check state in place; only command hierarchy
+changes rebuild submenus, preserving open-menu keyboard navigation.
+
+The UI snapshots media timestamps, keyframes, project properties and path roots
+before invocation. UI/dialog/clipboard work is dispatched from the worker. Macro
+success alone permits a guarded document-thread batch commit; failure and both
+script/user cancellation discard the working view. Input drafts are finalized
+before capture, stale/closed/replaced documents are rejected, and returned file
+indexes map to actual event identities after commit. Selection-history restoration and the expanded packaged UI workflows passed
+workflow `38083691966`; the final revision retains and extends those assertions.
+
+Local script references use the release's `$` (Automation base), `~` (subtitle
+directory), and `/` (absolute) markers. Project-property edits are ordinary
+document undo operations; the controller reconciles interpreter ownership after
+those edits and undo/redo. Missing and malformed references retain their source
+text and an inspectable Manager error. An explicitly empty project-property key
+overrides a legacy Script Info value, so removing the last script does not revive
+old metadata. Autoload rescans remain cancellable background discovery/loading.
+
+Karaoke parsing is a read-only structured scan that returns the 3.2.2 syllable
+table, including the empty index zero and unnormalized relative millisecond
+times. Other tags, comments and drawings remain in syllable text. No parser
+operation edits ASS source. The native provider retains schema provenance
+through exact raw/class fields when unmodified `table.copy` loses weak identity;
+script-only derived fields are ignored during AssEntry conversion.
+
+Windows text metrics use GDI at the source's 64x font size, with style scaling
+applied to results. GDI objects never escape `Yoake.Native` and are released on
+every error path. One deliberate Unicode deviation: nonzero spacing uses
+whole-string shaping plus spacing per grapheme; 3.2.2 measures UTF-16 code units
+individually, splitting surrogate pairs/combining sequences. This difference
+must remain visible in the compatibility ledger and complex-script fixtures.
+
+The standard modules use 3.2.2's unmodified LPeg 0.10 and luabins sources, its
+unmodified Boost regex/Unicode adapters, and a narrow Yoake implementation of
+the source-defined lfs surface using C++ standard filesystem. Shipped includes
+(including MoonScript 0.2.5) remain unmodified and are hash-recorded in
+`third_party/automation/provenance.json`. Their legacy versions are compatibility
+pins, not claims of modern maintenance; all are trusted-script code.
+
+Boost.Regex/Locale and ICU are additional **native**, statically linked
+dependencies acquired through the existing pinned vcpkg registry. Boost is
+BSL-1.0; ICU carries its ICU/data licenses at the selected registry revision. They implement
+3.2.2's actual Unicode-aware Boost Perl regex and full Unicode case folding.
+.NET Regex and simple case conversion have different regex syntax, captures,
+replacement and expansion semantics, so they are not adequate substitutes.
+Both projects remain maintained; the immutable registry pins the dependency
+graph. They add CI build time and substantial native code/data size (especially
+ICU); CI/package manifests provide measured output sizes and complete copyright
+notices. They have no managed trimming/reflection cost and no UI/native-state
+leak. Aegisub's old Boost/ICU versions are not copied; compatibility is judged
+against its 3.2.2 module fixtures. Full fixture parity remains an acceptance gate.
+
+Native acquisition/build extends only `ci/build_dependencies.ps1` and
+`third_party/*`. Build/cache trees remain outside shipping `native/win-x64`.
+Do not bump unrelated media dependencies. Copied includes, modules and fixtures
+retain license headers and have exact source/version/path/hash/modification
+provenance. CI does not depend on the user's local Aegisub folder.
+
+Automation scripts are trusted local executable extensions, with the substantial
+Lua standard-library/native-module access of the compatibility target. This is
+not a strong sandbox. Managed provider boundaries and transactional documents
+protect host architecture and subtitle integrity, not against malicious native
+code. Future process isolation must be possible through the Core service boundary.
+
+Export is a separate command and pipeline. The session captures serialized ASS
+and immutable services; `AutomationExportPipeline` parses a private copy and
+applies selected filters in the chosen order. Default ordering is stable,
+descending priority, with 3.2.2 duplicate-name suffixes. Configuration calls use
+read-only subtitles and an empty old-settings table (the exact release's TODO
+never populated it). Processing receives `(subs, settings)`, progress/logging,
+and no undo-point or custom-dialog API. The native provider enforces these modes
+independently of the caller's working-view permissions.
+
+The export window embeds the same typed control panel used by macro dialogs;
+checking filters reveals their settings, and Move up/down changes chain order.
+Dialog preferences stay in the document session, leaving the live document,
+dirty flag, and undo/redo unchanged. Existing project export preferences seed the
+dialog. Output is ASS with explicit Unicode encoding and atomic replacement;
+cancellation is checked before replacement. Legacy encodings and non-ASS writers
+are outside this initial subtitle-filter workflow.
+
+Macro checkpoints can carry a host selection-restoration callback. Initial
+publication leaves selection application to the session owner after the batch;
+undo restores surviving original record identities and final redo restores the
+returned file indexes. The callback receives Core event references and never
+Lua/native state. The packaged window probe exercises this with a real modal
+dialog, stable macro command, insertion, grid/draft refresh and changed Mangetsu
+video pixels, followed by exact source and selection undo/redo.
+
+File-picker requests are data-only Core values, marshalled by the UI service to
+the native Windows Unicode common dialog. `OPENFILENAMEW`, owner handles,
+selection buffers and cancellation hooks remain in `Yoake.Native`. This supplies
+the release's multiple/non-existing-file/overwrite flags and preserves process
+working directory. A cancellation closes the native modal dialog; no callback
+exception crosses its window procedure. Returned paths are Unicode strings,
+a Lua array for multiple selection, or nil on dismissal.
+
+Autoload and include directories are application preferences serialized through
+the existing NativeAOT source-generated settings context. Default token paths
+keep installed and portable layouts relocatable; an explicit empty autoload
+list disables discovery. Manager's search-path command persists the ordered
+lists, rescans globals and reloads locals so per-interpreter module caches use
+the new resolver. Master directories remain the first include location.
+Save As re-encodes resolvable document references against the destination while
+retaining missing references, unknown markers and separators. Metadata changes
+share an undo transaction that rolls back if the atomic save fails. Interpreter
+synchronization is suspended until the path and transaction have settled, then
+reconciles against the final document path.
+
+MoonScript chunks retain original UTF-8 source text alongside the bundled
+compiler's line tables. Runtime tracebacks use full chunk paths and translate
+generated line offsets to original source lines without Lua's ANSI file I/O.
+For MoonScript interpreters, the native cancellation hook also records executed
+MoonScript locations. This preserves the call site when LuaJIT elides a tail call
+into `error`; it shares the count hook rather than replacing cancellation with
+a Lua debug hook. Source buffers remain owned and freed by the native runtime.
+Provider initialization may receive explicit platform services for clipboard
+access during master/module loading. This does not install a subtitle or media
+context; those APIs continue returning nil until a document invocation. The
+desktop platform service marshals clipboard operations to Avalonia's dispatcher.
+Frame conversion normalizes captured central timestamps and uses the release's
+integer START rules and average-rate VFR extrapolation, as its FFMS2 provider
+does. Single-frame media uses nominal FPS. Wide integer intermediates avoid
+overflow at supported timestamp limits; this view creates no playback clock.
+
+GitHub Actions builds/tests the managed host, native stack, NativeAOT package,
+module fixtures and real-window macro/dialog/selection/undo scenario. Do not
+compile or rebuild either Yoake or Aegisub locally during ordinary development.

@@ -5,6 +5,24 @@ namespace Yoake.UI.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    private sealed record TextPosition(int Caret, int Start, int End);
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<AssEvent, TextPosition> _textPositions = new();
+    private AssEvent? _textPositionLine;
+    private void RestoreTextPosition()
+    {
+        if (_textPositionLine is {} previous)
+        {
+            _textPositions.Remove(previous);
+            _textPositions.Add(previous, new(TextCursor, TextSelectionStart, TextSelectionEnd));
+        }
+        _textPositionLine = SelectedEvent;
+        var position = SelectedEvent is {} line && _textPositions.TryGetValue(line, out var saved) ? saved : new TextPosition(0, 0, 0);
+        var length = Draft?.Text.Length ?? 0;
+        TextCursor = Math.Clamp(position.Caret, 0, length);
+        TextSelectionStart = Math.Clamp(position.Start, 0, length);
+        TextSelectionEnd = Math.Clamp(position.End, 0, length);
+        SearchSelectionApplied?.Invoke(this, EventArgs.Empty);
+    }
     private int _textSelectionStart, _textSelectionEnd;
     public int TextSelectionStart {get=>_textSelectionStart;set{if(_textSelectionStart==value)return;_textSelectionStart=value;RefreshFormatting();}}
     public int TextSelectionEnd {get=>_textSelectionEnd;set{if(_textSelectionEnd==value)return;_textSelectionEnd=value;RefreshFormatting();}}
@@ -24,12 +42,31 @@ public sealed partial class MainWindowViewModel
     private void FormatText(string name,Func<string,int,int,AssStyle,AssTextEdit> operation)
     {
         if(Draft is null||SelectedEvent is null||ActiveEditor is null)return;
+        // Older recovery bundles and direct draft callers may still contain
+        // physical newlines. Commit normalizes those; retain the same range.
         var raw=Draft.Text;
-        int Normalize(int index)=>raw[..Math.Clamp(index,0,raw.Length)].Replace("\r\n","\\N").Replace("\r","\\N").Replace("\n","\\N").Length;
-        var start=Normalize(TextSelectionStart);var end=Normalize(TextSelectionEnd);
+        int CommittedOffset(int index)=>AssEditorProjection.EncodeNewlines(raw[..Math.Clamp(index,0,raw.Length)]).Length;
+        var start=CommittedOffset(TextSelectionStart);var end=CommittedOffset(TextSelectionEnd);
+        var beforePosition=new TextPosition(CommittedOffset(TextCursor),start,end);
         if(!CommitDraft())return;
         var edit=operation(SelectedEvent.Text,start,end,FormattingStyle);
-        ActiveEditor.SetField(SelectedEvent,"Text",edit.Text,name);ReloadDraft();
+        var editor=ActiveEditor;var line=SelectedEvent;
+        var afterPosition=new TextPosition(edit.SelectionEnd,edit.SelectionStart,edit.SelectionEnd);
+        void Position(TextPosition position)
+        {
+            _textPositions.Remove(line);_textPositions.Add(line,position);
+            if(!ReferenceEquals(ActiveEditor,editor)||!ReferenceEquals(SelectedEvent,line))return;
+            TextCursor=position.Caret;TextSelectionStart=position.Start;TextSelectionEnd=position.End;
+        }
+        if(edit.Text!=line.Text)
+        {
+            using var transaction=editor.Undo.BeginTransaction(name);
+            editor.SetField(line,"Text",edit.Text,name);
+            editor.Undo.Execute(new Yoake.Core.Undo.DelegateUndoOperation(name,()=>Position(beforePosition),()=>Position(afterPosition)));
+            transaction.Commit();
+        }
+        else Position(afterPosition);
+        ReloadDraft();
         TextSelectionStart=edit.SelectionStart;TextSelectionEnd=edit.SelectionEnd;TextCursor=edit.SelectionEnd;
         TextFormattingApplied?.Invoke(this,EventArgs.Empty);
     }

@@ -21,35 +21,45 @@ public sealed partial class WindowsWaveOutStream : IDisposable
     private int _sampleRate;
     private int _channels;
     private long _mediaStartFrame;
+    private long _endFrame=long.MaxValue;
     private double _volume=0.8;
     private bool _muted;
     public void SetVolume(double volume,bool muted){Volatile.Write(ref _volume,Math.Clamp(volume,0,1));Volatile.Write(ref _muted,muted);}
+    public void SetEndFrame(long endFrame)
+    {if(endFrame<0)throw new ArgumentException("Invalid playback endpoint.");Volatile.Write(ref _endFrame,endFrame);}
 
     public async Task PlayAsync(
         FfmsMediaSession media,
         double startSeconds,
         Action<double>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        AudioPlaybackPlan? range=null)
     {
         ArgumentNullException.ThrowIfNull(media);
+        cancellationToken.ThrowIfCancellationRequested();
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("Yoake's initial audio output backend uses Windows waveOut.");
         if (!media.HasAudio || media.Info.SampleRate <= 0 || media.Info.Channels <= 0)
             return;
 
-        var startFrame = media.TimeToAudioFrame(startSeconds);
-        if (startFrame >= media.Info.AudioSamples)
+        if(range is not null&&(range.SampleRate!=media.Info.SampleRate||range.FrameCount!=media.Info.AudioSamples))
+            throw new ArgumentException("Playback range belongs to a different audio provider.");
+        if(range is not null)Interlocked.CompareExchange(ref _endFrame,range.EndFrame,long.MaxValue);
+        var startFrame = range?.StartFrame??media.TimeToAudioFrame(startSeconds);
+        if (startFrame >= Math.Min(media.Info.AudioSamples,Volatile.Read(ref _endFrame)))
             return;
-
-        StartDevice(media.Info.SampleRate, media.Info.Channels, startFrame);
 
         var chunkFrames = Math.Max(512, media.Info.SampleRate / 50);
         var nextFrame = startFrame;
+        var lastPosition=startFrame;
         try
         {
+            StartDevice(media.Info.SampleRate, media.Info.Channels, startFrame);
+            cancellationToken.ThrowIfCancellationRequested();
             for (var i = 0; i < QueueDepth && nextFrame < media.Info.AudioSamples; i++)
             {
-                var queued = QueueDecodedChunk(media, nextFrame, chunkFrames);
+                cancellationToken.ThrowIfCancellationRequested();
+                var queued = QueueDecodedChunk(media, nextFrame, chunkFrames,cancellationToken);
                 if (queued <= 0)
                     break;
                 nextFrame += queued;
@@ -69,6 +79,17 @@ public sealed partial class WindowsWaveOutStream : IDisposable
                         break;
 
                     playedFrames = GetPlayedFramesLocked();
+                    lastPosition=Math.Min(media.Info.AudioSamples,_mediaStartFrame+playedFrames);
+                    var end=Math.Min(media.Info.AudioSamples,Volatile.Read(ref _endFrame));
+                    if(lastPosition>=end){lastPosition=end;break;}
+                    // waveOut cannot trim an already submitted buffer. Requeue
+                    // from its played position when a live timing end shrinks.
+                    if(nextFrame>end)
+                    {
+                        ThrowIfMmError(Native.waveOutReset(_device),"waveOutReset");
+                        foreach(var slot in _slots)ReleaseSlotLocked(slot);
+                        _slots.Clear();_mediaStartFrame=lastPosition;nextFrame=lastPosition;
+                    }
                     completed = _slots.Where(IsDone).ToList();
                     foreach (var slot in completed)
                     {
@@ -77,13 +98,13 @@ public sealed partial class WindowsWaveOutStream : IDisposable
                     }
                 }
 
-                progress?.Invoke((double)(_mediaStartFrame + playedFrames) / _sampleRate);
+                progress?.Invoke(lastPosition/(double)_sampleRate);
 
-                foreach (var _ in completed)
+                for(var i=0;i<QueueDepth;i++)
                 {
-                    if (nextFrame >= media.Info.AudioSamples)
-                        break;
-                    var queued = QueueDecodedChunk(media, nextFrame, chunkFrames);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    lock(_gate){if(_slots.Count>=QueueDepth||_device==0||_stopRequested)break;}
+                    var queued = QueueDecodedChunk(media, nextFrame, chunkFrames,cancellationToken);
                     if (queued <= 0)
                         break;
                     nextFrame += queued;
@@ -91,7 +112,7 @@ public sealed partial class WindowsWaveOutStream : IDisposable
 
                 lock (_gate)
                 {
-                    if (_slots.Count == 0 && nextFrame >= media.Info.AudioSamples)
+                    if (_slots.Count == 0 && nextFrame >= Math.Min(media.Info.AudioSamples,Volatile.Read(ref _endFrame)))
                         break;
                 }
 
@@ -99,7 +120,7 @@ public sealed partial class WindowsWaveOutStream : IDisposable
             }
 
             if (!cancellationToken.IsCancellationRequested)
-                progress?.Invoke((double)Math.Min(media.Info.AudioSamples, nextFrame) / _sampleRate);
+                progress?.Invoke(lastPosition/(double)_sampleRate);
         }
         finally
         {
@@ -170,8 +191,11 @@ public sealed partial class WindowsWaveOutStream : IDisposable
         }
     }
 
-    private int QueueDecodedChunk(FfmsMediaSession media, long startFrame, int requestedFrames)
+    private int QueueDecodedChunk(FfmsMediaSession media, long startFrame, int requestedFrames,CancellationToken token)
     {
+        token.ThrowIfCancellationRequested();
+        requestedFrames=AudioPlaybackPlan.FramesToQueue(startFrame,requestedFrames,media.Info.AudioSamples,Volatile.Read(ref _endFrame));
+        if(requestedFrames==0)return 0;
         var decoded = media.ReadAudioFrames(startFrame, requestedFrames);
         if (decoded.FrameCount <= 0)
             return 0;
@@ -183,20 +207,24 @@ public sealed partial class WindowsWaveOutStream : IDisposable
 
         lock (_gate)
         {
+            token.ThrowIfCancellationRequested();
             if (_device == 0 || _stopRequested)
                 return 0;
 
-            var bufferBytes = checked(pcm.Length * sizeof(short));
+            var frames=AudioPlaybackPlan.FramesToQueue(startFrame,decoded.FrameCount,media.Info.AudioSamples,Volatile.Read(ref _endFrame));
+            if(frames==0)return 0;
+            var sampleCount=checked(frames*_channels);
+            var bufferBytes = checked(sampleCount * sizeof(short));
             var slot = new BufferSlot
             {
                 Buffer = Marshal.AllocHGlobal(bufferBytes),
                 Header = Marshal.AllocHGlobal(Marshal.SizeOf<WaveHeader>()),
-                FrameCount = decoded.FrameCount,
+                FrameCount = frames,
             };
 
             try
             {
-                Marshal.Copy(pcm, 0, slot.Buffer, pcm.Length);
+                Marshal.Copy(pcm, 0, slot.Buffer, sampleCount);
                 var header = new WaveHeader
                 {
                     Data = slot.Buffer,
@@ -209,7 +237,7 @@ public sealed partial class WindowsWaveOutStream : IDisposable
                 slot.Prepared = true;
                 ThrowIfMmError(Native.waveOutWrite(_device, slot.Header, headerSize), "waveOutWrite");
                 _slots.Add(slot);
-                return decoded.FrameCount;
+                return frames;
             }
             catch
             {

@@ -1,0 +1,9 @@
+# Resolution resampling
+
+`SubtitleEditor.CaptureResample` freezes field values and script resolution metadata on the owning UI thread. A valid active draft is copied into that snapshot without mutating committed source; invalid draft values stop the operation. `ResampleSnapshot.Calculate` runs through the existing background-job service, with cancellation, structured tag traversal and drawing validation. It never reads live row values or native media state.
+
+The resulting plan contains immutable replacements, explicit dimension/aspect geometry and preserved-tag warnings. The dialog requires Preview before Apply and invalidates the plan when inputs change. Publication checks editor identity, document revision, owning row, active draft revision and tab identity. Closing/switching tabs cancels pending computation and releases dialog subscriptions. All modified styles/events/header values and the valid active draft are one rollback-capable undo transaction. An identity operation creates no undo entry and leaves the draft uncommitted.
+
+The algorithm follows the supplied Aegisub 3.5 source: axis-specific positions and margins, vertical style metrics, horizontal text stretching, drawing-versus-clip scaling, inherited event margins, template/code exclusions and explicit LayoutRes adjustment. Mangetsu normalized distortion pins and dimensionless parameters are retained. Supported extension geometry is rewritten structurally; unsupported expressions remain exact with warnings. No global regex replacement is used.
+
+This operation uses the existing document and Mangetsu preview invalidation boundaries. It creates no decoder, renderer, media clock, file format, or attachment copy. Native provider identity, presentation transforms, timecodes, keyframes and pending audio markers stay owned by the existing document media session. Colors and YCbCr matrix are preserved.

@@ -7,6 +7,7 @@ using Avalonia.Media.TextFormatting;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using Yoake.Core.Commands;
+using Yoake.Core.Settings;
 using Yoake.Core.Subtitles;
 using Yoake.UI;
 using Yoake.UI.Controls;
@@ -22,6 +23,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private int _stage;
     private VisualUiVerification? _visual;
     private AuthoringInputVerification? _input;
+    private MotionInputVerification? _motionInput;
     private long _previewRevision;
     private double _normalEditorWidth;
     private double _audioHeight;
@@ -33,7 +35,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private string? _committedText;
     private Guid _originalTab;
     private const string Sample = @"{\fad(200,200)\bord3\1c&HFFFFFF&\3c&H000000&}<仮|かり>の糸\N{\k20}こ{\k15}れ{\k30}は{\1grd(0,&HFF0000&,&H0000FF&)}テスト
-{\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text မြန်မာ é 👩‍👩‍👧‍👦
+{\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text\hမြန်မာ é 👩‍👩‍👧‍👦
 {\fnArial\future(opaque)\p1}m 0 0 l 20 0 20 20{\p0}";
 
     public bool Tick()
@@ -120,6 +122,9 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 if(!_mediaLoading!.IsCompleted){_stage--;return false;}
                 Require(_mediaLoading.Result&&model.VideoFrame is not null,"Real video must load into MainWindow.");
                 if(model.WaveformSamples is not {Count:>100}){_stage--;return false;}
+                Require(model.ViewMode==WorkspaceViewMode.AudioVideo&&model.ShowAudio&&model.ShowVideo,
+                    "Opening combined media must automatically show video and audio.");
+                CheckMainFields();
                 model.AudioWindowSeconds=2;
                 window.FindControl<AudioWaveformControl>("AudioDisplay")!.ViewportStart=0;
                 Require(model.FrameTimes.Count==10&&model.Keyframes.Count>0,"FFMS2 must supply actual frame/keyframe metadata.");
@@ -202,6 +207,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
             case 19:
                 CheckVirtualizedGrid();Capture(window,"editor-large-mixed-script",1);
                 var activate=model.Registry.InvokeAsync(CommandIds.WorkspaceActivateTab,new(),_originalTab);Require(activate.IsCompletedSuccessfully&&activate.Result,"Return to original editing tab after virtualization probe.");return false;
+            case 20:
+                _motionInput ??= new(window, model, mediaFixtures!, Capture);
+                if (!_motionInput.Tick()) { _stage--; return false; }
+                var restore=model.Registry.InvokeAsync(CommandIds.WorkspaceActivateTab,new(),_originalTab);
+                Require(restore.IsCompletedSuccessfully&&restore.Result,"Restore the original document after tracking verification.");return false;
             default:
                 Require(styles.Preview.LastError is null,"Latest style preview failed: "+styles.Preview.LastError);
                 if(!styles.Preview.HasCurrentFrame||styles.Preview.DisplayedRevision<_previewRevision)return false;
@@ -282,12 +292,17 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(text.Bounds.Width>=300&&text.Bounds.Height>=64,"ASS editor must retain useful text space after timing groups reflow.");
         Require(window.GetVisualDescendants().OfType<AssColorButton>().Count(b=>b.Bounds.Width>=30&&b.Bounds.Height>=24&&b.Command is not null)==4,"All four command-backed color swatches must be realized.");
         var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
+        if (model.ShowAudio)
+        {
         Require(audio.TranslatePoint(default,window)!.Value.Y<editor.TranslatePoint(default,window)!.Value.Y,"Audio must remain above the edit panel.");
         Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioHorizontalZoom")!.Bounds.Height>=55,"Horizontal zoom, display amplitude and playback volume need usable vertical travel at the default panel height.");
         Require(window.FindControl<Slider>("AudioSize") is null,"No vertical audio-height slider may remain.");
         Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("AudioVolumeLink")!.Bounds.Width>=40,"Amplitude/volume link must be directly below the sliders.");
         Require(window.FindControl<GridSplitter>("AudioSplitter")!.Bounds.Height>=4,"Audio height must have a real sash.");
         Require(window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!.Bounds.Width>200,"Audio must have an attached horizontal panner.");
+        }
+        if (model.ShowVideo)
+        {
         foreach(var name in MainWindowViewModel.VisualToolNames)Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("VisualTool"+name) is {Bounds.Width:>20},"Baseline visual tool must realize: "+name);
         var video=window.FindControl<Grid>("VideoRegion")!;var tools=window.FindControl<Border>("VisualToolsBar")!;
         var videoBottom=video.TranslatePoint(new Point(0,video.Bounds.Height),window)!.Value.Y;var toolsTop=tools.TranslatePoint(default,window)!.Value.Y;
@@ -295,6 +310,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var primary=window.FindControl<StackPanel>("VisualPrimaryTools")!;
         Require(primary.Orientation==Avalonia.Layout.Orientation.Vertical&&primary.Bounds.Width<40,"Primary tools must use a compact vertical rail.");
         Require(window.FindControl<TextBlock>("VisualToolHelp") is null,"Visual help belongs in tooltips, without a permanent workspace row.");
+        }
     }
 
     private void CheckDefaultWorkspace()
@@ -305,8 +321,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var rows=window.FindControl<ListBox>("SubtitleRows")!;
         File.WriteAllText(Path.Combine(Path.GetDirectoryName(report)!,"workspace-layout.txt"),$"Window: {window.ClientSize}\nVideo: {video.Bounds}\nAudio: {audio.Bounds}\nText: {text.Bounds}\nGrid: {rows.Bounds}\n");
         Require(window.ClientSize.Width>=1438&&window.ClientSize.Height>=898,"Default workspace must be verified in a real 1440x900 window, without desktop clamping.");
-        Require(video.Bounds.Width>=600&&video.Bounds.Height>=300,"Default video workspace must retain useful typesetting area.");
-        Require(audio.Bounds.Width>=600&&audio.Bounds.Height>=120,"Default audio must retain a useful timing area.");
+        Require(model.ViewMode==WorkspaceViewMode.Default&&!model.ShowVideo&&!model.ShowAudio,
+            "New subtitle documents start in subtitles-only view.");
+        Require(!window.FindControl<Grid>("VideoRegion")!.IsEffectivelyVisible &&
+                !window.FindControl<Grid>("AudioRegion")!.IsEffectivelyVisible,
+            "Unloaded media must not reserve visible workspace.");
         Require(window.FindControl<Grid>("AudioRegion")!.RowDefinitions.Count==3,"Audio status must share the playback row rather than consume waveform space.");
         Require(text.Bounds.Width>=600&&text.Bounds.Height>=140,"Default ASS editor must retain room for tag-heavy multiline editing.");
         Require(rows.Bounds.Height>=270,"Default subtitle grid must retain at least nine dense rows of space.");

@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory = $true)][string]$PublishRoot,
   [Parameter(Mandatory = $true)][string]$NativeRoot,
+  [Parameter(Mandatory = $true)][string]$AssDrawRoot,
   [Parameter(Mandatory = $true)][string]$OutputRoot
 )
 $ErrorActionPreference = 'Stop'
@@ -18,7 +19,8 @@ New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
 $searchDirectories = @(
   (Join-Path $NativeRoot 'ffms2\bin'),
   (Join-Path $NativeRoot 'ffmpeg\x64-windows\bin'),
-  (Join-Path $NativeRoot 'mangetsu\bin')
+  (Join-Path $NativeRoot 'mangetsu\bin'),
+  (Join-Path $NativeRoot 'automation\bin')
 )
 foreach ($directory in @($searchDirectories)) {
   if (-not (Test-Path -LiteralPath $directory)) { throw "Missing native runtime source directory: $directory" }
@@ -114,7 +116,8 @@ function Get-ImportedDllNames([string]$BinaryPath) {
 
 $entryDlls = @(
   (Join-Path $NativeRoot 'ffms2\bin\ffms2.dll'),
-  (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll')
+  (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll'),
+  (Join-Path $NativeRoot 'automation\bin\yoake-automation.dll')
 )
 foreach ($entryDll in $entryDlls) {
   if (-not (Test-Path -LiteralPath $entryDll)) { throw "Missing native runtime entry DLL: $entryDll" }
@@ -150,7 +153,7 @@ foreach ($key in ($selected.Keys | Sort-Object)) {
 
 $manifest = [ordered]@{
   architecture = 'win-x64'
-  entrypoints = @('ffms2.dll', 'mangetsu.dll')
+  entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll')
   files = @(
     Get-ChildItem -LiteralPath $runtimeRoot -Filter '*.dll' -File | Sort-Object Name | ForEach-Object {
       [ordered]@{
@@ -174,6 +177,19 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Avalonia-MIT.t
 Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Aegisub-BSD-3-Clause.txt') -Destination $licenseTarget -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $portable 'LICENSE') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $portable 'THIRD_PARTY_NOTICES.md') -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'automation') -Destination $portable -Recurse -Force
+
+$AssDrawRoot = [IO.Path]::GetFullPath($AssDrawRoot)
+$assDrawManifest = Get-Content -LiteralPath (Join-Path $AssDrawRoot 'assdraw-manifest.json') -Raw | ConvertFrom-Json
+$assDrawPin = Get-Content -LiteralPath (Join-Path $repoRoot 'third_party/assdraw.json') -Raw | ConvertFrom-Json
+if ($assDrawManifest.commit -cne $assDrawPin.commit -or $assDrawManifest.repository -cne $assDrawPin.repository) { throw 'ASSDraw artifact source identity differs from the packaging pin.' }
+if ((Get-FileHash -LiteralPath (Join-Path $AssDrawRoot 'ASSDraw3.exe') -Algorithm SHA256).Hash.ToLowerInvariant() -cne $assDrawManifest.sha256) { throw 'ASSDraw artifact executable hash mismatch.' }
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'ASSDraw3.exe') -Destination $portable
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'assdraw-manifest.json') -Destination $portable
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'licenses') -Destination (Join-Path $licenseTarget 'assdraw') -Recurse
+$sourceTarget = Join-Path $portable 'sources'
+New-Item -ItemType Directory -Force -Path $sourceTarget | Out-Null
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'sources') -Destination (Join-Path $sourceTarget 'assdraw') -Recurse
 
 $zip = Join-Path $OutputRoot 'Yoake-Windows-x64-portable.zip'
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }

@@ -1,0 +1,46 @@
+using Yoake.Core.Subtitles;
+
+namespace Yoake.Core.Tests;
+
+public sealed class AssEditorProjectionTests
+{
+    [Theory]
+    [InlineData(@"Hello\NWorld", "Hello\nWorld")]
+    [InlineData(@"a\\Nb", @"a\\Nb")]
+    [InlineData(@"{\future(\N)}a\Nb", "{\\future(\\N)}a\nb")]
+    [InlineData(@"a\n\h\N日本語 é", "a\\n\\h\n日本語 é")]
+    [InlineData(@"{\furi0}a\\Nb", "{\\furi0}a\\\nb")]
+    public void ProjectionRoundTripsWithoutChangingOtherSyntax(string source, string display)
+    {
+        var projection = new AssEditorProjection(source);
+        Assert.Equal(display, projection.Display);
+        Assert.Equal(source, projection.Edit(display));
+        for (var index = 0; index <= display.Length; index++)
+            Assert.Equal(index, projection.ToDisplay(projection.ToSource(index)));
+    }
+
+    [Fact]
+    public void SelectionAndFormattingUseSourceCoordinatesAfterBreak()
+    {
+        var projection = new AssEditorProjection(@"Hello\NWorld");
+        Assert.Equal(7, projection.ToSource(6));
+        Assert.Equal(12, projection.ToSource(11));
+        var style = AssDocument.CreateEmpty().Styles[0];
+        var edit = AssFormatting.Apply(projection.Source, projection.ToSource(6), projection.ToSource(11),
+            new Dictionary<string, string> { ["1c"] = "&H0000FF&" }, style);
+        Assert.StartsWith(@"Hello\N{\1c&H0000FF&}World", edit.Text);
+    }
+
+    [Fact]
+    public void CutPasteAcrossBreaksPreservesLiteralEscapesAndUnknownTags()
+    {
+        var projection = new AssEditorProjection(@"{\future(x)}a\\Nb\NWorld\Nend");
+        var display = projection.Display;
+        var start = display.IndexOf("b\n", StringComparison.Ordinal);
+        var end = display.IndexOf("end", StringComparison.Ordinal);
+        var cut = projection.Edit(display[..start] + display[end..]);
+        Assert.Equal(@"{\future(x)}a\\Nend", cut);
+        Assert.Equal(@"{\future(x)}a\\Nb\NWorld\Nend", new AssEditorProjection(cut).Edit(display));
+        Assert.Equal(@"x\Ny\Nz", new AssEditorProjection("x").Edit("x\r\ny\nz"));
+    }
+}

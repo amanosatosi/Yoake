@@ -67,9 +67,29 @@ internal static class Program
 
     private static void ArmVerificationTimeout() => _ = Task.Run(async () =>
     {
-        await Task.Delay(TimeSpan.FromSeconds(25));
+        const int startupTimeoutMilliseconds = 25_000;
+        const int pollMilliseconds = 100;
+        for (var waited = 0;
+             waited < startupTimeoutMilliseconds && !_options.VerificationFinished && !_options.StartupVerified;
+             waited += pollMilliseconds)
+        {
+            await Task.Delay(pollMilliseconds);
+        }
+
         if (_options.VerificationFinished) return;
-        Fatal("UI startup verification timeout", new TimeoutException("The real MainWindow did not complete opened/layout/dispatcher verification in 25 seconds."));
-        Environment.Exit(2);
+        if (!_options.StartupVerified)
+        {
+            Fatal("UI startup verification timeout", new TimeoutException("The real MainWindow did not complete opened/layout/dispatcher verification in 25 seconds."));
+            Environment.Exit(2);
+            return;
+        }
+
+        // Startup is already proven at this point. The packaged acceptance probe exercises
+        // substantially more editor UI and native rendering work, so give that separate
+        // headroom instead of racing it against the startup watchdog.
+        await Task.Delay(TimeSpan.FromSeconds(90));
+        if (_options.VerificationFinished) return;
+        Fatal("UI acceptance verification timeout", new TimeoutException("The real packaged UI acceptance verification did not complete within 90 seconds after startup became ready."));
+        Environment.Exit(3);
     });
 }

@@ -4,7 +4,7 @@ using Yoake.Core.Undo;
 namespace Yoake.Core.Subtitles;
 
 // One editor and undo history per document. UI drafts and gestures call this boundary.
-public sealed class SubtitleEditor(AssDocument document)
+public sealed partial class SubtitleEditor(AssDocument document)
 {
     public AssDocument Document { get; } = document;
     public UndoManager Undo { get; } = new();
@@ -40,11 +40,7 @@ public sealed class SubtitleEditor(AssDocument document)
     public void EditEvent(AssEvent line, IReadOnlyDictionary<string, string> values)
     {
         Require(line);
-        var probe = line.Clone();
-        foreach (var pair in values) probe.Set(pair.Key, pair.Value);
-        if (!AssTime.TryParse(probe.Start, out var start) || !AssTime.TryParse(probe.End, out var end) || end < start) throw new ArgumentException("Use h:mm:ss.cc times, with end at or after start.");
-        foreach (var field in new[] { "Layer", "MarginL", "MarginR", "MarginV" })
-            if (probe.Index(field) >= 0 && (!int.TryParse(probe.Get(field), out var number) || field != "Layer" && number < 0)) throw new ArgumentException($"{field} must be an integer (margins must be non-negative).");
+        var probe = ValidateEventValues(line,values);
         var changed = values.Where(p => line.Get(p.Key) != probe.Get(p.Key)).ToArray();
         if (changed.Length == 0) return;
         var name = changed.Length == 1 ? changed[0].Key switch { "Text" => "Edit subtitle text", "Style" => "Change style", "Name" or "Actor" => "Change actor", "Start" or "End" => "Change line timing", "MarginL" or "MarginR" or "MarginV" => "Change margins", _ => "Edit event metadata" } : "Edit subtitle";
@@ -52,6 +48,24 @@ public sealed class SubtitleEditor(AssDocument document)
         foreach (var pair in changed) SetField(line, pair.Key, pair.Value, name);
         transaction.Commit();
     }
+    public void CommitKaraoke(AssEvent line, IReadOnlyDictionary<string,string> values, CancellationToken token = default)
+    {
+        token.ThrowIfCancellationRequested(); Require(line); var probe = ValidateEventValues(line, values);
+        using var update = Document.BeginUpdate();
+        using var transaction = Undo.BeginTransaction("Toshiki K-Timing");
+        foreach(var name in values.Keys) { token.ThrowIfCancellationRequested(); SetField(line, name, probe.Get(name), "Toshiki K-Timing"); }
+        token.ThrowIfCancellationRequested(); transaction.Commit();
+    }
+    private static AssEvent ValidateEventValues(AssEvent line,IReadOnlyDictionary<string,string> values)
+    {
+        var probe=line.Clone();foreach(var pair in values)probe.Set(pair.Key,pair.Value);
+        if (!AssTime.TryParse(probe.Start, out var start) || !AssTime.TryParse(probe.End, out var end) || end < start) throw new ArgumentException("Use h:mm:ss.cc times, with end at or after start.");
+        foreach (var field in new[] { "Layer", "MarginL", "MarginR", "MarginV" })
+            if (probe.Index(field) >= 0 && (!int.TryParse(probe.Get(field), out var number) || field != "Layer" && number < 0)) throw new ArgumentException($"{field} must be an integer (margins must be non-negative).");
+        return probe;
+    }
+    public static void ValidateEventDraftValues(AssEvent line,IReadOnlyDictionary<string,string> values)
+    {ArgumentNullException.ThrowIfNull(line);ArgumentNullException.ThrowIfNull(values);ValidateEventValues(line,values);}
     public void SetTiming(AssEvent line, long start, long end)
     {
         if (start < 0 || end < start) throw new ArgumentException("Invalid timing range.");
@@ -78,9 +92,23 @@ public sealed class SubtitleEditor(AssDocument document)
         var before = Document.Events.ElementAtOrDefault(index);
         Structure("Insert subtitle", () => Document.Insert(line, before)); return line;
     }
+    // Audio commit-next uses the audited timing workflow, independently of
+    // generic Insert's deliberate two-second, cloned-metadata policy.
+    public AssEvent InsertTimingSuccessor(AssEvent reference,long duration)
+    {
+        Require(reference);
+        var start=reference.EndMilliseconds??throw new ArgumentException("The preceding line has no valid end time.");
+        var end=checked(start+duration);
+        if(duration<=0||!AssTime.TryParse(AssTime.Format(end),out _))throw new ArgumentException("Invalid default timing duration.");
+        var line=Document.NewEvent();line.Style=reference.Style;
+        line.Start=AssTime.Format(start);line.End=AssTime.Format(end);
+        var before=Document.Events.ElementAtOrDefault(Document.Events.IndexOf(reference)+1);
+        Structure("Insert timed subtitle",()=>Document.Insert(line,before));return line;
+    }
     private AssEvent[] Ordered(IEnumerable<AssEvent> selection)
     {
-        var set = selection.ToHashSet(); foreach (var line in set) Require(line);
+        var set = selection.ToHashSet();var owned=Document.Events.ToHashSet();
+        foreach(var line in set)if(!owned.Contains(line))throw new InvalidOperationException("Record belongs to another document.");
         return Document.Events.Where(set.Contains).ToArray();
     }
     public void Delete(IEnumerable<AssEvent> selection)
@@ -91,13 +119,15 @@ public sealed class SubtitleEditor(AssDocument document)
     public IReadOnlyList<AssEvent> Duplicate(IEnumerable<AssEvent> selection)
     {
         var lines = Ordered(selection); var copies = lines.Select(l => l.Clone()).ToArray(); if (lines.Length == 0) return copies;
-        var before = Document.Events.ElementAtOrDefault(Document.Events.IndexOf(lines[^1]) + 1);
-        Structure("Duplicate subtitles", () => { foreach (var line in copies) Document.Insert(line, before); }); return copies;
+        InsertCopies(lines,copies,"Duplicate subtitles");return copies;
     }
     public void ToggleComment(IEnumerable<AssEvent> selection)
     {
-        var lines = Ordered(selection); using var transaction = Undo.BeginTransaction("Toggle Dialogue / Comment");
-        foreach (var line in lines) { var was = line.IsComment; var prefix=line.Prefix; Undo.Execute(new DelegateUndoOperation("Toggle comment", () => line.RestorePrefix(prefix), () => line.SetKind(!was))); }
+        var lines = Ordered(selection); if (lines.Length == 0) return;
+        var comment = !lines.All(line => line.IsComment);
+        using var update = Document.BeginUpdate();
+        using var transaction = Undo.BeginTransaction("Comment / Uncomment Lines");
+        foreach (var line in lines.Where(line => line.IsComment != comment)) { var prefix=line.Prefix; Undo.Execute(new DelegateUndoOperation("Comment / Uncomment Lines", () => line.RestorePrefix(prefix), () => line.SetKind(comment))); }
         transaction.Commit();
     }
     public void Move(IEnumerable<AssEvent> selection, int direction)
@@ -255,6 +285,12 @@ public sealed class SubtitleEditor(AssDocument document)
         var changed=values.Where(p=>Document.GetScriptInfo(p.Key)!=p.Value).ToArray();if(changed.Length==0)return;
         Structure("Edit Script Info", () => { foreach (var pair in changed) Document.SetScriptInfo(pair.Key, pair.Value); });
     }
+    public void SetProjectProperties(IReadOnlyDictionary<string, string> values)
+    {
+        var changed = values.Where(p => !Document.TryGetSectionValue("[Aegisub Project Garbage]", p.Key, out var current) || current != p.Value).ToArray();
+        if (changed.Length == 0) return;
+        Structure("Edit project properties", () => { foreach (var pair in changed) Document.SetSectionValue("[Aegisub Project Garbage]", pair.Key, pair.Value); });
+    }
 }
 
 public static class AssText
@@ -264,10 +300,27 @@ public static class AssText
         cursor = Math.Clamp(cursor, 0, text.Length);
         var boundaries = StringInfo.ParseCombiningCharacters(text);
         if (cursor < text.Length) cursor = boundaries.LastOrDefault(i => i <= cursor);
-        var open = text.LastIndexOf('{', Math.Max(0, cursor - 1), cursor);
-        var close = text.LastIndexOf('}', Math.Max(0, cursor - 1), cursor);
-        if (open > close) return open;
-        if (cursor > 0 && cursor < text.Length && text[cursor - 1] == '\\' && text[cursor] is 'N' or 'n' or 'h') cursor--;
+        foreach(var block in AssTextOperations.Blocks(text))if(cursor>block.Start&&cursor<block.End)return block.Start;
+        var tokens=AssSyntax.Tokenize(text);
+        foreach(var token in tokens)
+            if(token.Kind==AssSyntaxKind.Escape)
+                for(var index=token.Start;index<token.Start+token.Length;)
+                {
+                    var length=text[index+1]=='|'&&index+2<text.Length&&text[index+2]=='\\'?3:2;
+                    if(cursor>index&&cursor<index+length)return index;index+=length;
+                }
+        var drawingStart=-1;var drawingEnd=0;
+        foreach(var token in tokens)
+        {
+            if(token.Kind is AssSyntaxKind.Drawing or AssSyntaxKind.Number)
+            {if(drawingStart<0)drawingStart=token.Start;drawingEnd=token.Start+token.Length;}
+            else
+            {
+                if(drawingStart>=0&&cursor>drawingStart&&cursor<drawingEnd)return drawingStart;
+                drawingStart=-1;
+            }
+        }
+        if(drawingStart>=0&&cursor>drawingStart&&cursor<drawingEnd)return drawingStart;
         return cursor;
     }
     public static string LeadingOverrides(string text)
