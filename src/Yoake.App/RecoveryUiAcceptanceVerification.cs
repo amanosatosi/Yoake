@@ -67,7 +67,7 @@ internal sealed class RecoveryUiAcceptanceVerification(IClassicDesktopStyleAppli
                 var margin=window.FindControl<NumericUpDown>("MarginLeft")!;
                 var input=margin.GetVisualDescendants().OfType<TextBox>().Single();input.Focus();input.SetCurrentValue(TextBox.TextProperty,"-");return;
             case 7:
-                Require(model.Draft!.Text=="pending\r\n日本語 é"&&model.Draft.Start=="unfinished"&&model.Draft.MarginL=="-","Invalid timing/margin and raw multiline input reach the draft.");
+                Require(model.Draft!.Text==@"pending\N日本語 é"&&Text.Text=="pending\n日本語 é"&&model.Draft.Start=="unfinished"&&model.Draft.MarginL=="-","Invalid timing/margin remain editable while pasted hard breaks map to ASS source and visual newlines.");
                 Text.GetVisualDescendants().OfType<TextPresenter>().Single().PreeditText="IME_UNCOMMITTED";
                 return;
             case 8:
@@ -114,7 +114,7 @@ internal sealed class RecoveryUiAcceptanceVerification(IClassicDesktopStyleAppli
                 }
                 else if(entry.Metadata.OriginalPath==PathB)
                 {
-                    Require(model.Events[0].Text=="original"&&model.Draft!.Text=="pending\r\n日本語 é"&&model.Draft.Start=="unfinished"&&model.Draft.MarginL=="-","Invalid raw draft restored separately from committed source.");
+                    Require(model.Events[0].Text=="original"&&model.Draft!.Text==@"pending\N日本語 é"&&Text.Text=="pending\n日本語 é"&&model.Draft.Start=="unfinished"&&model.Draft.MarginL=="-","Invalid draft restores its ASS source and visual newline separately from committed source.");
                     Require(!model.Draft.Text.Contains("IME_UNCOMMITTED"),"IME preedit cannot be recovered as committed input.");
                     Require(model.ActiveEditor.Document.Serialize().Contains("fontname: fixture.ttf\r\n!!!!\r\n")&&model.ActiveEditor.Document.Styles.Count==1,"Attachments and styles retained in the ASS snapshot.");
                     Require(!model.CommitDraft(),"Recovered invalid draft cannot corrupt source.");await Invoke(CommandIds.EditCancel);

@@ -68,7 +68,7 @@ internal sealed class AttachmentsUiAcceptanceVerification(IClassicDesktopStyleAp
             case 6:
                 _rows=Rows();if(_rows.Length!=1||model.AttachmentBusy){_stage--;return;}
                 Require(_rows[0].Name==Path.GetFileName(Fixture)&&_rows[0].Kind==AssAttachmentKind.Graphic&&_rows[0].DecodedSize==Bytes.Length,"Actual list displays filename, type and decoded size.");
-                Require(ReferenceEquals(model.Draft,_draft)&&model.Draft!.Start=="invalid"&&model.Draft.Text=="pending 日本語\ntext","Import retains uncommitted invalid draft.");
+                Require(ReferenceEquals(model.Draft,_draft)&&model.Draft!.Start=="invalid"&&model.Draft.Text==@"pending 日本語\Ntext"&&window.FindControl<TextBox>("SubtitleText")!.Text=="pending 日本語\ntext","Import retains the uncommitted invalid draft, its lossless ASS source and displayed hard break.");
                 _withAttachment=model.ActiveEditor!.Document.Serialize();Require(_withAttachment.Contains("Opaque: preserved")&&model.VideoFrame is not null&&model.HasAudio,"Source and native media retained.");
                 InManager<ListBox>("AttachmentList").SelectedItem=_rows[0];File.WriteAllBytes(Path.Combine(Output,_rows[0].ExtractionName),[9,8,7]);Press(InManager<Button>("AttachmentExtract"),Key.Enter);return;
             case 7:
