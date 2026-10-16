@@ -35,7 +35,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private string? _committedText;
     private Guid _originalTab;
     private const string Sample = @"{\fad(200,200)\bord3\1c&HFFFFFF&\3c&H000000&}<仮|かり>の糸\N{\k20}こ{\k15}れ{\k30}は{\1grd(0,&HFF0000&,&H0000FF&)}テスト
-{\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text မြန်မာ é 👩‍👩‍👧‍👦
+{\bord2\t(0,500,\bord6\1c&H00FFFF&)}Text\hမြန်မာ é 👩‍👩‍👧‍👦
 {\fnArial\future(opaque)\p1}m 0 0 l 20 0 20 20{\p0}";
 
     public bool Tick()

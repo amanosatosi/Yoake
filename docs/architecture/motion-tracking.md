@@ -59,3 +59,8 @@ Focused core tests cover synthetic moving decoded frames in both directions,
 confidence failures, cancellation, relative signs/reference, compact fitting,
 unknown tags/fields and exact undo/redo. Real-device object tracking, real IME,
 integrated-GPU responsiveness and Windows DPI remain manual QA.
+
+The existing packaged authoring launch also opens the shipping tracking window
+over a tiny translating textured AVI decoded by FFMS2, checks identical Fast and
+Viewable points, clicks Apply, measures the rendered Mangetsu subtitle displacement
+on the main timeline, and verifies exact one-step undo/redo. It adds no test job.
