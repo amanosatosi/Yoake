@@ -83,6 +83,10 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 Require(layout.TextLines.Count>=2&&Text.SourceIndex(3)==4,"Hard breaks must create real layout lines and map second-line offsets.");
                 Caret(3,5);PressKey(Key.B,KeyModifiers.Control);
                 Require(model.SelectedEvent!.Text.Contains(@"\N{\b1}ef"),$"Formatting the displayed second line must modify the corresponding source text. Source: '{model.SelectedEvent.Text}', model selection {model.TextSelectionStart}:{model.TextSelectionEnd}, display selection {Text.SelectionStart}:{Text.SelectionEnd}.");
+                PressKey(Key.Z,KeyModifiers.Control);
+                Require(model.Draft!.Text==_stable&&model.Draft.Text[model.TextSelectionStart..model.TextSelectionEnd]=="ef","Formatting undo must restore both source and the selected second-line text.");
+                PressKey(Key.Z,KeyModifiers.Control|KeyModifiers.Shift);
+                Require(model.Draft!.Text[model.TextSelectionStart..model.TextSelectionEnd]=="ef","Formatting redo must preserve the selected second-line text.");
                 Text.SetCurrentValue(AssTextBox.SourceTextProperty,_stable);
                 Caret(2,2);PressKey(Key.Enter,KeyModifiers.Shift);Require(Text.Text=="ab\n\nef"&&Text.CaretIndex==3,"Shift+Enter at a caret must insert an immediate visual break.");
                 var presenter=Text.GetVisualDescendants().OfType<TextPresenter>().Single();presenter.PreeditText="仮";

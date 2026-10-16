@@ -682,7 +682,9 @@ public sealed partial class EditorWorkflowTests : IDisposable
         await Command(CommandIds.FormatBold);Assert.Equal("Hello {\\b1}world{\\b0}",_model.SelectedEvent!.Text);
         Assert.Equal("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
         await Command(CommandIds.EditUndo);Assert.Equal("Hello world",_model.SelectedEvent.Text);
+        Assert.Equal("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
         await Command(CommandIds.EditRedo);Assert.Equal("Hello {\\b1}world{\\b0}",_model.SelectedEvent.Text);
+        Assert.Equal("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
     }
     [Fact] public async Task FormattingSwatchesAndFlagsFollowDraftStyleAndCaretWithoutMutatingText()
     {

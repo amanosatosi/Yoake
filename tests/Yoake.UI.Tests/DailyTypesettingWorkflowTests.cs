@@ -37,6 +37,10 @@ public sealed partial class EditorWorkflowTests
         await Command(CommandIds.FormatBold);
         Assert.Contains(@"Hello\N{\b1}World", first.Text);
         await Command(CommandIds.EditUndo); Assert.Equal(@"Hello\NWorld", first.Text);
+        Assert.Equal("World", _model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
+        await Command(CommandIds.EditRedo);
+        Assert.Equal("World", _model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
+        await Command(CommandIds.EditUndo);
         _model.TextCursor = _model.TextSelectionStart = _model.TextSelectionEnd = 7;
         await Command(CommandIds.GridInsertAfter); var second = _model.SelectedEvent!;
         _model.TextCursor = _model.TextSelectionStart = _model.TextSelectionEnd = 0;

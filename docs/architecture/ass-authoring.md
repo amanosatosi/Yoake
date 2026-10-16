@@ -16,6 +16,8 @@ source offsets. Weak per-event position snapshots retain caret/selection on row,
 document and history changes. Enter/IME routing is unchanged. Grid rows keep their
 compact single-line `\N` indication. The existing packaged authoring check verifies
 real two-line layout, Shift+Enter, second-line formatting and preedit isolation.
+Formatting transactions include their before/after source selection snapshots,
+so undo/redo keeps the selected text when tag insertion changes source lengths.
 
 Formatting commands analyze static overrides and the inherited style, snap selection boundaries to graphemes/ASS escape units, splice only requested tag parameters and restore the previous state after a selection. Transforms and unknown tags remain untouched. Reset inserts ASS reset semantics; it does not destructively strip arbitrary override blocks. Formatting is a semantic document undo operation, separate from committing previously typed text.
 

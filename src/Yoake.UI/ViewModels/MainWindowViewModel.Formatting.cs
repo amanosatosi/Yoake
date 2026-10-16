@@ -47,9 +47,26 @@ public sealed partial class MainWindowViewModel
         var raw=Draft.Text;
         int CommittedOffset(int index)=>AssEditorProjection.EncodeNewlines(raw[..Math.Clamp(index,0,raw.Length)]).Length;
         var start=CommittedOffset(TextSelectionStart);var end=CommittedOffset(TextSelectionEnd);
+        var beforePosition=new TextPosition(CommittedOffset(TextCursor),start,end);
         if(!CommitDraft())return;
         var edit=operation(SelectedEvent.Text,start,end,FormattingStyle);
-        ActiveEditor.SetField(SelectedEvent,"Text",edit.Text,name);ReloadDraft();
+        var editor=ActiveEditor;var line=SelectedEvent;
+        var afterPosition=new TextPosition(edit.SelectionEnd,edit.SelectionStart,edit.SelectionEnd);
+        void Position(TextPosition position)
+        {
+            _textPositions.Remove(line);_textPositions.Add(line,position);
+            if(!ReferenceEquals(ActiveEditor,editor)||!ReferenceEquals(SelectedEvent,line))return;
+            TextCursor=position.Caret;TextSelectionStart=position.Start;TextSelectionEnd=position.End;
+        }
+        if(edit.Text!=line.Text)
+        {
+            using var transaction=editor.Undo.BeginTransaction(name);
+            editor.SetField(line,"Text",edit.Text,name);
+            editor.Undo.Execute(new Yoake.Core.Undo.DelegateUndoOperation(name,()=>Position(beforePosition),()=>Position(afterPosition)));
+            transaction.Commit();
+        }
+        else Position(afterPosition);
+        ReloadDraft();
         TextSelectionStart=edit.SelectionStart;TextSelectionEnd=edit.SelectionEnd;TextCursor=edit.SelectionEnd;
         TextFormattingApplied?.Invoke(this,EventArgs.Empty);
     }
