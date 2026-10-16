@@ -34,6 +34,9 @@ the uncommitted gesture. Numeric edits, navigation and buttons invoke the same
 registry. The window retains native decorations. The session owns no document
 mutation: Apply checks document/provider/line identity and the document revision,
 then uses the existing `SubtitleEditor` and `UndoManager` for one operation.
+Apply fitting and serialization also run on a cancellable worker. Publication
+rechecks ownership and revision before entering the UI-owned undo transaction;
+Stop or Close during planning leaves the document untouched.
 
 `MotionTrackApply` preserves original ASS bytes and all dialogue fields, inserting
 one relative position layer after the leading authored overrides. Displacements

@@ -80,6 +80,21 @@ public sealed class MotionTrackingTests
         Assert.Equal(original, document.Serialize()); Assert.False(editor.Undo.CanUndo);
     }
 
+    [Fact]
+    public void PreparedApplyRejectsStaleSourceAndCancellationBeforePublication()
+    {
+        var document = AssDocument.Parse("[Events]\nFormat: Start, End, Text\nDialogue: 0:00:00.00,0:00:00.08,text\n");
+        var editor = new SubtitleEditor(document); var line = document.Events[0];
+        var prepared = MotionTrackApply.Plan("text", [new(0, 40, 40), new(1, 42, 41)], [0, .04], 0, 0, 80, 1, 1);
+        using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() => editor.ApplyMotionPlan(line, "text", prepared, cancellation.Token));
+        Assert.Equal("text", line.Text); Assert.False(editor.Undo.CanUndo);
+        editor.SetField(line, "Text", "new authoring edit", "Author edit");
+        var changed = document.Serialize();
+        Assert.Throws<InvalidOperationException>(() => editor.ApplyMotionPlan(line, "text", prepared));
+        Assert.Equal(changed, document.Serialize()); Assert.Equal("Author edit", editor.Undo.NextUndoName);
+    }
+
     private static byte[] Frame(int dx, int dy)
     {
         var pixels = new byte[128 * 96 * 4];

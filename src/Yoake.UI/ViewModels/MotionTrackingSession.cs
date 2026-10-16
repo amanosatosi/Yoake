@@ -123,6 +123,7 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
         finally { _work = null; Busy = false; Notify(); }
     }
     public void Stop() => _work?.Cancel();
+    public Task ApplyAsync(Func<CancellationToken, Task> prepareAndPublish) => RunAsync(prepareAndPublish);
     public async Task CloseAsync()
     {
         if (_closed) return; _closed = true; _lifetime.Cancel();

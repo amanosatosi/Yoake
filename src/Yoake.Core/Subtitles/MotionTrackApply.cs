@@ -105,6 +105,14 @@ public sealed partial class SubtitleEditor
         if (line.Text != expectedSource) throw new InvalidOperationException("The subtitle changed while tracking. Reopen motion tracking for this line.");
         var text = MotionTrackApply.Plan(line.Text, points, frameTimes, referenceFrame,
             line.StartMilliseconds ?? 0, line.EndMilliseconds ?? 0, scaleX, scaleY, token);
+        ApplyMotionPlan(line, expectedSource, text, token);
+    }
+    // Planning can run on a worker. Publication alone enters the document's
+    // existing undo boundary on its owning UI thread.
+    public void ApplyMotionPlan(AssEvent line, string expectedSource, string text, CancellationToken token = default)
+    {
+        Require(line); token.ThrowIfCancellationRequested();
+        if (line.Text != expectedSource) throw new InvalidOperationException("The subtitle changed while preparing motion. Reopen motion tracking for this line.");
         using var transaction = Undo.BeginTransaction("Apply motion tracking");
         SetField(line, "Text", text, "Apply motion tracking");
         token.ThrowIfCancellationRequested(); transaction.Commit();

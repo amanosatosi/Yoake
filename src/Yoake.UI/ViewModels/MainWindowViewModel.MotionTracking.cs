@@ -58,13 +58,23 @@ public sealed partial class MainWindowViewModel
         Register("motion-track/backward", "Track backward", async (_, _) => await MotionTracking!.TrackAsync(-1), Idle);
         Register("motion-track/stop", "Stop tracking", (_, _) => { MotionTracking!.Stop(); return ValueTask.CompletedTask; }, () => MotionTracking is { Busy: true });
         Register("motion-track/viewable", "Viewable preview", (invocation, _) => { MotionTracking!.Viewable = invocation.Parameter is true; return ValueTask.CompletedTask; }, Idle);
-        Register("motion-track/apply", "Apply position tracking", (_, token) =>
+        Register("motion-track/apply", "Apply position tracking", async (_, token) =>
         {
             if (ActiveEditor!.Document.Revision != _motionRevision || Draft?.IsChanged == true) throw new InvalidOperationException("The subtitle document changed during tracking. Reopen motion tracking before applying.");
-            var session = MotionTracking!; var size = ScriptSize;
-            ActiveEditor.ApplyMotion(_motionLine!, _motionSource, session.Points, session.FrameTimes, session.ReferenceFrame,
-                size.Width / session.Width, size.Height / session.Height, token);
-            ReloadDraft(); MotionApplied?.Invoke(this, EventArgs.Empty); return ValueTask.CompletedTask;
+            var session = MotionTracking!; var size = ScriptSize; var editor = ActiveEditor; var line = _motionLine!;
+            var source = _motionSource; var points = session.Points; var reference = session.ReferenceFrame;
+            var start = line.StartMilliseconds!.Value; var end = line.EndMilliseconds!.Value;
+            await session.ApplyAsync(async lifetime =>
+            {
+                using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime);
+                var text = await Task.Run(() => MotionTrackApply.Plan(source, points, session.FrameTimes, reference,
+                    start, end, size.Width / session.Width, size.Height / session.Height, cancellation.Token), cancellation.Token);
+                cancellation.Token.ThrowIfCancellationRequested();
+                if (!MotionOwnerCurrent || !ReferenceEquals(ActiveEditor, editor) || editor.Document.Revision != _motionRevision || Draft?.IsChanged == true)
+                    throw new InvalidOperationException("The subtitle document or video changed while preparing motion. Reopen motion tracking before applying.");
+                editor.ApplyMotionPlan(line, source, text, cancellation.Token);
+                ReloadDraft(); MotionApplied?.Invoke(this, EventArgs.Empty);
+            });
         }, () => Idle() && MotionTracking!.CanApply);
     }
     private void MotionStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
