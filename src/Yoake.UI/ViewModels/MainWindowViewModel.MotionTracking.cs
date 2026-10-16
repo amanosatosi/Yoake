@@ -10,11 +10,12 @@ public sealed partial class MainWindowViewModel
     public MotionTrackingSession? MotionTracking { get; private set; }
     private Guid? _motionOwner;
     private IVideoProvider? _motionProvider;
+    private IReadOnlyList<double>? _motionFrameTimes;
     private AssEvent? _motionLine;
     private string _motionSource = "";
     private long _motionRevision;
     public event EventHandler? MotionApplied;
-    private bool MotionOwnerCurrent => !_disposed && _motionOwner == _activeId && ReferenceEquals(_motionProvider, _media?.VideoProvider) && ReferenceEquals(_motionLine, SelectedEvent);
+    private bool MotionOwnerCurrent => !_disposed && _motionOwner == _activeId && ReferenceEquals(_motionProvider, _media?.VideoProvider) && ReferenceEquals(_motionFrameTimes, FrameTimes) && ReferenceEquals(_motionLine, SelectedEvent);
     private void RegisterMotionTrackingCommands()
     {
         void Register(string id, string label, Func<CommandInvocation, CancellationToken, ValueTask> execute, Func<bool> enabled)
@@ -27,7 +28,7 @@ public sealed partial class MainWindowViewModel
         {
             if (!CommitDraft() || Dialogs is null || _media is null || SelectedEvent is not {} line) return;
             StopPlayback();
-            _motionOwner = _activeId; _motionProvider = _media.VideoProvider; _motionLine = line;
+            _motionOwner = _activeId; _motionProvider = _media.VideoProvider; _motionFrameTimes = FrameTimes; _motionLine = line;
             _motionSource = line.Text; _motionRevision = ActiveEditor!.Document.Revision;
             var session = new MotionTrackingSession(_media, FrameTimes, CurrentFrame, line.StartMilliseconds!.Value, line.EndMilliseconds!.Value, token);
             MotionTracking = session;
@@ -42,7 +43,7 @@ public sealed partial class MainWindowViewModel
             {
                 session.PropertyChanged -= MotionStateChanged;
                 try { await session.CloseAsync(); }
-                finally { MotionTracking = null; _motionOwner = null; _motionLine = null; _motionProvider = null; _registry.NotifyStateChanged(); }
+                finally { MotionTracking = null; _motionOwner = null; _motionLine = null; _motionProvider = null; _motionFrameTimes = null; _registry.NotifyStateChanged(); }
             }
         }, () => MotionTracking is null && Dialogs is not null && !HasGesture && !IsKaraokeMode && _media?.VideoProvider is { HasVideo: true } && FrameTimes.Count > 1 && SelectedEvent is { IsComment: false, StartMilliseconds: {} start, EndMilliseconds: {} end } && end > start);
         bool Idle() => MotionOwnerCurrent && MotionTracking is { Busy: false };
