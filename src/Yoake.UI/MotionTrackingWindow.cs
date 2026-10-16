@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Yoake.Core.Commands;
 using Yoake.Core.Media;
 using Yoake.UI.ViewModels;
 
@@ -28,7 +29,7 @@ public sealed class MotionTrackingWindow : Window
         _preview.Name = "MotionTrackPreview";
         Grid.SetRow(_preview, 1); root.Children.Add(_preview);
         var navigation = new Grid { ColumnDefinitions = new("Auto,*,Auto,Auto"), ColumnSpacing = 6 };
-        var previous = new Button { Content = "◀" };
+        var previous = new Button { Content = "Previous" };
         previous.Click += (_, _) => model.Actions["motion-track/frame"].Execute(_session.CurrentFrame - 1);
         // These navigation buttons supply a relative frame as input plumbing;
         // frame inspection itself is owned by the same registered command.
@@ -36,7 +37,7 @@ public sealed class MotionTrackingWindow : Window
         _frames = new Slider { Minimum = _session.FirstFrame, Maximum = _session.LastFrame, TickFrequency = 1, IsSnapToTickEnabled = true };
         _frames.PropertyChanged += (_, e) => { if (!_updating && e.Property == Slider.ValueProperty) model.Actions["motion-track/frame"].Execute((int)Math.Round(_frames.Value)); };
         Grid.SetColumn(_frames, 1); navigation.Children.Add(_frames);
-        var next = new Button { Content = "▶" }; next.Click += (_, _) => model.Actions["motion-track/frame"].Execute(_session.CurrentFrame + 1);
+        var next = new Button { Content = "Next" }; next.Click += (_, _) => model.Actions["motion-track/frame"].Execute(_session.CurrentFrame + 1);
         Grid.SetColumn(next, 2); navigation.Children.Add(next); Grid.SetColumn(_frameLabel, 3); navigation.Children.Add(_frameLabel);
         Grid.SetRow(navigation, 2); root.Children.Add(navigation);
         var settings = new WrapPanel { Orientation = Orientation.Horizontal };
@@ -60,12 +61,12 @@ public sealed class MotionTrackingWindow : Window
         var footer = new StackPanel { Spacing = 6 };
         _status.TextWrapping = TextWrapping.Wrap; footer.Children.Add(_status);
         var actions = new WrapPanel();
-        foreach (var (label, id) in new[] { ("Set reference", "reference"), ("Track ◀", "backward"), ("Track ▶", "forward"), ("Stop", "stop"), ("Reset", "reset"), ("Apply position", "apply") })
+        foreach (var (label, id) in new[] { ("Set reference", "reference"), ("Track backward", "backward"), ("Track forward", "forward"), ("Stop", "stop"), ("Reset", "reset"), ("Apply position", "apply") })
             actions.Children.Add(new Button { Name = "MotionTrack_" + id, Content = label, Command = model.Actions["motion-track/" + id], Margin = new(0, 0, 6, 0), Padding = new(8, 3) });
         var close = new Button { Content = "Close", IsCancel = true }; close.Click += (_, _) => Close(); actions.Children.Add(close);
         footer.Children.Add(actions); Grid.SetRow(footer, 4); root.Children.Add(footer); Content = root;
-        _session.PropertyChanged += SessionChanged; model.MotionApplied += Applied;
-        Closed += (_, _) => { _session.Stop(); _session.PropertyChanged -= SessionChanged; model.MotionApplied -= Applied; };
+        _session.PropertyChanged += SessionChanged; model.MotionApplied += Applied; model.Registry.CommandFailed += CommandFailed;
+        Closed += (_, _) => { _session.Stop(); _session.PropertyChanged -= SessionChanged; model.MotionApplied -= Applied; model.Registry.CommandFailed -= CommandFailed; };
         Refresh();
     }
     private static NumericUpDown Number(string label, int value, int minimum, int maximum, Panel panel)
@@ -75,6 +76,10 @@ public sealed class MotionTrackingWindow : Window
         panel.Children.Add(number); return number;
     }
     private void SessionChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => Refresh();
+    private void CommandFailed(object? sender, CommandFailureEventArgs e)
+    {
+        if (e.CommandId.StartsWith("motion-track/", StringComparison.Ordinal)) _status.Text = e.Exception.Message;
+    }
     private void Applied(object? sender, EventArgs args) => Close();
     private void Refresh()
     {
