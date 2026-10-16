@@ -82,7 +82,7 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 var layout=Text.GetVisualDescendants().OfType<TextPresenter>().Single().TextLayout;
                 Require(layout.TextLines.Count>=2&&Text.SourceIndex(3)==4,"Hard breaks must create real layout lines and map second-line offsets.");
                 Caret(3,5);PressKey(Key.B,KeyModifiers.Control);
-                Require(model.SelectedEvent!.Text.Contains(@"\N{\b1}ef"),"Formatting the displayed second line must modify the corresponding source text.");
+                Require(model.SelectedEvent!.Text.Contains(@"\N{\b1}ef"),$"Formatting the displayed second line must modify the corresponding source text. Source: '{model.SelectedEvent.Text}', model selection {model.TextSelectionStart}:{model.TextSelectionEnd}, display selection {Text.SelectionStart}:{Text.SelectionEnd}.");
                 Text.SetCurrentValue(AssTextBox.SourceTextProperty,_stable);
                 Caret(2,2);PressKey(Key.Enter,KeyModifiers.Shift);Require(Text.Text=="ab\n\nef"&&Text.CaretIndex==3,"Shift+Enter at a caret must insert an immediate visual break.");
                 var presenter=Text.GetVisualDescendants().OfType<TextPresenter>().Single();presenter.PreeditText="仮";

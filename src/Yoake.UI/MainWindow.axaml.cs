@@ -364,8 +364,8 @@ public partial class MainWindow : Window, IEditorDialogs
         if(commandId is null)return;
         if(commandId==CommandIds.TextHardNewline&&!SubtitleText.IsKeyboardFocusWithin)return;
         if(commandId==CommandIds.EditCommitNext && context==HotkeyContext.SubtitleEdit && !SubtitleText.IsKeyboardFocusWithin)commandId=CommandIds.EditCommit;
-        _model.TextCursor=SubtitleText.CaretIndex;
-        _model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;
+        _model.TextCursor=SubtitleText.SourceIndex(SubtitleText.CaretIndex);
+        _model.TextSelectionStart=SubtitleText.SourceIndex(SubtitleText.SelectionStart);_model.TextSelectionEnd=SubtitleText.SourceIndex(SubtitleText.SelectionEnd);
         e.Handled=true;
         await _model.Registry.InvokeAsync(commandId,new(_model.ActiveDocumentId,FocusContext:context.ToString()));
     }
