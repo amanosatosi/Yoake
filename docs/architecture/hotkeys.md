@@ -8,6 +8,15 @@ The window derives the active context from focused control ancestry. Resolution 
 
 The native editor owns typing, caret navigation, word deletion, clipboard shortcuts and AltGr input. IME preedit and open completion dropdowns retain Enter. Explicit edit-box commit/next, hard newline, formatting and assistant-local keys pass through their proper contexts. Assistant windows must supply their own focused contexts when their workflows are implemented; context enum/table presence alone is not a completed assistant.
 
+Toshi-ban's Default Alt+C addition maps `edit/line/comment` to the existing
+`grid/toggle-comment` ID, including customized/removed legacy override rows.
+Edit and grid menus share this action. All-comment selections become dialogue;
+every other selection becomes comment, in one transaction, preserving selection
+and exact prefix spelling through undo. The active-line Comment checkbox retains
+its separate explicit-state command. Reference: Toshi-ban `src/command/edit.cpp`
+and `src/libresrc/default_hotkey.json` at
+`b5d188f4d570468857a7731488df3c5a9a9c8037`.
+
 Options shows commands and effective bindings by context, captures an actual gesture, and supports add/change/remove/clear, conflict reporting and command/context/all resets. All changes invoke semantic settings commands, persist immediately and update menu display and command adapters on the UI dispatcher. `MenuItem.InputGesture` displays the effective shortcut; `HotKey` is deliberately unused because it would bypass contextual resolution and IME protection. Dynamic Automation menu adapters share the profile without changing the frozen Lua runtime.
 
 Core tests cover exact tables, precedence, migration, conflicts, multiple bindings, removal/resets, invalid entries, persistence and text isolation. Adapter tests cover live shortcut/history/radio metadata. A separate packaged launch sends real routed keys through the shipping focused controls and manipulates the actual Options controls; a second launch reuses the first profile. It supplements the full existing startup verification. Physical OS keyboard layout, AltGr, keypad distinctions and real IME/hardware/DPI remain manual QA.

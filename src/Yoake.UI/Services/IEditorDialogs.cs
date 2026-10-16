@@ -5,6 +5,7 @@ namespace Yoake.UI.Services;
 public enum UnsavedChoice { Cancel, Discard, Save }
 public interface IEditorDialogs
 {
+    Task ShowMotionTrackingAsync(Yoake.UI.ViewModels.MainWindowViewModel model, CancellationToken token) => throw new NotSupportedException("Motion tracking is unavailable.");
     Task ShowResampleAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid id,CancellationToken token)=>throw new NotSupportedException("Resolution resampling is unavailable.");
     Task ShowFontCollectorAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid id,CancellationToken token)=>throw new NotSupportedException("Fonts Collector is unavailable.");
     Task<bool> ShowAssDrawMissingAsync(CancellationToken token)=>Task.FromResult(false);

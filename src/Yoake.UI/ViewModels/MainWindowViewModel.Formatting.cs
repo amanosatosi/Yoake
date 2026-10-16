@@ -5,6 +5,24 @@ namespace Yoake.UI.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    private sealed record TextPosition(int Caret, int Start, int End);
+    private readonly System.Runtime.CompilerServices.ConditionalWeakTable<AssEvent, TextPosition> _textPositions = new();
+    private AssEvent? _textPositionLine;
+    private void RestoreTextPosition()
+    {
+        if (_textPositionLine is {} previous)
+        {
+            _textPositions.Remove(previous);
+            _textPositions.Add(previous, new(TextCursor, TextSelectionStart, TextSelectionEnd));
+        }
+        _textPositionLine = SelectedEvent;
+        var position = SelectedEvent is {} line && _textPositions.TryGetValue(line, out var saved) ? saved : new TextPosition(0, 0, 0);
+        var length = Draft?.Text.Length ?? 0;
+        TextCursor = Math.Clamp(position.Caret, 0, length);
+        TextSelectionStart = Math.Clamp(position.Start, 0, length);
+        TextSelectionEnd = Math.Clamp(position.End, 0, length);
+        SearchSelectionApplied?.Invoke(this, EventArgs.Empty);
+    }
     private int _textSelectionStart, _textSelectionEnd;
     public int TextSelectionStart {get=>_textSelectionStart;set{if(_textSelectionStart==value)return;_textSelectionStart=value;RefreshFormatting();}}
     public int TextSelectionEnd {get=>_textSelectionEnd;set{if(_textSelectionEnd==value)return;_textSelectionEnd=value;RefreshFormatting();}}
@@ -24,9 +42,7 @@ public sealed partial class MainWindowViewModel
     private void FormatText(string name,Func<string,int,int,AssStyle,AssTextEdit> operation)
     {
         if(Draft is null||SelectedEvent is null||ActiveEditor is null)return;
-        var raw=Draft.Text;
-        int Normalize(int index)=>raw[..Math.Clamp(index,0,raw.Length)].Replace("\r\n","\\N").Replace("\r","\\N").Replace("\n","\\N").Length;
-        var start=Normalize(TextSelectionStart);var end=Normalize(TextSelectionEnd);
+        var start=TextSelectionStart;var end=TextSelectionEnd;
         if(!CommitDraft())return;
         var edit=operation(SelectedEvent.Text,start,end,FormattingStyle);
         ActiveEditor.SetField(SelectedEvent,"Text",edit.Text,name);ReloadDraft();

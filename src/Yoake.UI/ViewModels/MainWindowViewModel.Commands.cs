@@ -129,7 +129,7 @@ public sealed partial class MainWindowViewModel
         foreach(var item in new[]{(CommandIds.FormatPrimary,1),(CommandIds.FormatSecondary,2),(CommandIds.FormatOutline,3),(CommandIds.FormatShadow,4)})
         {var channel=item.Item2;R(item.Item1,"Choose subtitle color…",_=>FormatColorAsync(channel),HasLine);}
         S(CommandIds.FormatReset,"Reset to line style",()=>FormatText("Reset formatting",(text,start,end,style)=>AssFormatting.Reset(text,start,end,style,ResolveFormatStyle)),HasLine);
-        R(CommandIds.EditComment,"Dialogue / Comment",invocation=>{if(invocation.Parameter is bool desired)RunEdit(e=>{if(SelectedEvent!.IsComment!=desired)e.ToggleComment([SelectedEvent]);});return ValueTask.CompletedTask;},HasLine);
+        R(CommandIds.EditComment,"Comment / Uncomment Lines",invocation=>{if(invocation.Parameter is bool desired)RunEdit(e=>{if(SelectedEvent!.IsComment!=desired)e.ToggleComment([SelectedEvent]);});return ValueTask.CompletedTask;},HasLine);
 
         void GestureStep(Action action){try{action();}catch{CancelGestureCore();throw;}}
         R(CommandIds.GestureBegin,"Begin editor gesture",i=>{BeginGestureCore(i.Parameter as string??"Edit subtitle");return ValueTask.CompletedTask;});
@@ -165,7 +165,7 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.GridInsertAfter,"Insert after",()=>RunEdit(e=>Select(e.Insert(SelectedEvent,true,SelectedEvent?.EndMilliseconds??(long)(CurrentTimeSeconds*1000)))));
         S(CommandIds.GridDuplicate,"Duplicate",()=>RunEdit(e=>{var copies=e.Duplicate(Selection()); SelectCopies(copies);}),HasLine);
         S(CommandIds.GridDelete,"Delete selected",()=>RunEdit(e=>{var index=SelectedEvent is null?0:Events.ToList().IndexOf(SelectedEvent); e.Delete(Selection());Select(Events.ElementAtOrDefault(Math.Min(index,Events.Count-1)));}),HasLine);
-        S(CommandIds.GridToggleComment,"Dialogue / Comment",()=>RunEdit(e=>e.ToggleComment(Selection())),HasLine);
+        S(CommandIds.GridToggleComment,"Comment / Uncomment Lines",()=>RunEdit(e=>e.ToggleComment(Selection())),HasLine);
         S(CommandIds.GridSplit,"Split at cursor",()=>RunEdit(e=>Select(e.Split(SelectedEvent!,TextCursor))),HasLine);
         S(CommandIds.GridJoin,"Join selected lines",()=>RunEdit(e=>e.Join(Selection())),HasLine);
         S(CommandIds.GridMoveUp,"Move up",()=>RunEdit(e=>e.Move(Selection(),-1)),HasLine);

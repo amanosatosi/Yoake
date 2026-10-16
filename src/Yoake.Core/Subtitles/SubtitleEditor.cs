@@ -123,8 +123,11 @@ public sealed partial class SubtitleEditor(AssDocument document)
     }
     public void ToggleComment(IEnumerable<AssEvent> selection)
     {
-        var lines = Ordered(selection); using var transaction = Undo.BeginTransaction("Toggle Dialogue / Comment");
-        foreach (var line in lines) { var was = line.IsComment; var prefix=line.Prefix; Undo.Execute(new DelegateUndoOperation("Toggle comment", () => line.RestorePrefix(prefix), () => line.SetKind(!was))); }
+        var lines = Ordered(selection); if (lines.Length == 0) return;
+        var comment = !lines.All(line => line.IsComment);
+        using var update = Document.BeginUpdate();
+        using var transaction = Undo.BeginTransaction("Comment / Uncomment Lines");
+        foreach (var line in lines.Where(line => line.IsComment != comment)) { var prefix=line.Prefix; Undo.Execute(new DelegateUndoOperation("Comment / Uncomment Lines", () => line.RestorePrefix(prefix), () => line.SetKind(comment))); }
         transaction.Commit();
     }
     public void Move(IEnumerable<AssEvent> selection, int direction)

@@ -255,6 +255,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterResampleCommands();
         RegisterFontCollectorCommands();
         RegisterAssDrawCommands();
+        RegisterMotionTrackingCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
@@ -272,6 +273,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
         SelectedEvent?.ShowDraft(null);Draft=SelectedEvent is {} line?new EventEditDraft(line):null;
+        RestoreTextPosition();
         RefreshOriginalText();
         if(!_publishingKaraoke)EnsureKaraokeSafe();NotifyKaraoke(false);UpdateAudioPlaybackEnd();
         if(AssVisualTags.Clip(Draft?.Text??"") is {} clip)InverseClip=clip.Inverse;
@@ -479,6 +481,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public void Dispose()
     {
+        MotionTracking?.Stop();
         _recoveryTimer.Stop();foreach(var id in _documents.Keys){CancelAttachmentWork(id);InvalidateRecovery(id);}
         if (!_disposed) DisposeAutomation();
         if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); foreach(var state in _documents.Values){state.AudioExport?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();} _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;

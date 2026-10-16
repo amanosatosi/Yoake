@@ -21,6 +21,7 @@ namespace Yoake.UI;
 public partial class MainWindow : Window, IEditorDialogs
 {
     private bool _closingAllowed, _closingPending, _selectionSync;
+    private long _textSelectionGeneration;
     private MainWindowViewModel? _model;
     private bool _videoRegionShown = true;
     private GridLength _videoWidth = new(6, GridUnitType.Star), _textWidth = new(7, GridUnitType.Star);
@@ -53,7 +54,7 @@ public partial class MainWindow : Window, IEditorDialogs
         AudioSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;},RoutingStrategies.Tunnel);
         AudioSplitter.KeyUp+=(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;};
         TitleTabStrip.SizeChanged+=(_,_)=>UpdateTabLimit();
-        SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_model.TextCursor=SubtitleText.CaretIndex;_model.TextSelectionStart=SubtitleText.SelectionStart;_model.TextSelectionEnd=SubtitleText.SelectionEnd;}};
+        SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&!SubtitleText.IsProjecting&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_textSelectionGeneration++;_model.TextCursor=SubtitleText.SourceIndex(SubtitleText.CaretIndex);_model.TextSelectionStart=SubtitleText.SourceIndex(SubtitleText.SelectionStart);_model.TextSelectionEnd=SubtitleText.SourceIndex(SubtitleText.SelectionEnd);}};
         Closing+=HandleClosing;
         Deactivated+=VideoHostDeactivated;
         Closed+=(_,_)=>{MoveVideoHost(false);AudioDisplay.Model=null;_model?.Dispose();};
@@ -153,18 +154,20 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private void FormattingApplied(object? sender,EventArgs args)
     {
-        if(_model is null)return;var start=_model.TextSelectionStart;var end=_model.TextSelectionEnd;var cursor=_model.TextCursor;SubtitleText.Focus();SubtitleText.CaretIndex=cursor;SubtitleText.SelectionStart=start;SubtitleText.SelectionEnd=end;
+        _textSelectionGeneration++;
+        if(_model is null)return;var start=SubtitleText.DisplayIndex(_model.TextSelectionStart);var end=SubtitleText.DisplayIndex(_model.TextSelectionEnd);var cursor=SubtitleText.DisplayIndex(_model.TextCursor);SubtitleText.Focus();SubtitleText.CaretIndex=cursor;SubtitleText.SelectionStart=start;SubtitleText.SelectionEnd=end;
     }
     private void SearchSelectionApplied(object? sender,EventArgs args)
     {
         if(_model is not {} model)return;
         var document=model.ActiveDocumentId;var line=model.SelectedEvent;var start=model.TextSelectionStart;var end=model.TextSelectionEnd;
+        var generation=++_textSelectionGeneration;
         Dispatcher.UIThread.Post(()=>
         {
-            if(!ReferenceEquals(_model,model)||model.ActiveDocumentId!=document||!ReferenceEquals(model.SelectedEvent,line))return;
+            if(generation!=_textSelectionGeneration||!ReferenceEquals(_model,model)||model.ActiveDocumentId!=document||!ReferenceEquals(model.SelectedEvent,line))return;
             // Apply after the new draft binding, retaining focus in the modeless
             // search window or the control which issued Find Next.
-            SubtitleText.CaretIndex=end;SubtitleText.SelectionStart=start;SubtitleText.SelectionEnd=end;
+            SubtitleText.CaretIndex=SubtitleText.DisplayIndex(end);SubtitleText.SelectionStart=SubtitleText.DisplayIndex(start);SubtitleText.SelectionEnd=SubtitleText.DisplayIndex(end);
         });
     }
     private WeakReference<Control>? _previousVideoFocus;
@@ -182,6 +185,12 @@ public partial class MainWindow : Window, IEditorDialogs
         VideoSeekBar.Focus();
     }
     public Task<VideoJumpRequest?> ShowVideoJumpAsync(MainWindowViewModel model)=>new VideoJumpWindow(model).ShowDialog<VideoJumpRequest?>(this);
+    public async Task ShowMotionTrackingAsync(MainWindowViewModel model, CancellationToken token)
+    {
+        var dialog = new MotionTrackingWindow(model);
+        using var cancel = token.Register(() => Dispatcher.UIThread.Post(() => { if (dialog.IsVisible) dialog.Close(); }));
+        await dialog.ShowDialog(this);
+    }
     public async Task ShowShiftTimesAsync(MainWindowViewModel model)=>await new ShiftTimesWindow(model).ShowDialog(this);
     public async Task ShowAudioTimingOptionsAsync(MainWindowViewModel model)=>await new AudioTimingOptionsWindow(model).ShowDialog(this);
     public async Task ShowSelectLinesAsync(MainWindowViewModel model)=>await new SelectLinesWindow(model).ShowDialog(this);

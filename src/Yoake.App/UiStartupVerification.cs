@@ -66,12 +66,12 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             if (!_editorVerified)
             {
                 const string source = "{\\bord2\\1c&H88FF00&\\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦\\NHello";
-                text.SetCurrentValue(TextBox.TextProperty, source);
+                text.SetCurrentValue(AssTextBox.SourceTextProperty, source);
                 Require(model.Draft?.Text == source, "Real ASS TextBox must update the edit draft without rewriting source.");
                 Invoke(CommandIds.EditCommit);
-                text.CaretIndex = source.Length;
-                text.SelectionStart = source.Length - 5;
-                text.SelectionEnd = source.Length;
+                text.CaretIndex = text.DisplayIndex(source.Length);
+                text.SelectionStart = text.DisplayIndex(source.Length - 5);
+                text.SelectionEnd = text.DisplayIndex(source.Length);
                 Invoke(CommandIds.FormatBold);
                 Require(model.SelectedEvent!.Text.EndsWith("{\\b1}Hello{\\b0}", StringComparison.Ordinal), "Real selection formatting must preserve text and restore bold state.");
                 Require(text.Text![Math.Min(text.SelectionStart,text.SelectionEnd)..Math.Max(text.SelectionStart,text.SelectionEnd)]=="Hello", "Native text selection must stay on formatted visible text.");

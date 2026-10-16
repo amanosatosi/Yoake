@@ -29,6 +29,7 @@ public static partial class AegisubHotkeyDefaults
         "edit/line/duplicate/shift_back" => "edit/line/split/after",
         "edit/line/copy" => "grid/copy", "edit/line/cut" => "grid/cut", "edit/line/paste" => "grid/paste",
         "edit/line/delete" => "grid/delete", "grid/line/prev" => "grid/line/previous",
+        "edit/line/comment" => "grid/toggle-comment",
         "grid/line/next/create" => "edit/commit-next", "subtitle/save/as" => "subtitle/save-as",
         "subtitle/select/all" => "grid/select-all", "subtitle/find" => "edit/find",
         "video/frame/prev" => "video/frame/previous",
@@ -64,6 +65,7 @@ public static partial class AegisubHotkeyDefaults
         Add("grid/insert/before", HotkeyContext.SubtitleGrid, "Ctrl-Insert");
         Add("grid/delete", HotkeyContext.SubtitleGrid, "Delete");
         Add("grid/duplicate", HotkeyContext.Default, "Ctrl-Alt-D");
+        Add("grid/toggle-comment", HotkeyContext.Default, "Alt-C");
         Add("grid/split", HotkeyContext.Default, "Ctrl-Alt-Shift-D");
         Add("grid/line/next", HotkeyContext.Default, "Alt-PageDown");
         Add("grid/line/previous", HotkeyContext.Default, "Alt-PageUp");

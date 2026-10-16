@@ -4,6 +4,19 @@ The ASS editor remains an Avalonia TextBox. Its TextPresenter supplies colored t
 
 The lightweight scanner handles incomplete blocks, nested function arguments, drawing mode, colors, escapes, karaoke and Mangetsu furigana. The tag catalog references Mangetsu parser names and can be extended without changing the text control. Unknown syntax stays editable. Highlighting currently rescans the changed line, with cached results when only selection/layout changes; it does not maintain a document-wide parser.
 
+`AssEditorProjection` maps valid hard `\N` escape tokens outside override blocks
+to actual displayed LF characters. Escaped backslashes and override parameters
+remain literal. `AssTextBox.SourceText` binds to the lossless ASS draft; native
+TextBox.Text, layout, selection and clipboard use displayed coordinates. Only the
+changed displayed range is mapped/spliced back into source, encoding intended
+clipboard/Shift+Enter hard breaks as `\N`. Soft wrapping changes no text. The
+MainWindow boundary translates caret and selection in both directions; formatting,
+color/font tools, cursor splitting, search, recovery and karaoke continue to use
+source offsets. Weak per-event position snapshots retain caret/selection on row,
+document and history changes. Enter/IME routing is unchanged. Grid rows keep their
+compact single-line `\N` indication. The existing packaged authoring check verifies
+real two-line layout, Shift+Enter, second-line formatting and preedit isolation.
+
 Formatting commands analyze static overrides and the inherited style, snap selection boundaries to graphemes/ASS escape units, splice only requested tag parameters and restore the previous state after a selection. Transforms and unknown tags remain untouched. Reset inserts ASS reset semantics; it does not destructively strip arbitrary override blocks. Formatting is a semantic document undo operation, separate from committing previously typed text.
 
 Styles Manager keeps its directly editable pane. Standard fields use font, numeric, boolean, color and alignment controls; extra Format fields remain in Advanced. A draft updates live preview and commits on focus loss, selection change or Apply through the command registry and existing document-local style transactions. Rename updates event references; deletion requires a replacement style only when script events reference it.

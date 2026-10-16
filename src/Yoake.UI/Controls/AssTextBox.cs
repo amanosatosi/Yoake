@@ -14,6 +14,49 @@ namespace Yoake.UI.Controls;
 // shaped-cluster navigation. Only its real text presenter's colors change.
 public sealed class AssTextBox : TextBox
 {
+    public static readonly StyledProperty<string> SourceTextProperty = AvaloniaProperty.Register<AssTextBox, string>(nameof(SourceText), "", defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+    public string SourceText { get => GetValue(SourceTextProperty); set => SetValue(SourceTextProperty, value); }
+    private AssEditorProjection _projection = new("");
+    private bool _projecting;
+    public bool IsProjecting => _projecting;
+    public int SourceIndex(int display) => Text == _projection.Display ? _projection.ToSource(display) : AssEditorProjection.EncodeNewlines((Text ?? "")[..Math.Clamp(display, 0, Text?.Length ?? 0)]).Length;
+    public int DisplayIndex(int source) => _projection.ToDisplay(source);
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (_projecting) return;
+        if (change.Property == SourceTextProperty)
+        {
+            var caret = SourceIndex(CaretIndex); var start = SourceIndex(SelectionStart); var end = SourceIndex(SelectionEnd);
+            _projecting = true;
+            try
+            {
+                _projection = new(SourceText ?? "");
+                SetCurrentValue(TextProperty, _projection.Display);
+                CaretIndex = DisplayIndex(caret); SelectionStart = DisplayIndex(start); SelectionEnd = DisplayIndex(end);
+            }
+            finally { _projecting = false; }
+        }
+        else if (change.Property == TextProperty)
+        {
+            var display = Text ?? "";
+            var source = _projection.Edit(display);
+            _projection = new(source);
+            // Keep the native input/IME transaction and its selection intact.
+            _projecting = true;
+            try { SetCurrentValue(SourceTextProperty, source); }
+            finally { _projecting = false; }
+            if (display != _projection.Display)
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (Text != display || this.GetVisualDescendants().OfType<TextPresenter>().Any(p => !string.IsNullOrEmpty(p.PreeditText))) return;
+                    var caret = SourceIndex(CaretIndex); var start = SourceIndex(SelectionStart); var end = SourceIndex(SelectionEnd);
+                    _projecting = true;
+                    try { SetCurrentValue(TextProperty, _projection.Display); CaretIndex = DisplayIndex(caret); SelectionStart = DisplayIndex(start); SelectionEnd = DisplayIndex(end); }
+                    finally { _projecting = false; }
+                });
+        }
+    }
     protected override void OnKeyDown(KeyEventArgs e)
     {
         // An Enter still delivered during composition belongs to the IME;

@@ -91,7 +91,7 @@
 <MenuItem Header="Insert after" InputGesture="{Binding Actions[grid/insert/after].InputGesture}" Command="{Binding Actions[grid/insert/after]}" />
 <MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />
 <MenuItem Header="Delete selected" InputGesture="{Binding Actions[grid/delete].InputGesture}" Command="{Binding Actions[grid/delete]}" />
-<MenuItem Header="Dialogue / Comment" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
+<MenuItem Header="Comment / Uncomment Lines" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
 <MenuItem Header="Split at text cursor">
 <MenuItem Header="Preserve times" InputGesture="{Binding Actions[edit/line/split/preserve].InputGesture}" Command="{Binding Actions[edit/line/split/preserve]}" />
 <MenuItem Header="Estimate times" InputGesture="{Binding Actions[edit/line/split/estimate].InputGesture}" Command="{Binding Actions[edit/line/split/estimate]}" />
@@ -162,6 +162,7 @@
 <MenuItem Name="RecentVideoMenu" Header="Recent video" />
 <MenuItem Name="OpenDummyVideoMenu" Header="Use dummy video…" Command="{Binding Actions[video/open/dummy]}" InputGesture="{Binding Actions[video/open/dummy].InputGesture}" />
 <MenuItem Name="VideoDetailsMenu" Header="Show video details" Command="{Binding Actions[video/details]}" InputGesture="{Binding Actions[video/details].InputGesture}" />
+<MenuItem Header="Track motion…" Command="{Binding Actions[video/motion-track]}" InputGesture="{Binding Actions[video/motion-track].InputGesture}" />
 <MenuItem Name="VideoAspectMenu" Header="Aspect ratio">
 <MenuItem Name="VideoAspectdefaultMenu" Header="Default" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/default].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/default]}" InputGesture="{Binding Actions[video/aspect/default].InputGesture}" />
 <MenuItem Name="VideoAspectfullMenu" Header="Fullscreen (4:3)" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/full].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/full]}" InputGesture="{Binding Actions[video/aspect/full].InputGesture}" />
@@ -451,7 +452,7 @@
 
         <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto">
           <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="36" MaxHeight="76" Margin="0,0,0,3" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
-          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS source · Configure keyboard shortcuts in Options" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="14" SourceText="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
           <WrapPanel Grid.Row="2" IsVisible="{Binding ShowOriginal}" Margin="0,3,0,0">
             <StackPanel IsVisible="{Binding ShowOriginal}" Orientation="Horizontal" Spacing="3">
               <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="11" />
@@ -488,7 +489,7 @@
 <MenuItem Header="Insert after" InputGesture="{Binding Actions[grid/insert/after].InputGesture}" Command="{Binding Actions[grid/insert/after]}" />
 <MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />
 <MenuItem Header="Delete selected" InputGesture="{Binding Actions[grid/delete].InputGesture}" Command="{Binding Actions[grid/delete]}" />
-<MenuItem Header="Dialogue / Comment" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
+<MenuItem Header="Comment / Uncomment Lines" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
 <MenuItem Header="Split at text cursor">
 <MenuItem Header="Preserve times" InputGesture="{Binding Actions[edit/line/split/preserve].InputGesture}" Command="{Binding Actions[edit/line/split/preserve]}" />
 <MenuItem Header="Estimate times" InputGesture="{Binding Actions[edit/line/split/estimate].InputGesture}" Command="{Binding Actions[edit/line/split/estimate]}" />

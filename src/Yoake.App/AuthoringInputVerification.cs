@@ -74,12 +74,17 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 Require(ReferenceEquals(model.SelectedEvent,_line)&&_line!.Text=="ctrl draft","Ctrl+Enter must commit and stay.");
                 Text.SetCurrentValue(TextBox.TextProperty,"abcdef");Caret(2,4);PressKey(Key.Enter,KeyModifiers.Shift);
                 _stable=@"ab\Nef";
-                Require(Text.Text==_stable&&Text.CaretIndex==4&&Text.SelectionStart==4&&Text.SelectionEnd==4,"Shift+Enter must replace selection immediately with literal ASS syntax and place the caret after it.");
+                Require(Text.Text=="ab\nef"&&Text.SourceText==_stable&&Text.CaretIndex==3&&Text.SelectionStart==3&&Text.SelectionEnd==3,"Shift+Enter must replace selection with a displayed hard break and retain ASS source syntax.");
                 _afterBurst=DateTime.UtcNow.AddMilliseconds(1150);return false;
             case 7:
                 if(DateTime.UtcNow<_afterBurst){_stage--;return false;}
-                Require(Text.Text==_stable&&_line!.Text==_stable,"Hard newline text must remain identical after the edit-burst timeout.");
-                Caret(2,2);PressKey(Key.Enter,KeyModifiers.Shift);Require(Text.Text==@"ab\N\Nef"&&Text.CaretIndex==4,"Shift+Enter at a caret must insert immediate literal syntax.");
+                Require(Text.Text=="ab\nef"&&_line!.Text==_stable,"Hard newline presentation and ASS source must survive the edit-burst timeout.");
+                var layout=Text.GetVisualDescendants().OfType<TextPresenter>().Single().TextLayout;
+                Require(layout.TextLines.Count>=2&&Text.SourceIndex(3)==4,"Hard breaks must create real layout lines and map second-line offsets.");
+                Caret(3,5);PressKey(Key.B,KeyModifiers.Control);
+                Require(model.SelectedEvent!.Text.Contains(@"\N{\b1}ef"),"Formatting the displayed second line must modify the corresponding source text.");
+                Text.SetCurrentValue(AssTextBox.SourceTextProperty,_stable);
+                Caret(2,2);PressKey(Key.Enter,KeyModifiers.Shift);Require(Text.Text=="ab\n\nef"&&Text.CaretIndex==3,"Shift+Enter at a caret must insert an immediate visual break.");
                 var presenter=Text.GetVisualDescendants().OfType<TextPresenter>().Single();presenter.PreeditText="仮";
                 var selected=model.SelectedEvent;var source=model.SelectedEvent!.Text;var draftBefore=Text.Text;PressKey(Key.Enter);
                 Require(ReferenceEquals(model.SelectedEvent,selected)&&model.SelectedEvent.Text==source&&Text.Text==draftBefore&&presenter.PreeditText=="仮","Composition Enter must remain owned by IME without commit/navigation.");

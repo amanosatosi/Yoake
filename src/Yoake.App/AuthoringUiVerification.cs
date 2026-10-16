@@ -23,6 +23,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private int _stage;
     private VisualUiVerification? _visual;
     private AuthoringInputVerification? _input;
+    private MotionInputVerification? _motionInput;
     private long _previewRevision;
     private double _normalEditorWidth;
     private double _audioHeight;
@@ -206,6 +207,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
             case 19:
                 CheckVirtualizedGrid();Capture(window,"editor-large-mixed-script",1);
                 var activate=model.Registry.InvokeAsync(CommandIds.WorkspaceActivateTab,new(),_originalTab);Require(activate.IsCompletedSuccessfully&&activate.Result,"Return to original editing tab after virtualization probe.");return false;
+            case 20:
+                _motionInput ??= new(window, model, mediaFixtures!, Capture);
+                if (!_motionInput.Tick()) { _stage--; return false; }
+                var restore=model.Registry.InvokeAsync(CommandIds.WorkspaceActivateTab,new(),_originalTab);
+                Require(restore.IsCompletedSuccessfully&&restore.Result,"Restore the original document after tracking verification.");return false;
             default:
                 Require(styles.Preview.LastError is null,"Latest style preview failed: "+styles.Preview.LastError);
                 if(!styles.Preview.HasCurrentFrame||styles.Preview.DisplayedRevision<_previewRevision)return false;
