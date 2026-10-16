@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Yoake.Core.Commands;
 using Yoake.Core.Media;
 using Yoake.UI;
@@ -35,7 +36,7 @@ internal sealed class MotionInputVerification(MainWindow window, MainWindowViewM
                 Require(!_opening!.IsCompleted || _opening.Result, "The tracking command failed before opening: " + model.SubtitleStatus);
                 if (model.MotionTracking is null || model.MotionTracking.Busy) { _stage--; return false; }
                 _dialog = window.OwnedWindows.OfType<MotionTrackingWindow>().Single();
-                Require(_dialog.IsVisible && _dialog.FindControl<Control>("MotionTrackPreview") is { Bounds.Width: > 100, Bounds.Height: > 80 }, "Tracking must show a usable actual preview window.");
+                Require(_dialog.IsVisible && Named<Control>("MotionTrackPreview") is { Bounds.Width: > 100, Bounds.Height: > 80 }, "Tracking must show a usable actual preview window.");
                 Invoke("motion-track/pattern", new TrackingRegion(40, 45, 20, 20, 64, 64));
                 capture(_dialog, "motion-pattern-and-search", 1);
                 _tracking = model.Registry.InvokeAsync("motion-track/forward", new(model.ActiveDocumentId)).AsTask(); return false;
@@ -54,7 +55,7 @@ internal sealed class MotionInputVerification(MainWindow window, MainWindowViewM
                 if (!_tracking!.IsCompleted) { _stage--; return false; }
                 Require(_tracking.Result && _fast.SequenceEqual(model.MotionTracking!.Points), "Viewable and Fast must produce exactly the same measured results.");
                 capture(_dialog!, "motion-tracked-path", 1);
-                var apply = _dialog!.FindControl<Button>("MotionTrack_apply")!;
+                var apply = Named<Button>("MotionTrack_apply");
                 Require(apply.IsEnabled, "The actual Apply button must be available after tracking.");
                 apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); return false;
             case 6:
@@ -100,6 +101,11 @@ internal sealed class MotionInputVerification(MainWindow window, MainWindowViewM
         Require(left < buffer.Size.Width && top < buffer.Size.Height, "The actual Mangetsu video preview must contain the colored subtitle.");
         return (left, top);
     }
+    // MotionTrackingWindow creates controls in code, not XAML. FindControl()
+    // requires an Avalonia name scope, so inspect the actual visual tree instead.
+    private T Named<T>(string name) where T : Control =>
+        _dialog!.GetVisualDescendants().OfType<T>().First(control => control.Name == name);
+
     private void Invoke(string command, object? parameter = null)
     {
         var action = model.Registry.InvokeAsync(command, new(model.ActiveDocumentId), parameter);
