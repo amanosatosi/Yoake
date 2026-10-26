@@ -115,7 +115,7 @@ public sealed class StylesWindow : Window
     {
         _commands.Register(new AppCommand(new(id,label,label,"Styles"),async(_,_)=>await action()));
         var button=new Button{Content=label,Tag=id,HorizontalAlignment=HorizontalAlignment.Stretch,Command=new RegistryCommand(_commands,id,()=>new()),Padding=new Thickness(5,1),MinHeight=24,Margin=new Thickness(1),FontSize=11};
-        var geometry=id.Split('/').Last() switch{"up"=>IconGeometries.StyleUp,"down"=>IconGeometries.StyleDown,"top"=>IconGeometries.StyleTop,"bottom"=>IconGeometries.StyleBottom,"sort"=>IconGeometries.StyleSort,_=>null};
+        var geometry=id.Split('/').Last() switch{"up"=>IconGeometries.StyleUp,"down"=>IconGeometries.StyleDown,"top"=>IconGeometries.StyleTop,"bottom"=>IconGeometries.StyleBottom,"sort"=>IconGeometries.StyleSort,"undo"=>IconGeometries.Undo,"redo"=>IconGeometries.Redo,_=>null};
         if(geometry is not null){var icon=new PathIcon{Width=14,Height=14,Data=geometry};icon.Bind(PathIcon.ForegroundProperty,this.GetResourceObservable("IconForegroundBrush"));var content=new StackPanel{Orientation=Orientation.Horizontal,Spacing=4};content.Children.Add(icon);content.Children.Add(new TextBlock{Text=label});button.Content=content;}
         ToolTip.SetTip(button,id=="styles/to-script"?"Copy the selected library preset into the current script; duplicate names get a suffix.":id=="styles/to-library"?"Copy the selected script style into this library collection; duplicate names get a suffix.":label);bar.Children.Add(button);
     }

@@ -12,6 +12,7 @@ using Yoake.Core.Hotkeys;
 using Yoake.Core.Settings;
 using Yoake.Core.Subtitles;
 using Yoake.UI.Commands;
+using Yoake.UI.Icons;
 using Yoake.UI.ViewModels;
 
 namespace Yoake.UI;
@@ -74,6 +75,12 @@ public sealed class FindWindow : Window
         {
             var adapter=new RegistryCommand(_model.Registry,id,()=>new(DocumentId),hotkeys:()=>_model.HotkeyProfile,parameterFactory:()=>ReadRequest());
             var button=new Button{Name=name,Content=label,Command=adapter,Margin=new Thickness(0,0,6,0),Padding=new Thickness(8,4),IsDefault=isDefault,IsCancel=isCancel};
+            if(id==CommandIds.FindNext)
+            {
+                var content=new StackPanel{Orientation=Orientation.Horizontal,Spacing=4};
+                content.Children.Add(new PathIcon{Width=14,Height=14,Data=IconGeometries.FindNext});
+                content.Children.Add(new TextBlock{Text=label});button.Content=content;
+            }
             ToolTip.SetTip(button,adapter.Tooltip);adapter.PropertyChanged+=(_,args)=>{if(args.PropertyName==nameof(RegistryCommand.Tooltip))ToolTip.SetTip(button,adapter.Tooltip);};
             names.Register(name,button);buttons.Children.Add(button);
         }
