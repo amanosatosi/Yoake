@@ -23,10 +23,13 @@ public sealed class MotionTrackingWindow : Window
         _session = model.MotionTracking ?? throw new InvalidOperationException("No tracking session.");
         Name = "MotionTrackingWindow"; Title = "Motion tracking · Position"; Width = 900; Height = 650; MinWidth = 620; MinHeight = 460;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        var names = new NameScope();
+        NameScope.SetNameScope(this, names);
         var root = new Grid { RowDefinitions = new("Auto,*,Auto,Auto,Auto"), Margin = new(10), RowSpacing = 6 };
         root.Children.Add(new TextBlock { Text = "Drag a rectangle around the pattern. Click to correct its center. Blue = pattern · Orange = search area", TextWrapping = TextWrapping.Wrap });
         _preview = new TrackingPreview(_session, region => model.Actions["motion-track/pattern"].Execute(region));
         _preview.Name = "MotionTrackPreview";
+        names.Register(_preview.Name!, _preview);
         Grid.SetRow(_preview, 1); root.Children.Add(_preview);
         var navigation = new Grid { ColumnDefinitions = new("Auto,*,Auto,Auto"), ColumnSpacing = 6 };
         var previous = new Button { Content = "Previous" };
@@ -62,9 +65,14 @@ public sealed class MotionTrackingWindow : Window
         _status.TextWrapping = TextWrapping.Wrap; footer.Children.Add(_status);
         var actions = new WrapPanel();
         foreach (var (label, id) in new[] { ("Set reference", "reference"), ("Track backward", "backward"), ("Track forward", "forward"), ("Stop", "stop"), ("Reset", "reset"), ("Apply position", "apply") })
-            actions.Children.Add(new Button { Name = "MotionTrack_" + id, Content = label, Command = model.Actions["motion-track/" + id], Margin = new(0, 0, 6, 0), Padding = new(8, 3) });
+        {
+            var button = new Button { Name = "MotionTrack_" + id, Content = label, Command = model.Actions["motion-track/" + id], Margin = new(0, 0, 6, 0), Padding = new(8, 3) };
+            names.Register(button.Name!, button);
+            actions.Children.Add(button);
+        }
         var close = new Button { Content = "Close", IsCancel = true }; close.Click += (_, _) => Close(); actions.Children.Add(close);
         footer.Children.Add(actions); Grid.SetRow(footer, 4); root.Children.Add(footer); Content = root;
+        names.Complete();
         _session.PropertyChanged += SessionChanged; model.MotionApplied += Applied; model.Registry.CommandFailed += CommandFailed;
         Closed += (_, _) => { _session.Stop(); _session.PropertyChanged -= SessionChanged; model.MotionApplied -= Applied; model.Registry.CommandFailed -= CommandFailed; };
         Refresh();
