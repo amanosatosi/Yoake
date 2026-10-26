@@ -320,7 +320,7 @@
 <MenuItem Header="Cycle theme" InputGesture="{Binding Actions[view/theme/cycle].InputGesture}" Command="{Binding Actions[view/theme/cycle]}" />
 </MenuItem>
 </Menu><Grid Name="MainToolbar" IsVisible="{Binding ToolbarVisible}" Grid.Row="1" Margin="6,2" ColumnDefinitions="*,Auto" ColumnSpacing="6">
-<ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+<ScrollViewer Name="MainActionScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
 <StackPanel Orientation="Horizontal" Spacing="2">
 <Button Command="{Binding Actions[subtitle/new]}" Padding="4,2" ToolTip.Tip="New subtitle"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.New}" /></Button>
 <Button Command="{Binding Actions[subtitle/open]}" Padding="4,2" ToolTip.Tip="Open subtitle"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Open}" /></Button>
@@ -407,7 +407,7 @@
     <Border Grid.Row="0" IsVisible="{Binding ShowAudio}" Background="{DynamicResource PanelBrush}">
       <Grid Name="AudioHost" RowDefinitions="*,Auto">
       <Grid Name="AudioRegion" Margin="6,6,6,4" RowDefinitions="40,*,14" RowSpacing="4">
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="0,0,132,0"><ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"><StackPanel Orientation="Horizontal" Spacing="2">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="0,0,132,0"><ScrollViewer Name="AudioActionScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"><StackPanel Orientation="Horizontal" Spacing="2">
 <Button Command="{Binding Actions[audio/zoom/out]}" Padding="4,2" ToolTip.Tip="Zoom audio out"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ZoomOut}" /></Button><Button Command="{Binding Actions[audio/zoom/in]}" Padding="4,2" ToolTip.Tip="Zoom audio in"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ZoomIn}" /></Button><Button Command="{Binding Actions[time/prev]}" Padding="4,2" ToolTip.Tip="Previous timing line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimingPrevious}" /></Button>
 <Button Command="{Binding Actions[time/next]}" Padding="4,2" ToolTip.Tip="Next timing line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimingNext}" /></Button>
 <Button Command="{Binding Actions[audio/play/selection]}" Padding="4,2" ToolTip.Tip="Play selection"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlaySelection}" Foreground="{DynamicResource IconAudioSelectionBrush}" /></Button>

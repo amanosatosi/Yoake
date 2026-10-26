@@ -294,6 +294,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
         if (model.ShowAudio)
         {
+        Require(window.FindControl<ScrollViewer>("AudioActionScroll")!.Viewport.Height>=24,"Audio toolbar scrolling must leave the full command buttons visible.");
         Require(audio.TranslatePoint(default,window)!.Value.Y<editor.TranslatePoint(default,window)!.Value.Y,"Audio must remain above the edit panel.");
         Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioHorizontalZoom")!.Bounds.Height>=55,"Horizontal zoom, display amplitude and playback volume need usable vertical travel at the default panel height.");
         Require(window.FindControl<Slider>("AudioSize") is null,"No vertical audio-height slider may remain.");

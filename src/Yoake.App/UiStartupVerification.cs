@@ -65,6 +65,8 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             if (!_iconsVerified)
             {
                 var toolbar = window.FindControl<Grid>("MainToolbar")!;
+                Require(window.FindControl<ScrollViewer>("MainActionScroll")!.Viewport.Height >= 24,
+                    "Toolbar scrolling must leave the full command buttons visible.");
                 var toolbarButtons = toolbar.GetVisualDescendants().OfType<Button>().ToArray();
                 foreach (var (id, geometry) in new[]
                 {
