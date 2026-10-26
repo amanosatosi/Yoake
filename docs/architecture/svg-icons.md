@@ -4,6 +4,13 @@ Functional icon **source of truth is real SVG** under `assets/icons/functional`.
 
 Avalonia `PathIcon.Foreground` supplies semantic color. Light/Dark dictionaries provide `IconForegroundBrush`; active tools can use `IconAccentBrush`; disabled controls inherit control disabled visuals. Functional icon geometry is theme-neutral: do not create separate light/dark copies merely to change color. One SVG source should recolor through semantic theme resources. Warning/error artwork may later use explicitly documented semantic layers.
 
+The Aegisub-derived timing start/end actions use the dedicated
+`IconTimingStartBrush` and `IconTimingEndBrush` theme resources to preserve
+the fork's green/red distinction. Audio selection and line playback likewise
+use blue/red semantic brushes. The underlying paths remain recolorable.
+The command-by-command source trace, compatibility decisions and pending visual
+QA are recorded in `aegisub-icon-migration.md`.
+
 This is **not a general SVG renderer**. Future reuse of Aegisub or other sophisticated SVG artwork must either normalize that artwork into the supported subset or deliberately expand the generator with tests for transforms, strokes, fill rules, primitive elements, and multi-layer recoloring. Sol/Luna should never infer “all SVG is supported” from this pipeline.
 
 The application identity SVG is separate under `assets/icons/app`. On Windows, `tools/generate-app-icon.ps1` rasterizes that SVG master into a multi-resolution `.ico` before build; MSBuild uses it as the executable icon and Avalonia includes the same generated icon as the default window icon. Functional icons remain SVG-only.

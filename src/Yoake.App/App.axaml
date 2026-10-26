@@ -33,6 +33,10 @@
           <SolidColorBrush x:Key="SplitterBrush">#C4C9D1</SolidColorBrush>
           <SolidColorBrush x:Key="IconForegroundBrush">#252A32</SolidColorBrush>
           <SolidColorBrush x:Key="IconAccentBrush">#4467D7</SolidColorBrush>
+          <SolidColorBrush x:Key="IconTimingStartBrush">#16734D</SolidColorBrush>
+          <SolidColorBrush x:Key="IconTimingEndBrush">#A03749</SolidColorBrush>
+          <SolidColorBrush x:Key="IconAudioSelectionBrush">#175EAD</SolidColorBrush>
+          <SolidColorBrush x:Key="IconAudioLineBrush">#A03749</SolidColorBrush>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
           <SolidColorBrush x:Key="AssSyntaxText">#F0F2F6</SolidColorBrush>
@@ -58,6 +62,10 @@
           <SolidColorBrush x:Key="SplitterBrush">#4A505A</SolidColorBrush>
           <SolidColorBrush x:Key="IconForegroundBrush">#E9ECF1</SolidColorBrush>
           <SolidColorBrush x:Key="IconAccentBrush">#8AA4FF</SolidColorBrush>
+          <SolidColorBrush x:Key="IconTimingStartBrush">#82C6A3</SolidColorBrush>
+          <SolidColorBrush x:Key="IconTimingEndBrush">#EF9C9F</SolidColorBrush>
+          <SolidColorBrush x:Key="IconAudioSelectionBrush">#8CB9EE</SolidColorBrush>
+          <SolidColorBrush x:Key="IconAudioLineBrush">#EF9C9F</SolidColorBrush>
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
     </ResourceDictionary>

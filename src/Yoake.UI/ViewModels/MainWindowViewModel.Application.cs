@@ -9,7 +9,7 @@ public sealed partial class MainWindowViewModel
     private bool _exitInProgress;
     public event EventHandler? WindowCloseRequested;
     public bool ToolbarVisible=>_settings.ToolbarVisible??true;
-    public GridLength ToolbarRowHeight=>new(ToolbarVisible?54:24);
+    public GridLength ToolbarRowHeight=>new(ToolbarVisible?66:24);
     public string ApplicationLogPath=>Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!,"logs","yoake.log");
 
     private void RegisterApplicationCommands()
