@@ -205,6 +205,16 @@ public static class IconGeometries
     {
         internal static readonly Geometry Value = Build(("F1 M 21,12 C 21,23.8125 3,23.8125 3,12 C 3,0.1875 21,0.1875 21,12 z", false, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M 10.125,6.9375 C 10.125,9.375 13.875,9.375 13.875,6.9375 C 13.875,4.5 10.125,4.5 10.125,6.9375 z M 10.125,10.875 L 10.125,18.75 L 13.875,18.75 L 13.875,10.875 L 10.125,10.875 z", true, 0, PenLineCap.Round, PenLineJoin.Round));
     }
+    public static Geometry KaraokeCancel => KaraokeCancelHolder.Value;
+    private static class KaraokeCancelHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M 0.75,15 L 9,15 L 9,23.25 L 0.75,23.25 L 0.75,15 z", false, 0.6, PenLineCap.Round, PenLineJoin.Round), ("F1 M 7.875,0.75 L 7.875,9 L 16.125,9 L 16.125,0.75 L 7.875,0.75 z M 15,15 L 15,23.25 L 23.25,23.25 L 23.25,15 L 15,15 z", false, 0.6, PenLineCap.Round, PenLineJoin.Round), ("F1 M 20.625,6.375 L 15,12 L 20.625,17.625 L 17.625,20.625 L 12,15 L 6.375,20.625 L 3.375,17.625 L 9,12 L 3.375,6.375 L 6.375,3.375 L 12,9 L 17.625,3.375 L 20.625,6.375 z", true, 0.6, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry KaraokeCommit => KaraokeCommitHolder.Value;
+    private static class KaraokeCommitHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M 0.75,15 L 9,15 L 9,23.25 L 0.75,23.25 L 0.75,15 z", false, 0.6, PenLineCap.Round, PenLineJoin.Round), ("F1 M 7.875,0.75 L 7.875,9 L 16.125,9 L 16.125,0.75 L 7.875,0.75 z M 15,15 L 15,23.25 L 23.25,23.25 L 23.25,15 L 15,15 z", false, 0.6, PenLineCap.Round, PenLineJoin.Round), ("F1 M 18.5625,3.75 L 9,16.125 L 5.4375,12.75 C 4.3125,11.625 2.625,13.125 3.5625,14.25 L 8.0625,20.25 C 8.625,21 9.375,21 9.9375,20.25 L 20.4375,5.0625 C 21.375,3.75 19.5,2.4375 18.5625,3.75 z", true, 0.6, PenLineCap.Round, PenLineJoin.Round));
+    }
     public static Geometry KaraokeTiming => KaraokeTimingHolder.Value;
     private static class KaraokeTimingHolder
     {

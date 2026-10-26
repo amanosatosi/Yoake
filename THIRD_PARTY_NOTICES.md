@@ -111,6 +111,7 @@ from the same fork and commit, in `docs/art-sources/buttons/`:
   `toggle_audio_autocommit.svg`, `toggle_audio_nextcommit.svg`,
   `toggle_audio_autoscroll.svg`, `toggle_audio_spectrum.svg`,
   `toggle_audio_link.svg`, `kara_spectrogram_timing.svg`,
+  `kara_split_accept.svg`, `kara_split_cancel.svg`,
   `button_play.svg`, `button_pause.svg`, `toggle_video_autoscroll.svg`.
 - `save_as_toolbutton.svg`, `open_video_menu.svg`, `close_video_menu.svg`,
   `open_audio_menu.svg`, `close_audio_menu.svg`,
@@ -132,7 +133,9 @@ were scaled to 24 units; colors and gradients were replaced by theme-aware
 foreground, and overlapping backgrounds were made outlines to keep details
 visible. Dashed outlines in shift/resample were redrawn as explicit path
 segments. The 16-unit motion tracker and 32-unit karaoke spectrogram were
-redrawn as compact paths. Start/end timing actions use theme-aware green/red
+redrawn as compact paths. Karaoke accept/cancel keeps the source boxes and
+foreground check/cross while omitting the faint miniature lettering and arrows.
+Start/end timing actions use theme-aware green/red
 foregrounds, and selection/line playback uses blue/red, to retain their
 functional distinctions. Source-to-command
 mappings and exceptions are recorded in `docs/architecture/aegisub-icon-migration.md`.

@@ -6,6 +6,7 @@ using Avalonia.Media;
 using System.ComponentModel;
 using System.Globalization;
 using Yoake.UI.ViewModels;
+using Yoake.UI.Icons;
 
 namespace Yoake.UI.Controls;
 
@@ -22,6 +23,17 @@ public sealed class KaraokeSlotsControl : UserControl
     private bool _updating;
     public KaraokeSlotsControl()
     {
+        static Control ActionLabel(Geometry geometry, string text)
+        {
+            var content = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 3 };
+            content.Children.Add(new PathIcon { Data = geometry, Width = 14, Height = 14 });
+            content.Children.Add(new TextBlock { Text = text });
+            return content;
+        }
+        _commit.Content = ActionLabel(IconGeometries.KaraokeCommit, "Commit");
+        _cancel.Content = ActionLabel(IconGeometries.KaraokeCancel, "Cancel");
+        ToolTip.SetTip(_commit, "Commit karaoke timing");
+        ToolTip.SetTip(_cancel, "Discard uncommitted karaoke timing");
         var buttons = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 3 };
         buttons.Children.Add(_commit); buttons.Children.Add(_cancel); buttons.Children.Add(_tags); buttons.Children.Add(_auto);
         var rest = new Button { Name = "KaraokeRest", Content = "+ Rest", Padding = new Thickness(3, 0), MinHeight = 22 };

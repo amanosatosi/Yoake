@@ -109,6 +109,7 @@ Baseline: MainWindow.axaml has New/Open/Save and Undo/Redo icons and text-only O
 | app/log; tool/line/select; grid/swap | app.cpp:174, about_menu.svg; tool.cpp:114, select_lines_button.svg; grid.cpp:430, arrow_sort.svg | text; migrated: information.svg; select-lines.svg; existing style-sort.svg |
 | video/detach; video/details; video/open/dummy | video.cpp:309/329/699, detach_video_menu.svg; show_video_details_menu.svg; use_dummy_video_menu.svg | text; migrated: video-detach.svg; video-details.svg; video-dummy.svg |
 | subtitle/close | subtitle.cpp:374, new_toolbutton.svg | intentionally different: existing close.svg identifies closing a Yoake tab more clearly than a new-document silhouette |
+| karaoke/commit; karaoke/cancel | audio_karaoke.cpp:74-80 and :701-739, kara_split_accept.svg; kara_split_cancel.svg | text buttons; migrated: karaoke-commit.svg; karaoke-cancel.svg |
 - Vector clip subtools are traced to src/visual_tool_vector_clip.cpp:45-66 and src/command/vis_tool.cpp:512-565; Yoake already uses the corresponding eight vector SVGs. Position/move conversion is traced to src/visual_tool_drag.cpp:64 and uses visual-move-toggle.svg. Style ordering is traced to src/dialog_style_manager.cpp:192-196 and already uses five fork-derived SVGs.
 - Frame stepping has no CMD_ICON in the fork (src/command/video.cpp:402 and :469). Yoake now uses distinct original triangle/bar SVGs, intentionally different from Aegisub, for the existing previous/next frame controls.
 - The combined Open video/audio command has no single fork equivalent and remains a text menu action; separate video and audio open actions now have their own matching icons. Mute, rest insertion, and numeric field labels are descriptive text, not placeholder icons.
@@ -124,7 +125,7 @@ Baseline: MainWindow.axaml has New/Open/Save and Undo/Redo icons and text-only O
   in this pass, 13 already used matching icons, and ASSDraw remains
   intentionally text-only. The other 11 have no equivalent. No mapped action
   in this four-toolbar inventory remains unaccounted for.
-- The working tree contains 77 Aegisub-derived added or replaced SVGs, including
+- The working tree contains 79 Aegisub-derived added or replaced SVGs, including
   the earlier basic-action pass; two additional frame-step SVGs are original
   Yoake artwork. Ten symbol-only controls were replaced: four formatting
   buttons, two audio zoom buttons, two video frame-step buttons, the karaoke
