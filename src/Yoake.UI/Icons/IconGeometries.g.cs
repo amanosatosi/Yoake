@@ -20,6 +20,11 @@ public static class IconGeometries
         }
         return result ?? new StreamGeometry();
     }
+    public static Geometry AudioPlaySelection => AudioPlaySelectionHolder.Value;
+    private static class AudioPlaySelectionHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M2.25 5.25V6.75H3.75V17.25H2.25V18.75H5.25V5.25ZM18.75 5.25V18.75H21.75V17.25H20.25V6.75H21.75V5.25Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M9.75 6.75V17.25L15.375 12Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
+    }
     public static Geometry Clip => ClipHolder.Value;
     private static class ClipHolder
     {
@@ -38,12 +43,12 @@ public static class IconGeometries
     public static Geometry New => NewHolder.Value;
     private static class NewHolder
     {
-        internal static readonly Geometry Value = Build(("F1 M5 2H15L20 7V22H5ZM7 4V20H18V8H14V4ZM11 10H13V13H16V15H13V18H11V15H8V13H11Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+        internal static readonly Geometry Value = Build(("F1 M3.75 1.5H15L20.25 6.75V22.5H3.75Z", false, 1.1, PenLineCap.Round, PenLineJoin.Round), ("F1 M20.25 6.75H15V1.5", false, 1.1, PenLineCap.Round, PenLineJoin.Round));
     }
     public static Geometry Open => OpenHolder.Value;
     private static class OpenHolder
     {
-        internal static readonly Geometry Value = Build(("F1 M2 6H10L12 9H22L19 20H3ZM4 8L5 18H17L19.2 11H11L9 8Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+        internal static readonly Geometry Value = Build(("F1 M2.25 20.25V6.75H6.75V8.25H18V11.25M2.25 20.25L6 11.25H21.75L18 20.25Z", false, 0.9, PenLineCap.Round, PenLineJoin.Round), ("F1 M16.3125 2.0625C13.6875 2.0625 11.625 4.125 11.625 6.75C11.625 7.3125 12.375 7.3125 12.375 6.75C12.375 4.5 14.0625 2.8125 16.3125 2.8125S20.25 4.5 20.25 6.75H18.75L20.625 9.75L22.5 6.75H21C21 4.125 18.9375 2.0625 16.3125 2.0625Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
     }
     public static Geometry Position => PositionHolder.Value;
     private static class PositionHolder
@@ -53,12 +58,12 @@ public static class IconGeometries
     public static Geometry Redo => RedoHolder.Value;
     private static class RedoHolder
     {
-        internal static readonly Geometry Value = Build(("F1 M14 5V10H9C5 10 2 13.5 2 19H4C4 15 6 13 9 13H14V17L21 11Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+        internal static readonly Geometry Value = Build(("F1 M4.875 14.625C-1.125 4.875 12.375 4.875 18.375 14.625", false, 1.875, PenLineCap.Round, PenLineJoin.Round), ("F1 M14.625 17.4375H21.375V10.6875Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round));
     }
     public static Geometry Save => SaveHolder.Value;
     private static class SaveHolder
     {
-        internal static readonly Geometry Value = Build(("F1 M3 3H18L21 6V21H3ZM5 5V19H19V7L17 5H16V10H7V5ZM9 5V8H14V5ZM7 13H17V18H7Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+        internal static readonly Geometry Value = Build(("F1 M2.25 2.25V19.5L4.5 21.75H21.75V2.25Z", false, 1, PenLineCap.Round, PenLineJoin.Round), ("F1 M5.25 2.25V12H18.75V2.25M6.75 21.75V15H17.25V21.75M9 16.5H11.25V20.25H9Z", false, 1, PenLineCap.Round, PenLineJoin.Round));
     }
     public static Geometry StepDown => StepDownHolder.Value;
     private static class StepDownHolder
@@ -69,6 +74,11 @@ public static class IconGeometries
     private static class StepUpHolder
     {
         internal static readonly Geometry Value = Build(("F1 M6 14L12 8L18 14L16 16L12 12L8 16Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+    }
+    public static Geometry Stop => StopHolder.Value;
+    private static class StopHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M17.25 17.25V6.75H6.75V17.25Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
     }
     public static Geometry StyleBottom => StyleBottomHolder.Value;
     private static class StyleBottomHolder
@@ -103,7 +113,7 @@ public static class IconGeometries
     public static Geometry Undo => UndoHolder.Value;
     private static class UndoHolder
     {
-        internal static readonly Geometry Value = Build(("F1 M10 5L3 11L10 17V13H15C18 13 20 15 20 19H22C22 13.5 19 10 15 10H10Z", true, 0, PenLineCap.Flat, PenLineJoin.Miter));
+        internal static readonly Geometry Value = Build(("F1 M19.125 14.625C25.125 4.875 11.625 4.875 5.625 14.625", false, 1.875, PenLineCap.Round, PenLineJoin.Round), ("F1 M9.375 17.4375H2.625V10.6875Z", true, 0.375, PenLineCap.Round, PenLineJoin.Round));
     }
     public static Geometry VectorBicubic => VectorBicubicHolder.Value;
     private static class VectorBicubicHolder

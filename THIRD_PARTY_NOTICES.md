@@ -71,6 +71,27 @@ The quadrilateral icon is renamed Distort and denotes Mangetsu bilinear
 four-corner authoring; it does not introduce Aegisub tag semantics.
 No upstream application identity artwork is used.
 
+## File, undo and audio action artwork
+
+Yoake adapts the following functional icons from
+https://github.com/amanosatosi/Aegisub_Toshi-ban at commit
+`28b5156df94cb2538d373db503445d2b07466396`:
+`docs/art-sources/buttons/new_toolbutton.svg`, `open_toolbutton.svg`,
+`save_toolbutton.svg`, `undo_button.svg`, `redo_button.svg`,
+`button_playsel.svg`, and `button_stop.svg`.
+The matching files in the user's local fork were checked for license headers,
+as were the root-to-source directory levels for license exceptions; none were
+found. The fork's root `LICENCE` therefore applies: Copyright (c) 2004-2012,
+Aegisub Project, BSD 3-Clause. The full text is retained in
+`third_party/licenses/Aegisub-BSD-3-Clause.txt` and distributed in
+`licenses/Aegisub-BSD-3-Clause.txt`.
+
+The artwork was scaled from 64 to 24 units, stripped of editor metadata and
+converted to currentColor. The document, folder and floppy use monochrome
+outlines in place of colored fills; their line widths were adjusted for small
+toolbar sizes. Undo, redo and audio silhouettes retain their curves and strokes.
+No Aegisub application or logo branding is included.
+
 ## Bundled ASSDraw fork
 
 The independent ASSDraw3.exe is built from https://github.com/amanosatosi/assdraw
