@@ -217,7 +217,7 @@
 <MenuItem Header="Fast jump backward" InputGesture="{Binding Actions[video/frame/prev/large].InputGesture}" Command="{Binding Actions[video/frame/prev/large]}" />
 <MenuItem Header="Fast jump forward" InputGesture="{Binding Actions[video/frame/next/large].InputGesture}" Command="{Binding Actions[video/frame/next/large]}" />
 </MenuItem>
-<MenuItem Header="Stop" InputGesture="{Binding Actions[video/stop].InputGesture}" Command="{Binding Actions[video/stop]}" />
+<MenuItem Header="Stop" InputGesture="{Binding Actions[video/stop].InputGesture}" Command="{Binding Actions[video/stop]}"><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoPause}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Previous frame" InputGesture="{Binding Actions[video/frame/previous].InputGesture}" Command="{Binding Actions[video/frame/previous]}" />
 <MenuItem Header="Next frame" InputGesture="{Binding Actions[video/frame/next].InputGesture}" Command="{Binding Actions[video/frame/next]}" />
 <MenuItem Header="Visual tools">
