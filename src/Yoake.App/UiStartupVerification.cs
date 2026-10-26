@@ -18,7 +18,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private int _ticks, _layouts;
-    private bool _opened, _loaded, _inserted, _editorVerified;
+    private bool _opened, _loaded, _inserted, _editorVerified, _iconsVerified;
     private StylesWindow? _styles;
     private AuthoringUiVerification? _authoring;
     private AutomationUiVerification? _automation;
@@ -62,27 +62,31 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             Require(ReferenceEquals(window.FindControl<AudioWaveformControl>("AudioDisplay")?.Model, model), "Waveform model binding must initialize.");
             Require(ReferenceEquals(window.FindControl<VisualOverlayControl>("VisualOverlay")?.Model, model), "Visual overlay model binding must initialize.");
             Require(window.GetVisualDescendants().OfType<Button>().Count(b => b.Command is not null) >= 8, "Toolbar command bindings must initialize.");
-            var toolbar = window.FindControl<Grid>("MainToolbar")!;
-            var toolbarButtons = toolbar.GetVisualDescendants().OfType<Button>().ToArray();
-            foreach (var (id, geometry) in new[]
+            if (!_iconsVerified)
             {
-                ("video/open", IconGeometries.VideoOpen),
-                ("video/close", IconGeometries.VideoClose),
-                ("timing/jump-start", IconGeometries.VideoToStart),
-                ("timing/jump-end", IconGeometries.VideoToEnd),
-                ("time/snap/start_video", IconGeometries.StartToVideo),
-                ("time/snap/end_video", IconGeometries.EndToVideo),
-                ("styles/manage", IconGeometries.StylesManager),
-                ("automation/manager", IconGeometries.AutomationManager),
-            })
-            {
-                var action = toolbarButtons.Single(b => ReferenceEquals(b.Command, model.Actions[id]));
-                Require(action.Content is PathIcon icon && ReferenceEquals(icon.Data, geometry)
-                    && ToolTip.GetTip(action) is string { Length: > 0 },
-                    $"Toolbar action {id} must retain its mapped icon and tooltip.");
+                var toolbar = window.FindControl<Grid>("MainToolbar")!;
+                var toolbarButtons = toolbar.GetVisualDescendants().OfType<Button>().ToArray();
+                foreach (var (id, geometry) in new[]
+                {
+                    ("video/open", IconGeometries.VideoOpen),
+                    ("video/close", IconGeometries.VideoClose),
+                    ("timing/jump-start", IconGeometries.VideoToStart),
+                    ("timing/jump-end", IconGeometries.VideoToEnd),
+                    ("time/snap/start_video", IconGeometries.StartToVideo),
+                    ("time/snap/end_video", IconGeometries.EndToVideo),
+                    ("styles/manage", IconGeometries.StylesManager),
+                    ("automation/manager", IconGeometries.AutomationManager),
+                })
+                {
+                    var action = toolbarButtons.Single(b => ReferenceEquals(b.Command, model.Actions[id]));
+                    Require(action.Content is PathIcon icon && ReferenceEquals(icon.Data, geometry)
+                        && ToolTip.GetTip(action) is string { Length: > 0 },
+                        $"Toolbar action {id} must retain its mapped icon and tooltip.");
+                }
+                Require(!toolbarButtons.Single(b => ReferenceEquals(b.Command, model.Actions["video/close"])).IsEffectivelyEnabled,
+                    "The close-video toolbar action must be disabled when no video is open.");
+                _iconsVerified = true;
             }
-            Require(!toolbarButtons.Single(b => ReferenceEquals(b.Command, model.Actions["video/close"])).IsEffectivelyEnabled,
-                "The close-video toolbar action must be disabled when no video is open.");
             var text = window.FindControl<AssTextBox>("SubtitleText")!;
             var presenter = text.GetVisualDescendants().OfType<AssTextPresenter>().Single();
             if (!_editorVerified)
