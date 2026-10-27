@@ -22,7 +22,8 @@ public sealed partial class EditorWorkflowTests
         Assert.Equal("",inserted.Text);Assert.Equal("",inserted.Get("Name"));
         await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
         await Command(CommandIds.EditRedo);Assert.Equal(2,_model.Events.Count);
-        await Command(CommandIds.EditUndo);_model.SelectedEvent=original;
+        await Command(CommandIds.EditUndo);_model.SelectedEvent=original;_model.CurrentTimeSeconds=.2;
+        Assert.Equal(5,_model.CurrentFrame);
         await Command(before);Assert.Same(original,_model.Events[1]);Assert.Equal(180,_model.Events[0].StartMilliseconds);
         await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
     }
