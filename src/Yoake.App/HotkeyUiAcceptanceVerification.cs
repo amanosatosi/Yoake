@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -235,6 +236,23 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Press(_find!.FindControl<Button>("FindClose")!,Key.Enter);return;
                 case 34:
                     Require(!window.OwnedWindows.OfType<FindWindow>().Any(),"The semantic Close action must close the actual search window.");
+                    Invoke(CommandIds.SubtitleNew);Invoke(CommandIds.GridInsertAfter);Invoke(CommandIds.GridInsertAfter);
+                    model.SelectedEvent=model.Events[0];Press(window.FindControl<ToggleButton>("FastActorToggle")!,Key.Enter);return;
+                case 35:
+                    Require(model.FastActorEnabled,"The real fast actor toggle must enable the document-owned mode.");
+                    Require(window.FindControl<Popup>("FastActorPopup")!.IsOpen,"Fast actor naming opens its recent-name popup when the actor field has focus.");
+                    var actor=window.FindControl<AutoCompleteBox>("LineActor")!;var entry=actor.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Name=="PART_TextBox");
+                    Require(entry.Focus(),"Actor input must accept focus.");actor.SetCurrentValue(AutoCompleteBox.TextProperty,"日本語 actor");
+                    var actorPresenter=entry.GetVisualDescendants().OfType<TextPresenter>().Single();actorPresenter.PreeditText="未確定";
+                    Press(entry,Key.Enter);Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"IME Enter must not advance fast actor naming.");
+                    actorPresenter.PreeditText=null;Press(entry,Key.Enter);return;
+                case 36:
+                    Require(ReferenceEquals(model.SelectedEvent,model.Events[1])&&model.Events[0].Actor=="日本語 actor"&&model.Events[1].Actor=="日本語 actor","Enter commits the actor, advances and fills an empty actor field.");
+                    Require(model.FastActorRecent.Contains("日本語 actor"),"The chosen actor appears in the real recent-name model.");
+                    Invoke(CommandIds.EditUndo);Require(model.Events[0].Actor==""&&model.Events[1].Actor=="","One undo restores the fast naming action.");
+                    Invoke(CommandIds.EditRedo);Require(model.Events[0].Actor=="日本語 actor"&&model.Events[1].Actor=="日本語 actor","Redo restores fast naming.");
+                    return;
+                case 37:
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
                     _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source; exact migrated Ctrl-D/Ctrl-Shift-D real keyboard frame splits with VFR-derived boundaries and complete one-step undo; persisted autoseek; real Ctrl-H and F3 in the modeless search window and grid, actual source highlighting without focus theft, protected-text replacement and exact undo.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;

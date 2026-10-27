@@ -470,7 +470,15 @@
             </Grid>
           </Grid>
           <Grid Name="MetadataOtherFields" Width="336" ColumnDefinitions="*,*,86" ColumnSpacing="12" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="*,26" ColumnSpacing="2">
             <AutoCompleteBox Name="LineActor" Height="26" VerticalAlignment="Center" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
+            <ToggleButton Name="FastActorToggle" Grid.Column="1" Height="26" Padding="2,0" Content="»" IsChecked="{Binding Actions[actor/fast/toggle].IsChecked, Mode=OneWay}" Command="{Binding Actions[actor/fast/toggle]}" ToolTip.Tip="Fast actor naming" />
+            <Popup Name="FastActorPopup" PlacementTarget="{Binding #LineActor}" Placement="Bottom" IsLightDismissEnabled="False">
+              <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Padding="5" MinWidth="180">
+                <StackPanel Spacing="3"><TextBlock Text="Recent actors" FontSize="11" /><ListBox Name="FastActorList" MaxHeight="240" ItemsSource="{Binding FastActorRecent}" SelectedIndex="{Binding FastActorSelectedIndex, Mode=OneWay}" /><TextBlock Text="After advancing, play" FontSize="11" /><ComboBox Name="FastActorPlayback" SelectedItem="{Binding FastActorPlayback, Mode=OneWay}" /></StackPanel>
+              </Border>
+            </Popup>
+            </Grid>
             <TextBox Name="LineEffect" Grid.Column="1" Height="26" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
             <NumericUpDown Name="LineLayer" Grid.Column="2" Text="{Binding EditorDraft.Layer, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
           </Grid>

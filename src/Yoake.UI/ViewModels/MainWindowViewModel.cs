@@ -31,6 +31,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public Dictionary<AssEvent,KaraokeEntry> Karaoke = [];
         public string KaraokeStatus="";
         public string VisualTool="Crosshair",VectorMode="Select";
+        public FastActorState FastActor = new();
         public VideoAspect VideoAspect = new();
         public VideoViewState VideoView = new();
         public int VideoProviderRevision;
@@ -150,6 +151,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         if(_publishingAudioTiming)return;
         if(e.PropertyName is nameof(EventEditDraft.IsChanged) or nameof(EventEditDraft.Duration))return;
+        if(e.PropertyName==nameof(EventEditDraft.Actor))FastActorDraftChanged();
         if(_activeId is {} recoveryId&&_documents.TryGetValue(recoveryId,out var recoveryState))recoveryState.DraftRevision++;
         if(_activeId is {} fontOwner)CancelFontWork(fontOwner);
         InvalidateResamplePreview(_activeId);
@@ -181,11 +183,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (ReferenceEquals(_selectedEvent,value)) return;
             CancelGesture();
             if (!CommitDraft()) { OnPropertyChanged(); return; }
+            var previousActor=_selectedEvent?.Actor;
             _selectedEvent?.ShowDraft(null);_selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft();EnsureKaraokeSafe();NotifyKaraoke();
             // A programmatic jump outside the bulk selection must select its
             // destination. Moving the current row inside that selection keeps it.
             if(value is null)SetSelectedEvents([]);
             else if(!SelectedEvents.Contains(value))SetSelectedEvents([value]);
+            if(!IsSynchronizingSelection)FastActorLineChanged(previousActor);
             OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));OnPropertyChanged(nameof(SelectedIsComment));
             if (!_suppressSelectionSeek&&value?.StartMilliseconds is { } start && !IsPlaying&&(_media?.HasVideo!=true||VideoAutoSeek)) CurrentTimeSeconds=start/1000d;
             _registry.NotifyStateChanged();
@@ -233,6 +237,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         InitializeHotkeyCommands();
         RegisterApplicationCommands();
         RegisterEditorCommands();
+        RegisterFastActorCommands();
         RegisterGridCommands();
         RegisterLineCommands();
         RegisterVideoOptions();
@@ -399,6 +404,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             ReconcileWorkspaceView();
             NotifyVisualToolState(); NotifyVideoPresentation(); OnPropertyChanged(nameof(VideoAspectRatio)); OnPropertyChanged(nameof(ShowVideoOverscan)); _videoPointer=null;
             _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
+            NotifyFastActor();
             _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft();
             if(state?.RetainedDraft is {} retained&&ReferenceEquals(retained.Line,_selectedEvent)){Draft=retained;PresentRecoveredDraft();}
             EnsureKaraokeSafe();NotifyKaraoke();

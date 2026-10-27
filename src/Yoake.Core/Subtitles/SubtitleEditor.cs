@@ -44,6 +44,8 @@ public sealed partial class SubtitleEditor(AssDocument document)
         var changed = values.Where(p => line.Get(p.Key) != probe.Get(p.Key)).ToArray();
         if (changed.Length == 0) return;
         var name = changed.Length == 1 ? changed[0].Key switch { "Text" => "Edit subtitle text", "Style" => "Change style", "Name" or "Actor" => "Change actor", "Start" or "End" => "Change line timing", "MarginL" or "MarginR" or "MarginV" => "Change margins", _ => "Edit event metadata" } : "Edit subtitle";
+        // A higher-level semantic action may already own the undo boundary.
+        if(Undo.IsTransactionActive){foreach(var pair in changed)SetField(line,pair.Key,pair.Value,name);return;}
         using var transaction = Undo.BeginTransaction(name);
         foreach (var pair in changed) SetField(line, pair.Key, pair.Value, name);
         transaction.Commit();

@@ -51,6 +51,26 @@ public partial class MainWindow : Window, IEditorDialogs
         VideoSplitter.AddHandler(PointerPressedEvent,(_,_)=>_videoSplitterOverride=true,RoutingStrategies.Tunnel);
         VideoSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();},RoutingStrategies.Bubble);
         VideoSplitter.KeyUp+=(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();};
+        FastActorToggle.Click+=(_,_)=>Dispatcher.UIThread.Post(()=>{if(_model?.FastActorEnabled==true)LineActor.Focus();UpdateFastActorPopup();});
+        FastActorPlayback.ItemsSource=new[]{"Video","Audio","Off"};
+        FastActorPlayback.SelectionChanged+=(_,_)=>{if(_model?.FastActorEnabled==true && FastActorPlayback.SelectedItem is string value && value!=_model.FastActorPlayback)_model.Actions["actor/fast/playback"].Execute(value);};
+        LineActor.AddHandler(GotFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        LineActor.AddHandler(LostFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        FastActorList.AddHandler(GotFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        FastActorList.AddHandler(LostFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        FastActorPlayback.AddHandler(GotFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        FastActorPlayback.AddHandler(LostFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        FastActorList.SelectionChanged+=(_,_)=>
+        {
+            if(_model?.FastActorEnabled==true && FastActorList.SelectedIndex>=0 && FastActorList.SelectedIndex!=_model.FastActorSelectedIndex)
+                _model.Actions["actor/fast/select"].Execute(FastActorList.SelectedIndex);
+        };
+        FastActorList.DoubleTapped+=(_,_)=>{if(_model?.FastActorEnabled==true && FastActorList.SelectedIndex>=0){_model.Actions["actor/fast/accept"].Execute(null);LineActor.Focus();}};
+        FastActorList.AddHandler(KeyDownEvent,async(_,args)=>
+        {
+            if(_model?.FastActorEnabled!=true || args.KeyModifiers!=Avalonia.Input.KeyModifiers.None || args.Key is not (Key.Up or Key.Down or Key.Enter))return;
+            args.Handled=true;await _model.Registry.InvokeAsync(args.Key==Key.Enter?"actor/fast/accept":"actor/fast/step",new(_model.ActiveDocumentId),args.Key==Key.Up?-1:1);LineActor.Focus();
+        },RoutingStrategies.Tunnel);
         AudioSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;},RoutingStrategies.Tunnel);
         AudioSplitter.KeyUp+=(_,_)=>{if(_model is not null)_model.AudioDisplayHeight=TemporalTextColumn.RowDefinitions[0].ActualHeight;};
         TitleTabStrip.SizeChanged+=(_,_)=>UpdateTabLimit();
@@ -290,6 +310,7 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
+        if(e.PropertyName==nameof(MainWindowViewModel.FastActorEnabled))Dispatcher.UIThread.Post(UpdateFastActorPopup);
         if(e.PropertyName is nameof(MainWindowViewModel.RecentVideoItems) or nameof(MainWindowViewModel.RecentAudioItems))Dispatcher.UIThread.Post(RefreshRecentMedia);
         if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();
         if(e.PropertyName==nameof(MainWindowViewModel.RecentKeyframeItems))Dispatcher.UIThread.Post(RefreshRecentKeyframes);
@@ -337,6 +358,13 @@ public partial class MainWindow : Window, IEditorDialogs
             if(input is TextBox textBox && textBox.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
             if(e.Key==Key.Enter&&(input is AutoCompleteBox {IsDropDownOpen:true}||input is ComboBox {IsDropDownOpen:true}))return;
         }
+        if(_model.FastActorEnabled && (LineActor.IsKeyboardFocusWithin||FastActorList.IsKeyboardFocusWithin) && e.KeyModifiers==Avalonia.Input.KeyModifiers.None && e.Key is Key.Up or Key.Down or Key.Enter)
+        {
+            if(LineActor.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
+            LineActor.IsDropDownOpen=false;e.Handled=true;
+            await _model.Registry.InvokeAsync(e.Key==Key.Enter?"actor/fast/accept":"actor/fast/step",new(_model.ActiveDocumentId),e.Key==Key.Up?-1:1);
+            LineActor.Focus();return;
+        }
         // A focused semantic button owns ordinary Enter. Treating it as the
         // editor's commit/next shortcut prevents keyboard activation of the
         // Original actions (and other authoring toolbar controls).
@@ -368,6 +396,13 @@ public partial class MainWindow : Window, IEditorDialogs
         _model.TextSelectionStart=SubtitleText.SourceIndex(SubtitleText.SelectionStart);_model.TextSelectionEnd=SubtitleText.SourceIndex(SubtitleText.SelectionEnd);
         e.Handled=true;
         await _model.Registry.InvokeAsync(commandId,new(_model.ActiveDocumentId,FocusContext:context.ToString()));
+    }
+    private void UpdateFastActorPopup()
+    {
+        var enabled=_model?.FastActorEnabled==true;
+        LineActor.MinimumPrefixLength=enabled?int.MaxValue:1;
+        if(enabled)LineActor.IsDropDownOpen=false;
+        FastActorPopup.IsOpen=enabled&&(LineActor.IsKeyboardFocusWithin||FastActorList.IsKeyboardFocusWithin||FastActorPlayback.IsKeyboardFocusWithin||FastActorPlayback.IsDropDownOpen);
     }
     private async void HandleClosing(object? sender,WindowClosingEventArgs e)
     {
