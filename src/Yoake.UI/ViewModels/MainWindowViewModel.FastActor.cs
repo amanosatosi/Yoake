@@ -1,4 +1,5 @@
 using Yoake.Core.Commands;
+using Yoake.Core.Subtitles;
 using Yoake.UI.Commands;
 
 namespace Yoake.UI.ViewModels;
@@ -88,6 +89,11 @@ public sealed partial class MainWindowViewModel
         Register("actor/fast/accept","Apply actor and advance",_=>
         {
             var state=FastActor!;if(Draft is null||SelectedEvent is not { } current||ActiveEditor is not { } editor)return ValueTask.CompletedTask;
+            // Do not start a transaction for an invalid draft: cancelling even an
+            // empty transaction notifies history listeners, which reload drafts.
+            try { SubtitleEditor.ValidateEventDraftValues(current,Draft.Values); }
+            catch(Exception e) { SubtitleStatus=e.Message;return ValueTask.CompletedTask; }
+            if(IsKaraokeMode&&KaraokePlan?.Changed==true){SubtitleStatus="Commit or cancel the karaoke plan before publishing this edit draft.";return ValueTask.CompletedTask;}
             var actor=Draft.Actor.Trim();var oldActor=current.Actor;
             using var transaction=editor.Undo.BeginTransaction("Fast actor naming");
             Draft.Actor=actor;
