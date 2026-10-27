@@ -35,7 +35,8 @@ public sealed partial class MainWindowViewModel
     {
         name=name.Trim();if(name.Length==0)return;
         state.Recent.RemoveAll(item=>string.Equals(item.Trim(),name,StringComparison.Ordinal));
-        state.Recent.Insert(0,name);if(state.Recent.Count>10)state.Recent.RemoveRange(10,state.Recent.Count-10);
+        const int recentLimit=30;
+        state.Recent.Insert(0,name);if(state.Recent.Count>recentLimit)state.Recent.RemoveRange(recentLimit,state.Recent.Count-recentLimit);
     }
     private void FastActorLineChanged(string? previousActor)
     {

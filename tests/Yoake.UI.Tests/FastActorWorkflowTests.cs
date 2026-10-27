@@ -42,4 +42,18 @@ public sealed partial class EditorWorkflowTests
         await Command("actor/fast/accept");Assert.Equal("",_model.SelectedEvent!.Actor);
         Assert.False(await _model.Registry.InvokeAsync("actor/fast/accept",new(Guid.NewGuid())));
     }
+
+    [Fact] public async Task FastActorKeepsThirtyNamesAndPromotesTheOldestBeforeEviction()
+    {
+        await Command(CommandIds.GridInsertAfter);await Command("actor/fast/toggle");
+        for(var i=1;i<=30;i++)
+        { _model.Draft!.Actor=$"Actor {i:D2}";await Command("actor/fast/accept"); }
+        Assert.Equal(30,_model.FastActorRecent.Count);
+        Assert.Equal("Actor 30",_model.FastActorRecent[0]);Assert.Equal("Actor 01",_model.FastActorRecent[29]);
+        await Command("actor/fast/step",-1);Assert.Equal("Actor 01",_model.Draft!.Actor);
+        await Command("actor/fast/accept");Assert.Equal("Actor 01",_model.FastActorRecent[0]);
+        _model.Draft!.Actor="Actor 31";await Command("actor/fast/accept");
+        Assert.Equal(30,_model.FastActorRecent.Count);Assert.Equal("Actor 31",_model.FastActorRecent[0]);
+        Assert.Contains("Actor 01",_model.FastActorRecent);Assert.DoesNotContain("Actor 02",_model.FastActorRecent);
+    }
 }
