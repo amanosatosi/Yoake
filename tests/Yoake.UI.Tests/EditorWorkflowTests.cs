@@ -418,7 +418,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
             Assert.False(await _model.Registry.InvokeAsync(id,new(Guid.NewGuid())));
             Assert.False(_model.Registry.GetRequired(id).IsChecked(new(Guid.NewGuid())));
         }
-        Assert.Equal("Position",_model.ActiveVisualTool);Assert.Equal("Select",_model.VectorMode);
+        Assert.Equal("Crosshair",_model.ActiveVisualTool);Assert.Equal("Select",_model.VectorMode);
         Assert.Same(draft,_model.Draft);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(revision,_model.PreviewRevision);
         // Positive radio and capture-switch proofs require the real provider and
         // run in VideoUiAcceptanceVerification, including every prior tool/mode.

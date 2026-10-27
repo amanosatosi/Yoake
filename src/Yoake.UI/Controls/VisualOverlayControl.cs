@@ -44,8 +44,14 @@ public sealed class VisualOverlayControl : Control
         {
             ReleaseCapture();_tool?.Cancel();if(change.OldValue is MainWindowViewModel old){old.CancelGesture();old.PropertyChanged-=Changed;old.GestureEnded-=GestureEnded;if(old.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged-=SelectionChanged;}
             if(Model is {} model){model.PropertyChanged+=Changed;model.GestureEnded+=GestureEnded;if(model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;}
-            ContextMenu=Model is { } menuModel ? new ContextMenu { ItemsSource = new[] {
-                new MenuItem { Header="Detach / attach Video", Command=menuModel.Actions["video/detach"] },
+            ContextMenu=Model is { } menuModel ? new ContextMenu { ItemsSource = new object[] {
+                new MenuItem { Header="Save full frame…", Command=menuModel.Actions["video/frame/save"] },
+                new MenuItem { Header="Copy full frame", Command=menuModel.Actions["video/frame/copy"] }, new Separator(),
+                new MenuItem { Header="Save video frame…", Command=menuModel.Actions["video/frame/save/raw"] },
+                new MenuItem { Header="Copy video frame", Command=menuModel.Actions["video/frame/copy/raw"] }, new Separator(),
+                new MenuItem { Header="Save subtitles only…", Command=menuModel.Actions["video/frame/save/subs"] },
+                new MenuItem { Header="Copy subtitles only", Command=menuModel.Actions["video/frame/copy/subs"] }, new Separator(),
+                new MenuItem { Header="Copy coordinates", Command=menuModel.Actions["video/copy_coordinates"] },
                 new MenuItem { Header="Reset Video Pan", Command=menuModel.Actions["video/reset_pan"] }
             }} : null;
             Refresh();
@@ -131,11 +137,13 @@ public sealed class VisualOverlayControl : Control
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);if(Model?.VideoFrame is null)return;
-        if(e.KeyModifiers.HasFlag(KeyModifiers.Control)&&e.KeyModifiers.HasFlag(KeyModifiers.Shift))return;
         Cancel();var p=e.GetPosition(this);
-        if(e.KeyModifiers.HasFlag(KeyModifiers.Control))Model.ZoomVideoContent(Math.Max(.001,1+.125*e.Delta.Y),p.X,p.Y);
-        else if(e.KeyModifiers.HasFlag(KeyModifiers.Shift))Model.PanVideo(-5*e.Delta.X,5*e.Delta.Y);
-        else Model.Actions["video/presentation/zoom"].Execute(((Model.VideoWindowZoom+.125*e.Delta.Y)*100).ToString(System.Globalization.CultureInfo.InvariantCulture));
+        if(e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            var factor=1+.125*e.Delta.Y;var next=Model.VideoView!.ContentZoom*factor;
+            if(next>=.125&&next<=10)Model.ZoomVideoContent(factor,p.X,p.Y);
+        }
+        else Model.Actions["video/presentation/zoom"].Execute((Math.Clamp(Model.VideoWindowZoom+.125*e.Delta.Y,.125,10)*100).ToString(System.Globalization.CultureInfo.InvariantCulture));
         e.Handled=true;
     }
     private void Fail(Exception exception){Model?.Registry.ReportFailure("video/visual-edit",exception);Cancel();}

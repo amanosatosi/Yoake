@@ -62,13 +62,23 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     Require(model.VideoWindowZoom==2.125,"Menu Zoom In adds exactly 12.5 percentage points.");OpenZoom();Press(window.FindControl<MenuItem>("VideoZoomOutMenu")!,Key.Enter);return;
                 case 7:
                     Require(model.VideoWindowZoom==2,"Menu Zoom Out subtracts exactly 12.5 points.");
+                    Require(model.IsCrosshairTool,"New documents start with the coordinate tool.");
+                    var menu=Overlay.ContextMenu!.Items.OfType<MenuItem>().ToArray();
+                    foreach(var id in new[]{"video/frame/save","video/frame/copy","video/frame/save/raw","video/frame/copy/raw","video/frame/save/subs","video/frame/copy/subs","video/copy_coordinates","video/reset_pan"})
+                        Require(menu.Any(item=>ReferenceEquals(item.Command,model.Actions[id])),"Video context menu exposes "+id);
+                    Wheel(new(120,90),Avalonia.Input.KeyModifiers.None);Require(model.VideoWindowZoom==2.125&&model.VideoView!.ContentZoom==1,"Wheel resizes the video window, leaving content zoom alone.");
+                    Wheel(new(120,90),Avalonia.Input.KeyModifiers.None,-1);Require(model.VideoWindowZoom==2,"Wheel down restores the window scale.");
+                    await Invoke("video/presentation/zoom","12.5%");Wheel(new(120,90),Avalonia.Input.KeyModifiers.None,-1);
+                    Require(model.VideoWindowZoom==.125,"Window zoom remains at its minimum without an error.");await Invoke("video/presentation/zoom","200%");
                     Press(Overlay,Key.Add,Avalonia.Input.KeyModifiers.Control);Require(model.VideoWindowZoom==2.125,"Default Ctrl keypad Plus routes zoom.");
                     await Invoke("settings/hotkeys/set",new HotkeyChange(HotkeyContext.Video,"video/zoom/out",["F9"]));Press(Overlay,Key.F9);Require(model.VideoWindowZoom==2,"Live Video hotkey override routes zoom.");
                     _before=Area();_beforePanPixels=RenderImage();Pan(new(130,100),new(161,117));Require(!Overlay.IsPanning&&!model.HasGesture&&_pointer.Captured is null,"Middle release ends capture without subtitle editing.");
                     Require(Math.Abs(Area().X-_before.X-31)<.01&&Math.Abs(Area().Y-_before.Y-17)<.01,"Real middle drag translates image and overlay together.");Unchanged();
                     Require(!RenderImage().SequenceEqual(_beforePanPixels),"Actual clipped image pixels move during pan, not just stored coordinates.");
                     var target=new AssPoint(140.125,90.5);var mapped=Area().FromScript(target,320,180);Move(new(mapped.X,mapped.Y),RawInputModifiers.None);await Invoke("video/copy_coordinates");Require(await window.ReadClipboardAsync()=="140.125,90.5","Copy Coordinates uses zoom/pan transform.");
-                    Wheel(new(140,100),Avalonia.Input.KeyModifiers.Control);Require(model.VideoView!.ContentZoom==1.125,"Ctrl-wheel changes pointer-anchored content zoom.");
+                    var anchor=Area().ToScript(140,100,320,180);Wheel(new(140,100),Avalonia.Input.KeyModifiers.Control);
+                    var anchored=Area().FromScript(anchor,320,180);
+                    Require(model.VideoView!.ContentZoom==1.125&&model.VideoWindowZoom==2&&Math.Abs(anchored.X-140)<.01&&Math.Abs(anchored.Y-100)<.01,"Ctrl-wheel magnifies around the pointer without changing window zoom.");
                     window.FindControl<MenuItem>("VideoMenu")!.IsSubMenuOpen=true;Press(window.FindControl<MenuItem>("VideoResetPanMenu")!,Key.Enter);return;
                 case 8:
                     Require(model.VideoWindowZoom==2&&!model.VideoView!.ContentActive&&window.FindControl<MenuItem>("VideoZoom200Menu")!.IsChecked,"Reset Pan clears content zoom and pan, retains window zoom/radio.");Unchanged();
@@ -175,7 +185,7 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
     private void Move(Point p,RawInputModifiers modifiers)=>Overlay.RaiseEvent(new PointerEventArgs(InputElement.PointerMovedEvent,Overlay,_pointer,Host,Root(p),0,new(modifiers,PointerUpdateKind.Other),Avalonia.Input.KeyModifiers.None));
     private void Up(Point p,bool middle)=>Overlay.RaiseEvent(new PointerReleasedEventArgs(Overlay,_pointer,Host,Root(p),0,new(RawInputModifiers.None,middle?PointerUpdateKind.MiddleButtonReleased:PointerUpdateKind.LeftButtonReleased),Avalonia.Input.KeyModifiers.None,middle?MouseButton.Middle:MouseButton.Left));
     private void Pan(Point a,Point b){Down(a,true);Move(b,RawInputModifiers.MiddleMouseButton);Up(b,true);}
-    private void Wheel(Point p,Avalonia.Input.KeyModifiers modifiers)=>Overlay.RaiseEvent(new PointerWheelEventArgs(Overlay,_pointer,Host,Root(p),0,new(RawInputModifiers.None,PointerUpdateKind.Other),modifiers,new(0,1)));
+    private void Wheel(Point p,Avalonia.Input.KeyModifiers modifiers,double delta=1)=>Overlay.RaiseEvent(new PointerWheelEventArgs(Overlay,_pointer,Host,Root(p),0,new(RawInputModifiers.None,PointerUpdateKind.Other),modifiers,new(0,delta)));
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
     private static string Fixture()=>"[Script Info]\nPlayResX: 320\nPlayResY: 180\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,1,2,10,10,10,1\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:20.00,Default,,0,0,0,,{\\pos(160,90)\\unknown(foo)}日本 မြန်မာ preview\n";
 }

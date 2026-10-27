@@ -30,7 +30,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public bool KaraokeEnabled;
         public Dictionary<AssEvent,KaraokeEntry> Karaoke = [];
         public string KaraokeStatus="";
-        public string VisualTool="Position",VectorMode="Select";
+        public string VisualTool="Crosshair",VectorMode="Select";
         public VideoAspect VideoAspect = new();
         public VideoViewState VideoView = new();
         public int VideoProviderRevision;
@@ -96,7 +96,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private DocumentMedia? _media;
     private WriteableBitmap? _videoFrame;
     private WaveformData? _waveformSamples;
-    private string _activeVisualTool = "Position";
+    private string _activeVisualTool = "Crosshair";
     private string _subtitleStatus = "Ready";
     private string _mediaStatus = "Open video/audio";
     private double _mediaDurationSeconds, _currentTimeSeconds;

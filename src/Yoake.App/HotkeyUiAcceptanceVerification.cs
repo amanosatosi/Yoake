@@ -108,7 +108,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                 case 9:
                     Text.Focus();Text.CaretIndex=Text.Text!.Length;var count=model.Events.Count;
                     var selected=model.SelectedEvent;var before=model.SelectedEvent!.Text;
-                    Press(Text,Key.A);Require(model.ActiveVisualTool=="Position"&&model.Events.Count==count,"Typing must not select a video tool or mutate lines.");
+                    Press(Text,Key.A);Require(model.ActiveVisualTool=="Crosshair"&&model.Events.Count==count,"Typing must not select a video tool or mutate lines.");
                     Press(Text,Key.Delete,KeyModifiers.Control);Require(model.Events.Count==count&&ReferenceEquals(selected,model.SelectedEvent),"Native word deletion must not delete subtitle rows.");
                     var presenter=Text.GetVisualDescendants().OfType<TextPresenter>().Single();presenter.PreeditText="仮";
                     var draft=Text.Text;Press(Text,Key.Enter);Require(ReferenceEquals(selected,model.SelectedEvent)&&selected!.Text==before&&Text.Text==draft&&presenter.PreeditText=="仮","IME Enter must not commit or navigate.");

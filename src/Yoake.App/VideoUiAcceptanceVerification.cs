@@ -118,7 +118,7 @@ internal sealed class VideoUiAcceptanceVerification(IClassicDesktopStyleApplicat
                     await Invoke(CommandIds.EditCancel);await Invoke("video/vector/smooth");
                     Down(_a);Move(_b,true);Require(model.HasGesture,"Document-switch cancellation starts with an actual captured vector drag.");
                     await Invoke(CommandIds.SubtitleNew);Require(!model.HasGesture&&_pointer.Captured is null,"Changing documents cancels the gesture and releases capture.");
-                    Require(model.ActiveVisualTool=="Position"&&model.VectorMode=="Select"&&!model.Actions["video/tool/clip"].CanExecute(null),"A new document has independent standby tool/mode and no provider availability.");
+                    Require(model.ActiveVisualTool=="Crosshair"&&model.VectorMode=="Select"&&!model.Actions["video/tool/clip"].CanExecute(null),"A new document has independent standby tool/mode and no provider availability.");
                     await Invoke(CommandIds.WorkspaceActivateTab,_document);return;
                 case 7:
                     Radio("VectorClip");VectorRadio("Smooth");Require(ReferenceEquals(_samples,model.WaveformSamples)&&ReferenceEquals(_frames,model.FrameTimes)&&ReferenceEquals(_keys,model.Keyframes),"Tool/tab operations retain document-owned providers and frame map.");
