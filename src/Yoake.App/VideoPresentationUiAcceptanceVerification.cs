@@ -68,6 +68,8 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                         Require(menu.Any(item=>ReferenceEquals(item.Command,model.Actions[id])),"Video context menu exposes "+id);
                     Wheel(new(120,90),Avalonia.Input.KeyModifiers.None);Require(model.VideoWindowZoom==2.125&&model.VideoView!.ContentZoom==1,"Wheel resizes the video window, leaving content zoom alone.");
                     Wheel(new(120,90),Avalonia.Input.KeyModifiers.None,-1);Require(model.VideoWindowZoom==2,"Wheel down restores the window scale.");
+                    Wheel(new(120,90),Avalonia.Input.KeyModifiers.Shift);Require(Math.Abs(model.VideoView!.PanY-5*window.RenderScaling)<.01,"Shift-wheel retains Yoake's existing pan gesture.");
+                    await Invoke("video/reset_pan");
                     await Invoke("video/presentation/zoom","12.5%");Wheel(new(120,90),Avalonia.Input.KeyModifiers.None,-1);
                     Require(model.VideoWindowZoom==.125,"Window zoom remains at its minimum without an error.");await Invoke("video/presentation/zoom","200%");
                     Press(Overlay,Key.Add,Avalonia.Input.KeyModifiers.Control);Require(model.VideoWindowZoom==2.125,"Default Ctrl keypad Plus routes zoom.");

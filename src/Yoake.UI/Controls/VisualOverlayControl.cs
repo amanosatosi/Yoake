@@ -144,6 +144,7 @@ public sealed class VisualOverlayControl : Control
             var factor=1+.125*e.Delta.Y;var next=Model.VideoView!.ContentZoom*factor;
             if(next>=.125&&next<=10)Model.ZoomVideoContent(factor,p.X,p.Y);
         }
+        else if(e.KeyModifiers.HasFlag(KeyModifiers.Shift))Model.PanVideo(-5*e.Delta.X,5*e.Delta.Y);
         else Model.Actions["video/presentation/zoom"].Execute((Math.Clamp(Model.VideoWindowZoom+.125*e.Delta.Y,.125,10)*100).ToString(System.Globalization.CultureInfo.InvariantCulture));
         e.Handled=true;
     }
