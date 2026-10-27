@@ -89,6 +89,8 @@
 <MenuItem Header="Subtitle">
 <MenuItem Header="Insert before" InputGesture="{Binding Actions[grid/insert/before].InputGesture}" Command="{Binding Actions[grid/insert/before]}" />
 <MenuItem Header="Insert after" InputGesture="{Binding Actions[grid/insert/after].InputGesture}" Command="{Binding Actions[grid/insert/after]}" />
+<MenuItem Header="Insert before at video time" Command="{Binding Actions[subtitle/insert/before/videotime]}" InputGesture="{Binding Actions[subtitle/insert/before/videotime].InputGesture}" />
+<MenuItem Header="Insert after at video time" Command="{Binding Actions[subtitle/insert/after/videotime]}" InputGesture="{Binding Actions[subtitle/insert/after/videotime].InputGesture}" />
 <MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />
 <MenuItem Header="Delete selected" InputGesture="{Binding Actions[grid/delete].InputGesture}" Command="{Binding Actions[grid/delete]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Delete}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Comment / Uncomment Lines" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
@@ -540,6 +542,8 @@
 </MenuItem>
 <MenuItem Header="Insert before" InputGesture="{Binding Actions[grid/insert/before].InputGesture}" Command="{Binding Actions[grid/insert/before]}" />
 <MenuItem Header="Insert after" InputGesture="{Binding Actions[grid/insert/after].InputGesture}" Command="{Binding Actions[grid/insert/after]}" />
+<MenuItem Header="Insert before at video time" Command="{Binding Actions[subtitle/insert/before/videotime]}" InputGesture="{Binding Actions[subtitle/insert/before/videotime].InputGesture}" />
+<MenuItem Header="Insert after at video time" Command="{Binding Actions[subtitle/insert/after/videotime]}" InputGesture="{Binding Actions[subtitle/insert/after/videotime].InputGesture}" />
 <MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />
 <MenuItem Header="Delete selected" InputGesture="{Binding Actions[grid/delete].InputGesture}" Command="{Binding Actions[grid/delete]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Delete}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Comment / Uncomment Lines" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />

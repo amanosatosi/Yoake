@@ -6,6 +6,26 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public async Task VideoTimeInsertionUsesFrameBoundaryAndOneUndoWithoutLeakingMetadata()
+    {
+        const string before="subtitle/insert/before/videotime", after="subtitle/insert/after/videotime";
+        await Command(CommandIds.GridInsertAfter);var original=_model.SelectedEvent!;
+        _model.Draft!.Text="日本語 {\\future(keep)}";_model.Draft.Actor="Existing actor";await Command(CommandIds.EditCommit);
+        var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
+        Assert.False(_model.Actions[before].CanExecute(null));Assert.False(_model.Actions[after].CanExecute(null));
+        await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=40,FramesPerSecond=25});
+        _model.CurrentTimeSeconds=.2;
+        Assert.False(await _model.Registry.InvokeAsync(after,new(Guid.NewGuid())));
+        await Command(after);var inserted=_model.SelectedEvent!;
+        Assert.Equal(new[]{original,inserted},_model.Events);Assert.Equal(original.Style,inserted.Style);
+        Assert.Equal(180,inserted.StartMilliseconds);Assert.Equal(3180,inserted.EndMilliseconds);
+        Assert.Equal("",inserted.Text);Assert.Equal("",inserted.Get("Name"));
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+        await Command(CommandIds.EditRedo);Assert.Equal(2,_model.Events.Count);
+        await Command(CommandIds.EditUndo);_model.SelectedEvent=original;
+        await Command(before);Assert.Same(original,_model.Events[1]);Assert.Equal(180,_model.Events[0].StartMilliseconds);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+    }
     [Fact] public async Task ZoomPanDetachUseCommandsAndPreserveDocumentAndExports()
     {
         await TimingRows();await _model.OpenDummyVideoAsync(new(){Width=640,Height=480,FrameCount=20});

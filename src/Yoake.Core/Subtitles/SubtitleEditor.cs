@@ -105,6 +105,16 @@ public sealed partial class SubtitleEditor(AssDocument document)
         var before=Document.Events.ElementAtOrDefault(Document.Events.IndexOf(reference)+1);
         Structure("Insert timed subtitle",()=>Document.Insert(line,before));return line;
     }
+    public AssEvent InsertAtVideoTime(AssEvent reference, bool after, long start, long duration)
+    {
+        Require(reference);
+        var end=checked(start+duration);
+        if(start<0||duration<=0||!AssTime.TryParse(AssTime.Format(end),out _))throw new ArgumentException("Invalid video-time subtitle range.");
+        var line=Document.NewEvent();line.Style=reference.Style;
+        line.Start=AssTime.Format(start);line.End=AssTime.Format(end);
+        var before=Document.Events.ElementAtOrDefault(Document.Events.IndexOf(reference)+(after?1:0));
+        Structure("Insert subtitle at video time",()=>Document.Insert(line,before));return line;
+    }
     private AssEvent[] Ordered(IEnumerable<AssEvent> selection)
     {
         var set = selection.ToHashSet();var owned=Document.Events.ToHashSet();

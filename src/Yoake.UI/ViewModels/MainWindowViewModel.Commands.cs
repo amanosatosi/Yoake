@@ -163,6 +163,14 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.GridLinePrevious,"Previous subtitle",()=>Navigate(-1));
         S(CommandIds.GridInsertBefore,"Insert before",()=>RunEdit(e=>Select(e.Insert(SelectedEvent,false,(long)(CurrentTimeSeconds*1000)))));
         S(CommandIds.GridInsertAfter,"Insert after",()=>RunEdit(e=>Select(e.Insert(SelectedEvent,true,SelectedEvent?.EndMilliseconds??(long)(CurrentTimeSeconds*1000)))));
+        foreach(var after in new[]{false,true})
+        {
+            var id=after?"subtitle/insert/after/videotime":"subtitle/insert/before/videotime";
+            _registry.Register(new AppCommand(new(id,after?"Insert after at video time":"Insert before at video time","Insert a subtitle at the current video frame","Subtitle"),
+                (_,token)=>{token.ThrowIfCancellationRequested();RunEdit(e=>Select(e.InsertAtVideoTime(SelectedEvent!,after,ActiveFrameTiming().SubtitleBoundary(CurrentFrame,Yoake.Core.Media.FrameTimeKind.Start),_settings.AudioDefaultDuration??3000)));return ValueTask.CompletedTask;},
+                context=>_activeId is { } active && (context.DocumentId is null||context.DocumentId==active) && HasLine() && _media?.HasVideo==true && CanShiftByFrames && FrameTimes.Count>0));
+            Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
+        }
         S(CommandIds.GridDuplicate,"Duplicate",()=>RunEdit(e=>{var copies=e.Duplicate(Selection()); SelectCopies(copies);}),HasLine);
         S(CommandIds.GridDelete,"Delete selected",()=>RunEdit(e=>{var index=SelectedEvent is null?0:Events.ToList().IndexOf(SelectedEvent); e.Delete(Selection());Select(Events.ElementAtOrDefault(Math.Min(index,Events.Count-1)));}),HasLine);
         S(CommandIds.GridToggleComment,"Comment / Uncomment Lines",()=>RunEdit(e=>e.ToggleComment(Selection())),HasLine);
