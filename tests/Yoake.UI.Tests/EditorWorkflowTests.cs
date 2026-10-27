@@ -521,6 +521,18 @@ public sealed partial class EditorWorkflowTests : IDisposable
         _dialogs.Choice=UnsavedChoice.Cancel;Assert.False(await _model.CloseDocumentAsync(id));Assert.Contains(_workspace.Documents,d=>d.Id==id);
         _dialogs.Choice=UnsavedChoice.Discard;Assert.True(await _model.CloseDocumentAsync(id));Assert.DoesNotContain(_workspace.Documents,d=>d.Id==id);
     }
+    [Fact] public async Task ClosingActiveTabDisablesMediaCommandsDuringTabRemoval()
+    {
+        await Command(CommandIds.SubtitleNew);var closing=_model.ActiveDocumentId!.Value;var observed=false;
+        _model.Tabs.CollectionChanged+=(_,e)=>
+        {
+            if(e.Action!=System.Collections.Specialized.NotifyCollectionChangedAction.Remove)return;
+            observed=true;var context=new CommandContext(closing);
+            Assert.False(_model.Registry.CanExecute("video/close",context));
+            Assert.False(_model.Registry.CanExecute("audio/close",context));
+        };
+        Assert.True(await _model.CloseDocumentAsync(closing));Assert.True(observed);
+    }
     [Fact] public async Task FailedValidationKeepsDraftAndCurrentRow()
     {
         await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent;await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent;

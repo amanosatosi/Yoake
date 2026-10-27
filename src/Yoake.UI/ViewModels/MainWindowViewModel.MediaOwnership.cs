@@ -20,7 +20,7 @@ public sealed partial class MainWindowViewModel
 
     private void RegisterMediaOwnershipCommands()
     {
-        bool Applies(CommandContext context) => _activeId is not null && (context.DocumentId is null || context.DocumentId == _activeId);
+        bool Applies(CommandContext context) => _activeId is { } id && _documents.ContainsKey(id) && (context.DocumentId is null || context.DocumentId == id);
         foreach (var video in new[] { true, false })
         {
             async ValueTask Open(CommandInvocation invocation, CancellationToken token)

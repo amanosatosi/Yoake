@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Yoake.Core.Commands;
@@ -57,7 +58,8 @@ internal sealed class MotionInputVerification(MainWindow window, MainWindowViewM
                 capture(_dialog!, "motion-tracked-path", 1);
                 var apply = Named<Button>("MotionTrack_apply");
                 Require(apply.IsEnabled, "The actual Apply button must be available after tracking.");
-                apply.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); return false;
+                _dialog!.Activate(); Require(apply.Focus(), "The actual Apply button must accept keyboard focus.");
+                apply.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Source = apply, Key = Key.Enter }); return false;
             case 6:
                 if (!_opening!.IsCompleted) { _stage--; return false; }
                 Require(_opening.Result && model.MotionTracking is null, "Apply must close and release the transient tracking session.");
