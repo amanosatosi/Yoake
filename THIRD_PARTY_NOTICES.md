@@ -71,6 +71,75 @@ The quadrilateral icon is renamed Distort and denotes Mangetsu bilinear
 four-corner authoring; it does not introduce Aegisub tag semantics.
 No upstream application identity artwork is used.
 
+## File, undo and audio action artwork
+
+Yoake adapts the following functional icons from
+https://github.com/amanosatosi/Aegisub_Toshi-ban at commit
+`28b5156df94cb2538d373db503445d2b07466396`:
+`docs/art-sources/buttons/new_toolbutton.svg`, `open_toolbutton.svg`,
+`save_toolbutton.svg`, `undo_button.svg`, `redo_button.svg`,
+`button_playsel.svg`, and `button_stop.svg`.
+The matching files in the user's local fork were checked for license headers,
+as were the root-to-source directory levels for license exceptions; none were
+found. The fork's root `LICENCE` therefore applies: Copyright (c) 2004-2012,
+Aegisub Project, BSD 3-Clause. The full text is retained in
+`third_party/licenses/Aegisub-BSD-3-Clause.txt` and distributed in
+`licenses/Aegisub-BSD-3-Clause.txt`.
+
+The artwork was scaled from 64 to 24 units, stripped of editor metadata and
+converted to currentColor. The document, folder and floppy use monochrome
+outlines in place of colored fills; their line widths were adjusted for small
+toolbar sizes. Undo, redo and audio silhouettes retain their curves and strokes.
+No Aegisub application or logo branding is included.
+
+The expanded command, timing, transport, and editor icon set is also adapted
+from the same fork and commit, in `docs/art-sources/buttons/`:
+
+- `jumpto_button.svg`, `zoom_in_button.svg`, `zoom_out_button.svg`,
+  `video_to_substart.svg`, `video_to_subend.svg`, `substart_to_video.svg`,
+  `subend_to_video.svg`, `select_visible_button.svg`,
+  `snap_subs_to_scene.svg`, `shift_to_frame.svg`, `style_toolbutton.svg`,
+  `properties_toolbutton.svg`, `attach_button.svg`,
+  `font_collector_button.svg`, `automation_toolbutton.svg`,
+  `shift_times_toolbutton.svg`, `resample_toolbutton.svg`,
+  `options_button.svg`, `toggle_tag_hiding.svg`, `button_motion_track.svg`.
+- `button_prev.svg`, `button_next.svg`, `button_playline.svg`,
+  `button_playfivehbefore.svg`, `button_playfivehafter.svg`,
+  `button_playfirstfiveh.svg`, `button_playlastfiveh.svg`,
+  `button_playtoend.svg`, `button_leadin.svg`, `button_leadout.svg`,
+  `button_audio_commit.svg`, `button_audio_goto.svg`,
+  `toggle_audio_autocommit.svg`, `toggle_audio_nextcommit.svg`,
+  `toggle_audio_autoscroll.svg`, `toggle_audio_spectrum.svg`,
+  `toggle_audio_link.svg`, `kara_spectrogram_timing.svg`,
+  `kara_split_accept.svg`, `kara_split_cancel.svg`,
+  `button_play.svg`, `button_pause.svg`, `toggle_video_autoscroll.svg`.
+- `save_as_toolbutton.svg`, `open_video_menu.svg`, `close_video_menu.svg`,
+  `open_audio_menu.svg`, `close_audio_menu.svg`,
+  `open_timecodes_menu.svg`, `save_timecodes_menu.svg`,
+  `close_timecodes_menu.svg`, `open_keyframes_menu.svg`,
+  `save_keyframes_menu.svg`, `close_keyframes_menu.svg`, `find_button.svg`,
+  `find_next_menu.svg`, `find_replace_menu.svg`, `copy_button.svg`,
+  `cut_button.svg`, `delete_button.svg`, `paste_button.svg`,
+  `button_bold.svg`, `button_italics.svg`, `button_underline.svg`,
+  `button_strikeout.svg`, `button_fontname.svg`, `export_menu.svg`,
+  `about_menu.svg`, `select_lines_button.svg`, `detach_video_menu.svg`,
+  `show_video_details_menu.svg`, `use_dummy_video_menu.svg`.
+
+The local files have no license headers, and no intervening license files were
+found in `docs/`, `docs/art-sources/`, or `docs/art-sources/buttons/`;
+the fork's root `LICENCE` applies the BSD 3-Clause text cited above. The
+selected local SVGs were compared with the listed commit. The 64-unit paths
+were scaled to 24 units; colors and gradients were replaced by theme-aware
+foreground, and overlapping backgrounds were made outlines to keep details
+visible. Dashed outlines in shift/resample were redrawn as explicit path
+segments. The 16-unit motion tracker and 32-unit karaoke spectrogram were
+redrawn as compact paths. Karaoke accept/cancel keeps the source boxes and
+foreground check/cross while omitting the faint miniature lettering and arrows.
+Start/end timing actions use theme-aware green/red
+foregrounds, and selection/line playback uses blue/red, to retain their
+functional distinctions. Source-to-command
+mappings and exceptions are recorded in `docs/architecture/aegisub-icon-migration.md`.
+
 ## Bundled ASSDraw fork
 
 The independent ASSDraw3.exe is built from https://github.com/amanosatosi/assdraw

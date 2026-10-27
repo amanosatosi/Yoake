@@ -9,6 +9,7 @@ using Yoake.UI.Commands;
 using Avalonia.Threading;
 using Yoake.Core.Subtitles;
 using Yoake.UI.ViewModels;
+using Yoake.UI.Icons;
 
 namespace Yoake.UI;
 
@@ -36,6 +37,13 @@ public sealed class AttachmentsWindow : Window
         void Button(string name,string label,Func<Task> action)
         {
             var button=new Button{Name=name,Content=label,Margin=new Thickness(0,0,6,0)};names.Register(name,button);row.Children.Add(button);_buttons[name]=button;
+            var geometry=name=="AttachmentUndo"?IconGeometries.Undo:name=="AttachmentRedo"?IconGeometries.Redo:null;
+            if(geometry is not null)
+            {
+                var content=new StackPanel{Orientation=Orientation.Horizontal,Spacing=4};
+                content.Children.Add(new PathIcon{Width=14,Height=14,Data=geometry});content.Children.Add(new TextBlock{Text=label});button.Content=content;
+                ToolTip.SetTip(button,label);
+            }
             button.Click+=async(_,_)=>{try{await action();}catch(OperationCanceledException){ }catch(Exception error){_status.Text=error.Message;_model.Registry.ReportFailure("subtitle/attachment",error);}};
         }
         Button("AttachmentImport","Import…",async()=>

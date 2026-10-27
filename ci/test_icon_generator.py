@@ -3,6 +3,7 @@ import importlib.util
 from pathlib import Path
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 spec = importlib.util.spec_from_file_location("icons", Path(__file__).resolve().parents[1] / "tools/generate-icons.py")
 icons = importlib.util.module_from_spec(spec)
@@ -33,6 +34,46 @@ class SvgSemantics(unittest.TestCase):
         for attributes in ('transform="rotate(30)"', 'style="fill:none"', 'fill="#ff0000"', 'opacity=".5"', 'stroke-dasharray="1 2"'):
             with self.subTest(attributes=attributes), self.assertRaises(SystemExit):
                 self.generate(attributes, '<path d="M0 0L10 10"/>')
+
+
+class EditorIconWiring(unittest.TestCase):
+    def test_toolbar_actions_keep_distinct_reference_icons_and_tooltips(self):
+        root = ET.parse(icons.ROOT / "src/Yoake.UI/MainWindow.axaml").getroot()
+        controls = list(root.iter())
+        # These pairs are easy to accidentally swap while preserving valid XAML.
+        expected = {
+            "timing/jump-start": "VideoToStart",
+            "timing/jump-end": "VideoToEnd",
+            "time/snap/start_video": "StartToVideo",
+            "time/snap/end_video": "EndToVideo",
+            "time/prev": "TimingPrevious",
+            "time/next": "TimingNext",
+            "audio/play/selection/before": "AudioPlayBefore",
+            "audio/play/selection/after": "AudioPlayAfter",
+            "audio/play/selection/begin": "AudioPlayBegin",
+            "audio/play/selection/end": "AudioPlayEnd",
+            "audio/karaoke": "KaraokeTiming",
+        }
+        for command, geometry in expected.items():
+            with self.subTest(command=command):
+                buttons = [
+                    node for node in controls
+                    if node.tag.rsplit("}", 1)[-1] in ("Button", "ToggleButton")
+                    and node.get("Command") == "{Binding Actions[" + command + "]}"
+                ]
+                self.assertTrue(buttons, command)
+                self.assertTrue(any(node.get("ToolTip.Tip") for node in buttons))
+                self.assertTrue(any(
+                    any(child.get("Data") == "{x:Static icons:IconGeometries." + geometry + "}"
+                        for child in node.iter())
+                    for node in buttons
+                ), geometry)
+
+    def test_start_and_end_timing_colors_follow_theme_resources(self):
+        app = ET.parse(icons.ROOT / "src/Yoake.App/App.axaml").getroot()
+        keys = "{http://schemas.microsoft.com/winfx/2006/xaml}Key"
+        for name in ("IconTimingStartBrush", "IconTimingEndBrush"):
+            self.assertGreaterEqual(sum(node.get(keys) == name for node in app.iter()), 2)
 
 
 if __name__ == "__main__":
