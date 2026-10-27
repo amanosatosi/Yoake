@@ -52,7 +52,8 @@ public sealed class VisualOverlayControl : Control
                 new MenuItem { Header="Save subtitles only…", Command=menuModel.Actions["video/frame/save/subs"] },
                 new MenuItem { Header="Copy subtitles only", Command=menuModel.Actions["video/frame/copy/subs"] }, new Separator(),
                 new MenuItem { Header="Copy coordinates", Command=menuModel.Actions["video/copy_coordinates"] },
-                new MenuItem { Header="Reset Video Pan", Command=menuModel.Actions["video/reset_pan"] }
+                new MenuItem { Header="Reset Video Pan", Command=menuModel.Actions["video/reset_pan"] }, new Separator(),
+                new MenuItem { Header="Detach / attach Video", Command=menuModel.Actions["video/detach"] }
             }} : null;
             Refresh();
         }

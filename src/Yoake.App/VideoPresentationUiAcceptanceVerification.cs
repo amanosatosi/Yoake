@@ -64,7 +64,7 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     Require(model.VideoWindowZoom==2,"Menu Zoom Out subtracts exactly 12.5 points.");
                     Require(model.IsCrosshairTool,"New documents start with the coordinate tool.");
                     var menu=Overlay.ContextMenu!.Items.OfType<MenuItem>().ToArray();
-                    foreach(var id in new[]{"video/frame/save","video/frame/copy","video/frame/save/raw","video/frame/copy/raw","video/frame/save/subs","video/frame/copy/subs","video/copy_coordinates","video/reset_pan"})
+                    foreach(var id in new[]{"video/frame/save","video/frame/copy","video/frame/save/raw","video/frame/copy/raw","video/frame/save/subs","video/frame/copy/subs","video/copy_coordinates","video/reset_pan","video/detach"})
                         Require(menu.Any(item=>ReferenceEquals(item.Command,model.Actions[id])),"Video context menu exposes "+id);
                     Wheel(new(120,90),Avalonia.Input.KeyModifiers.None);Require(model.VideoWindowZoom==2.125&&model.VideoView!.ContentZoom==1,"Wheel resizes the video window, leaving content zoom alone.");
                     Wheel(new(120,90),Avalonia.Input.KeyModifiers.None,-1);Require(model.VideoWindowZoom==2,"Wheel down restores the window scale.");
