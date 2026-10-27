@@ -324,6 +324,17 @@ public sealed partial class EditorWorkflowTests : IDisposable
         await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
         _model.SetSelectedEvents([rows[0]]);Assert.False(_model.Actions["grid/swap"].CanExecute(null));Assert.False(_model.Actions["grid/sort/start/selected"].CanExecute(null));
     }
+    [Theory]
+    [InlineData("grid/sort/text")][InlineData("grid/sort/text_stripped")]
+    public async Task TextSortingCommandsPreserveSourceThroughUndo(string id)
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="z{\\future(x)}";await Command(CommandIds.EditCommit);
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="a{\\distort(1,2,3,4)}";await Command(CommandIds.EditCommit);
+        var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var rows=_model.Events.ToArray();
+        _model.SetSelectedEvents(rows);Assert.True(_model.Actions[id+"/selected"].CanExecute(null));
+        await Command(id+"/selected");Assert.Equal(new[]{rows[1],rows[0]},_model.Events);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+    }
     [Fact] public async Task TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory()
     {
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(opaque)}日本語 unfinished";

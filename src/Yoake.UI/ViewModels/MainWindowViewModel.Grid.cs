@@ -26,7 +26,7 @@ public sealed partial class MainWindowViewModel
         foreach(var selected in new[]{false,true})
         {
             var sortKey=key;var selectedOnly=selected;
-            var id="grid/sort/"+key.ToString().ToLowerInvariant()+(selected?"/selected":"");
+            var id="grid/sort/"+(key==SubtitleSortKey.TextStripped?"text_stripped":key.ToString().ToLowerInvariant())+(selected?"/selected":"");
             _registry.Register(new(new(id,"Sort "+(selected?"selected":"all")+" by "+key.ToString().ToLowerInvariant(),"Stable sort of "+(selected?"each selected block":"all subtitle lines"),"Grid"),
                 async(_,token)=>await SortLinesAsync(sortKey,selectedOnly,token),context=>Applies(context)&&_gesture is null&&(selectedOnly?Selection().Length:Events.Count)>=2));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);

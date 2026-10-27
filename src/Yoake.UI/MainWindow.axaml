@@ -116,6 +116,8 @@
 <MenuItem Header="By actor" InputGesture="{Binding Actions[grid/sort/actor].InputGesture}" Command="{Binding Actions[grid/sort/actor]}" />
 <MenuItem Header="By effect" InputGesture="{Binding Actions[grid/sort/effect].InputGesture}" Command="{Binding Actions[grid/sort/effect]}" />
 <MenuItem Header="By layer" InputGesture="{Binding Actions[grid/sort/layer].InputGesture}" Command="{Binding Actions[grid/sort/layer]}" />
+<MenuItem Header="By text including tags" Command="{Binding Actions[grid/sort/text]}" InputGesture="{Binding Actions[grid/sort/text].InputGesture}" />
+<MenuItem Header="By text without tags" Command="{Binding Actions[grid/sort/text_stripped]}" InputGesture="{Binding Actions[grid/sort/text_stripped].InputGesture}" />
 </MenuItem>
 <MenuItem Header="Sort selected blocks">
 <MenuItem Header="By start" InputGesture="{Binding Actions[grid/sort/start/selected].InputGesture}" Command="{Binding Actions[grid/sort/start/selected]}" />
@@ -124,6 +126,8 @@
 <MenuItem Header="By actor" InputGesture="{Binding Actions[grid/sort/actor/selected].InputGesture}" Command="{Binding Actions[grid/sort/actor/selected]}" />
 <MenuItem Header="By effect" InputGesture="{Binding Actions[grid/sort/effect/selected].InputGesture}" Command="{Binding Actions[grid/sort/effect/selected]}" />
 <MenuItem Header="By layer" InputGesture="{Binding Actions[grid/sort/layer/selected].InputGesture}" Command="{Binding Actions[grid/sort/layer/selected]}" />
+<MenuItem Header="By text including tags" Command="{Binding Actions[grid/sort/text/selected]}" InputGesture="{Binding Actions[grid/sort/text/selected].InputGesture}" />
+<MenuItem Header="By text without tags" Command="{Binding Actions[grid/sort/text_stripped/selected]}" InputGesture="{Binding Actions[grid/sort/text_stripped/selected].InputGesture}" />
 </MenuItem>
 <MenuItem Header="Move up" InputGesture="{Binding Actions[grid/move/up].InputGesture}" Command="{Binding Actions[grid/move/up]}" />
 <MenuItem Header="Move down" InputGesture="{Binding Actions[grid/move/down].InputGesture}" Command="{Binding Actions[grid/move/down]}" />
@@ -569,6 +573,8 @@
 <MenuItem Header="By actor" InputGesture="{Binding Actions[grid/sort/actor/selected].InputGesture}" Command="{Binding Actions[grid/sort/actor/selected]}" />
 <MenuItem Header="By effect" InputGesture="{Binding Actions[grid/sort/effect/selected].InputGesture}" Command="{Binding Actions[grid/sort/effect/selected]}" />
 <MenuItem Header="By layer" InputGesture="{Binding Actions[grid/sort/layer/selected].InputGesture}" Command="{Binding Actions[grid/sort/layer/selected]}" />
+<MenuItem Header="By text including tags" Command="{Binding Actions[grid/sort/text/selected]}" InputGesture="{Binding Actions[grid/sort/text/selected].InputGesture}" />
+<MenuItem Header="By text without tags" Command="{Binding Actions[grid/sort/text_stripped/selected]}" InputGesture="{Binding Actions[grid/sort/text_stripped/selected].InputGesture}" />
 </MenuItem>
 <MenuItem Header="Move up" InputGesture="{Binding Actions[grid/move/up].InputGesture}" Command="{Binding Actions[grid/move/up]}" />
 <MenuItem Header="Move down" InputGesture="{Binding Actions[grid/move/down].InputGesture}" Command="{Binding Actions[grid/move/down]}" />

@@ -4,13 +4,13 @@ using Yoake.Core.Undo;
 
 namespace Yoake.Core.Subtitles;
 
-public enum SubtitleSortKey { Start,End,Style,Actor,Effect,Layer }
+public enum SubtitleSortKey { Start,End,Style,Actor,Effect,Layer,Text,TextStripped }
 
 // A revision-checked snapshot of one editor, not another document or timeline.
 // Capture on the caller thread, calculate in a cancellable job, apply on UI.
 public sealed class SubtitleSortSnapshot
 {
-    internal sealed record Entry(AssEvent Line,int Position,bool Selected,long Start,long End,int Layer,string Style,string Actor,string Effect);
+    internal sealed record Entry(AssEvent Line,int Position,bool Selected,long Start,long End,int Layer,string Style,string Actor,string Effect,string Text);
     internal SubtitleEditor Editor {get;}
     internal long Revision {get;}
     private readonly Entry[] _entries;private readonly SubtitleSortKey _key;
@@ -19,6 +19,12 @@ public sealed class SubtitleSortSnapshot
     public SubtitleSortOrder Calculate(CancellationToken cancellationToken=default)
     {
         cancellationToken.ThrowIfCancellationRequested();var sorted=(Entry[])_entries.Clone();
+        string[]? stripped=null;
+        if(_key==SubtitleSortKey.TextStripped)
+        {
+            stripped=new string[_entries.Length];
+            foreach(var entry in _entries){cancellationToken.ThrowIfCancellationRequested();stripped[entry.Position]=AssTextOperations.PlainTextForSorting(entry.Text);}
+        }
         int Compare(Entry first,Entry second)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -27,6 +33,8 @@ public sealed class SubtitleSortSnapshot
                 SubtitleSortKey.Start=>first.Start.CompareTo(second.Start),SubtitleSortKey.End=>first.End.CompareTo(second.End),
                 SubtitleSortKey.Layer=>first.Layer.CompareTo(second.Layer),SubtitleSortKey.Style=>CompareScalars(first.Style,second.Style),
                 SubtitleSortKey.Actor=>CompareScalars(first.Actor,second.Actor),SubtitleSortKey.Effect=>CompareScalars(first.Effect,second.Effect),
+                SubtitleSortKey.Text=>CompareScalars(first.Text,second.Text),
+                SubtitleSortKey.TextStripped=>CompareScalars(stripped![first.Position],stripped[second.Position]),
                 _=>throw new ArgumentException("Unknown sort key."),
             };
             return comparison!=0?comparison:first.Position.CompareTo(second.Position);
@@ -71,7 +79,7 @@ public sealed partial class SubtitleEditor
         var selected=selection is null?null:Ordered(selection).ToHashSet();
         return new(this,Document.Events.Select((line,index)=>new SubtitleSortSnapshot.Entry(line,index,selected is null||selected.Contains(line),
             line.StartMilliseconds??long.MaxValue,line.EndMilliseconds??long.MaxValue,
-            int.TryParse(line.Layer,NumberStyles.Integer,CultureInfo.InvariantCulture,out var layer)?layer:int.MaxValue,line.Style,line.Actor,line.Effect)).ToArray(),key);
+            int.TryParse(line.Layer,NumberStyles.Integer,CultureInfo.InvariantCulture,out var layer)?layer:int.MaxValue,line.Style,line.Actor,line.Effect,line.Text)).ToArray(),key);
     }
     public void ApplySort(SubtitleSortOrder order)
     {

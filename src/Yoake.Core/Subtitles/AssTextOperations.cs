@@ -7,6 +7,23 @@ internal readonly record struct AssOverrideBlock(int Start,int End,bool Closed);
 
 public static class AssTextOperations
 {
+    // Toshi-ban's stripped sort compares plain blocks, retaining escape and
+    // furigana spelling while excluding closed override/comment and drawing blocks.
+    public static string PlainTextForSorting(string source)
+    {
+        var result=new StringBuilder();var previous=0;var drawing=false;
+        foreach(var block in Blocks(source))
+        {
+            if(!drawing)result.Append(source,previous,block.Start-previous);
+            if(!block.Closed){if(!drawing)result.Append(source,block.Start,block.End-block.Start);return result.ToString();}
+            var text=source[block.Start..block.End];
+            foreach(var tag in AssSyntax.Tags(text))
+                if(tag.Name=="p"&&int.TryParse(text.AsSpan(tag.ValueStart,tag.End-tag.ValueStart),NumberStyles.Integer,CultureInfo.InvariantCulture,out var scale))drawing=scale>0;
+            previous=block.End;
+        }
+        if(!drawing)result.Append(source,previous,source.Length-previous);
+        return result.ToString();
+    }
     internal static IEnumerable<AssOverrideBlock> Blocks(string source)
     {
         var opening=-1;

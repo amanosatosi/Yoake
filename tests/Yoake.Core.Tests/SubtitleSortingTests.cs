@@ -44,4 +44,19 @@ public sealed class SubtitleSortingTests
         editor.SetField(rows[0],"Name","𐀀","Change actor");editor.SetField(rows[3],"Name","\uE000","Change actor");
         editor.ApplySort(editor.CaptureSort(SubtitleSortKey.Actor).Calculate());Assert.Equal(new[]{rows[1],rows[2],rows[3],rows[0]},editor.Document.Events);
     }
+    [Fact] public void TextSortCanIncludeTagsOrCompareOnlyPlainBlocksWithoutChangingSource()
+    {
+        const string source="[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Text\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,{\\future(x)}z\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,a{\\p1}m 0 0 l 2 2{\\p0}b\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,{comment}ab\n";
+        var editor=new SubtitleEditor(AssDocument.Parse(source));var rows=editor.Document.Events.ToArray();
+        editor.ApplySort(editor.CaptureSort(SubtitleSortKey.TextStripped).Calculate());
+        Assert.Equal(new[]{rows[1],rows[2],rows[0]},editor.Document.Events);
+        editor.Undo.Undo();Assert.Equal(source,editor.Document.Serialize());
+        editor.ApplySort(editor.CaptureSort(SubtitleSortKey.Text).Calculate());
+        Assert.Equal(new[]{rows[1],rows[0],rows[2]},editor.Document.Events);
+        editor.Undo.Undo();Assert.Equal(source,editor.Document.Serialize());
+        Assert.Equal("plain{unfinished",AssTextOperations.PlainTextForSorting("plain{unfinished"));
+    }
 }
