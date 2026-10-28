@@ -63,6 +63,25 @@ end)
     }
 
     [Fact]
+    public async Task ModernTemplaterProcessesMangetsuFuriganaWithoutChangingOriginalText()
+    {
+        var root=Path.Combine(AppContext.BaseDirectory,"automation-3.5-above");var path=Path.Combine(root,"autoload","kara-templater.lua");
+        using var script=await _provider.LoadAsync(path,new(path,[Path.Combine(root,"include")]),CancellationToken.None);
+        var doc=AssDocument.CreateEmpty();var editor=new SubtitleEditor(doc);
+        var template=editor.Insert(null,true);template.Effect="template furi";template.Text=@"{\k$kdur}";
+        var song=editor.Insert(template,true);song.Effect="";song.Text=@"<病|{\k30}や{\k26}ま{\k10}い>";song.Start="0:00:01.00";song.End="0:00:03.00";
+        editor.ToggleComment([template]);var before=doc.Serialize();using var subs=new AutomationSubtitleDocument(doc);
+        var macro=Assert.Single(script.Macros);await script.RunAsync(macro.Index,Context(subs),CancellationToken.None);
+        Assert.Equal(before,doc.Serialize());subs.Commit(editor,macro.Name);
+        var generated=doc.Events.Where(line=>line.Effect=="fx").ToArray();
+        Assert.Contains(generated,line=>line.Text.EndsWith("や",StringComparison.Ordinal));
+        Assert.Contains(generated,line=>line.Text.EndsWith("ま",StringComparison.Ordinal));
+        Assert.Contains(generated,line=>line.Text.EndsWith("い",StringComparison.Ordinal));
+        Assert.Equal(@"<病|{\k30}や{\k26}ま{\k10}い>",song.Text);
+        editor.Undo.Undo();Assert.Equal(before,doc.Serialize());
+    }
+
+    [Fact]
     public async Task RealMacroEditsInsertsDeletesCheckpointsAndReturnsSelection()
     {
         using var script = await Load("""

@@ -29,6 +29,8 @@ for entry in provenance['files']:
 adapter=json.loads((ROOT/'third_party/automation/mangetsu-adapter.json').read_text(encoding='utf-8'))
 if hashlib.sha256((ROOT/adapter['yoakePath']).read_bytes()).hexdigest()!=adapter['sha256']:
     fail('Mangetsu Karaskel adapter differs from recorded source')
+if hashlib.sha256((ROOT/'automation-3.5-above/include/mangetsu-karaskel.lua').read_bytes()).hexdigest()!=adapter['sha256']:
+    fail('Modern Mangetsu Karaskel adapter differs from recorded source')
 modern=json.loads((ROOT/'third_party/automation/aegisub-3.5.1-provenance.json').read_text(encoding='utf-8'))
 for entry in modern['files']:
     if hashlib.sha256((ROOT/entry['yoakePath']).read_bytes()).hexdigest()!=entry['sha256']:

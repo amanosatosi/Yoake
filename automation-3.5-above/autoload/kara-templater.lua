@@ -40,6 +40,8 @@ script_version = "2.1.7"
 
 
 include("karaskel.lua")
+-- Support native Mangetsu furigana without rewriting the subtitle event.
+karaskel.mangetsu_adapter = include("mangetsu-karaskel.lua")
 
 
 -- Find and parse/prepare all karaoke template lines

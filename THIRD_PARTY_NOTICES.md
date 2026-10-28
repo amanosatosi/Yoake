@@ -176,7 +176,9 @@ runtime foundation milestone.
 The separate `automation-3.5-above` Lua and MoonScript sources are copied from
 the user-supplied Aegisub 3.5.1 archive, https://github.com/TypesettingTools/Aegisub.
 The archive has no verified Git revision. Exact paths, hashes and modification
-status are in `third_party/automation/aegisub-3.5.1-provenance.json`. Each file's
+status are in `third_party/automation/aegisub-3.5.1-provenance.json`. Karaskel
+and the templater have small Mangetsu adapter hooks; the adapter itself comes
+from the Toshi-ban source recorded below. Each file's
 own license header applies; the root BSD-3-Clause license applies to headerless
 files, and its full text is packaged in `licenses/Aegisub-BSD-3-Clause.txt`.
 

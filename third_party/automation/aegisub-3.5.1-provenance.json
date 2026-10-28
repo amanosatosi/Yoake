@@ -13,8 +13,9 @@
     {
       "sourcePath": "automation/autoload/kara-templater.lua",
       "yoakePath": "automation-3.5-above/autoload/kara-templater.lua",
-      "sha256": "68c0c21fc36eea28828dd8672c5e661873b3a573beb18fa6e02bfc111df19cea",
-      "modifications": "none"
+      "sha256": "a4c9c34292f8e5d864542543e5447536cc1ffcb8e1f62ba57134547acf410e6e",
+      "modifications": "Add optional Mangetsu Karaskel adapter hook with the 3.5 parser as fallback.",
+      "originalSha256": "68c0c21fc36eea28828dd8672c5e661873b3a573beb18fa6e02bfc111df19cea"
     },
     {
       "sourcePath": "automation/autoload/karaoke-auto-leadin.lua",
@@ -103,8 +104,9 @@
     {
       "sourcePath": "automation/include/karaskel-auto4.lua",
       "yoakePath": "automation-3.5-above/include/karaskel-auto4.lua",
-      "sha256": "6fd955d49ac071c2c5c9068d831744e6e0b458e97ecc710188d7eb86da4e9759",
-      "modifications": "none"
+      "sha256": "0c1f4f4a7cd50c5a75d4a99038265e890f43582a702b82558da43aaa3f618bcf",
+      "modifications": "Add optional Mangetsu Karaskel adapter hook with the 3.5 parser as fallback.",
+      "originalSha256": "6fd955d49ac071c2c5c9068d831744e6e0b458e97ecc710188d7eb86da4e9759"
     },
     {
       "sourcePath": "automation/include/karaskel.lua",
