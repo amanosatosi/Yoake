@@ -39,4 +39,14 @@ public sealed class Timing39CaptureTests
         Assert.True(clipped.NeedsReview);Assert.Equal(new Timing39Block(980,1100,false),clipped.Blocks[0]);
         Assert.Empty(Timing39Partitioner.Partition([new Timing39Block(0,100,true)],0,100).Blocks);
     }
+    [Fact] public void SetupUsesEarliestCommentMarkerAndSnapshotsOnlyExplicitLyricSelection()
+    {
+        const string source="[Events]\nFormat: Start, End, Style, Text\nComment: 0:00:05.00,0:00:06.00,Default, 39 mode start here \nComment: 0:00:02.00,0:00:03.00,Default,{\\i1}39 MODE START HERE\nDialogue: 0:00:03.00,0:00:04.00,A,あい\nDialogue: 0:00:04.00,0:00:07.00,B,うえ\nDialogue: 0:00:00.00,0:00:01.00,C,39 mode start here\n";
+        var doc=AssDocument.Parse(source);var setup=Timing39SessionSetup.Create(doc.Events,[doc.Events[2],doc.Events[3]],doc.Events[2],10000);
+        Assert.Equal(2000,setup.Start);Assert.Equal(7000,setup.End);Assert.Equal(1,setup.MarkerRow);Assert.True(setup.ExplicitSelection);
+        Assert.Equal(new[]{2,3},setup.Targets.Select(target=>target.Row));Assert.Equal("A",setup.ActiveStyle);
+        doc.Events[2].Text="changed";Assert.Equal("あい",setup.Targets[0].Text);
+        Assert.Throws<ArgumentException>(()=>Timing39SessionSetup.Create(doc.Events,[AssDocument.Parse(source).Events[2]],doc.Events[2],10000));
+        Assert.Throws<ArgumentException>(()=>Timing39SessionSetup.Create(doc.Events,[],doc.Events[2],2000));
+    }
 }
