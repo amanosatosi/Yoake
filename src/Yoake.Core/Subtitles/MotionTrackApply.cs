@@ -98,6 +98,7 @@ public static class MotionTrackApply
 
 public sealed partial class SubtitleEditor
 {
+    public readonly record struct MotionPlan(AssEvent Line, string ExpectedSource, string Text);
     public void ApplyMotion(AssEvent line, string expectedSource, IReadOnlyList<TrackingPoint> points, IReadOnlyList<double> frameTimes,
         int referenceFrame, double scaleX, double scaleY, CancellationToken token = default)
     {
@@ -110,11 +111,24 @@ public sealed partial class SubtitleEditor
     // Planning can run on a worker. Publication alone enters the document's
     // existing undo boundary on its owning UI thread.
     public void ApplyMotionPlan(AssEvent line, string expectedSource, string text, CancellationToken token = default)
+        => ApplyMotionPlans([new(line, expectedSource, text)], token);
+
+    public void ApplyMotionPlans(IReadOnlyList<MotionPlan> plans, CancellationToken token = default)
     {
-        Require(line); token.ThrowIfCancellationRequested();
-        if (line.Text != expectedSource) throw new InvalidOperationException("The subtitle changed while preparing motion. Reopen motion tracking for this line.");
+        token.ThrowIfCancellationRequested();
+        var unique = new HashSet<AssEvent>();
+        foreach (var plan in plans)
+        {
+            Require(plan.Line);
+            if (!unique.Add(plan.Line) || plan.Line.Text != plan.ExpectedSource)
+                throw new InvalidOperationException("The subtitle selection changed while preparing motion. Reopen motion tracking before applying.");
+        }
         using var transaction = Undo.BeginTransaction("Apply motion tracking");
-        SetField(line, "Text", text, "Apply motion tracking");
+        foreach (var plan in plans)
+        {
+            token.ThrowIfCancellationRequested();
+            SetField(plan.Line, "Text", plan.Text, "Apply motion tracking");
+        }
         token.ThrowIfCancellationRequested(); transaction.Commit();
     }
 }

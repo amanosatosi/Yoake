@@ -5,6 +5,21 @@ namespace Yoake.Core.Tests;
 
 public sealed class MotionTrackingTests
 {
+    [Fact]
+    public void MultipleMotionPlansPublishAsOneUndoAndRejectStaleRows()
+    {
+        var document = AssDocument.Parse("[Events]\nFormat: Start, End, Text\nDialogue: 0:00:00.00,0:00:00.08,first\nDialogue: 0:00:00.00,0:00:00.08,second\n");
+        var editor = new SubtitleEditor(document); var before = document.Serialize();
+        var first = document.Events[0]; var second = document.Events[1];
+        SubtitleEditor.MotionPlan[] stale = [new(first, "first", "tracked first"), new(second, "old", "tracked second")];
+        Assert.Throws<InvalidOperationException>(() => editor.ApplyMotionPlans(stale));
+        Assert.Equal(before, document.Serialize()); Assert.False(editor.Undo.CanUndo);
+        SubtitleEditor.MotionPlan[] plans = [new(first, "first", "tracked first"), new(second, "second", "tracked second")];
+        editor.ApplyMotionPlans(plans);
+        Assert.Equal("tracked first", first.Text); Assert.Equal("tracked second", second.Text);
+        editor.Undo.Undo(); Assert.Equal(before, document.Serialize()); Assert.False(editor.Undo.CanUndo);
+        editor.Undo.Redo(); Assert.Equal("tracked first", first.Text); Assert.Equal("tracked second", second.Text);
+    }
     [Theory]
     [InlineData(1)]
     [InlineData(-1)]

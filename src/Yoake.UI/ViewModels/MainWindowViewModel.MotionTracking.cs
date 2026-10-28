@@ -12,7 +12,7 @@ public sealed partial class MainWindowViewModel
     private IVideoProvider? _motionProvider;
     private IReadOnlyList<double>? _motionFrameTimes;
     private AssEvent? _motionLine;
-    private string _motionSource = "";
+    private (AssEvent Line, string Source, long Start, long End)[] _motionTargets = [];
     private long _motionRevision;
     public event EventHandler? MotionApplied;
     private bool MotionOwnerCurrent => !_disposed && _motionOwner == _activeId && ReferenceEquals(_motionProvider, _media?.VideoProvider) && ReferenceEquals(_motionFrameTimes, FrameTimes) && ReferenceEquals(_motionLine, SelectedEvent);
@@ -27,10 +27,17 @@ public sealed partial class MainWindowViewModel
         Register("video/motion-track", "Track motion…", async (_, token) =>
         {
             if (!CommitDraft() || Dialogs is null || _media is null || SelectedEvent is not {} line) return;
+            var targets = SelectedEvents.Where(item => !item.IsComment).ToArray();
+            if (!targets.Contains(line)) targets = [line];
+            if (targets.Any(item => item.StartMilliseconds is not {} start || item.EndMilliseconds is not {} end || end <= start))
+                throw new InvalidOperationException("Every selected dialogue needs a valid start and end time before tracking.");
+            if (_media.VideoDurationSeconds > 0 && targets.Any(item => item.StartMilliseconds < 0 || item.EndMilliseconds > _media.VideoDurationSeconds * 1000 + 1))
+                throw new InvalidOperationException("Selected dialogue extends outside the video. Adjust its timing before tracking.");
             StopPlayback();
             _motionOwner = _activeId; _motionProvider = _media.VideoProvider; _motionFrameTimes = FrameTimes; _motionLine = line;
-            _motionSource = line.Text; _motionRevision = ActiveEditor!.Document.Revision;
-            var session = new MotionTrackingSession(_media, FrameTimes, CurrentFrame, line.StartMilliseconds!.Value, line.EndMilliseconds!.Value, token);
+            _motionRevision = ActiveEditor!.Document.Revision;
+            _motionTargets = targets.Select(item => (item, item.Text, item.StartMilliseconds!.Value, item.EndMilliseconds!.Value)).ToArray();
+            var session = new MotionTrackingSession(_media, FrameTimes, CurrentFrame, _motionTargets.Min(item => item.Start), _motionTargets.Max(item => item.End), token);
             MotionTracking = session;
             session.PropertyChanged += MotionStateChanged; _registry.NotifyStateChanged();
             try
@@ -43,7 +50,7 @@ public sealed partial class MainWindowViewModel
             {
                 session.PropertyChanged -= MotionStateChanged;
                 try { await session.CloseAsync(); }
-                finally { MotionTracking = null; _motionOwner = null; _motionLine = null; _motionProvider = null; _motionFrameTimes = null; _registry.NotifyStateChanged(); }
+                finally { MotionTracking = null; _motionOwner = null; _motionLine = null; _motionTargets = []; _motionProvider = null; _motionFrameTimes = null; _registry.NotifyStateChanged(); }
             }
         }, () => MotionTracking is null && Dialogs is not null && !HasGesture && !IsKaraokeMode && _media?.VideoProvider is { HasVideo: true } && FrameTimes.Count > 1 && SelectedEvent is { IsComment: false, StartMilliseconds: {} start, EndMilliseconds: {} end } && end > start);
         bool Idle() => MotionOwnerCurrent && MotionTracking is { Busy: false };
@@ -64,18 +71,19 @@ public sealed partial class MainWindowViewModel
         Register("motion-track/apply", "Apply position tracking", async (_, token) =>
         {
             if (ActiveEditor!.Document.Revision != _motionRevision || Draft?.IsChanged == true) throw new InvalidOperationException("The subtitle document changed during tracking. Reopen motion tracking before applying.");
-            var session = MotionTracking!; var size = ScriptSize; var editor = ActiveEditor; var line = _motionLine!;
-            var source = _motionSource; var points = session.Points; var reference = session.ReferenceFrame;
-            var start = line.StartMilliseconds!.Value; var end = line.EndMilliseconds!.Value;
+            var session = MotionTracking!; var size = ScriptSize; var editor = ActiveEditor;
+            var targets = _motionTargets; var points = session.Points; var reference = session.ReferenceFrame;
             await session.ApplyAsync(async lifetime =>
             {
                 using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime);
-                var text = await Task.Run(() => MotionTrackApply.Plan(source, points, session.FrameTimes, reference,
-                    start, end, size.Width / session.Width, size.Height / session.Height, cancellation.Token), cancellation.Token);
+                var plans = await Task.Run(() => targets.Select(target => new SubtitleEditor.MotionPlan(target.Line, target.Source,
+                    MotionTrackApply.Plan(target.Source, points, session.FrameTimes, reference, target.Start, target.End,
+                        size.Width / session.Width, size.Height / session.Height, cancellation.Token))).ToArray(), cancellation.Token);
                 cancellation.Token.ThrowIfCancellationRequested();
-                if (!MotionOwnerCurrent || !ReferenceEquals(ActiveEditor, editor) || editor.Document.Revision != _motionRevision || Draft?.IsChanged == true)
+                if (!MotionOwnerCurrent || !ReferenceEquals(ActiveEditor, editor) || editor.Document.Revision != _motionRevision || Draft?.IsChanged == true ||
+                    !SelectedEvents.Where(item => !item.IsComment).SequenceEqual(targets.Select(item => item.Line)))
                     throw new InvalidOperationException("The subtitle document or video changed while preparing motion. Reopen motion tracking before applying.");
-                editor.ApplyMotionPlan(line, source, text, cancellation.Token);
+                editor.ApplyMotionPlans(plans, cancellation.Token);
                 ReloadDraft(); MotionApplied?.Invoke(this, EventArgs.Empty);
             });
         }, () => Idle() && MotionTracking!.CanApply);
