@@ -475,7 +475,7 @@
             <ToggleButton Name="FastActorToggle" Grid.Column="1" Height="26" Padding="2,0" Content="»" IsChecked="{Binding Actions[actor/fast/toggle].IsChecked, Mode=OneWay}" Command="{Binding Actions[actor/fast/toggle]}" ToolTip.Tip="Fast actor naming" />
             <Popup Name="FastActorPopup" PlacementTarget="{Binding #LineActor}" Placement="Bottom" IsLightDismissEnabled="False">
               <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Padding="5" MinWidth="180">
-                <StackPanel Spacing="3"><TextBlock Text="Recent actors" FontSize="11" /><ListBox Name="FastActorList" MaxHeight="240" ItemsSource="{Binding FastActorRecent}" SelectedIndex="{Binding FastActorSelectedIndex, Mode=OneWay}" /><TextBlock Text="After advancing, play" FontSize="11" /><ComboBox Name="FastActorPlayback" SelectedItem="{Binding FastActorPlayback, Mode=OneWay}" /></StackPanel>
+                <StackPanel Spacing="3"><TextBlock Text="Recent actors" FontSize="11" /><ListBox Name="FastActorList" MaxHeight="240" ItemsSource="{Binding FastActorRecent}" SelectedIndex="{Binding FastActorSelectedIndex, Mode=OneWay}" /><TextBlock Text="Fast naming mode" FontSize="11" /><ComboBox Name="FastActorMode" SelectedItem="{Binding FastActorMode, Mode=OneWay}" ToolTip.Tip="Nanashi: tap Ctrl for next line, Alt for previous line" /><TextBlock Text="After advancing, play" FontSize="11" /><ComboBox Name="FastActorPlayback" SelectedItem="{Binding FastActorPlayback, Mode=OneWay}" /></StackPanel>
               </Border>
             </Popup>
             </Grid>

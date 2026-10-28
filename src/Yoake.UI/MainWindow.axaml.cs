@@ -26,6 +26,9 @@ public partial class MainWindow : Window, IEditorDialogs
     private bool _videoRegionShown = true;
     private GridLength _videoWidth = new(6, GridUnitType.Star), _textWidth = new(7, GridUnitType.Star);
     private bool _videoSplitterOverride;
+    private Key _fastActorModifier;
+    private Guid? _fastActorModifierDocument;
+    private AssEvent? _fastActorModifierLine;
     private static readonly FilePickerFileType SubtitleFiles=new("ASS/SSA subtitles"){Patterns=["*.ass","*.ssa"]};
     private static readonly FilePickerFileType MediaFiles=new("Video/audio"){Patterns=["*.mkv","*.mp4","*.webm","*.avi","*.mov","*.m2ts","*.ts","*.mp3","*.flac","*.wav","*.m4a","*.ogg","*.opus"]};
     public MainWindow()
@@ -37,6 +40,7 @@ public partial class MainWindow : Window, IEditorDialogs
         SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
+        AddHandler(KeyUpEvent,HandleFastActorKeyUp,RoutingStrategies.Tunnel);
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DragOverEvent, HandleFileDragOver, RoutingStrategies.Tunnel);
         AddHandler(DragDrop.DropEvent, HandleFileDrop, RoutingStrategies.Tunnel);
@@ -53,13 +57,17 @@ public partial class MainWindow : Window, IEditorDialogs
         VideoSplitter.KeyUp+=(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();};
         FastActorToggle.Click+=(_,_)=>Dispatcher.UIThread.Post(()=>{if(_model?.FastActorEnabled==true)LineActor.Focus();UpdateFastActorPopup();});
         FastActorPlayback.ItemsSource=new[]{"Video","Audio","Off"};
+        FastActorMode.ItemsSource=new[]{"Nanashi","Normal"};
+        FastActorMode.SelectionChanged+=(_,_)=>{if(_model?.FastActorEnabled==true && FastActorMode.SelectedItem is string value && value!=_model.FastActorMode)_model.Actions["actor/fast/mode"].Execute(value);};
         FastActorPlayback.SelectionChanged+=(_,_)=>{if(_model?.FastActorEnabled==true && FastActorPlayback.SelectedItem is string value && value!=_model.FastActorPlayback)_model.Actions["actor/fast/playback"].Execute(value);};
         LineActor.AddHandler(GotFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
-        LineActor.AddHandler(LostFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        LineActor.AddHandler(LostFocusEvent,(_,_)=>{ClearFastActorModifier();Dispatcher.UIThread.Post(UpdateFastActorPopup);},RoutingStrategies.Bubble);
         FastActorList.AddHandler(GotFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
         FastActorList.AddHandler(LostFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
         FastActorPlayback.AddHandler(GotFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
         FastActorPlayback.AddHandler(LostFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        FastActorMode.AddHandler(GotFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
+        FastActorMode.AddHandler(LostFocusEvent,(_,_)=>Dispatcher.UIThread.Post(UpdateFastActorPopup),RoutingStrategies.Bubble);
         FastActorList.SelectionChanged+=(_,_)=>
         {
             if(_model?.FastActorEnabled==true && FastActorList.SelectedIndex>=0 && FastActorList.SelectedIndex!=_model.FastActorSelectedIndex)
@@ -77,6 +85,7 @@ public partial class MainWindow : Window, IEditorDialogs
         SubtitleText.PropertyChanged+=(_,e)=>{if(_model is not null&&!SubtitleText.IsProjecting&&(e.Property==TextBox.CaretIndexProperty||e.Property==TextBox.SelectionStartProperty||e.Property==TextBox.SelectionEndProperty)){_textSelectionGeneration++;_model.TextCursor=SubtitleText.SourceIndex(SubtitleText.CaretIndex);_model.TextSelectionStart=SubtitleText.SourceIndex(SubtitleText.SelectionStart);_model.TextSelectionEnd=SubtitleText.SourceIndex(SubtitleText.SelectionEnd);}};
         Closing+=HandleClosing;
         Deactivated+=VideoHostDeactivated;
+        Deactivated+=(_,_)=>ClearFastActorModifier();
         Closed+=(_,_)=>{MoveVideoHost(false);AudioDisplay.Model=null;_model?.Dispose();};
     }
     private static string[] DropPaths(DragEventArgs e)
@@ -345,6 +354,7 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private async void HandleKey(object? sender,KeyEventArgs e)
     {
+        TrackFastActorModifier(e);
         if(_model is null||e.Handled)return;
         var control=e.Source as Control;var context=HotkeyContext.Default;
         var ancestors=control is null?Array.Empty<Control>():control.GetVisualAncestors().OfType<Control>().Prepend(control).ToArray();
@@ -397,12 +407,35 @@ public partial class MainWindow : Window, IEditorDialogs
         e.Handled=true;
         await _model.Registry.InvokeAsync(commandId,new(_model.ActiveDocumentId,FocusContext:context.ToString()));
     }
+    private void ClearFastActorModifier(){_fastActorModifier=Key.None;_fastActorModifierDocument=null;_fastActorModifierLine=null;}
+    private bool ActorHasPreedit()=>LineActor.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText));
+    private void TrackFastActorModifier(KeyEventArgs e)
+    {
+        if(_model?.FastActorEnabled!=true||_model.FastActorMode!="Nanashi"||!LineActor.IsKeyboardFocusWithin||ActorHasPreedit()) {ClearFastActorModifier();return;}
+        var control=e.Key is Key.LeftCtrl or Key.RightCtrl;
+        var alt=e.Key is Key.LeftAlt or Key.RightAlt;
+        var expected=control?Avalonia.Input.KeyModifiers.Control:alt?Avalonia.Input.KeyModifiers.Alt:Avalonia.Input.KeyModifiers.None;
+        if(expected==Avalonia.Input.KeyModifiers.None || (e.KeyModifiers & ~expected)!=0){ClearFastActorModifier();return;}
+        if(_fastActorModifier!=Key.None && _fastActorModifier!=e.Key){ClearFastActorModifier();return;}
+        _fastActorModifier=e.Key;_fastActorModifierDocument=_model.ActiveDocumentId;_fastActorModifierLine=_model.SelectedEvent;
+    }
+    private async void HandleFastActorKeyUp(object? sender,KeyEventArgs e)
+    {
+        var key=_fastActorModifier;var document=_fastActorModifierDocument;var line=_fastActorModifierLine;
+        ClearFastActorModifier();
+        if(key==Key.None||e.Key!=key||_model?.FastActorEnabled!=true||_model.FastActorMode!="Nanashi"||!LineActor.IsKeyboardFocusWithin||ActorHasPreedit()||_model.ActiveDocumentId!=document||!ReferenceEquals(_model.SelectedEvent,line))return;
+        var expected=key is Key.LeftCtrl or Key.RightCtrl?Avalonia.Input.KeyModifiers.Control:Avalonia.Input.KeyModifiers.Alt;
+        if((e.KeyModifiers & ~expected)!=0)return;
+        e.Handled=true;
+        await _model.Registry.InvokeAsync(expected==Avalonia.Input.KeyModifiers.Control?"actor/fast/accept":"actor/fast/previous",new(document));
+        LineActor.Focus();
+    }
     private void UpdateFastActorPopup()
     {
         var enabled=_model?.FastActorEnabled==true;
         LineActor.MinimumPrefixLength=enabled?int.MaxValue:1;
         if(enabled)LineActor.IsDropDownOpen=false;
-        FastActorPopup.IsOpen=enabled&&(LineActor.IsKeyboardFocusWithin||FastActorList.IsKeyboardFocusWithin||FastActorPlayback.IsKeyboardFocusWithin||FastActorPlayback.IsDropDownOpen);
+        FastActorPopup.IsOpen=enabled&&(LineActor.IsKeyboardFocusWithin||FastActorList.IsKeyboardFocusWithin||FastActorPlayback.IsKeyboardFocusWithin||FastActorPlayback.IsDropDownOpen||FastActorMode.IsKeyboardFocusWithin||FastActorMode.IsDropDownOpen);
     }
     private async void HandleClosing(object? sender,WindowClosingEventArgs e)
     {

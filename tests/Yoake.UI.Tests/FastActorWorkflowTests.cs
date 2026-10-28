@@ -56,4 +56,19 @@ public sealed partial class EditorWorkflowTests
         Assert.Equal(30,_model.FastActorRecent.Count);Assert.Equal("Actor 31",_model.FastActorRecent[0]);
         Assert.Contains("Actor 01",_model.FastActorRecent);Assert.DoesNotContain("Actor 02",_model.FastActorRecent);
     }
+
+    [Fact] public async Task NanashiIsDefaultAndPreviousKeepsDraftAndUndoBoundaries()
+    {
+        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;
+        await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent!;
+        await Command("actor/fast/toggle");Assert.Equal("Nanashi",_model.FastActorMode);
+        _model.Draft!.Actor="Actor";_model.Draft.Start="invalid";
+        await Command("actor/fast/previous");Assert.Same(second,_model.SelectedEvent);Assert.Equal("invalid",_model.Draft.Start);
+        _model.Draft.Start=second.Start;var before=_model.ActiveEditor!.Document.Serialize();
+        await Command("actor/fast/previous");Assert.Same(first,_model.SelectedEvent);Assert.Equal("Actor",first.Actor);Assert.Equal("Actor",second.Actor);
+        await Command(CommandIds.EditUndo);Assert.Equal(before,_model.ActiveEditor.Document.Serialize());
+        await Command("actor/fast/mode","Normal");Assert.Equal("Normal",_model.FastActorMode);
+        var original=_model.ActiveDocumentId;await Command(CommandIds.SubtitleNew);Assert.Equal("Nanashi",_model.FastActorMode);
+        await Command(CommandIds.WorkspaceActivateTab,original);Assert.Equal("Normal",_model.FastActorMode);
+    }
 }

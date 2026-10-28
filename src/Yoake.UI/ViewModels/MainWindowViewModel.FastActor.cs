@@ -11,6 +11,7 @@ public sealed partial class MainWindowViewModel
         public bool Enabled;
         public string ActiveName="";
         public string Playback="Video";
+        public string Mode="Nanashi";
         public readonly List<string> Recent=[];
         public int Selected=-1;
     }
@@ -20,10 +21,11 @@ public sealed partial class MainWindowViewModel
     public IReadOnlyList<string> FastActorRecent => FastActor?.Recent.ToArray() ?? [];
     public int FastActorSelectedIndex => FastActor?.Selected ?? -1;
     public string FastActorPlayback => FastActor?.Playback ?? "Video";
+    public string FastActorMode => FastActor?.Mode ?? "Nanashi";
     private void NotifyFastActor()
     {
         OnPropertyChanged(nameof(FastActorEnabled));OnPropertyChanged(nameof(FastActorRecent));OnPropertyChanged(nameof(FastActorSelectedIndex));
-        OnPropertyChanged(nameof(FastActorPlayback));
+        OnPropertyChanged(nameof(FastActorPlayback));OnPropertyChanged(nameof(FastActorMode));
         _registry.NotifyStateChanged();
     }
     private void FastActorDraftChanged()
@@ -80,6 +82,23 @@ public sealed partial class MainWindowViewModel
             if(invocation.Parameter is string value && value is "Video" or "Audio" or "Off") { FastActor!.Playback=value;OnPropertyChanged(nameof(FastActorPlayback)); }
             return ValueTask.CompletedTask;
         },()=>FastActorEnabled);
+        Register("actor/fast/mode","Fast actor naming mode",invocation=>
+        {
+            if(invocation.Parameter is string value && value is "Nanashi" or "Normal") { FastActor!.Mode=value;OnPropertyChanged(nameof(FastActorMode)); }
+            return ValueTask.CompletedTask;
+        },()=>FastActorEnabled);
+        Register("actor/fast/previous","Previous actor line",_=>
+        {
+            if(SelectedEvent is not { } previous || ActiveEditor is not { } editor || Events.ToList().IndexOf(previous)<=0 || Draft is null)return ValueTask.CompletedTask;
+            try { SubtitleEditor.ValidateEventDraftValues(previous,Draft.Values); }
+            catch(Exception e) { SubtitleStatus=e.Message;return ValueTask.CompletedTask; }
+            if(IsKaraokeMode&&KaraokePlan?.Changed==true){SubtitleStatus="Commit or cancel the karaoke plan before publishing this edit draft.";return ValueTask.CompletedTask;}
+            using var transaction=editor.Undo.BeginTransaction("Fast actor naming");
+            Navigate(-1);
+            transaction.Commit();
+            if(!ReferenceEquals(previous,SelectedEvent))PlayFastActorPreview(FastActor!);
+            return ValueTask.CompletedTask;
+        },()=>FastActorEnabled);
         Register("actor/fast/step","Choose recent actor",invocation=>
         {
             var state=FastActor!;if(state.Recent.Count==0)return ValueTask.CompletedTask;
@@ -105,9 +124,13 @@ public sealed partial class MainWindowViewModel
             var index=Events.ToList().IndexOf(current);
             Select(index+1<Events.Count?Events[index+1]:editor.InsertTimingSuccessor(current,_settings.AudioDefaultDuration??3000));
             transaction.Commit();NotifyFastActor();
-            var playback=state.Playback=="Video"?"video/play/line":state.Playback=="Audio"?"audio/play/line":null;
-            if(playback is not null && Actions[playback].CanExecute(null))Actions[playback].Execute(null);
+            PlayFastActorPreview(state);
             return ValueTask.CompletedTask;
         },()=>FastActorEnabled);
+    }
+    private void PlayFastActorPreview(FastActorState state)
+    {
+        var playback=state.Playback=="Video"?"video/play/line":state.Playback=="Audio"?"audio/play/line":null;
+        if(playback is not null && Actions[playback].CanExecute(null))Actions[playback].Execute(null);
     }
 }

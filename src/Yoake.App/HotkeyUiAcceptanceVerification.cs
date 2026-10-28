@@ -253,6 +253,19 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Invoke(CommandIds.EditRedo);Require(model.Events[0].Actor=="日本語 actor"&&model.Events[1].Actor=="日本語 actor","Redo restores fast naming.");
                     return;
                 case 37:
+                    Require(model.FastActorMode=="Nanashi","Nanashi must be the default fast naming mode.");
+                    model.SelectedEvent=model.Events[0];var nanashi=window.FindControl<AutoCompleteBox>("LineActor")!.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Name=="PART_TextBox");
+                    Require(nanashi.Focus(),"Nanashi requires actor input focus.");
+                    var preedit=nanashi.GetVisualDescendants().OfType<TextPresenter>().Single();preedit.PreeditText="未確定";
+                    TapModifier(nanashi,Key.LeftCtrl,KeyModifiers.Control);Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"Nanashi must leave IME composition in control.");
+                    preedit.PreeditText=null;
+                    nanashi.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=nanashi,Key=Key.LeftCtrl,KeyModifiers=KeyModifiers.Control});
+                    nanashi.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=nanashi,Key=Key.LeftShift,KeyModifiers=KeyModifiers.Control|KeyModifiers.Shift});
+                    nanashi.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyUpEvent,Source=nanashi,Key=Key.LeftCtrl,KeyModifiers=KeyModifiers.Shift});
+                    Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"Modifier chords must not advance Nanashi.");
+                    TapModifier(nanashi,Key.LeftCtrl,KeyModifiers.Control);Require(ReferenceEquals(model.SelectedEvent,model.Events[1]),"A standalone Ctrl tap must advance in Nanashi.");
+                    TapModifier(nanashi,Key.LeftAlt,KeyModifiers.Alt);Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"A standalone Alt tap must return to the previous line.");return;
+                case 38:
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
                     _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source; exact migrated Ctrl-D/Ctrl-Shift-D real keyboard frame splits with VFR-derived boundaries and complete one-step undo; persisted autoseek; real Ctrl-H and F3 in the modeless search window and grid, actual source highlighting without focus theft, protected-text replacement and exact undo.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
@@ -290,6 +303,11 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
         (TopLevel.GetTopLevel(control) as Window)?.Activate();
         Require(control.Focus()&&control.IsKeyboardFocusWithin,"Shipping control must own focus before keyboard input: "+control.Name);
         control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});
+    }
+    private static void TapModifier(Control control,Key key,KeyModifiers modifiers)
+    {
+        control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});
+        control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyUpEvent,Source=control,Key=key,KeyModifiers=KeyModifiers.None});
     }
     private void Invoke(string command,object? parameter=null)
     {
