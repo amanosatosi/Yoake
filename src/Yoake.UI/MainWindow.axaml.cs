@@ -41,6 +41,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(OperatingSystem.IsWindows()){WindowDecorations=Avalonia.Controls.WindowDecorations.Full;ExtendClientAreaToDecorationsHint=true;ExtendClientAreaTitleBarHeightHint=36;}
         StartupDiagnostics.Checkpoint("MainWindow native decorations configured");
         SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
+        SubtitleRows.AddHandler(PointerPressedEvent,GridDoubleClick,RoutingStrategies.Bubble,handledEventsToo:true);
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent,HandleFastActorKeyUp,RoutingStrategies.Tunnel);
@@ -368,6 +369,15 @@ public partial class MainWindow : Window, IEditorDialogs
             _model.SetSelectedEvents(SubtitleRows.SelectedItems.OfType<AssEvent>().ToArray());
         }
         finally{_selectionSync=false;}
+    }
+    private async void GridDoubleClick(object? sender,PointerPressedEventArgs e)
+    {
+        if(e.ClickCount!=2||!e.GetCurrentPoint(SubtitleRows).Properties.IsLeftButtonPressed||_model is not {} model||e.Source is not Visual source)return;
+        var item=source as ListBoxItem ?? source.GetVisualAncestors().OfType<ListBoxItem>().FirstOrDefault();
+        if(item?.DataContext is not AssEvent line||!model.Events.Contains(line))return;
+        model.SelectedEvent=line;
+        if(!ReferenceEquals(model.SelectedEvent,line))return;
+        await model.Registry.InvokeAsync(CommandIds.TimingJumpStart,new(model.ActiveDocumentId));
     }
     private async void HandleKey(object? sender,KeyEventArgs e)
     {

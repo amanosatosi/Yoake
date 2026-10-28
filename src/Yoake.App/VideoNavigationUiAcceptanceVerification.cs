@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
+using Avalonia.Input.Raw;
+using Avalonia;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Yoake.Core.Commands;
@@ -52,6 +54,9 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     await Invoke("keyframe/close");_keys=model.Keyframes;await Seek(1);
                     Press(Video,Key.Right,KeyModifiers.Alt);Require(model.CurrentFrame==Math.Min(11,model.FrameTimes.Count-1),"Alt-Right jumps the exact default ten frames.");
                     await Invoke("video/preferences/fast-step",3);await Seek(4);Press(Video,Key.Left,KeyModifiers.Alt);Require(model.CurrentFrame==1,"Alt-Left uses configured frame step.");
+                    var wasAutoSeek=model.VideoAutoSeek;if(wasAutoSeek)await Invoke("video/autoseek");
+                    await Seek(0);DoubleClickRow(0);Require(model.CurrentFrame==Start(0),"Double-clicking a subtitle row jumps to its first visible frame even with autoseek disabled.");
+                    if(wasAutoSeek)await Invoke("video/autoseek");
                     await Seek(0);Press(Video,Key.Right,KeyModifiers.Control);Require(model.CurrentFrame==Start(0),"Ctrl-Right first reaches current subtitle START frame.");
                     Press(Video,Key.Right,KeyModifiers.Control);Require(model.CurrentFrame==End(0),"Next boundary uses END frame at the exact subtitle endpoint.");
                     Press(Video,Key.Right,KeyModifiers.Control);Require(ReferenceEquals(model.SelectedEvent,_rows[1])&&model.CurrentFrame==Start(1),"Next boundary changes to the next actual row including comments.");
@@ -122,6 +127,14 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
     private int End(int row)=>Math.Clamp(_map!.FrameAtMilliseconds(_rows[row].EndMilliseconds!.Value,FrameTimeKind.End),0,model.FrameTimes.Count-1);
     private async Task Seek(int frame)=>await Invoke("video/seek/frame",frame);
     private async Task Invoke(string id,object? parameter=null)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId),parameter),"Video navigation preparation: "+id);
+    private void DoubleClickRow(int index)
+    {
+        var list=(ListBox)Grid;var row=list.ContainerFromIndex(index) as Control;
+        Require(row is {Bounds.Height:>0},"The clicked subtitle row must be realized.");
+        var top=TopLevel.GetTopLevel(row!)!;var point=row!.TranslatePoint(new Point(10,10),top)!.Value;
+        var pointer=new Pointer(837,PointerType.Mouse,true);
+        row.RaiseEvent(new PointerPressedEventArgs(row,pointer,top,point,0,new(RawInputModifiers.LeftMouseButton,PointerUpdateKind.LeftButtonPressed),KeyModifiers.None,2));
+    }
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
     {
         if(control is ListBox list)

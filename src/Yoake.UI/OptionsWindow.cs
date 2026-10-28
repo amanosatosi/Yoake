@@ -21,8 +21,8 @@ public sealed class OptionsWindow : Window
     private readonly TextBox _filter=new(){Name="HotkeyFilter",PlaceholderText="Filter commands…"};
     private readonly ListBox _commands=new(){Name="HotkeyCommands"};
     private readonly ListBox _bindings=new(){Name="EffectiveHotkeys",MinHeight=72};
-    private readonly TextBox _gesture=new(){Name="HotkeyGesture",PlaceholderText="e.g. Ctrl-Alt-K"};
-    private readonly TextBox _capture=new(){Name="HotkeyCapture",PlaceholderText="Focus here and press a shortcut",IsReadOnly=true};
+    private readonly TextBox _gesture=new(){Name="HotkeyGesture",IsVisible=false};
+    private readonly TextBox _capture=new(){Name="HotkeyCapture",PlaceholderText="Click here, then press the shortcut",IsReadOnly=true};
     private readonly TextBlock _status=new(){Name="HotkeyStatus",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
     private readonly CheckBox _global=new(){Name="GlobalTimingHotkeys",Content="Global timing keypad overrides (Medusa)"};
     private bool _refreshing;
@@ -46,6 +46,7 @@ public sealed class OptionsWindow : Window
         var body=new Grid{ColumnDefinitions=new("3*,2*"),ColumnSpacing=10};At(root,body,2);body.Children.Add(_commands);
         var edit=new StackPanel{Spacing=8};Grid.SetColumn(edit,1);body.Children.Add(edit);
         edit.Children.Add(new TextBlock{Text="Current bindings",FontWeight=Avalonia.Media.FontWeight.SemiBold});edit.Children.Add(_bindings);
+        edit.Children.Add(new TextBlock{Text="Shortcut",FontWeight=Avalonia.Media.FontWeight.SemiBold});
         edit.Children.Add(_gesture);edit.Children.Add(_capture);
         var row=new WrapPanel{Orientation=Orientation.Horizontal};edit.Children.Add(row);
         Button Action(string text,string name,Func<Task> action)
@@ -64,7 +65,7 @@ public sealed class OptionsWindow : Window
         step.ValueChanged+=(_,_)=>_model.VideoFastJumpStep=step.Value;
         At(root,_status,3);var close=new Button{Content="Close",HorizontalAlignment=HorizontalAlignment.Right,IsCancel=true};close.Click+=(_,_)=>Close();At(root,close,4);
         _context.SelectionChanged+=(_,_)=>RefreshCommands();_filter.TextChanged+=(_,_)=>RefreshCommands();
-        _commands.SelectionChanged+=(_,_)=>RefreshBindings();_bindings.SelectionChanged+=(_,_)=>{if(_bindings.SelectedItem is string key)_gesture.Text=key;};
+        _commands.SelectionChanged+=(_,_)=>RefreshBindings();_bindings.SelectionChanged+=(_,_)=>{if(_bindings.SelectedItem is string key){_gesture.Text=key;_capture.Text=key;}};
         _capture.AddHandler(InputElement.KeyDownEvent,(_,args)=>
         {
             args.Handled=true;
