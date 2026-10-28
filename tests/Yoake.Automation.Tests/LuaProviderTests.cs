@@ -406,8 +406,9 @@ aegisub.register_macro('Adapter fixture','',function() end)
         var path=Path.Combine(AppContext.BaseDirectory,"autoload","kara-templater.lua");
         using var script=await _provider.LoadAsync(path,new(path,[Path.Combine(AppContext.BaseDirectory,"include")]),CancellationToken.None);
         var document=AssDocument.CreateEmpty();var editor=new SubtitleEditor(document);
-        var template=editor.Insert(null,true);template.Effect="template furi";template.Text=@"{\k$kdur}";editor.ToggleComment([template]);
-        var song=editor.Insert(template,true);song.Text=@"<病|{\k30}や{\k26}ま{\k10}い>";song.Start="0:00:01.00";song.End="0:00:03.00";
+        var template=editor.Insert(null,true);template.Effect="template furi";template.Text=@"{\k$kdur}";
+        var song=editor.Insert(template,true);song.Effect="";song.Text=@"<病|{\k30}や{\k26}ま{\k10}い>";song.Start="0:00:01.00";song.End="0:00:03.00";
+        editor.ToggleComment([template]);
         editor.MarkSaved();var before=document.Serialize();using var subs=new AutomationSubtitleDocument(document);
         var macro=Assert.Single(script.Macros);await script.RunAsync(macro.Index,Context(subs),CancellationToken.None);
         Assert.Equal(before,document.Serialize());subs.Commit(editor,macro.Name);
