@@ -5,6 +5,7 @@ public sealed class AutomationPathResolver
     private readonly string _masterDirectory;
     private readonly IReadOnlyDictionary<string, string> _tokens;
     private readonly bool _modern;
+    public bool IsModern => _modern;
     public IReadOnlyList<string> IncludeDirectories { get; }
     public string PackagePath => string.Join(';', IncludeDirectories.SelectMany(p => new[] { Path.Combine(p, "?.lua"), Path.Combine(p, "?", "init.lua") })) + ";";
 

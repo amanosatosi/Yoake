@@ -131,7 +131,7 @@ for marker in ('ass_render_frame_rgba', 'ass_composite_images_bgra', 'mangetsu.d
     if marker not in renderer: fail(f'Mangetsu preview marker missing: {marker}')
 for marker in ('waveOutOpen', 'waveOutWrite', 'waveOutGetPosition'):
     if marker not in audio_output: fail(f'audio output marker missing: {marker}')
-for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll')"):
+for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll', 'yoake-automation-modern.dll')"):
     if marker not in package: fail(f'Mangetsu portable staging marker missing: {marker}')
 
 result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--check'])

@@ -117,7 +117,8 @@ function Get-ImportedDllNames([string]$BinaryPath) {
 $entryDlls = @(
   (Join-Path $NativeRoot 'ffms2\bin\ffms2.dll'),
   (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll'),
-  (Join-Path $NativeRoot 'automation\bin\yoake-automation.dll')
+  (Join-Path $NativeRoot 'automation\bin\yoake-automation.dll'),
+  (Join-Path $NativeRoot 'automation\bin\yoake-automation-modern.dll')
 )
 foreach ($entryDll in $entryDlls) {
   if (-not (Test-Path -LiteralPath $entryDll)) { throw "Missing native runtime entry DLL: $entryDll" }
@@ -153,7 +154,7 @@ foreach ($key in ($selected.Keys | Sort-Object)) {
 
 $manifest = [ordered]@{
   architecture = 'win-x64'
-  entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll')
+  entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll', 'yoake-automation-modern.dll')
   files = @(
     Get-ChildItem -LiteralPath $runtimeRoot -Filter '*.dll' -File | Sort-Object Name | ForEach-Object {
       [ordered]@{

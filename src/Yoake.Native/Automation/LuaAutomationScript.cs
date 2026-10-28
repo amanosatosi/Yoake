@@ -36,7 +36,8 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         _owner = GCHandle.Alloc(this);
         try
         {
-            _runtime = Create((IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, int, int*, IntPtr>)&Dispatch, GCHandle.ToIntPtr(_owner));
+            var callback=(IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, int, int*, IntPtr>)&Dispatch;
+            _runtime = _paths.IsModern ? CreateModern(callback,GCHandle.ToIntPtr(_owner)) : Create(callback,GCHandle.ToIntPtr(_owner));
             if (_runtime == IntPtr.Zero) throw new InvalidOperationException("Could not create the native LuaJIT interpreter.");
         }
         catch { _owner.Free(); throw; }
@@ -160,10 +161,11 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         var diagnostics = _invocation?.Diagnostics;
         var started = diagnostics?.Start() ?? 0;
         cancellationToken.ThrowIfCancellationRequested();
-        ResetCancellation(_runtime);
-        using var registration = cancellationToken.Register(() => Cancel(_runtime));
+        if(_paths.IsModern)ResetCancellationModern(_runtime);else ResetCancellation(_runtime);
+        using var registration = cancellationToken.Register(() => {if(_paths.IsModern)CancelModern(_runtime);else Cancel(_runtime);});
         var bytes = Encoding.UTF8.GetBytes(source);
-        var status = Execute(_runtime, bytes, bytes.Length, name, out var pointer);
+        IntPtr pointer;
+        var status = _paths.IsModern ? ExecuteModern(_runtime,bytes,bytes.Length,name,out pointer) : Execute(_runtime,bytes,bytes.Length,name,out pointer);
         var result = pointer == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(pointer);
         diagnostics?.Finish("provider.execute", started);
         cancellationToken.ThrowIfCancellationRequested();
@@ -393,7 +395,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
         try
         {
             if (_disposed) return;
-            _disposed = true; Destroy(_runtime); _runtime = IntPtr.Zero;
+            _disposed = true; if(_paths.IsModern)DestroyModern(_runtime);else Destroy(_runtime); _runtime = IntPtr.Zero;
             if (_owner.IsAllocated) _owner.Free();
             _reads.Clear(); _templates.Clear(); _macros.Clear(); _filters.Clear();
         }
@@ -410,4 +412,14 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
     private static partial void ResetCancellation(IntPtr runtime);
     [LibraryImport("yoake-automation.dll", EntryPoint = "ya_destroy")]
     private static partial void Destroy(IntPtr runtime);
+    [LibraryImport("yoake-automation-modern.dll", EntryPoint = "ya_create_v2")]
+    private static partial IntPtr CreateModern(IntPtr callback, IntPtr context);
+    [LibraryImport("yoake-automation-modern.dll", EntryPoint = "ya_execute", StringMarshalling = StringMarshalling.Utf8)]
+    private static partial int ExecuteModern(IntPtr runtime, byte[] source, int length, string name, out IntPtr result);
+    [LibraryImport("yoake-automation-modern.dll", EntryPoint = "ya_cancel")]
+    private static partial void CancelModern(IntPtr runtime);
+    [LibraryImport("yoake-automation-modern.dll", EntryPoint = "ya_reset_cancellation")]
+    private static partial void ResetCancellationModern(IntPtr runtime);
+    [LibraryImport("yoake-automation-modern.dll", EntryPoint = "ya_destroy")]
+    private static partial void DestroyModern(IntPtr runtime);
 }

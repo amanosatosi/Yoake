@@ -106,6 +106,8 @@ jobs:
             '.ci-cache/native/automation/.complete',
             '.ci-cache/native/automation/bin/lua51.dll',
             '.ci-cache/native/automation/bin/yoake-automation.dll',
+            '.ci-cache/native/automation/bin/lua52-yoake.dll',
+            '.ci-cache/native/automation/bin/yoake-automation-modern.dll',
             '.ci-cache/native/automation/binary-sizes.json',
             '.ci-cache/native/automation/licenses/LuaJIT-MIT.txt'
           )) {

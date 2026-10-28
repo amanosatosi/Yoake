@@ -204,6 +204,8 @@ the source-defined lfs surface using C++ standard filesystem. Shipped includes
 `third_party/automation/provenance.json`. Their legacy versions are compatibility
 pins, not claims of modern maintenance; all are trusted-script code.
 
+Windows packages build two independently named LuaJIT binaries from the same pinned source. The existing Lua 5.1 interpreter and bridge remain unchanged for legacy script paths. Scripts owned by the isolated 3.5 profile use a separately named LuaJIT built with `lua52compat` and a separately linked bridge, avoiding Windows DLL-name aliasing while keeping native state behind the existing provider. Both retain cancellation hooks and disable JIT execution. Profile selection follows the explicit master-script path and is fixed for the interpreter lifetime. The native regression creates both profiles simultaneously and checks `__pairs` semantics. This is a runtime compatibility step, not a claim that DependencyControl or its downloader is implemented.
+
 Boost.Regex/Locale and ICU are additional **native**, statically linked
 dependencies acquired through the existing pinned vcpkg registry. Boost is
 BSL-1.0; ICU carries its ICU/data licenses at the selected registry revision. They implement

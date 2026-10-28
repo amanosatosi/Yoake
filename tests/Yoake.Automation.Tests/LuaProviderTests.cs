@@ -27,6 +27,27 @@ public sealed partial class LuaProviderTests : IDisposable
     private static AutomationInvocation Context(AutomationSubtitleDocument subs) => new(subs, [2], 2, new Services());
 
     [Fact]
+    public async Task ModernAndLegacyRuntimesStayIndependentInOneProcess()
+    {
+        var modernRoot=Path.Combine(_root,"automation-3.5-above");var legacyRoot=Path.Combine(_root,"automation");
+        Directory.CreateDirectory(modernRoot);Directory.CreateDirectory(legacyRoot);
+        var source="""
+local touched=false
+local probe=setmetatable({}, {__pairs=function() touched=true;return function() return nil end end})
+pairs(probe)
+aegisub.register_macro(touched and 'modern' or 'legacy','',function() end)
+""";
+        var modern=Path.Combine(modernRoot,"probe.lua");var legacy=Path.Combine(legacyRoot,"probe.lua");
+        File.WriteAllText(modern,source);File.WriteAllText(legacy,source);
+        var tokens=new Dictionary<string,string>{{"?user",_root}};
+        using var oldScript=await _provider.LoadAsync(legacy,new(legacy,[],tokens),CancellationToken.None);
+        using var newScript=await _provider.LoadAsync(modern,new(modern,[],tokens),CancellationToken.None);
+        Assert.Equal("legacy",Assert.Single(oldScript.Macros).Name);Assert.Equal("modern",Assert.Single(newScript.Macros).Name);
+        using var doc=new AutomationSubtitleDocument(Document());
+        await oldScript.RunAsync(1,Context(doc),CancellationToken.None);await newScript.RunAsync(1,Context(doc),CancellationToken.None);
+    }
+
+    [Fact]
     public async Task ModernScriptResolutionUsesCapturedDocumentAndExpiresWithSubtitleObject()
     {
         using var script=await Load("""
@@ -49,7 +70,7 @@ end)
     {
         var root=Path.Combine(AppContext.BaseDirectory,"automation-3.5-above");
         var path=Path.Combine(root,"autoload","kara-templater.lua");
-        using var script=await _provider.LoadAsync(path,new(path,[Path.Combine(root,"include")]),CancellationToken.None);
+        using var script=await _provider.LoadAsync(path,new(path,[Path.Combine(root,"include")],new Dictionary<string,string>{{"?data",AppContext.BaseDirectory}}),CancellationToken.None);
         var doc=AssDocument.CreateEmpty();var editor=new SubtitleEditor(doc);
         var template=editor.Insert(null,true);template.Effect="template syl noblank";template.Text=@"{\k$sdur}";
         var song=editor.Insert(template,true);song.Effect="";song.Text=@"{\k20}日{\kf30}本語";song.Start="0:00:01.00";song.End="0:00:03.00";
@@ -66,7 +87,7 @@ end)
     public async Task ModernTemplaterProcessesMangetsuFuriganaWithoutChangingOriginalText()
     {
         var root=Path.Combine(AppContext.BaseDirectory,"automation-3.5-above");var path=Path.Combine(root,"autoload","kara-templater.lua");
-        using var script=await _provider.LoadAsync(path,new(path,[Path.Combine(root,"include")]),CancellationToken.None);
+        using var script=await _provider.LoadAsync(path,new(path,[Path.Combine(root,"include")],new Dictionary<string,string>{{"?data",AppContext.BaseDirectory}}),CancellationToken.None);
         var doc=AssDocument.CreateEmpty();var editor=new SubtitleEditor(doc);
         var template=editor.Insert(null,true);template.Effect="template furi";template.Text=@"{\k$kdur}";
         var song=editor.Insert(template,true);song.Effect="";song.Text=@"<病|{\k30}や{\k26}ま{\k10}い>";song.Start="0:00:01.00";song.End="0:00:03.00";

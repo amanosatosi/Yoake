@@ -53,6 +53,18 @@ if ($Stage -in @('Automation', 'All')) {
   Checkout-Pinned $versions.luajit.repository $versions.luajit.commit $luaSource
   Push-Location (Join-Path $luaSource 'src')
   try { & .\msvcbuild.bat; Assert-LastExitCode 'LuaJIT build' } finally { Pop-Location }
+  # A separate DLL name prevents the Windows loader from reusing the legacy
+  # interpreter when both profiles are active in the same process.
+  $modernLuaSource = [IO.Path]::GetFullPath((Join-Path $workRoot 'luajit-modern'))
+  if (-not $modernLuaSource.StartsWith([IO.Path]::GetFullPath($workRoot) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Modern Lua checkout escaped native build root.' }
+  Checkout-Pinned $versions.luajit.repository $versions.luajit.commit $modernLuaSource
+  $modernBuildScript = Join-Path $modernLuaSource 'src\msvcbuild.bat'
+  $modernScriptText = [IO.File]::ReadAllText($modernBuildScript)
+  if (!$modernScriptText.Contains('@set LJDLLNAME=lua51.dll') -or !$modernScriptText.Contains('@set LJLIBNAME=lua51.lib')) { throw 'Pinned LuaJIT build script DLL names changed.' }
+  $modernScriptText = $modernScriptText.Replace('@set LJDLLNAME=lua51.dll','@set LJDLLNAME=lua52-yoake.dll').Replace('@set LJLIBNAME=lua51.lib','@set LJLIBNAME=lua52-yoake.lib')
+  [IO.File]::WriteAllText($modernBuildScript,$modernScriptText)
+  Push-Location (Join-Path $modernLuaSource 'src')
+  try { & .\msvcbuild.bat lua52compat; Assert-LastExitCode 'Modern LuaJIT build' } finally { Pop-Location }
   $automationVcpkg = [IO.Path]::GetFullPath((Join-Path $workRoot 'vcpkg-automation'))
   if (-not $automationVcpkg.StartsWith([IO.Path]::GetFullPath($workRoot) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Automation registry escaped native build root.' }
   Checkout-Pinned 'https://github.com/microsoft/vcpkg.git' $versions.vcpkg.commit $automationVcpkg $true
@@ -65,11 +77,18 @@ if ($Stage -in @('Automation', 'All')) {
   Assert-LastExitCode 'Automation bridge configure'
   cmake --build $automationBuild --config Release
   Assert-LastExitCode 'Automation bridge build'
+  $modernBuild = Join-Path $workRoot 'automation-modern-bridge'
+  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $modernBuild -A x64 "-DLUAJIT_ROOT=$modernLuaSource" "-DYOAKE_AUTOMATION_TARGET=yoake-automation-modern" "-DYOAKE_LUAJIT_LIB=lua52-yoake.lib" "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $automationVcpkg 'scripts\buildsystems\vcpkg.cmake')" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+  Assert-LastExitCode 'Modern Automation bridge configure'
+  cmake --build $modernBuild --config Release
+  Assert-LastExitCode 'Modern Automation bridge build'
   $bin = Join-Path $automationInstall 'bin'
   $licenses = Join-Path $automationInstall 'licenses'
   New-Item -ItemType Directory -Force -Path $bin, $licenses | Out-Null
   Copy-Item -LiteralPath (Join-Path $luaSource 'src\lua51.dll') -Destination $bin -Force
   Copy-Item -LiteralPath (Join-Path $automationBuild 'Release\yoake-automation.dll') -Destination $bin -Force
+  Copy-Item -LiteralPath (Join-Path $modernLuaSource 'src\lua52-yoake.dll') -Destination $bin -Force
+  Copy-Item -LiteralPath (Join-Path $modernBuild 'Release\yoake-automation-modern.dll') -Destination $bin -Force
   Copy-Item -LiteralPath (Join-Path $luaSource 'COPYRIGHT') -Destination (Join-Path $licenses 'LuaJIT-MIT.txt') -Force
   Get-ChildItem -LiteralPath (Join-Path $automationBuild 'vcpkg_installed\x64-windows-static\share') -Recurse -File -Filter copyright | ForEach-Object {
     Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $licenses ($_.Directory.Name + '-copyright.txt')) -Force
