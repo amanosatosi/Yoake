@@ -330,6 +330,8 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(window.FindControl<Grid>("AudioRegion")!.RowDefinitions.Count==3,"Audio status must share the playback row rather than consume waveform space.");
         Require(text.Bounds.Width>=600&&text.Bounds.Height>=140,"Default ASS editor must retain room for tag-heavy multiline editing.");
         Require(rows.Bounds.Height>=270,"Default subtitle grid must retain at least nine dense rows of space.");
+        Require(rows.Bounds.Height>window.FindControl<Grid>("UpperWorkspace")!.Bounds.Height,
+            "Subtitles-only mode must give the grid more room than the compact editor, as in Aegisub.");
         var fields=window.FindControl<Grid>("MetadataOtherFields")!;
         Require(fields.ColumnSpacing>=10,"Actor, Effect and Layer require distinct group gaps.");
     }

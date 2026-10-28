@@ -26,6 +26,9 @@ public partial class MainWindow : Window, IEditorDialogs
     private bool _videoRegionShown = true;
     private GridLength _videoWidth = new(6, GridUnitType.Star), _textWidth = new(7, GridUnitType.Star);
     private bool _videoSplitterOverride;
+    private bool _compactSubtitleLayout;
+    private GridLength _mediaWorkspaceHeight = new(3, GridUnitType.Star);
+    private GridLength _subtitleWorkspaceHeight = new(300);
     private Key _fastActorModifier;
     private Guid? _fastActorModifierDocument;
     private AssEvent? _fastActorModifierLine;
@@ -240,6 +243,20 @@ public partial class MainWindow : Window, IEditorDialogs
     private void UpdateWorkspaceView()
     {
         if (_model is null) return;
+        // Aegisub sizes the editor to its content when neither embedded video
+        // nor audio is shown, giving the rest of the window to subtitle rows.
+        // Preserve each mode's splitter position across transitions.
+        if (UpperWorkspace.Parent is Grid workspace)
+        {
+            var compact = !_model.ShowEmbeddedVideo && !_model.ShowAudio;
+            var upper = workspace.RowDefinitions[2];
+            if (compact != _compactSubtitleLayout)
+            {
+                if (compact) { _mediaWorkspaceHeight=upper.Height; upper.MinHeight=280; upper.Height=_subtitleWorkspaceHeight; }
+                else { _subtitleWorkspaceHeight=upper.Height; upper.MinHeight=444; upper.Height=_mediaWorkspaceHeight; }
+                _compactSubtitleLayout=compact;
+            }
+        }
         var columns = UpperWorkspace.ColumnDefinitions;
         if (_videoRegionShown != _model.ShowEmbeddedVideo)
         {
