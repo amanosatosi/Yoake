@@ -238,6 +238,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var strip=window.FindControl<Border>("TitleTabStrip")!;
         var tabs=window.FindControl<ScrollViewer>("TabScroll")!;
         Require(strip.Padding.Right>0,"Caption buttons must reserve their measured area.");
+        var chrome=window.GetVisualAncestors().LastOrDefault()??window;
+        var panel=chrome.GetVisualDescendants().OfType<Panel>().First(c=>c.Name=="PART_OverlayPanel");
+        var close=panel.Children.OfType<Button>().First(c=>c.Name=="PART_CloseButton");
+        Require(Math.Abs(close.Bounds.Height-panel.Bounds.Height)<1,
+            "The framework close button must fill the caption strip vertically, including its top edge.");
         var right=tabs.TranslatePoint(new Point(tabs.Bounds.Width,0),window)!.Value.X;
         Require(right<=window.ClientSize.Width-strip.Padding.Right,"Tabs must end before caption buttons.");
     }

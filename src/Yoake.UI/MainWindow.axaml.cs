@@ -488,6 +488,13 @@ public partial class MainWindow : Window, IEditorDialogs
         if(parts.FirstOrDefault(c=>c.Name=="PART_TitleTextPanel") is {} title)
         {title.IsVisible=false;RedundantCaptionHidden=true;}
         var buttons=parts.FirstOrDefault(c=>c.Name=="PART_OverlayPanel");
+        // The title strip is taller than Fluent's default 30-DIP caption
+        // buttons. Match the existing framework buttons to the strip so the
+        // top of a maximized window remains clickable, without replacing
+        // their caption roles or native window behavior.
+        if(buttons is Panel panel && panel.Bounds.Height>0)
+            foreach(var button in panel.Children.OfType<Button>())
+                if(Math.Abs(button.Height-panel.Bounds.Height)>0.1 || double.IsNaN(button.Height))button.Height=panel.Bounds.Height;
         double inset=0;
         if(buttons is {IsVisible:true}&&buttons.Bounds.Width>0&&buttons.TranslatePoint(default,this) is {} top)
             inset=Math.Max(0,ClientSize.Width-top.X);
