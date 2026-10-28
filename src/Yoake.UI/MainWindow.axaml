@@ -136,17 +136,6 @@
 <MenuItem Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectVisible}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Script Info…" InputGesture="{Binding Actions[script-info/edit].InputGesture}" Command="{Binding Actions[script-info/edit]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ScriptProperties}" /></MenuItem.Icon></MenuItem>
 </MenuItem>
-<MenuItem Name="ToolsMenu" Header="Tools">
-<MenuItem Name="ResampleMenu" Header="Resample Resolution…" InputGesture="{Binding Actions[tool/resampleres].InputGesture}" Command="{Binding Actions[tool/resampleres]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Resample}" /></MenuItem.Icon></MenuItem>
-<MenuItem Name="FontCollectorMenu" Header="Fonts Collector…" InputGesture="{Binding Actions[tool/font_collector].InputGesture}" Command="{Binding Actions[tool/font_collector]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FontCollector}" /></MenuItem.Icon></MenuItem>
-<MenuItem Name="AssDrawMenu" Header="ASSDraw3…" InputGesture="{Binding Actions[tool/assdraw].InputGesture}" Command="{Binding Actions[tool/assdraw]}" />
-</MenuItem>
-<MenuItem Header="Automation" SubmenuOpened="AutomationMenuOpened">
-<MenuItem Header="Automation Manager…" InputGesture="{Binding Actions[automation/manager].InputGesture}" Command="{Binding Actions[automation/manager]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AutomationManager}" /></MenuItem.Icon></MenuItem>
-<MenuItem Header="Rescan autoload" InputGesture="{Binding Actions[automation/rescan].InputGesture}" Command="{Binding Actions[automation/rescan]}" />
-<Separator />
-<MenuItem Name="AutomationMacroMenu" Header="Macros" />
-</MenuItem>
 <MenuItem Header="Timing">
 <MenuItem Name="ShiftTimesMenu" Header="Shift Times…" InputGesture="{Binding Actions[time/shift].InputGesture}" Command="{Binding Actions[time/shift]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ShiftTimes}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Make continuous"><MenuItem Header="Change starts" Command="{Binding Actions[time/continuous/start]}" /><MenuItem Header="Change ends" Command="{Binding Actions[time/continuous/end]}" /></MenuItem>
@@ -309,6 +298,11 @@
 <MenuItem Header="Zoom in" InputGesture="{Binding Actions[audio/zoom/in].InputGesture}" Command="{Binding Actions[audio/zoom/in]}" />
 <MenuItem Header="Zoom out" InputGesture="{Binding Actions[audio/zoom/out].InputGesture}" Command="{Binding Actions[audio/zoom/out]}" />
 </MenuItem>
+<MenuItem Name="AutomationMacroMenu" Header="Automation" SubmenuOpened="AutomationMenuOpened">
+<MenuItem Header="Automation Manager…" InputGesture="{Binding Actions[automation/manager].InputGesture}" Command="{Binding Actions[automation/manager]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AutomationManager}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Rescan autoload" InputGesture="{Binding Actions[automation/rescan].InputGesture}" Command="{Binding Actions[automation/rescan]}" />
+<Separator />
+</MenuItem>
 <MenuItem Header="View">
 <MenuItem Header="Grid tag display">
 <MenuItem Name="FullTagsMenu" Header="Full tags" ToggleType="Radio" GroupName="GridTagDisplay" IsChecked="{Binding Actions[grid/tags/show].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[grid/tags/show].InputGesture}" Command="{Binding Actions[grid/tags/show]}" />
@@ -324,6 +318,11 @@
 <MenuItem Name="ToolbarMenu" Header="Toolbar" ToggleType="CheckBox" IsChecked="{Binding Actions[app/toggle/toolbar].IsChecked, Mode=OneWay}" Command="{Binding Actions[app/toggle/toolbar]}" />
 <MenuItem Header="Log window…" Command="{Binding Actions[app/log]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Information}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Cycle theme" InputGesture="{Binding Actions[view/theme/cycle].InputGesture}" Command="{Binding Actions[view/theme/cycle]}" />
+</MenuItem>
+<MenuItem Name="ToolsMenu" Header="Tools">
+<MenuItem Name="ResampleMenu" Header="Resample Resolution…" InputGesture="{Binding Actions[tool/resampleres].InputGesture}" Command="{Binding Actions[tool/resampleres]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Resample}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="FontCollectorMenu" Header="Fonts Collector…" InputGesture="{Binding Actions[tool/font_collector].InputGesture}" Command="{Binding Actions[tool/font_collector]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FontCollector}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="AssDrawMenu" Header="ASSDraw3…" InputGesture="{Binding Actions[tool/assdraw].InputGesture}" Command="{Binding Actions[tool/assdraw]}" />
 </MenuItem>
 </Menu><Grid Name="MainToolbar" IsVisible="{Binding ToolbarVisible}" Grid.Row="1" Margin="6,2" ColumnDefinitions="*,Auto" ColumnSpacing="6">
 <ScrollViewer Name="MainActionScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">

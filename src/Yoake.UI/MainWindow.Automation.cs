@@ -16,6 +16,7 @@ public partial class MainWindow
     private AutomationProgressWindow? _automationProgress;
     private bool _automationStarted;
     private (string Id, string Name)[] _automationMenuStructure = [];
+    private bool _automationMenuInitialized;
     private readonly Dictionary<string, MenuItem> _automationMenuItems = [];
     public async Task<string?> OpenAutomationScriptAsync()
     {
@@ -49,11 +50,13 @@ public partial class MainWindow
         var structure = entries.Select(entry => (entry.CommandId, entry.Name)).ToArray();
         // Validation updates must not replace the open submenu or keyboard focus.
         // Rebuild only when discovery/reload changes the command hierarchy.
-        var rebuild = !_automationMenuStructure.SequenceEqual(structure);
+        var rebuild = !_automationMenuInitialized || !_automationMenuStructure.SequenceEqual(structure);
         if (rebuild)
         {
-            AutomationMacroMenu.Items.Clear(); _automationMenuItems.Clear();
+            while (AutomationMacroMenu.Items.Count > 3) AutomationMacroMenu.Items.RemoveAt(3);
+            _automationMenuItems.Clear(); _automationMenuInitialized = true;
             _automationMenuStructure = structure;
+            if (entries.Count == 0) AutomationMacroMenu.Items.Add(new MenuItem { Header = "No Automation macros loaded", IsEnabled = false });
         }
         foreach (var entry in entries)
         {
@@ -75,7 +78,6 @@ public partial class MainWindow
             item.IsChecked = entry.Active;
             ToolTip.SetTip(item, entry.Help);
         }
-        AutomationMacroMenu.IsEnabled = AutomationMacroMenu.Items.Count > 0;
     }
     private void AutomationMenuOpened(object? sender, RoutedEventArgs args) => _model?.ScheduleAutomationValidation();
     private async void StartAutomation(object? sender, EventArgs args)

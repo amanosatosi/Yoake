@@ -155,6 +155,8 @@ end)
                 if (!model.Registry.CanExecute(_command, new(_document))) return false;
                 Require(model.Registry.GetRequired(_command).IsChecked(new(_document)), "Actual Lua isactive must reach the command state.");
                 var macroMenu = window.FindControl<MenuItem>("AutomationMacroMenu")!;
+                Require(Equals(macroMenu.Header,"Automation") && macroMenu.Items.OfType<MenuItem>().Any(c=>Equals(c.Header,"Automation Manager…")),
+                    "Macro groups must appear directly in the Automation menu alongside the manager.");
                 _macroMenuItem = macroMenu.Items.OfType<MenuItem>().Single(c => Equals(c.Header, "Verification"))
                     .Items.OfType<MenuItem>().Single(c => Equals(c.Header, "Authoring"));
                 Require(_macroMenuItem.ToggleType == MenuItemToggleType.CheckBox && _macroMenuItem.IsChecked &&
