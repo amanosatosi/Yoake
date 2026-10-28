@@ -273,7 +273,7 @@ jobs:
         run: .\ci\package_windows.ps1 -PublishRoot artifacts\publish -NativeRoot .ci-cache\native -AssDrawRoot artifacts\assdraw -OutputRoot artifacts
       - name: Verify actual bundled ASSDraw identity standalone window and dependencies
         shell: pwsh
-        run: .\ci\verify_assdraw_package.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable
+        run: .\ci\verify_assdraw_package.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable -AssDrawRoot artifacts\assdraw
       - name: Verify staged native runtime closure
         shell: pwsh
         run: .\ci\verify_windows_runtime.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable
@@ -311,6 +311,15 @@ jobs:
           name: Yoake-ui-keyboard-acceptance-diagnostics
           path: artifacts/ui-keyboard-acceptance
           if-no-files-found: warn
+      - name: Publish corresponding ASSDraw source beside the portable build
+        uses: actions/upload-artifact@v7
+        with:
+          name: Yoake-ASSDraw-corresponding-source
+          path: |
+            artifacts/assdraw/sources/**
+            artifacts/assdraw/assdraw-manifest.json
+          if-no-files-found: error
+          compression-level: 0
       - uses: actions/upload-artifact@v7
         with:
           name: Yoake-Windows-x64-NativeAOT-portable

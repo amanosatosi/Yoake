@@ -10,5 +10,5 @@
     "commit": "c4f36b4432142f22c0bf82c6fbdb41567a236be2"
   },
   "license": "ASSDraw historical BSD notices plus GPL-2.0-or-later AGG-derived spline files; wxWindows Library Licence and constituent bundled dependency notices",
-  "sourceDistribution": "Complete corresponding source archives and build instructions accompany ASSDraw3.exe inside the portable package."
+  "sourceDistribution": "Complete corresponding source archives and build instructions are published as a separate artifact alongside the portable download in the same workflow run. Releases and redistributions must provide the matching source alongside the binary."
 }

@@ -190,9 +190,17 @@ if ((Get-FileHash -LiteralPath (Join-Path $AssDrawRoot 'ASSDraw3.exe') -Algorith
 Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'ASSDraw3.exe') -Destination $portable
 Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'assdraw-manifest.json') -Destination $portable
 Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'licenses') -Destination (Join-Path $licenseTarget 'assdraw') -Recurse
-$sourceTarget = Join-Path $portable 'sources'
-New-Item -ItemType Directory -Force -Path $sourceTarget | Out-Null
-Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'sources') -Destination (Join-Path $sourceTarget 'assdraw') -Recurse
+$sourceNotice = @'
+The corresponding source and build instructions for the bundled ASSDraw3.exe
+are published separately as the Yoake-ASSDraw-corresponding-source artifact
+alongside the portable application in the same GitHub Actions run. The exact
+source revisions and SHA-256 hashes are recorded in assdraw-manifest.json.
+If you redistribute this binary, also provide the matching source and licenses.
+'@
+if ($env:GITHUB_SERVER_URL -and $env:GITHUB_REPOSITORY -and $env:GITHUB_RUN_ID) {
+  $sourceNotice += "`nBuild artifacts: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID`n"
+}
+Set-Content -LiteralPath (Join-Path $portable 'ASSDraw-source-availability.txt') -Value $sourceNotice -Encoding utf8
 
 $zip = Join-Path $OutputRoot 'Yoake-Windows-x64-portable.zip'
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
