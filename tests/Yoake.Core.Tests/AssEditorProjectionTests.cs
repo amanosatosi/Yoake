@@ -43,4 +43,27 @@ public sealed class AssEditorProjectionTests
         Assert.Equal(@"{\future(x)}a\\Nb\NWorld\Nend", new AssEditorProjection(cut).Edit(display));
         Assert.Equal(@"x\Ny\Nz", new AssEditorProjection("x").Edit("x\r\ny\nz"));
     }
+    [Theory]
+    [InlineData("[yoake motion position]")]
+    [InlineData("[toshiban motion track helper]")]
+    public void BetterViewKeepsMotionSourceWhileEditingAroundItsCompactDisplay(string marker)
+    {
+        var helper="{"+marker+@"\t(0,100,\pos(~+1,~-2))}";
+        var source="日本語"+helper+@"\Nမြန်မာ";var projection=new AssEditorProjection(source);
+        Assert.Equal("日本語{motion tracking}\nမြန်မာ",projection.Display);
+        Assert.Equal(source,projection.Edit(projection.Display));
+        Assert.Equal("日本語!"+helper+@"\Nမြန်မာ",projection.Edit(projection.Display.Insert(3,"!")));
+        Assert.Equal("日本語"+helper+@"\Nမြန်မာ!",projection.Edit(projection.Display+"!"));
+        var begin=projection.Display.IndexOf("{motion tracking}",StringComparison.Ordinal);
+        Assert.Equal(3,projection.ToSource(begin));Assert.Equal(3+helper.Length,projection.ToSource(begin+"{motion tracking}".Length));
+        Assert.False(projection.TryEdit(projection.Display.Remove(begin+2,1),out var unchanged));Assert.Equal(source,unchanged);
+        Assert.Equal("日本語"+@"\Nမြန်မာ",projection.Edit(projection.Display.Remove(begin,"{motion tracking}".Length)));
+        Assert.Equal("日本語"+helper+"\nမြန်မာ",new AssEditorProjection(source,true,true).Display);
+        Assert.Equal(source,new AssEditorProjection(source,false).Display);
+    }
+    [Fact] public void BetterViewOnlyCollapsesCompleteRecognizedBlocks()
+    {
+        const string source=@"x{[other motion]tag}y{[yoake motion position]unterminated";
+        Assert.Equal(source,new AssEditorProjection(source).Display);
+    }
 }

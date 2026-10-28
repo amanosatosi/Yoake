@@ -32,6 +32,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public string KaraokeStatus="";
         public string VisualTool="Crosshair",VectorMode="Select";
         public FastActorState FastActor = new();
+        public bool ShowMotionData;
         public VideoAspect VideoAspect = new();
         public VideoViewState VideoView = new();
         public int VideoProviderRevision;
@@ -405,6 +406,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             NotifyVisualToolState(); NotifyVideoPresentation(); OnPropertyChanged(nameof(VideoAspectRatio)); OnPropertyChanged(nameof(ShowVideoOverscan)); _videoPointer=null;
             _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
             NotifyFastActor();
+            OnPropertyChanged(nameof(ShowMotionData));
             _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft();
             if(state?.RetainedDraft is {} retained&&ReferenceEquals(retained.Line,_selectedEvent)){Draft=retained;PresentRecoveredDraft();}
             EnsureKaraokeSafe();NotifyKaraoke();

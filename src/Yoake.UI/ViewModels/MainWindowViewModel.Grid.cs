@@ -9,9 +9,17 @@ public sealed partial class MainWindowViewModel
 {
     public bool HasEditOperation=>_activeId is {} id&&_documents.TryGetValue(id,out var state)&&state.Editing is not null;
     public GridTagDisplayMode GridTagDisplay=>_settings.GridTagDisplay??GridTagDisplayMode.Simplified;
+    public bool BetterView=>_settings.BetterView??true;
+    public bool ShowMotionData=>_activeId is {} id&&_documents.TryGetValue(id,out var state)&&state.ShowMotionData;
     private void RegisterGridCommands()
     {
         bool Applies(CommandContext context)=>context.DocumentId is null||context.DocumentId==_activeId;
+        _registry.Register(new(new("edit/better-view","Better View","Show line breaks and compact motion data in the edit box","Edit"),
+            (_,_)=>{_settings=_settings with{BetterView=!BetterView};OnPropertyChanged(nameof(BetterView));_settingsStore.Save(_settings);_registry.NotifyStateChanged();return ValueTask.CompletedTask;},isChecked:_=>BetterView));
+        Actions["edit/better-view"]=new RegistryCommand(_registry,"edit/better-view",CurrentContext,hotkeys:()=>HotkeyProfile);
+        _registry.Register(new(new("edit/show-motion-data","Show motion data","Show the full motion tracking tags in the edit box","Edit"),
+            (_,_)=>{if(_activeId is {} id&&_documents.TryGetValue(id,out var state)){state.ShowMotionData=!state.ShowMotionData;OnPropertyChanged(nameof(ShowMotionData));_registry.NotifyStateChanged();}return ValueTask.CompletedTask;},context=>Applies(context)&&BetterView&&_activeId is not null,isChecked:_=>ShowMotionData));
+        Actions["edit/show-motion-data"]=new RegistryCommand(_registry,"edit/show-motion-data",CurrentContext,hotkeys:()=>HotkeyProfile);
         foreach(var (id,label,mode) in new[]{("grid/tags/show","Full tags",GridTagDisplayMode.Full),
             ("grid/tags/simplify","Simplified tags",GridTagDisplayMode.Simplified),("grid/tags/hide","Hide tags",GridTagDisplayMode.Hidden)})
         {

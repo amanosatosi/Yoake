@@ -43,6 +43,7 @@ public sealed record AppSettings
     public bool? VideoAutoSeek {get;init;}
     public bool VideoOverscan { get; init; }
     public bool ShowOriginal { get; init; }
+    public bool? BetterView { get; init; }
     public bool? AutosaveEnabled { get; init; }
     public int? AutosaveIntervalSeconds { get; init; }
     public string? RecoveryDirectory { get; init; }

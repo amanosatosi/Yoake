@@ -60,7 +60,7 @@ public sealed class SettingsStore(string path)
         SubtitleSelectionOptions? selection=null;
         bool? videoAutoSeek=null;
         var videoOverscan=false;Yoake.Core.Media.DummyVideoOptions? lastDummy=null;
-        var showOriginal=false;PasteOverFields? pasteOverFields=null;
+        var showOriginal=false;bool? betterView=null;PasteOverFields? pasteOverFields=null;
         bool? autosaveEnabled=null;int? autosaveInterval=null;string? recoveryDirectory=null;
         SubtitleShiftPreferences? shift=null;List<SubtitleShiftHistoryEntry> shiftHistory=[];
         var globalTiming=false;bool? toolbar=null; List<HotkeyOverride> hotkeys=[];
@@ -88,6 +88,7 @@ public sealed class SettingsStore(string path)
                 case "videoAutoSeek":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)videoAutoSeek=member.Value.GetBoolean();break;
                 case "videoOverscan":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)videoOverscan=member.Value.GetBoolean();break;
                 case "showOriginal":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)showOriginal=member.Value.GetBoolean();break;
+                case "betterView":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)betterView=member.Value.GetBoolean();break;
                 case "pasteOverFields":if(TryReadInt(member.Value,out var pasteFields)&&pasteFields>=0&&pasteFields<=(int)PasteOverFields.All)pasteOverFields=(PasteOverFields)pasteFields;break;
                 case "lastDummyVideo":try{lastDummy=JsonSerializer.Deserialize(member.Value,SettingsJsonContext.Default.DummyVideoOptions);}catch(JsonException){}break;
                 case "shiftPreferences":try{shift=JsonSerializer.Deserialize(member.Value,SettingsJsonContext.Default.SubtitleShiftPreferences);}catch(JsonException){}break;
@@ -138,7 +139,7 @@ public sealed class SettingsStore(string path)
         return new AppSettings { AssDrawExecutable=assDrawExecutable,Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
             AutosaveEnabled=autosaveEnabled,AutosaveIntervalSeconds=autosaveInterval,RecoveryDirectory=recoveryDirectory,
             HotkeyOverrides=hotkeys.ToArray(),AudioStopHotkeysMigrated=audioStopMigrated,GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,SelectionPreferences=selection,VideoAutoSeek=videoAutoSeek,VideoOverscan=videoOverscan,LastDummyVideo=lastDummy,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
-            GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, RecentVideo=recentVideo, RecentAudio=recentAudio, FutureSettings = future,ShowOriginal=showOriginal,PasteOverFields=pasteOverFields,
+            GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, RecentVideo=recentVideo, RecentAudio=recentAudio, FutureSettings = future,ShowOriginal=showOriginal,BetterView=betterView,PasteOverFields=pasteOverFields,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,AudioSpectrum=audioSpectrum,AudioAutoScroll=audioAutoScroll,
             AudioAutoCommit=audioAutoCommit,AudioAutoNext=audioAutoNext,AudioDefaultDuration=audioDefaultDuration,AudioLeadIn=audioLeadIn,AudioLeadOut=audioLeadOut,
             AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };

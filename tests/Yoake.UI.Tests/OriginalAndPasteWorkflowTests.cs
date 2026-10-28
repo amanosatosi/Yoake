@@ -40,6 +40,16 @@ public sealed partial class EditorWorkflowTests
         await Command(CommandIds.WorkspaceActivateTab,doc);Assert.Equal(original,_model.OriginalText);
         Assert.False(await _model.Registry.InvokeAsync("edit/revert",new(Guid.NewGuid())));
     }
+    [Fact] public async Task BetterViewSettingAndDocumentLocalMotionExpansionDoNotChangeDraftOrHistory()
+    {
+        await Command(CommandIds.GridInsertAfter);var draft=_model.Draft!;draft.Text=@"{[yoake motion position]\t(0,100,\pos(~+1,~-2))}a\Nb";
+        var source=draft.Text;var history=_model.ActiveEditor!.Undo.NextUndoName;var doc=_model.ActiveDocumentId;
+        Assert.True(_model.BetterView);await Command("edit/show-motion-data");Assert.True(_model.ShowMotionData);
+        await Command("edit/better-view");Assert.False(_model.BetterView);Assert.False(new SettingsStore(Path.Combine(_root,"settings.json")).Load().BetterView);
+        Assert.Same(draft,_model.Draft);Assert.Equal(source,draft.Text);Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+        await Command(CommandIds.SubtitleNew);Assert.False(_model.ShowMotionData);
+        await Command(CommandIds.WorkspaceActivateTab,doc);Assert.True(_model.ShowMotionData);
+    }
     [Fact] public async Task PasteOverUsesDialogFieldsPreservesOriginalSelectionAndOneUndo()
     {
         await SeedOriginal();var original=_model.OriginalText;var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var selection=_model.SelectedEvents.ToArray();

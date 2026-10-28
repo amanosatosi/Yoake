@@ -15,7 +15,11 @@ namespace Yoake.UI.Controls;
 public sealed class AssTextBox : TextBox
 {
     public static readonly StyledProperty<string> SourceTextProperty = AvaloniaProperty.Register<AssTextBox, string>(nameof(SourceText), "", defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
+    public static readonly StyledProperty<bool> BetterViewProperty = AvaloniaProperty.Register<AssTextBox,bool>(nameof(BetterView),true);
+    public static readonly StyledProperty<bool> ShowMotionDataProperty = AvaloniaProperty.Register<AssTextBox,bool>(nameof(ShowMotionData));
     public string SourceText { get => GetValue(SourceTextProperty); set => SetValue(SourceTextProperty, value); }
+    public bool BetterView { get=>GetValue(BetterViewProperty);set=>SetValue(BetterViewProperty,value); }
+    public bool ShowMotionData { get=>GetValue(ShowMotionDataProperty);set=>SetValue(ShowMotionDataProperty,value); }
     private AssEditorProjection _projection = new("");
     private bool _projecting;
     public bool IsProjecting => _projecting;
@@ -25,13 +29,13 @@ public sealed class AssTextBox : TextBox
     {
         base.OnPropertyChanged(change);
         if (_projecting) return;
-        if (change.Property == SourceTextProperty)
+        if (change.Property == SourceTextProperty || change.Property == BetterViewProperty || change.Property == ShowMotionDataProperty)
         {
             var caret = SourceIndex(CaretIndex); var start = SourceIndex(SelectionStart); var end = SourceIndex(SelectionEnd);
             _projecting = true;
             try
             {
-                _projection = new(SourceText ?? "");
+                _projection = new(SourceText ?? "",BetterView,ShowMotionData);
                 SetCurrentValue(TextProperty, _projection.Display);
                 CaretIndex = DisplayIndex(caret); SelectionStart = DisplayIndex(start); SelectionEnd = DisplayIndex(end);
             }
@@ -40,8 +44,15 @@ public sealed class AssTextBox : TextBox
         else if (change.Property == TextProperty)
         {
             var display = Text ?? "";
-            var source = _projection.Edit(display);
-            _projection = new(source);
+            if(!_projection.TryEdit(display,out var source))
+            {
+                var caret=_projection.ToDisplay(_projection.ToSource(CaretIndex));
+                _projecting=true;
+                try{SetCurrentValue(TextProperty,_projection.Display);CaretIndex=SelectionStart=SelectionEnd=caret;}
+                finally{_projecting=false;}
+                return;
+            }
+            _projection = new(source,BetterView,ShowMotionData);
             // Keep the native input/IME transaction and its selection intact.
             _projecting = true;
             try { SetCurrentValue(SourceTextProperty, source); }

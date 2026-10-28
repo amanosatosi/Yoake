@@ -92,7 +92,19 @@ internal sealed class AuthoringInputVerification(MainWindow window,MainWindowVie
                 var presenter=Text.GetVisualDescendants().OfType<TextPresenter>().Single();presenter.PreeditText="仮";
                 var selected=model.SelectedEvent;var source=model.SelectedEvent!.Text;var draftBefore=Text.Text;PressKey(Key.Enter);
                 Require(ReferenceEquals(model.SelectedEvent,selected)&&model.SelectedEvent.Text==source&&Text.Text==draftBefore&&presenter.PreeditText=="仮","Composition Enter must remain owned by IME without commit/navigation.");
-                presenter.PreeditText=null;model.CommitDraft();model.ActiveEditor!.SetField(_line!,"Text",_original,"Restore input verification fixture");return true;
+                presenter.PreeditText=null;model.CommitDraft();model.ActiveEditor!.SetField(_line!,"Text",_original,"Restore input verification fixture");return false;
+            case 8:
+                _stable=@"日本語{[yoake motion position]\t(0,100,\pos(~+1,~-2))}\Nမြန်မာ";
+                Text.SetCurrentValue(AssTextBox.SourceTextProperty,_stable);
+                Require(Text.Text=="日本語{motion tracking}\nမြန်မာ"&&Text.SourceText==_stable,"Better View must compact motion data and display hard line breaks without changing source.");
+                var compact=Text.Text!;Text.SetCurrentValue(TextBox.TextProperty,compact.Remove(compact.IndexOf("motion",StringComparison.Ordinal)+2,1));
+                Require(Text.Text==compact&&Text.SourceText==_stable,"A partial edit of a compact motion marker must not damage its hidden source.");
+                model.Actions["edit/show-motion-data"].Execute(null);
+                Require(Text.Text!.Contains("[yoake motion position]")&&Text.SourceText==_stable,"Showing motion data must expose the original editable block.");
+                model.Actions["edit/better-view"].Execute(null);
+                Require(Text.Text==_stable&&Text.SourceText==_stable,"Disabling Better View must show raw ASS without mutation.");
+                model.Actions["edit/better-view"].Execute(null);model.Actions["edit/show-motion-data"].Execute(null);
+                Text.SetCurrentValue(AssTextBox.SourceTextProperty,_original);model.CommitDraft();return true;
             default:return true;
         }
     }
