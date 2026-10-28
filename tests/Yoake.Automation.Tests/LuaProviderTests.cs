@@ -51,6 +51,8 @@ aegisub.register_macro(touched and 'modern' or 'legacy','',function() end)
     public async Task DependencyControlRegistersAndRunsAModernMacro()
     {
         var root=Path.Combine(_root,"automation-3.5-above","autoload");Directory.CreateDirectory(root);
+        var modules=Path.Combine(_root,"automation-3.5-above","include","fixture");Directory.CreateDirectory(modules);
+        File.WriteAllText(Path.Combine(modules,"helper.lua"),"return { message = 'DependencyControl ran' }");
         var path=Path.Combine(root,"fixture.lua");
         File.WriteAllText(path,"""
 script_name = 'DependencyControl fixture'
@@ -59,11 +61,12 @@ script_author = 'Yoake test'
 script_version = '1.0.0'
 script_namespace = 'test.YoakeFixture'
 local DependencyControl = require('l0.DependencyControl')
-local record = DependencyControl {}
+local record = DependencyControl { { 'fixture.helper' } }
+local helper = record:requireModules()
 record:registerMacro(function(subs, sel, active)
   local path = aegisub.decode_path('?user/automation/include'):gsub('\\', '/')
   assert(path:match('/automation%-3%.5%-above/include$'))
-  local line = subs[active]; line.text = 'DependencyControl ran'; subs[active] = line
+  local line = subs[active]; line.text = helper.message; subs[active] = line
 end)
 """);
         var tokens=new Dictionary<string,string>{{"?user",_root},{"?data",AppContext.BaseDirectory},{"?temp",_root}};
