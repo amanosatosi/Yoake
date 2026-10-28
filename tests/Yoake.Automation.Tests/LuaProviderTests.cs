@@ -61,7 +61,8 @@ script_namespace = 'test.YoakeFixture'
 local DependencyControl = require('l0.DependencyControl')
 local record = DependencyControl {}
 record:registerMacro(function(subs, sel, active)
-  assert(aegisub.decode_path('?user/automation/include') == '?user/automation-3.5-above/include')
+  local path = aegisub.decode_path('?user/automation/include'):gsub('\\', '/')
+  assert(path:match('/automation%-3%.5%-above/include$'))
   local line = subs[active]; line.text = 'DependencyControl ran'; subs[active] = line
 end)
 """);
@@ -69,7 +70,8 @@ end)
         using var script=await _provider.LoadAsync(path,new(path,[],tokens),CancellationToken.None);
         var macro=Assert.Single(script.Macros);var document=Document();var editor=new SubtitleEditor(document);var before=document.Serialize();
         using var subs=new AutomationSubtitleDocument(document);
-        await script.RunAsync(macro.Index,Context(subs),CancellationToken.None);
+        var services=new Services(paths:new AutomationPathResolver(Path.Combine(AppContext.BaseDirectory,"context.lua"),[],tokens));
+        await script.RunAsync(macro.Index,new AutomationInvocation(subs,[2],2,services),CancellationToken.None);
         subs.Commit(editor,macro.Name);Assert.Equal("DependencyControl ran",Assert.Single(document.Events).Text);
         editor.Undo.Undo();Assert.Equal(before,document.Serialize());
     }
@@ -995,7 +997,7 @@ end)
         Assert.Equal(before, document.Serialize());
     }
 
-    private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null, bool clipboardAvailable = false, int traceLevel = 3) : IAutomationHostServices
+    private sealed class Services(Func<AutomationFileDialogRequest, IReadOnlyList<string>?>? pick = null, bool clipboardAvailable = false, int traceLevel = 3, AutomationPathResolver? paths = null) : IAutomationHostServices
     {
         public int TraceLevel => traceLevel;
         private string? _clipboard;
@@ -1008,6 +1010,7 @@ end)
         public IReadOnlyList<int> Keyframes => [];
         public AutomationTextMetrics MeasureText(AutomationLine style, string text) => WindowsAutomationTextMeasurer.Measure(style, text);
         public string Translate(string text) => text;
+        public string DecodePath(string path) => paths?.DecodePath(path) ?? path;
         public string? ClipboardGet() => _clipboard;
         public bool ClipboardSet(string text) { if (!clipboardAvailable) return false; _clipboard = text; return true; }
         public AutomationDialogResult DisplayDialog(AutomationDialogRequest request, CancellationToken cancellationToken) => throw new NotSupportedException();
