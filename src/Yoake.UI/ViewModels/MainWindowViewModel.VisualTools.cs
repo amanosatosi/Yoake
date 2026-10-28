@@ -55,7 +55,7 @@ public sealed partial class MainWindowViewModel
             return ScriptSize.Height/Math.Max(1,height);
         }
     }
-    public IReadOnlyList<VisualLine> VisibleVisualLines()
+    public IReadOnlyList<VisualLine> VisibleVisualLines(bool includeUnselected = false)
     {
         if(ActiveEditor is null)return [];
         var time=(FrameTimes.Count>0?FrameTimes[CurrentFrame]:CurrentTimeSeconds)*1000;var size=ScriptSize;
@@ -71,7 +71,7 @@ public sealed partial class MainWindowViewModel
                 AssTime.TryParse(preview.GetValueOrDefault("End"),out var end)&&end>=start)return(start,end);
             return(line.StartMilliseconds??0,line.EndMilliseconds??0);
         }
-        var visible=Selection().Select(line=>(Line:line,Timing:Range(line)))
+        var visible=(includeUnselected?Events:Selection()).Select(line=>(Line:line,Timing:Range(line)))
             .Where(entry=>!entry.Line.IsComment&&time>=entry.Timing.Start&&time<entry.Timing.End).ToArray();
         var primary=visible.FirstOrDefault(entry=>ReferenceEquals(entry.Line,SelectedEvent)).Line??visible.FirstOrDefault().Line;
         return visible.Select(entry=>
@@ -83,6 +83,12 @@ public sealed partial class MainWindowViewModel
             var position=AssVisualTags.PositionAtTime(text,(long)relative,duration)??fallback;
             return new VisualLine(line,text,fallback,position,AssVisualTags.Origin(text)??position,AssVisualTags.Transform(text,style),relative,duration,ReferenceEquals(line,primary));
         }).ToArray();
+    }
+    public bool SelectVisualLine(AssEvent line)
+    {
+        var suppress=_suppressSelectionSeek;_suppressSelectionSeek=true;
+        try { SelectedEvent=line; return ReferenceEquals(SelectedEvent,line); }
+        finally { _suppressSelectionSeek=suppress; }
     }
     public void UpdateVisualGesture(Func<VisualLine,string> edit)=>InvokeGesture("video/visual/update",edit);
     private void UpdateVisualGestureCore(Func<VisualLine,string> edit)

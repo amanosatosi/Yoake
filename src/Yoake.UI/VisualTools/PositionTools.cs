@@ -44,7 +44,16 @@ public sealed class PositionTool : VisualTool
     {
         if(p.ClickCount==2)return new CrosshairTool().Press(c,p);
         _feature=p.Alt?2:-1;
-        if(!p.Alt)foreach(var l in c.Lines.OrderByDescending(l=>l.Active))foreach(var f in Features(l).Reverse())if(c.Near(f.Point,p.Screen)){_feature=f.Id;goto found;}
+        if(!p.Alt)foreach(var l in c.Lines.OrderByDescending(l=>l.Active))foreach(var f in Features(l).Reverse())if(c.Near(f.Point,p.Screen))
+        {
+            _feature=f.Id;
+            if(!ReferenceEquals(l.Line,c.Model.SelectedEvent))
+            {
+                if(!c.Model.SelectVisualLine(l.Line))return false;
+                c=new(c.Model,c.Video,c.Model.VisibleVisualLines(true));
+            }
+            goto found;
+        }
         found:
         if(_feature<0)return false;return Begin(c,p,_feature==2?"Move subtitle origins":"Position / movement endpoints");
     }

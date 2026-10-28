@@ -9,6 +9,22 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public async Task PositionToolSelectsAndMovesAnotherVisibleLineWithoutSeeking()
+    {
+        var rows=await TimingRows();var editor=_model.ActiveEditor!;
+        editor.ToggleComment([rows[1]]);editor.SetTiming(rows[1],300,1400);
+        editor.SetField(rows[0],"Text",@"{\pos(40,40)}first","Fixture");
+        editor.SetField(rows[1],"Text",@"{\pos(160,100)}second","Fixture");
+        _model.SelectedEvent=rows[0];_model.CurrentTimeSeconds=.5;
+        var context=new VisualToolContext(_model,new Rect(0,0,640,480),_model.VisibleVisualLines(true));
+        Assert.Equal(2,context.Lines.Count);var target=context.Lines.Single(l=>ReferenceEquals(l.Line,rows[1]));
+        var screen=context.Screen(target.Position);var tool=new PositionTool();var pointer=new VisualPointer(screen,target.Position,KeyModifiers.None);
+        Assert.True(tool.Press(context,pointer));Assert.Same(rows[1],_model.SelectedEvent);Assert.Equal(.5,_model.CurrentTimeSeconds,6);
+        var moved=new AssPoint(target.Position.X+20,target.Position.Y+10);
+        tool.Move(new(_model,context.Video,_model.VisibleVisualLines(true)),new(context.Screen(moved),moved,KeyModifiers.None));
+        _model.EndGesture();Assert.Contains(@"\pos(180,110)",rows[1].Text);
+        await Command(CommandIds.EditUndo);Assert.Contains(@"\pos(160,100)",rows[1].Text);
+    }
     [Fact] public async Task VisualToolsUseTheCompositorsPendingTimingBeforeDuringAndAfterAGesture()
     {
         var rows=await TimingRows();var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();

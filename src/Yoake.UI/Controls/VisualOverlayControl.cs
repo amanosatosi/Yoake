@@ -79,7 +79,7 @@ public sealed class VisualOverlayControl : Control
         if (_pointerDocument != model.ActiveDocumentId) { _pointerDocument=model.ActiveDocumentId; _lastPointerPosition=null; }
         var area=VideoPresentationControl.Rect(model.VideoViewport(Bounds.Width,Bounds.Height,TopLevel.GetTopLevel(this)?.RenderScaling??1));
         if(!IsPanning&&HasTransientInput&&_context is {} previous&&previous.Video!=area){Cancel();}
-        _context=new(model,area,model.VisibleVisualLines());
+        _context=new(model,area,model.VisibleVisualLines(model.ActiveVisualTool=="Position"));
         if (_lastPointerPosition is { } last && _context.Video.Width>0 && _context.Video.Height>0)
         { _pointer=_pointer with { Script=_context.Script(last) }; _inside=_context.Video.Contains(last); model.ReportVideoPointer(_pointer.Script); }
         _tools.TryGetValue(model.ActiveVisualTool,out _tool);model.RequestVisualBounds();InvalidateVisual();
