@@ -299,7 +299,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         CancelGesture();
         if (!CommitDraft()) return;
-        var session=_workspace.CreateUntitled(); Attach(session,AssDocument.CreateEmpty());
+        var session=_workspace.CreateUntitled(); Attach(session,AssDocument.CreateNew());
         _documents[session.Id].PlaceholderBaseline=_documents[session.Id].Editor.Document.Serialize();
         SynchronizeActiveDocument(); SubtitleStatus="New ASS document";
     }

@@ -7,6 +7,12 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public void NewSubtitleStartsWithAnEditableCleanLine()
+    {
+        Assert.Single(_model.Events);Assert.Same(_model.Events[0],_model.SelectedEvent);
+        Assert.NotNull(_model.Draft);Assert.False(_model.ActiveEditor!.IsDirty);
+        Assert.False(_model.ActiveEditor.Undo.CanUndo);
+    }
     [Fact] public async Task AutoSeekChoosesTheFirstFrameAtOrAfterSubtitleStart()
     {
         var rows=await TimingRows();
@@ -28,7 +34,7 @@ public sealed partial class EditorWorkflowTests
     }
     [Fact] public async Task SubtitleOpenKeepsEditedUntitledTab()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="unsaved work";
+        _model.Draft!.Text="unsaved work";
         var original=_model.ActiveDocumentId;
         var path=Path.Combine(_root,"another.ass");File.WriteAllText(path,"[Events]\nFormat: Start,End,Text\nDialogue: 0:00:00.00,0:00:01.00,loaded\n");
         await Command(CommandIds.SubtitleOpen,path);

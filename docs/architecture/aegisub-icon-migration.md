@@ -117,7 +117,7 @@ Baseline: MainWindow.axaml has New/Open/Save and Undo/Redo icons and text-only O
 - Checked and radio menu entries retain their native check indicators; their matching fork icons are on the corresponding video, audio or visual toolbars.
 - The combined Open video/audio command has no single fork equivalent and remains a text menu action; separate video and audio open actions now have their own matching icons. Mute, rest insertion, and numeric field labels are descriptive text, not placeholder icons.
 - Styles ordering and vector subtools retain their existing derived assets. ASSDraw stays a text menu action: the source resource is a character illustration rather than an ordinary functional command symbol.
-- The current color buttons are live ASS color/alpha swatches, not placeholder squares. Removing the swatches would hide the value being edited.
+- The four color buttons now combine live ASS color/alpha swatches with the fork's corresponding two-layer color glyphs. Their eight SVG layers are scaled and theme-recolored; exact source paths, revision and attribution are in `THIRD_PARTY_NOTICES.md`.
 - Light/dark static SVG samples were inspected at 16 px; actual application hover, pressed, disabled, laptop layout and DPI verification remains pending.
 
 ## Counts and verification state

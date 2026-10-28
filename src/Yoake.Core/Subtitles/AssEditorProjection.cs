@@ -10,9 +10,11 @@ public sealed class AssEditorProjection
     private readonly record struct MotionSpan(int SourceStart,int SourceEnd,int DisplayStart,int DisplayEnd);
     private readonly int[] _displayToSource, _sourceToDisplay;
     private readonly List<MotionSpan> _motion=[];
+    private readonly List<MotionBlock> _motionBlocks=[];
+    public readonly record struct MotionBlock(int SourceStart,int SourceEnd,int DisplayStart,int DisplayEnd,bool Collapsed);
     public string Source { get; }
     public string Display { get; }
-    public AssEditorProjection(string source,bool betterView=true,bool showMotionData=false)
+    public AssEditorProjection(string source,bool betterView=true,bool showMotionData=false,IReadOnlySet<int>? expandedMotionBlocks=null)
     {
         Source = source;
         var breaks = new HashSet<int>();
@@ -27,7 +29,7 @@ public sealed class AssEditorProjection
             }
         }
         var text = new StringBuilder(source.Length);
-        var motionBlocks = betterView&&!showMotionData
+        var motionBlocks = betterView
             ? AssTextOperations.Blocks(source).Where(block=>block.Closed &&
                 (source.AsSpan(block.Start,block.End-block.Start).StartsWith("{[yoake motion position]",StringComparison.Ordinal) ||
                  source.AsSpan(block.Start,block.End-block.Start).StartsWith("{[toshiban motion track helper]",StringComparison.Ordinal)))
@@ -38,7 +40,7 @@ public sealed class AssEditorProjection
         for (var i = 0; i < source.Length;)
         {
             _sourceToDisplay[i] = text.Length;
-            if(motionBlocks.TryGetValue(i,out var rawEnd))
+            if(motionBlocks.TryGetValue(i,out var rawEnd) && !showMotionData && expandedMotionBlocks?.Contains(i)!=true)
             {
                 var begin=i;var displayStart=text.Length;var displayEnd=displayStart+MotionPlaceholder.Length;
                 text.Append(MotionPlaceholder);
@@ -58,6 +60,14 @@ public sealed class AssEditorProjection
         }
         _sourceToDisplay[source.Length] = text.Length;
         Display = text.ToString(); _displayToSource = offsets.ToArray();
+        foreach(var block in motionBlocks)
+            _motionBlocks.Add(new(block.Key,block.Value,_sourceToDisplay[block.Key],_sourceToDisplay[block.Value],
+                !showMotionData && expandedMotionBlocks?.Contains(block.Key)!=true));
+    }
+    public MotionBlock? MotionAtDisplay(int position)
+    {
+        foreach(var block in _motionBlocks)if(position>=block.DisplayStart&&position<block.DisplayEnd)return block;
+        return null;
     }
     public int ToSource(int display) => _displayToSource[Math.Clamp(display, 0, Display.Length)];
     public int ToDisplay(int source) => _sourceToDisplay[Math.Clamp(source, 0, Source.Length)];

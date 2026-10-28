@@ -66,4 +66,17 @@ public sealed class AssEditorProjectionTests
         const string source=@"x{[other motion]tag}y{[yoake motion position]unterminated";
         Assert.Equal(source,new AssEditorProjection(source).Display);
     }
+    [Fact] public void MotionBlocksCanExpandIndependentlyAndRemainLossless()
+    {
+        const string first=@"{[yoake motion position]\pos(1,2)}";
+        const string second=@"{[toshiban motion track helper]\move(1,2,3,4)}";
+        var source="a"+first+"b"+second+"c";
+        var projection=new AssEditorProjection(source,true,false,new HashSet<int>{1});
+        Assert.Equal("a"+first+"b{motion tracking}c",projection.Display);
+        var expanded=projection.MotionAtDisplay(2);Assert.NotNull(expanded);Assert.False(expanded.Value.Collapsed);
+        var collapsed=projection.MotionAtDisplay(projection.Display.IndexOf("motion tracking",StringComparison.Ordinal));
+        Assert.NotNull(collapsed);Assert.True(collapsed.Value.Collapsed);
+        Assert.Equal(second,source[collapsed.Value.SourceStart..collapsed.Value.SourceEnd]);
+        Assert.Equal(source,projection.Edit(projection.Display));
+    }
 }

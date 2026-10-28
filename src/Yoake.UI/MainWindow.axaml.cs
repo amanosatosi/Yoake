@@ -144,13 +144,13 @@ public partial class MainWindow : Window, IEditorDialogs
 
     private void AttachModel()
     {
-        if(_model is not null){MoveVideoHost(false);_model.VideoWindowZoomRequested-=ResizeDetachedVideo;_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        if(_model is not null){MoveVideoHost(false);_model.MotionBlockToggleRequested-=SubtitleText.ToggleMotionBlock;_model.VideoWindowZoomRequested-=ResizeDetachedVideo;_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
         _automationMenuInitialized=false;
         RefreshRecentKeyframes();
         RefreshRecentMedia();
         RefreshRecentTimecodes();
-        if(_model is not null){_model.Dialogs=this;_model.VideoWindowZoomRequested+=ResizeDetachedVideo;_model.VideoSeekFocusRequested+=SeekFocusRequested;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
+        if(_model is not null){_model.Dialogs=this;_model.MotionBlockToggleRequested+=SubtitleText.ToggleMotionBlock;_model.VideoWindowZoomRequested+=ResizeDetachedVideo;_model.VideoSeekFocusRequested+=SeekFocusRequested;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
             var widths=_model.GridColumnWidths; // Normalized at the model boundary.
             var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
@@ -347,7 +347,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(e.PropertyName==nameof(MainWindowViewModel.ViewMode)){VisualOverlay.CancelInput();_model?.NotifyVideoPresentation();UpdateWorkspaceView();}
         if(e.PropertyName is nameof(MainWindowViewModel.IsVideoDetached) or nameof(MainWindowViewModel.VideoSourcePath))SynchronizeVideoHost();
         if(e.PropertyName is nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.VideoSourcePath))UpdateEmbeddedVideoHost();
-        if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});
+        if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent)){SubtitleText.ResetMotionExpansions();Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});}
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }
     private void SyncSelection()

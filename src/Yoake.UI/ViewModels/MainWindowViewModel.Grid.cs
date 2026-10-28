@@ -7,6 +7,8 @@ namespace Yoake.UI.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    public sealed record MotionBlockRequest(int Start,string Source);
+    public event Action<int>? MotionBlockToggleRequested;
     public bool HasEditOperation=>_activeId is {} id&&_documents.TryGetValue(id,out var state)&&state.Editing is not null;
     public GridTagDisplayMode GridTagDisplay=>_settings.GridTagDisplay??GridTagDisplayMode.Simplified;
     public bool BetterView=>_settings.BetterView??true;
@@ -20,6 +22,16 @@ public sealed partial class MainWindowViewModel
         _registry.Register(new(new("edit/show-motion-data","Show motion data","Show the full motion tracking tags in the edit box","Edit"),
             (_,_)=>{if(_activeId is {} id&&_documents.TryGetValue(id,out var state)){state.ShowMotionData=!state.ShowMotionData;OnPropertyChanged(nameof(ShowMotionData));_registry.NotifyStateChanged();}return ValueTask.CompletedTask;},context=>Applies(context)&&BetterView&&_activeId is not null,isChecked:_=>ShowMotionData));
         Actions["edit/show-motion-data"]=new RegistryCommand(_registry,"edit/show-motion-data",CurrentContext,hotkeys:()=>HotkeyProfile);
+        bool CurrentMotionBlock(MotionBlockRequest request) => Draft?.Text is { } text && request.Start>=0 &&
+            request.Start<=text.Length-request.Source.Length && text.AsSpan(request.Start,request.Source.Length).SequenceEqual(request.Source.AsSpan());
+        _registry.Register(new(new("edit/motion-block/toggle","Show or collapse motion tracking","Toggle the selected motion block","Edit"),
+            (i,_)=>{if(i.Parameter is MotionBlockRequest block&&CurrentMotionBlock(block))MotionBlockToggleRequested?.Invoke(block.Start);return ValueTask.CompletedTask;},
+            context=>Applies(context)&&BetterView&&SelectedEvent is not null));
+        Actions["edit/motion-block/toggle"]=new RegistryCommand(_registry,"edit/motion-block/toggle",CurrentContext,hotkeys:()=>HotkeyProfile);
+        _registry.Register(new(new("edit/motion-block/copy","Copy motion tracking tags","Copy this motion block","Edit"),
+            async (i,_)=>{if(i.Parameter is MotionBlockRequest block&&CurrentMotionBlock(block)&&Dialogs is not null)await Dialogs.WriteClipboardAsync(block.Source);},
+            context=>Applies(context)&&BetterView&&SelectedEvent is not null));
+        Actions["edit/motion-block/copy"]=new RegistryCommand(_registry,"edit/motion-block/copy",CurrentContext,hotkeys:()=>HotkeyProfile);
         foreach(var (id,label,mode) in new[]{("grid/tags/show","Full tags",GridTagDisplayMode.Full),
             ("grid/tags/simplify","Simplified tags",GridTagDisplayMode.Simplified),("grid/tags/hide","Hide tags",GridTagDisplayMode.Hidden)})
         {

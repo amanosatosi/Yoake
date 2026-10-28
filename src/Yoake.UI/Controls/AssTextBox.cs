@@ -7,6 +7,8 @@ using Avalonia.Utilities;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using Yoake.Core.Subtitles;
+using Yoake.UI.ViewModels;
+using System.Windows.Input;
 
 namespace Yoake.UI.Controls;
 
@@ -17,10 +19,15 @@ public sealed class AssTextBox : TextBox
     public static readonly StyledProperty<string> SourceTextProperty = AvaloniaProperty.Register<AssTextBox, string>(nameof(SourceText), "", defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
     public static readonly StyledProperty<bool> BetterViewProperty = AvaloniaProperty.Register<AssTextBox,bool>(nameof(BetterView),true);
     public static readonly StyledProperty<bool> ShowMotionDataProperty = AvaloniaProperty.Register<AssTextBox,bool>(nameof(ShowMotionData));
+    public static readonly StyledProperty<ICommand?> MotionToggleCommandProperty = AvaloniaProperty.Register<AssTextBox,ICommand?>(nameof(MotionToggleCommand));
+    public static readonly StyledProperty<ICommand?> MotionCopyCommandProperty = AvaloniaProperty.Register<AssTextBox,ICommand?>(nameof(MotionCopyCommand));
     public string SourceText { get => GetValue(SourceTextProperty); set => SetValue(SourceTextProperty, value); }
     public bool BetterView { get=>GetValue(BetterViewProperty);set=>SetValue(BetterViewProperty,value); }
     public bool ShowMotionData { get=>GetValue(ShowMotionDataProperty);set=>SetValue(ShowMotionDataProperty,value); }
+    public ICommand? MotionToggleCommand {get=>GetValue(MotionToggleCommandProperty);set=>SetValue(MotionToggleCommandProperty,value);}
+    public ICommand? MotionCopyCommand {get=>GetValue(MotionCopyCommandProperty);set=>SetValue(MotionCopyCommandProperty,value);}
     private AssEditorProjection _projection = new("");
+    private readonly HashSet<int> _expandedMotion=[];
     private bool _projecting;
     public bool IsProjecting => _projecting;
     public int SourceIndex(int display) => Text == _projection.Display ? _projection.ToSource(display) : AssEditorProjection.EncodeNewlines((Text ?? "")[..Math.Clamp(display, 0, Text?.Length ?? 0)]).Length;
@@ -31,11 +38,12 @@ public sealed class AssTextBox : TextBox
         if (_projecting) return;
         if (change.Property == SourceTextProperty || change.Property == BetterViewProperty || change.Property == ShowMotionDataProperty)
         {
+            if(change.Property==SourceTextProperty || change.Property==BetterViewProperty)_expandedMotion.Clear();
             var caret = SourceIndex(CaretIndex); var start = SourceIndex(SelectionStart); var end = SourceIndex(SelectionEnd);
             _projecting = true;
             try
             {
-                _projection = new(SourceText ?? "",BetterView,ShowMotionData);
+                _projection = new(SourceText ?? "",BetterView,ShowMotionData,_expandedMotion);
                 SetCurrentValue(TextProperty, _projection.Display);
                 CaretIndex = DisplayIndex(caret); SelectionStart = DisplayIndex(start); SelectionEnd = DisplayIndex(end);
             }
@@ -52,7 +60,8 @@ public sealed class AssTextBox : TextBox
                 finally{_projecting=false;}
                 return;
             }
-            _projection = new(source,BetterView,ShowMotionData);
+            ShiftExpandedMotion(_projection.Source,source);
+            _projection = new(source,BetterView,ShowMotionData,_expandedMotion);
             // Keep the native input/IME transaction and its selection intact.
             _projecting = true;
             try { SetCurrentValue(SourceTextProperty, source); }
@@ -67,6 +76,58 @@ public sealed class AssTextBox : TextBox
                     finally { _projecting = false; }
                 });
         }
+    }
+    private void ShiftExpandedMotion(string before,string after)
+    {
+        if(_expandedMotion.Count==0||before==after)return;
+        var prefix=0;while(prefix<before.Length&&prefix<after.Length&&before[prefix]==after[prefix])prefix++;
+        var suffix=0;while(suffix<before.Length-prefix&&suffix<after.Length-prefix&&before[^(suffix+1)]==after[^(suffix+1)])suffix++;
+        var oldEnd=before.Length-suffix;var delta=after.Length-before.Length;
+        var next=new HashSet<int>();
+        foreach(var start in _expandedMotion)
+            if(oldEnd<=start)next.Add(start+delta);
+            else if(prefix>start)next.Add(start);
+        _expandedMotion.Clear();_expandedMotion.UnionWith(next);
+    }
+    public void ResetMotionExpansions()
+    {
+        if(_expandedMotion.Count==0)return;
+        _expandedMotion.Clear();Reproject();
+    }
+    public void ToggleMotionBlock(int sourceStart)
+    {
+        if(!_expandedMotion.Add(sourceStart))_expandedMotion.Remove(sourceStart);
+        Reproject();
+    }
+    private void Reproject()
+    {
+        var caret=SourceIndex(CaretIndex);var start=SourceIndex(SelectionStart);var end=SourceIndex(SelectionEnd);
+        _projecting=true;
+        try{_projection=new(SourceText??"",BetterView,ShowMotionData,_expandedMotion);SetCurrentValue(TextProperty,_projection.Display);
+            CaretIndex=DisplayIndex(caret);SelectionStart=DisplayIndex(start);SelectionEnd=DisplayIndex(end);}
+        finally{_projecting=false;}
+    }
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
+    {
+        if(e.GetCurrentPoint(this).Properties.IsRightButtonPressed)
+        {
+            var presenter=this.GetVisualDescendants().OfType<TextPresenter>().FirstOrDefault();
+            var hit=presenter?.TextLayout.HitTestPoint(e.GetPosition(presenter));
+            var block=hit is { IsInside:true } point?_projection.MotionAtDisplay(point.TextPosition):null;
+            if(block is { } motion)
+            {
+                var request=new MainWindowViewModel.MotionBlockRequest(motion.SourceStart,_projection.Source[motion.SourceStart..motion.SourceEnd]);
+                var toggle=new MenuItem{Header=motion.Collapsed?"Show full motion tracking":"Collapse motion tracking",Command=MotionToggleCommand,CommandParameter=request};
+                var copyTags=new MenuItem{Header="Copy motion tracking tags",Command=MotionCopyCommand,CommandParameter=request};
+                var cut=new MenuItem{Header="Cut",IsEnabled=CanCut};cut.Click+=(_,_)=>Cut();
+                var copy=new MenuItem{Header="Copy",IsEnabled=CanCopy};copy.Click+=(_,_)=>Copy();
+                var paste=new MenuItem{Header="Paste",IsEnabled=CanPaste};paste.Click+=(_,_)=>Paste();
+                var all=new MenuItem{Header="Select All"};all.Click+=(_,_)=>SelectAll();
+                ContextMenu=new ContextMenu{ItemsSource=new object[]{toggle,copyTags,new Separator(),cut,copy,paste,new Separator(),all}};
+            }
+            else ContextMenu=null;
+        }
+        base.OnPointerPressed(e);
     }
     protected override void OnKeyDown(KeyEventArgs e)
     {

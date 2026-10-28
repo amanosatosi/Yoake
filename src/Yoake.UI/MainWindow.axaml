@@ -375,6 +375,7 @@
         <ToggleButton Name="VisualToolClip" Classes="authoring" IsChecked="{Binding Actions[video/tool/clip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/clip]}" Padding="5,2" ToolTip.Tip="Clip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRectangle}" /></ToggleButton>
         <ToggleButton Name="VisualToolVectorClip" Classes="authoring" IsChecked="{Binding Actions[video/tool/vectorclip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" Padding="5,2" ToolTip.Tip="VectorClip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualVector}" /></ToggleButton>
         <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
+        <Button Name="VisualMotionTrack" Command="{Binding Actions[video/motion-track]}" Padding="5,2" ToolTip.Tip="Motion Track"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.MotionTrack}" /></Button>
         <ToggleButton Name="VisualToolDistort" Classes="authoring" IsChecked="{Binding Actions[video/tool/distort].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/distort]}" Padding="5,2" ToolTip.Tip="Distort"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualDistort}" /></ToggleButton>
       </StackPanel><Border Name="VideoCanvasHost" Grid.Column="1" Background="Black" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Top"><Grid><controls:VideoPresentationControl Name="VideoImage" Model="{Binding}" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
         <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="1" Model="{Binding}" />
@@ -515,12 +516,11 @@
           </StackPanel>
           <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" Height="24" MinHeight="24" FontSize="11" Margin="8,0,0,4" />
           <CheckBox Name="BetterViewToggle" Content="Better View" IsChecked="{Binding Actions[edit/better-view].IsChecked, Mode=OneWay}" Command="{Binding Actions[edit/better-view]}" Height="24" MinHeight="24" FontSize="11" Margin="8,0,0,4" ToolTip.Tip="Show hard line breaks and compact motion data" />
-          <CheckBox Name="ShowMotionDataToggle" Content="Show motion data" IsChecked="{Binding Actions[edit/show-motion-data].IsChecked, Mode=OneWay}" Command="{Binding Actions[edit/show-motion-data]}" Height="24" MinHeight="24" FontSize="11" Margin="8,0,0,4" ToolTip.Tip="Show full motion tracking tags for editing" />
         </WrapPanel>
 
         <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto">
           <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="36" MaxHeight="76" Margin="0,0,0,3" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
-          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="14" SourceText="{Binding EditorDraft.Text, Mode=TwoWay}" BetterView="{Binding BetterView}" ShowMotionData="{Binding ShowMotionData}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="14" SourceText="{Binding EditorDraft.Text, Mode=TwoWay}" BetterView="{Binding BetterView}" ShowMotionData="{Binding ShowMotionData}" MotionToggleCommand="{Binding Actions[edit/motion-block/toggle]}" MotionCopyCommand="{Binding Actions[edit/motion-block/copy]}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
           <WrapPanel Grid.Row="2" IsVisible="{Binding ShowOriginal}" Margin="0,3,0,0">
             <StackPanel IsVisible="{Binding ShowOriginal}" Orientation="Horizontal" Spacing="3">
               <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="11" />

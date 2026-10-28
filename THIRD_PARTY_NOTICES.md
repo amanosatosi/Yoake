@@ -228,3 +228,12 @@ precise source paths and hashes are recorded in
 `third_party/automation/dependencycontrol-provenance.json`. The bundled dkjson
 module retains its own MIT license and copyright notice in its source. The
 DependencyControl license is included as `licenses/DependencyControl-MIT.txt`.
+
+The four subtitle color-button glyphs adapt `docs/art-sources/buttons/button_color_one.svg`,
+`button_color_two.svg`, `button_color_three.svg`, and `button_color_four.svg`
+from https://github.com/amanosatosi/Aegisub_Toshi-ban at commit
+`28b5156df94cb2538d373db503445d2b07466396` (Aegisub BSD-3-Clause,
+copyright 2004–2012 Aegisub Project). Their paths are scaled from 64 to 24
+units and their accent and foreground layers are separately recolored by theme;
+the original third icon's stroke is retained at the scaled width. The full
+license is included in `licenses/Aegisub-BSD-3-Clause.txt`.
