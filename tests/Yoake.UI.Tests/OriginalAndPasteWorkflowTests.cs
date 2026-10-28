@@ -10,7 +10,7 @@ public sealed partial class EditorWorkflowTests
 {
     private async Task SeedOriginal()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="原文 é 👩‍👩‍👧";await Command(CommandIds.EditCommit);
+        _model.Draft!.Text="原文 é 👩‍👩‍👧";await Command(CommandIds.EditCommit);
         await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridLinePrevious);
     }
     [Fact] public async Task OriginalSnapshotSurvivesDraftCommitUndoRedoInvalidMetadataAndLineSelection()

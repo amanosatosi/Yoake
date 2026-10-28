@@ -310,7 +310,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
     [Fact] public async Task SwapAndCanceledSortRespectAvailabilityAndPreserveHistory()
     {
         Assert.False(_model.Actions["grid/swap"].CanExecute(null));Assert.False(_model.Actions["grid/sort/start"].CanExecute(null));
-        await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridInsertAfter);var editor=_model.ActiveEditor!;var rows=_model.Events.ToArray();
+        await Command(CommandIds.GridInsertAfter);var editor=_model.ActiveEditor!;var rows=_model.Events.ToArray();
         editor.SetTiming(rows[0],4000,6000);editor.SetTiming(rows[1],2000,3000);_model.SelectedEvent=rows[0];_model.SetSelectedEvents(rows);
         Assert.True(_model.Actions["grid/swap"].CanExecute(null));var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
         using var cancellation=new CancellationTokenSource();cancellation.Cancel();
@@ -328,7 +328,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
     [InlineData("grid/sort/text")][InlineData("grid/sort/text_stripped")]
     public async Task TextSortingCommandsPreserveSourceThroughUndo(string id)
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="z{\\future(x)}";await Command(CommandIds.EditCommit);
+        _model.Draft!.Text="z{\\future(x)}";await Command(CommandIds.EditCommit);
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="a{\\distort(1,2,3,4)}";await Command(CommandIds.EditCommit);
         var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var rows=_model.Events.ToArray();
         _model.SetSelectedEvents(rows);Assert.True(_model.Actions[id+"/selected"].CanExecute(null));
@@ -551,7 +551,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task ProgrammaticRowJumpSelectsDestinationAndRetainsAnExistingBulkSelection()
     {
-        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;
+        var first=_model.SelectedEvent!;
         await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent!;
         _model.Draft!.Text="pending second";_model.SelectedEvent=first;
         Assert.Same(first,Assert.Single(_model.SelectedEvents));Assert.Equal("pending second",second.Text);
@@ -570,14 +570,14 @@ public sealed partial class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task TimingAndVisualGesturesRollbackOnCancelAndCommitOnce()
     {
-        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;
+        var line=_model.SelectedEvent!;
         Assert.True(_model.BeginGesture("Timing gesture"));_model.UpdateTimingGesture(2,1);_model.UpdateTimingGesture(2,2);_model.CancelGesture();Assert.Equal(0,line.StartMilliseconds);
         Assert.True(_model.BeginGesture("Position gesture"));_model.UpdatePositionGesture(100,200);Assert.Equal(new AssPoint(100,200),AssVisualTags.Position(_model.VisualText));Assert.Contains("\\pos(100,200)",_model.PreviewSource());_model.UpdatePositionGesture(300,400);_model.EndGesture();Assert.Equal(new AssPoint(300,400),AssVisualTags.Position(line.Text));
         Assert.Equal("Position gesture",_model.ActiveEditor!.Undo.NextUndoName);await Command(CommandIds.EditUndo);Assert.Equal("",line.Text);
     }
     [Fact] public async Task VisualSelectionIsVisibleOnlyTransactionalAndUsesLiveGestureText()
     {
-        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;
+        var first=_model.SelectedEvent!;
         _model.ActiveEditor!.SetTiming(first,0,1000);_model.ActiveEditor.SetField(first,"Text","{\\pos(100,100)\\org(50,50)\\future(x)}first","Fixture");
         await Command(CommandIds.GridDuplicate);var second=_model.SelectedEvent!;_model.ActiveEditor.SetField(second,"Text","{\\pos(200,150)}second","Fixture");
         await Command(CommandIds.GridDuplicate);var comment=_model.SelectedEvent!;_model.ActiveEditor.ToggleComment([comment]);
@@ -604,7 +604,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
     [Theory][InlineData("edit/cancel")][InlineData("workspace/activate-tab")]
     public async Task VisualCancellationAndToolSwitchRestoreTheBatch(string command)
     {
-        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(line,0,1000);var source=line.Text;
+        var line=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(line,0,1000);var source=line.Text;
         Assert.True(_model.BeginGesture("Visual gesture"));_model.UpdateVisualGesture(l=>AssVisualTags.SetOrigin(l.Text,new(20,30)));Assert.NotEqual(source,line.Text);
         await Command(command,command=="workspace/activate-tab"?_model.ActiveDocumentId:null);Assert.Equal(source,line.Text);Assert.False(_model.HasGesture);Assert.DoesNotContain("\\org(20,30)",_model.PreviewSource());
     }
@@ -673,7 +673,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task StartingGestureCommitsPendingTextAndCancellationKeepsThatCommit()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="pending";Assert.True(_model.BeginGesture("Drag"));_model.UpdateTimingGesture(2,1);_model.CancelGesture();Assert.Equal("pending",_model.SelectedEvent!.Text);Assert.Equal(0,_model.SelectedEvent.StartMilliseconds);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
+        _model.Draft!.Text="pending";Assert.True(_model.BeginGesture("Drag"));_model.UpdateTimingGesture(2,1);_model.CancelGesture();Assert.Equal("pending",_model.SelectedEvent!.Text);Assert.Equal(0,_model.SelectedEvent.StartMilliseconds);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
     }
     [Fact] public async Task LowercaseFormatFieldsRemainEditable()
     {

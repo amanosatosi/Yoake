@@ -9,7 +9,7 @@ public sealed partial class EditorWorkflowTests
     [Fact] public async Task VideoTimeInsertionUsesFrameBoundaryAndOneUndoWithoutLeakingMetadata()
     {
         const string before="subtitle/insert/before/videotime", after="subtitle/insert/after/videotime";
-        await Command(CommandIds.GridInsertAfter);var original=_model.SelectedEvent!;
+        var original=_model.SelectedEvent!;
         _model.Draft!.Text="日本語 {\\future(keep)}";_model.Draft.Actor="Existing actor";await Command(CommandIds.EditCommit);
         var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
         Assert.False(_model.Actions[before].CanExecute(null));Assert.False(_model.Actions[after].CanExecute(null));
