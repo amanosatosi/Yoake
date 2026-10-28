@@ -71,7 +71,10 @@ public sealed class AutomationDialogPanel : UserControl
                     var items = definition["items"] is IReadOnlyDictionary<string, object?> entries
                         ? entries.Values.Where(v => v is string or double or int).Select(v => Convert.ToString(v, CultureInfo.InvariantCulture)!).ToArray() : [];
                     var selected = Text(definition, "value");
-                    var dropdown = new ComboBox { ItemsSource = items, SelectedItem = items.Contains(selected) ? selected : null, MinWidth = 100 };
+                    // Avoid resizing the entire script dialog when a different
+                    // selection has a longer label. Long lists remain scrollable.
+                    var dropdown = new ComboBox { ItemsSource = items, SelectedItem = items.Contains(selected) ? selected : null,
+                        Width = 240, MaxDropDownHeight = 320 };
                     control = dropdown; read = () => dropdown.SelectedItem as string ?? selected; initial = selected; break;
                 case "checkbox":
                     var check = new CheckBox { Content = Text(definition, "label"), IsChecked = definition["value"] is true };

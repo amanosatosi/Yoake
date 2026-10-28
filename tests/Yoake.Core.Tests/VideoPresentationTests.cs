@@ -72,12 +72,12 @@ public sealed class VideoPresentationTests
         var roundtrip = image.ToScript(screen.X, screen.Y, 640, 480);
         Assert.Equal(point.X, roundtrip.X, 8); Assert.Equal(point.Y, roundtrip.Y, 8);
     }
-    [Fact] public void PanWorksWhenFittedClampsAndResetPreservesWindowZoom()
+    [Fact] public void PanWorksWhenFittedAndResetPreservesWindowZoom()
     {
         var state = new VideoViewState(); state.SetWindowZoom(.5); var initial = state.Layout(800, 600, 2, 480, 4d/3);
         state.Pan(25, -10); var moved = state.Layout(800, 600, 2, 480, 4d/3);
         Assert.Equal(initial.X+25,moved.X);Assert.Equal(initial.Y-10,moved.Y);
-        state.Pan(100000, -100000);Assert.Equal(.5*initial.Width*2+.4*1600,state.PanX,8);Assert.Equal(-(.5*initial.Height*2+.4*1200),state.PanY,8);
+        state.Pan(100000, -100000);Assert.Equal(200050,state.PanX,8);Assert.Equal(-200020,state.PanY,8);
         state.ResetContent();Assert.Equal(.5,state.WindowZoom);Assert.Equal(1,state.ContentZoom);Assert.Equal(0,state.PanX);Assert.Equal(0,state.PanY);
         Assert.Equal(initial,state.Layout(800,600,2,480,4d/3));
     }

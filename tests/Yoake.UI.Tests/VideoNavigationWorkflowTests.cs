@@ -7,6 +7,25 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public async Task AutoSeekChoosesTheFirstFrameAtOrAfterSubtitleStart()
+    {
+        var rows=await TimingRows();
+        Assert.True(await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=100,FramesPerSecond=25}));
+        _model.SelectedEvent=rows[1];_model.SelectedEvent=rows[0];
+        Assert.Equal(8,_model.CurrentFrame);
+        Assert.Equal(.32,_model.CurrentTimeSeconds,6);
+        Assert.Single(_model.VisibleVisualLines());
+    }
+    [Fact] public async Task SubtitleOpenCommandLoadsIntoATabAndClearsLoadingState()
+    {
+        var path=Path.Combine(_root,"async-open.ass");
+        File.WriteAllText(path,"[Events]\nFormat: Start,End,Text\nDialogue: 0:00:00.00,0:00:01.00,loaded\n");
+        var before=_model.ActiveDocumentId;
+        await Command(CommandIds.SubtitleOpen,path);
+        Assert.NotEqual(before,_model.ActiveDocumentId);
+        Assert.Equal("loaded",Assert.Single(_model.Events).Text);
+        Assert.False(_model.OpeningSubtitle);
+    }
     [Fact] public async Task VideoNavigationRequiresVideoAndPreservesPendingTimingAndDraftWithoutIt()
     {
         await TimingRows();await Command("time/lead/out");_model.Draft!.Text+=" retained draft";

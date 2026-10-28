@@ -595,4 +595,15 @@
 <MenuItem Header="Select all lines" InputGesture="{Binding Actions[grid/select-all].InputGesture}" Command="{Binding Actions[grid/select-all]}" />
 </ContextMenu></ListBox.ContextMenu><ListBox.ItemTemplate><DataTemplate x:DataType="sub:AssEvent"><Grid Tag="SubtitleRow" Classes="subtitle-row" Classes.comment="{Binding IsComment}" Height="26" ClipToBounds="True" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4">
 <Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource IconAccentBrush}" IsVisible="{Binding IsCurrent}" /><Border Grid.ColumnSpan="8" Background="{DynamicResource IconAccentBrush}" Opacity="0.12" IsVisible="{Binding IsActive}" /><TextBlock Text="{Binding Number}" FontSize="11" Margin="5,0,0,0" /><TextBlock Grid.Column="1" Text="{Binding DisplayLayer}" FontSize="11" /><TextBlock Grid.Column="2" Text="{Binding DisplayStart}" FontSize="11" /><TextBlock Grid.Column="3" Text="{Binding DisplayEnd}" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DisplayStyle}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="5" Text="{Binding DisplayActor}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="6" Text="{Binding DisplayEffect}" TextTrimming="CharacterEllipsis" FontSize="11" /><controls:SubtitleGridText Grid.Column="7" SourceText="{Binding DisplayText}" MaxLines="1" TextTrimming="CharacterEllipsis" FontSize="12" />
-</Grid></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></Border></Grid></Window>
+</Grid></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></Border>
+    <Border Name="SubtitleLoadingOverlay" Grid.RowSpan="5" Background="#99000000" IsVisible="{Binding OpeningSubtitle}">
+      <Border Background="{DynamicResource AppBackgroundBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="4" Padding="20" Width="380" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Opening subtitle" FontWeight="SemiBold" FontSize="15" />
+          <TextBlock Text="{Binding OpeningSubtitleText}" TextWrapping="Wrap" />
+          <ProgressBar IsIndeterminate="True" Height="5" />
+          <Button Content="Cancel" HorizontalAlignment="Right" Command="{Binding Actions[subtitle/cancel-open]}" />
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid></Window>

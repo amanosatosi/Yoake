@@ -192,7 +192,15 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             else if(!SelectedEvents.Contains(value))SetSelectedEvents([value]);
             if(!IsSynchronizingSelection)FastActorLineChanged(previousActor);
             OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));OnPropertyChanged(nameof(SelectedIsComment));
-            if (!_suppressSelectionSeek&&value?.StartMilliseconds is { } start && !IsPlaying&&(_media?.HasVideo!=true||VideoAutoSeek)) CurrentTimeSeconds=start/1000d;
+            if (!_suppressSelectionSeek&&value?.StartMilliseconds is { } start && !IsPlaying&&(_media?.HasVideo!=true||VideoAutoSeek))
+            {
+                // A subtitle can start between frames. The containing frame's
+                // timestamp precedes the line, so seek to its first visible frame.
+                var times=FrameTimes;
+                CurrentTimeSeconds=times.Count>0&&CanShiftByFrames
+                    ? times[Math.Clamp(ActiveFrameTiming().FrameAtMilliseconds(start,FrameTimeKind.Start),0,times.Count-1)]
+                    : start/1000d;
+            }
             _registry.NotifyStateChanged();
             UpdateAudioPlaybackEnd();
         }
@@ -326,6 +334,50 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             var doc=AssDocument.Load(full); var session=_workspace.Open(full); Attach(session,doc); SynchronizeActiveDocument(); Remember(full); SubtitleStatus=$"Loaded {doc.Events.Count} events"; return true;
         }
         catch(Exception e) { SubtitleStatus=$"Open failed: {e.Message}"; return false; }
+    }
+    private bool _openingSubtitle;
+    private CancellationTokenSource? _subtitleOpenCancellation;
+    private Guid? _subtitleOpenMediaDocument;
+    public bool OpeningSubtitle { get => _openingSubtitle; private set { SetField(ref _openingSubtitle, value); _registry.NotifyStateChanged(); } }
+    public string OpeningSubtitleText { get; private set; } = "Opening subtitle…";
+    private async Task OpenSubtitleForUserAsync(string path)
+    {
+        if (OpeningSubtitle) return;
+        CancelGesture();
+        if (!CommitDraft()) return;
+        OpeningSubtitleText = $"Opening {Path.GetFileName(path)}…";
+        OnPropertyChanged(nameof(OpeningSubtitleText)); OpeningSubtitle = true;
+        using var cancellation = new CancellationTokenSource(); _subtitleOpenCancellation = cancellation;
+        try
+        {
+            var full = Path.GetFullPath(path);
+            var existing = _workspace.Documents.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null) { _workspace.Activate(existing.Id); return; }
+            var doc = await Task.Run(() => AssDocument.Load(full), cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            if (_disposed) return;
+            // A second route may have opened the same file while parsing.
+            existing = _workspace.Documents.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null) { _workspace.Activate(existing.Id); return; }
+            var session = _workspace.Open(full); Attach(session, doc); SynchronizeActiveDocument();
+            Remember(full); SubtitleStatus = $"Loaded {doc.Events.Count} events";
+            if (_media is null && FindAssociatedMedia(full) is { } mediaPath)
+            {
+                OpeningSubtitleText = $"Opening video and audio for {Path.GetFileName(full)}…";
+                OnPropertyChanged(nameof(OpeningSubtitleText));
+                _subtitleOpenMediaDocument = session.Id;
+                await OpenMediaAsync(mediaPath);
+                cancellation.Token.ThrowIfCancellationRequested();
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { SubtitleStatus = "Opening canceled."; }
+        catch (Exception e) { SubtitleStatus = $"Open failed: {e.Message}"; _registry.ReportFailure(CommandIds.SubtitleOpen, e); }
+        finally { _subtitleOpenMediaDocument=null; if (ReferenceEquals(_subtitleOpenCancellation,cancellation)) _subtitleOpenCancellation=null; OpeningSubtitle = false; }
+    }
+    private void CancelSubtitleOpen()
+    {
+        _subtitleOpenCancellation?.Cancel();
+        if (_subtitleOpenMediaDocument is { } id && _documents.TryGetValue(id,out var state)) { state.Loading?.Cancel(); state.AudioLoading?.Cancel(); }
     }
     private void Remember(string path)
     {
@@ -492,7 +544,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         MotionTracking?.Stop();
         _recoveryTimer.Stop();foreach(var id in _documents.Keys){CancelAttachmentWork(id);InvalidateRecovery(id);}
         if (!_disposed) DisposeAutomation();
-        if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); foreach(var state in _documents.Values){state.AudioExport?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();} _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
+        if (_disposed) return; CancelSubtitleOpen(); CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); foreach(var state in _documents.Values){state.AudioExport?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();} _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
         foreach(var state in _documents.Values) { state.FontLease.Invalidate();state.FontWork?.Cancel();state.FrameExtraction?.Cancel(); state.AudioAnalysis.Cancel();state.AudioAnalysis.Dispose(); state.Editing?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
         foreach(var tab in Tabs) tab.Dispose(); Tabs.Clear(); DisposeSubtitleRenderer(); VideoFrame=null;
     }

@@ -64,6 +64,11 @@ public sealed class VisualOverlayControl : Control
     private void GestureEnded(object? sender,EventArgs e){ReleaseCapture();_tool?.Cancel();Refresh();}
     private void Changed(object? sender,PropertyChangedEventArgs e)
     {
+        if(e.PropertyName==nameof(MainWindowViewModel.IsPlaying))
+        {
+            if(Model?.IsPlaying==true)Cancel();
+            Refresh();
+        }
         if(e.PropertyName is nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.VideoSourcePath))
         {Cancel();}
         if(e.PropertyName is nameof(MainWindowViewModel.VideoPresentationRevision) or nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.PreviewRevision) or nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.CurrentTimeSeconds) or nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.EditorDraft) or nameof(MainWindowViewModel.VisualBounds) or nameof(MainWindowViewModel.VisualBoundsPending))Refresh();
@@ -84,7 +89,7 @@ public sealed class VisualOverlayControl : Control
         // Keep the entire video an input surface even before any clip/handles exist.
         context.FillRectangle(Brushes.Transparent,new Rect(Bounds.Size));
         base.Render(context);RenderedHandles=0;RenderedTool=null;
-        if(_context is not {} state||_tool is null||state.Video.Width<=0||state.Video.Height<=0)return;
+        if(Model?.IsPlaying==true||_context is not {} state||_tool is null||state.Video.Width<=0||state.Video.Height<=0)return;
         var canvas=new VisualCanvas(context,state,_pointer,_inside);using(context.PushClip(state.Video))_tool.Render(canvas);
         RenderedHandles=canvas.HandleCount;RenderedTool=Model?.ActiveVisualTool;
     }
@@ -99,7 +104,7 @@ public sealed class VisualOverlayControl : Control
             Cancel();_panPointer=e.GetPosition(this);_panCheckpoint=(Model.VideoView!.PanX,Model.VideoView.PanY);_panProviderRevision=Model.VideoProviderRevision;
             _capture=e.Pointer;e.Pointer.Capture(this);e.Handled=true;return;
         }
-        if(_context is not {} state||_tool is null||!state.Video.Contains(_pointer.Screen)||!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;
+        if(Model?.IsPlaying==true||_context is not {} state||_tool is null||!state.Video.Contains(_pointer.Screen)||!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)return;
         try{if(_tool.Press(state,_pointer)){_capture=e.Pointer;e.Pointer.Capture(this);e.Handled=true;}InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
     protected override void OnPointerMoved(PointerEventArgs e)
@@ -144,7 +149,6 @@ public sealed class VisualOverlayControl : Control
             var factor=1+.125*e.Delta.Y;var next=Model.VideoView!.ContentZoom*factor;
             if(next>=.125&&next<=10)Model.ZoomVideoContent(factor,p.X,p.Y);
         }
-        else if(e.KeyModifiers.HasFlag(KeyModifiers.Shift))Model.PanVideo(-5*e.Delta.X,5*e.Delta.Y);
         else Model.Actions["video/presentation/zoom"].Execute((Math.Clamp(Model.VideoWindowZoom+.125*e.Delta.Y,.125,10)*100).ToString(System.Globalization.CultureInfo.InvariantCulture));
         e.Handled=true;
     }

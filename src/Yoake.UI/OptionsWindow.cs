@@ -112,7 +112,15 @@ public sealed class OptionsWindow : Window
             if(args.Key is not (Key.Enter or Key.Escape))return;
             if(assDraw.IsKeyboardFocusWithin&&assDraw.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))args.Handled=true;
         },RoutingStrategies.Tunnel);
-        var tabs=new TabControl{Name="OptionsTabs",ItemsSource=new TabItem[]{new(){Header="Keyboard shortcuts",Content=root},new(){Header="Autosave / Recovery",Content=autosave},new(){Header="External tools",Content=tools}},SelectedIndex=externalTools?2:0};
+        var video=new StackPanel{Margin=new Thickness(12),Spacing=8};
+        video.Children.Add(new TextBlock{Text="Video",FontWeight=Avalonia.Media.FontWeight.SemiBold,FontSize=15});
+        var autoSeek=new CheckBox{Name="VideoAutoSeekOption",Content="Jump to the selected subtitle's first visible frame",IsChecked=model.VideoAutoSeek,Command=model.Actions["video/autoseek"]};
+        names.Register(autoSeek.Name!,autoSeek);video.Children.Add(autoSeek);
+        video.Children.Add(new TextBlock{Text="Video zoom and navigation",FontWeight=Avalonia.Media.FontWeight.SemiBold,Margin=new Thickness(0,10,0,0)});
+        video.Children.Add(new TextBlock{Text="Scroll: resize the video area\nCtrl + scroll: zoom the picture around the pointer\nMiddle-drag: pan the picture\nRight-click: video options and reset pan",TextWrapping=Avalonia.Media.TextWrapping.Wrap});
+        void VideoFeedback(object? sender,System.ComponentModel.PropertyChangedEventArgs args){if(args.PropertyName==nameof(MainWindowViewModel.VideoAutoSeek))autoSeek.IsChecked=model.VideoAutoSeek;}
+        model.PropertyChanged+=VideoFeedback;Closed+=(sender,args)=>model.PropertyChanged-=VideoFeedback;
+        var tabs=new TabControl{Name="OptionsTabs",TabStripPlacement=Dock.Left,ItemsSource=new TabItem[]{new(){Header="Keyboard shortcuts",Content=root},new(){Header="Autosave / Recovery",Content=autosave},new(){Header="External tools",Content=tools},new(){Header="Video",Content=video}},SelectedIndex=externalTools?2:0};
         names.Register(tabs.Name!,tabs);Content=tabs;Title="Options";Height=650;
         names.Complete();
     }

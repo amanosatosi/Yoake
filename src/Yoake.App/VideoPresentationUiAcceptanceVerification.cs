@@ -111,6 +111,8 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     await Invoke("video/jump",new VideoJumpRequest(Frame:175));_playFrame=model.CurrentFrame;Press(Overlay,Key.Space);Require(model.IsPlaying,"Detached Video uses existing central playback after retained Audio EOF.");return;
                 case 12:
                     if(model.CurrentFrame<=_playFrame){_stage--;return;}
+                    using(var overlayImage=new RenderTargetBitmap(new PixelSize(Math.Max(1,(int)Overlay.Bounds.Width),Math.Max(1,(int)Overlay.Bounds.Height)),new Vector(96,96)))overlayImage.Render(Overlay);
+                    Require(Overlay.RenderedHandles==0 && Overlay.RenderedTool is null,"Playback must hide visual typesetting overlays.");
                     Require(model.VideoFrame is not null&&model.IsPlaying&&ReferenceEquals(Overlay.Model,model)&&ReferenceEquals(_map,model.FrameTimes),"Detached current frame and subtitle preview advance on the shared timeline.");
                     await Invoke("video/detach");Require(model.IsPlaying&&window.DetachedVideoWindow is null,"Reattach preserves active central playback.");
                     await Invoke("video/detach");_detached=window.DetachedVideoWindow;Require(model.IsPlaying&&_detached is not null,"Detach preserves the same active playback clock.");

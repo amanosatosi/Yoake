@@ -31,9 +31,9 @@ public sealed class VideoViewState
     public void Pan(double logicalX, double logicalY)
     {
         if (!double.IsFinite(logicalX) || !double.IsFinite(logicalY)) throw new ArgumentException("Pan must be finite.");
-        PanX += logicalX * _dpi; PanY += logicalY * _dpi; ClampPan();
+        PanX += logicalX * _dpi; PanY += logicalY * _dpi;
     }
-    public void RestorePan(double x, double y) { PanX = x; PanY = y; ClampPan(); }
+    public void RestorePan(double x, double y) { PanX = x; PanY = y; }
     public void ZoomContent(double value, double logicalX, double logicalY)
     {
         value = ClampZoom(value);
@@ -42,14 +42,7 @@ public sealed class VideoViewState
         PanX = logicalX * _dpi - _viewportWidth / 2 - anchorX * value;
         PanY = logicalY * _dpi - _viewportHeight / 2 - anchorY * value;
         _contentWidth *= value / ContentZoom;
-        ContentZoom = value; _contentHeight = _baseHeight * value; ClampPan();
-    }
-    private void ClampPan()
-    {
-        if (_viewportHeight <= 0 || _baseHeight <= 0) return;
-        var maxX = .5 * _contentWidth + .4 * _viewportWidth;
-        var maxY = .5 * _baseHeight * ContentZoom + .4 * _viewportHeight;
-        PanX = Math.Clamp(PanX, -maxX, maxX); PanY = Math.Clamp(PanY, -maxY, maxY);
+        ContentZoom = value; _contentHeight = _baseHeight * value;
     }
     private double _contentWidth;
     public VideoPresentation Layout(double logicalWidth, double logicalHeight, double dpi, double sourceHeight, double aspect)
@@ -71,7 +64,6 @@ public sealed class VideoViewState
         _dpi = dpi; _viewportWidth = width; _viewportHeight = height; _baseHeight = baseHeight;
         EffectiveWindowZoom = baseHeight / sourceHeight;
         _contentHeight = baseHeight * ContentZoom; _contentWidth = _contentHeight * aspect;
-        ClampPan();
         return new((width - _contentWidth) / 2 / dpi + PanX / dpi,
             (height - _contentHeight) / 2 / dpi + PanY / dpi, _contentWidth / dpi, _contentHeight / dpi);
     }

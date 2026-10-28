@@ -146,7 +146,8 @@ public sealed partial class MainWindowViewModel
             return ValueTask.CompletedTask;
         });
         S(CommandIds.SubtitleNew,"New",CreateNewDocument);
-        R(CommandIds.SubtitleOpen,"Open…",async i=>{var path=i.Parameter as string ?? (Dialogs is null?null:await Dialogs.OpenSubtitleAsync()); if(path is not null&&OpenSubtitle(path)&&_media is null&&FindAssociatedMedia(path) is {} mediaPath)await OpenMediaAsync(mediaPath);});
+        R(CommandIds.SubtitleOpen,"Open…",async i=>{var path=i.Parameter as string ?? (Dialogs is null?null:await Dialogs.OpenSubtitleAsync()); if(path is not null)await OpenSubtitleForUserAsync(path);});
+        S("subtitle/cancel-open","Cancel opening",CancelSubtitleOpen,()=>OpeningSubtitle);
         R(CommandIds.SubtitleSave,"Save",async _=>{await SaveAsync();});
         R(CommandIds.SubtitleSaveAs,"Save As…",async _=>{await SaveAsync(true);});
         R(CommandIds.SubtitleClose,"Close tab",async i=>{if(i.Parameter is Guid id)await CloseDocumentAsync(id);else if(_activeId is {} active)await CloseDocumentAsync(active);});
