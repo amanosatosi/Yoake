@@ -26,6 +26,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private sealed class DocumentState(SubtitleEditor editor)
     {
         public SubtitleEditor Editor { get; } = editor;
+        public string? PlaceholderBaseline;
         public PendingAudioTiming AudioTiming {get;}=new(editor);
         public bool KaraokeEnabled;
         public Dictionary<AssEvent,KaraokeEntry> Karaoke = [];
@@ -298,7 +299,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         CancelGesture();
         if (!CommitDraft()) return;
-        var session=_workspace.CreateUntitled(); Attach(session,AssDocument.CreateEmpty()); SynchronizeActiveDocument(); SubtitleStatus="New ASS document";
+        var session=_workspace.CreateUntitled(); Attach(session,AssDocument.CreateEmpty());
+        _documents[session.Id].PlaceholderBaseline=_documents[session.Id].Editor.Document.Serialize();
+        SynchronizeActiveDocument(); SubtitleStatus="New ASS document";
     }
     private void Attach(DocumentSession session, AssDocument document)
     {
@@ -345,7 +348,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
            state.Loading is null && state.VideoLoading is null && state.AudioLoading is null &&
            state.TimecodeLoading is null && state.KeyframeLoading is null && state.Editing is null &&
            !state.Karaoke.Values.Any(k=>k.Plan.Changed) &&
-           state.Editor.Document.Serialize()==AssDocument.CreateEmpty().Serialize())
+           state.PlaceholderBaseline is { } baseline && state.Editor.Document.Serialize()==baseline)
         {
             // Reuse only a genuinely untouched placeholder; preserve edited,
             // recovered, media-bearing and undoable untitled documents.

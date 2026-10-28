@@ -44,6 +44,16 @@ public sealed partial class EditorWorkflowTests
         Assert.NotEqual(original,_model.ActiveDocumentId);Assert.Equal(2,_model.Tabs.Count);
         await Command(CommandIds.WorkspaceActivateTab,original);Assert.NotNull(_model.CurrentVideoDetails);
     }
+    [Fact] public async Task SubtitleOpenKeepsAnUntitledDocumentWithAnEditedDefaultStyle()
+    {
+        var editor=_model.ActiveEditor!;var original=_model.ActiveDocumentId;var style=Assert.Single(editor.Document.Styles);
+        editor.EditStyle(style,new Dictionary<string,string>{{"Fontname","Custom Style Font"}});
+        var source=editor.Document.Serialize();
+        var path=Path.Combine(_root,"style-owner.ass");File.WriteAllText(path,"[Events]\nFormat: Start,End,Text\nDialogue: 0:00:00.00,0:00:01.00,loaded\n");
+        await Command(CommandIds.SubtitleOpen,path);
+        Assert.NotEqual(original,_model.ActiveDocumentId);Assert.Equal(2,_model.Tabs.Count);
+        await Command(CommandIds.WorkspaceActivateTab,original);Assert.Equal(source,_model.ActiveEditor!.Document.Serialize());
+    }
     [Fact] public async Task VideoNavigationRequiresVideoAndPreservesPendingTimingAndDraftWithoutIt()
     {
         await TimingRows();await Command("time/lead/out");_model.Draft!.Text+=" retained draft";
