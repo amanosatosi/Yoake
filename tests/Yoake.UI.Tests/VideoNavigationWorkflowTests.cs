@@ -22,9 +22,27 @@ public sealed partial class EditorWorkflowTests
         File.WriteAllText(path,"[Events]\nFormat: Start,End,Text\nDialogue: 0:00:00.00,0:00:01.00,loaded\n");
         var before=_model.ActiveDocumentId;
         await Command(CommandIds.SubtitleOpen,path);
-        Assert.NotEqual(before,_model.ActiveDocumentId);
+        Assert.Equal(before,_model.ActiveDocumentId);Assert.Single(_model.Tabs);
         Assert.Equal("loaded",Assert.Single(_model.Events).Text);
         Assert.False(_model.OpeningSubtitle);
+    }
+    [Fact] public async Task SubtitleOpenKeepsEditedUntitledTab()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="unsaved work";
+        var original=_model.ActiveDocumentId;
+        var path=Path.Combine(_root,"another.ass");File.WriteAllText(path,"[Events]\nFormat: Start,End,Text\nDialogue: 0:00:00.00,0:00:01.00,loaded\n");
+        await Command(CommandIds.SubtitleOpen,path);
+        Assert.NotEqual(original,_model.ActiveDocumentId);Assert.Equal(2,_model.Tabs.Count);
+        await Command(CommandIds.WorkspaceActivateTab,original);Assert.Equal("unsaved work",Assert.Single(_model.Events).Text);
+    }
+    [Fact] public async Task SubtitleOpenKeepsUntitledTabWithVideo()
+    {
+        Assert.True(await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=20}));
+        var original=_model.ActiveDocumentId;
+        var path=Path.Combine(_root,"video-owner.ass");File.WriteAllText(path,"[Events]\nFormat: Start,End,Text\nDialogue: 0:00:00.00,0:00:01.00,loaded\n");
+        await Command(CommandIds.SubtitleOpen,path);
+        Assert.NotEqual(original,_model.ActiveDocumentId);Assert.Equal(2,_model.Tabs.Count);
+        await Command(CommandIds.WorkspaceActivateTab,original);Assert.NotNull(_model.CurrentVideoDetails);
     }
     [Fact] public async Task VideoNavigationRequiresVideoAndPreservesPendingTimingAndDraftWithoutIt()
     {

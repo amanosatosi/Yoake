@@ -331,9 +331,30 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         {
             var full=Path.GetFullPath(path); var existing=_workspace.Documents.FirstOrDefault(s=>string.Equals(s.Path,full,StringComparison.OrdinalIgnoreCase));
             if (existing is not null) { _workspace.Activate(existing.Id); return true; }
-            var doc=AssDocument.Load(full); var session=_workspace.Open(full); Attach(session,doc); SynchronizeActiveDocument(); Remember(full); SubtitleStatus=$"Loaded {doc.Events.Count} events"; return true;
+            var doc=AssDocument.Load(full); OpenLoadedSubtitle(full,doc,_activeId); Remember(full); SubtitleStatus=$"Loaded {doc.Events.Count} events"; return true;
         }
         catch(Exception e) { SubtitleStatus=$"Open failed: {e.Message}"; return false; }
+    }
+    private DocumentSession OpenLoadedSubtitle(string full,AssDocument document,Guid? originatingTab)
+    {
+        var session=_workspace.ActiveDocument;
+        if(session is not null && session.Id==originatingTab && session.Path is null && !session.IsDirty &&
+           _documents.TryGetValue(session.Id,out var state) && !state.Editor.IsDirty &&
+           !state.Editor.Undo.CanUndo && !state.Editor.Undo.CanRedo && Draft?.IsChanged!=true &&
+           !state.RecoveredUnsaved && state.Media is null && state.ExternalTimecodes is null && state.ExternalKeyframes is null &&
+           state.Loading is null && state.VideoLoading is null && state.AudioLoading is null &&
+           state.TimecodeLoading is null && state.KeyframeLoading is null && state.Editing is null &&
+           !state.Karaoke.Values.Any(k=>k.Plan.Changed) &&
+           state.Editor.Document.Serialize()==AssDocument.CreateEmpty().Serialize())
+        {
+            // Reuse only a genuinely untouched placeholder; preserve edited,
+            // recovered, media-bearing and undoable untitled documents.
+            state.Search.Cancellation?.Cancel();state.AudioAnalysis.Cancel();state.AudioAnalysis.Dispose();
+            CloseAutomationDocument(session.Id);
+            session.Path=full;session.Title=Path.GetFileName(full);
+            Attach(session,document);SynchronizeActiveDocument();return session;
+        }
+        session=_workspace.Open(full);Attach(session,document);SynchronizeActiveDocument();return session;
     }
     private bool _openingSubtitle;
     private CancellationTokenSource? _subtitleOpenCancellation;
@@ -345,6 +366,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if (OpeningSubtitle) return;
         CancelGesture();
         if (!CommitDraft()) return;
+        var originatingTab=_activeId;
         OpeningSubtitleText = $"Opening {Path.GetFileName(path)}…";
         OnPropertyChanged(nameof(OpeningSubtitleText)); OpeningSubtitle = true;
         using var cancellation = new CancellationTokenSource(); _subtitleOpenCancellation = cancellation;
@@ -359,7 +381,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             // A second route may have opened the same file while parsing.
             existing = _workspace.Documents.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase));
             if (existing is not null) { _workspace.Activate(existing.Id); return; }
-            var session = _workspace.Open(full); Attach(session, doc); SynchronizeActiveDocument();
+            var session = OpenLoadedSubtitle(full, doc, originatingTab);
             Remember(full); SubtitleStatus = $"Loaded {doc.Events.Count} events";
             if (_media is null && FindAssociatedMedia(full) is { } mediaPath)
             {
