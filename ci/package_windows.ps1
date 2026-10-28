@@ -178,6 +178,7 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Aegisub-BSD-3-
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $portable 'LICENSE') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $portable 'THIRD_PARTY_NOTICES.md') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'automation') -Destination $portable -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'automation-3.5-above') -Destination $portable -Recurse -Force
 
 $AssDrawRoot = [IO.Path]::GetFullPath($AssDrawRoot)
 $assDrawManifest = Get-Content -LiteralPath (Join-Path $AssDrawRoot 'assdraw-manifest.json') -Raw | ConvertFrom-Json

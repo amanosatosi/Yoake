@@ -27,6 +27,42 @@ public sealed partial class LuaProviderTests : IDisposable
     private static AutomationInvocation Context(AutomationSubtitleDocument subs) => new(subs, [2], 2, new Services());
 
     [Fact]
+    public async Task ModernScriptResolutionUsesCapturedDocumentAndExpiresWithSubtitleObject()
+    {
+        using var script=await Load("""
+local retained
+aegisub.register_macro('Resolution','',function(subs)
+  local x,y=subs.script_resolution();assert(x==1280 and y==1024)
+  retained=subs
+end)
+aegisub.register_macro('Expired','',function()
+  local ok=pcall(function() return retained.script_resolution() end);assert(not ok)
+end)
+""");
+        var doc=AssDocument.Parse("[Script Info]\nPlayResX: 1280\n[Events]\nFormat: Start, End, Text\nDialogue: 0:00:00.00,0:00:01.00,test\n");
+        using(var subs=new AutomationSubtitleDocument(doc))await script.RunAsync(1,Context(subs),CancellationToken.None);
+        using(var subs=new AutomationSubtitleDocument(doc))await script.RunAsync(2,Context(subs),CancellationToken.None);
+    }
+
+    [Fact]
+    public async Task Aegisub351TemplaterUsesItsOwnKaraskelAndGeneratesEffects()
+    {
+        var root=Path.Combine(AppContext.BaseDirectory,"automation-3.5-above");
+        var path=Path.Combine(root,"autoload","kara-templater.lua");
+        using var script=await _provider.LoadAsync(path,new(path,[Path.Combine(root,"include")]),CancellationToken.None);
+        var doc=AssDocument.CreateEmpty();var editor=new SubtitleEditor(doc);
+        var template=editor.Insert(null,true);template.Effect="template syl noblank";template.Text=@"{\k$sdur}";
+        var song=editor.Insert(template,true);song.Effect="";song.Text=@"{\k20}日{\kf30}本語";song.Start="0:00:01.00";song.End="0:00:03.00";
+        editor.ToggleComment([template]);var before=doc.Serialize();using var subs=new AutomationSubtitleDocument(doc);
+        var macro=Assert.Single(script.Macros);await script.RunAsync(macro.Index,Context(subs),CancellationToken.None);
+        Assert.Equal(before,doc.Serialize());subs.Commit(editor,macro.Name);
+        var generated=doc.Events.Where(line=>line.Effect=="fx").ToArray();
+        Assert.Contains(generated,line=>line.Text.EndsWith("日",StringComparison.Ordinal));
+        Assert.Contains(generated,line=>line.Text.EndsWith("本語",StringComparison.Ordinal));
+        editor.Undo.Undo();Assert.Equal(before,doc.Serialize());
+    }
+
+    [Fact]
     public async Task RealMacroEditsInsertsDeletesCheckpointsAndReturnsSelection()
     {
         using var script = await Load("""

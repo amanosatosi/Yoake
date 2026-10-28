@@ -171,6 +171,15 @@ code. Lua execution uses interpreter mode for reliable cancellation; the managed
 application remains NativeAOT. No upstream Automation library is copied by this
 runtime foundation milestone.
 
+## Aegisub 3.5.1 Automation sources
+
+The separate `automation-3.5-above` Lua and MoonScript sources are copied from
+the user-supplied Aegisub 3.5.1 archive, https://github.com/TypesettingTools/Aegisub.
+The archive has no verified Git revision. Exact paths, hashes and modification
+status are in `third_party/automation/aegisub-3.5.1-provenance.json`. Each file's
+own license header applies; the root BSD-3-Clause license applies to headerless
+files, and its full text is packaged in `licenses/Aegisub-BSD-3-Clause.txt`.
+
 ## Aegisub 3.2.2 Automation sources
 
 The subsequently integrated include/autoload libraries and LPeg, luabins, regex

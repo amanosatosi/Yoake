@@ -29,6 +29,10 @@ for entry in provenance['files']:
 adapter=json.loads((ROOT/'third_party/automation/mangetsu-adapter.json').read_text(encoding='utf-8'))
 if hashlib.sha256((ROOT/adapter['yoakePath']).read_bytes()).hexdigest()!=adapter['sha256']:
     fail('Mangetsu Karaskel adapter differs from recorded source')
+modern=json.loads((ROOT/'third_party/automation/aegisub-3.5.1-provenance.json').read_text(encoding='utf-8'))
+for entry in modern['files']:
+    if hashlib.sha256((ROOT/entry['yoakePath']).read_bytes()).hexdigest()!=entry['sha256']:
+        fail(f"Aegisub 3.5.1 source differs from recorded provenance: {entry['yoakePath']}")
 for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit'], versions['luajit']['commit']):
     if not re.fullmatch(r'[0-9a-f]{40}', pin): fail(f"native dependency ref is not immutable: {pin}")
 if versions.get('mangetsu', {}).get('branch') != 'mangetsu':

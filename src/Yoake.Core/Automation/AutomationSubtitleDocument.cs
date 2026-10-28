@@ -13,6 +13,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
     private sealed record Checkpoint(string Name, Entry[] Entries);
     private readonly AssDocument _document;
     private readonly long _revision;
+    private readonly (int Width,int Height) _scriptResolution;
     private readonly bool _writable;
     private readonly AssDocument.SourceLine[] _source;
     private readonly Dictionary<int, Group> _slots = [];
@@ -43,6 +44,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
         using var measurement = Diagnostics?.Measure("subtitles.capture");
         _document = document;
         _revision = document.Revision;
+        _scriptResolution = ResampleGeometry.ReadResolution(document.GetScriptInfo("PlayResX"),document.GetScriptInfo("PlayResY"));
         _source = document.Source.ToArray();
         _eventTemplate = document.NewEvent(); _styleTemplate = document.NewStyle();
         _writable = writable;
@@ -82,6 +84,7 @@ public sealed class AutomationSubtitleDocument : IDisposable
     }
 
     public int Count { get { RequireAlive(); return _entries.Count; } }
+    public (int Width,int Height) ScriptResolution { get { RequireAlive(); return _scriptResolution; } }
     public AutomationLine Read(int index)
     {
         using var measurement = Diagnostics?.Measure("subtitles.read");

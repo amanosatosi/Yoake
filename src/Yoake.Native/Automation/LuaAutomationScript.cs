@@ -247,6 +247,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             case "register_filter": _filters.Add(new(Index(1), Text(2), Text(3), Index(6), Arg(4).GetBoolean())); return [];
             case "selection": return [_invocation!.SelectedLines, _invocation.ActiveLine];
             case "subs_count": return [subs!.Count];
+            case "subs_script_resolution": return [subs!.ScriptResolution.Width,subs.ScriptResolution.Height];
             case "subs_read":
                 var line = subs!.Read(Index(1)); var id = ++_nextRead; _reads[id] = line;
                 if (line["class"] is string kind && line["raw"] is string raw)

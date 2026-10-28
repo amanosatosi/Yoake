@@ -22,7 +22,7 @@ public sealed class AutomationPathsWindow : Window
         var actions = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Spacing = 5 };
         var defaults = new Button { Content = "Use defaults" }; var save = new Button { Content = "Apply and reload", IsDefault = true }; var cancel = new Button { Content = "Cancel", IsCancel = true };
         foreach (var button in new[] { defaults, save, cancel }) actions.Children.Add(button);
-        defaults.Click += (_, _) => { auto.Text = "?data/automation/autoload\n?user/automation/autoload"; inc.Text = "?user/automation/include\n?data/automation/include"; };
+        defaults.Click += (_, _) => { auto.Text = "?data/automation/autoload\n?user/automation/autoload\n?user/automation-3.5-above/autoload"; inc.Text = "?user/automation/include\n?data/automation/include"; };
         cancel.Click += (_, _) => Close();
         save.Click += (_, _) =>
         {

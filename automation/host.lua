@@ -164,6 +164,7 @@ local function subtitles()
       return line
     end
     if key=='n' then return host('subs_count') end
+    if key=='script_resolution' then return function() valid(); return host('subs_script_resolution') end end
     if key=='delete' then return function(...)
       valid(); local values={n=select('#',...),...}
       if type(values[1])=='table' then

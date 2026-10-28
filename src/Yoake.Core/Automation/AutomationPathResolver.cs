@@ -14,8 +14,19 @@ public sealed class AutomationPathResolver
         _masterDirectory = Path.GetDirectoryName(Path.GetFullPath(masterScript))!;
         _tokens = tokens ?? new Dictionary<string, string>();
         var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
-        IncludeDirectories = new[] { _masterDirectory }.Concat(configuredIncludes.Select(DecodePath)
+        var modernRoots = new[] { "?user", "?data" }.Where(_tokens.ContainsKey)
+            .Select(key=>Path.Combine(_tokens[key],"automation-3.5-above")).ToArray();
+        var modern = modernRoots.Any(root=>IsWithin(masterScript,root));
+        var includes = modern ? modernRoots.Select(root=>Path.Combine(root,"include")).Concat(configuredIncludes.Select(DecodePath)) : configuredIncludes.Select(DecodePath);
+        IncludeDirectories = new[] { _masterDirectory }.Concat(includes
             .Where(p => Path.IsPathFullyQualified(p) && Directory.Exists(p)).Select(Path.GetFullPath)).Distinct(comparer).ToArray();
+    }
+
+    private static bool IsWithin(string path,string root)
+    {
+        if(!Path.IsPathFullyQualified(root))return false;
+        var relative=Path.GetRelativePath(Path.GetFullPath(root),Path.GetFullPath(path));
+        return !Path.IsPathFullyQualified(relative) && relative!=".." && !relative.StartsWith(".."+Path.DirectorySeparatorChar,StringComparison.Ordinal);
     }
 
     public string DecodePath(string path)

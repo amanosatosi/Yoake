@@ -1,4 +1,5 @@
 # Preserve exact upstream bytes, including line endings, for provenance checks.
+automation-3.5-above/** -text
 automation/include/cleantags.lua -text
 automation/include/clipboard.lua -text
 automation/include/karaskel-auto4.lua -text

@@ -1,0 +1,158 @@
+{
+  "source": "User-supplied Aegisub-3.5.1 local source archive; no assumed Git identity",
+  "repository": "https://github.com/TypesettingTools/Aegisub",
+  "version": "3.5.1",
+  "license": "File headers and archive root LICENCE; see third-party notices",
+  "files": [
+    {
+      "sourcePath": "automation/autoload/cleantags-autoload.lua",
+      "yoakePath": "automation-3.5-above/autoload/cleantags-autoload.lua",
+      "sha256": "ed41a24f6e4957f1e45a10d4b0ff4aec3181150d10b12cb999e48c9d46c1e87e",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/kara-templater.lua",
+      "yoakePath": "automation-3.5-above/autoload/kara-templater.lua",
+      "sha256": "68c0c21fc36eea28828dd8672c5e661873b3a573beb18fa6e02bfc111df19cea",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/karaoke-auto-leadin.lua",
+      "yoakePath": "automation-3.5-above/autoload/karaoke-auto-leadin.lua",
+      "sha256": "2c586053068bf91d7eed2354e0c705c7fc5ea3a3c4e508c47bd4f81319cf0377",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/macro-1-edgeblur.lua",
+      "yoakePath": "automation-3.5-above/autoload/macro-1-edgeblur.lua",
+      "sha256": "43599f0c24c008172fb810ac9bf67138beee661665cac0b36d96ba7a90b3773f",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/macro-2-mkfullwitdh.lua",
+      "yoakePath": "automation-3.5-above/autoload/macro-2-mkfullwitdh.lua",
+      "sha256": "bfc956eea611760bff8b51e52eabacb5e1c2b5d4da6e351e97804e9addbe5edf",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/select-overlaps.moon",
+      "yoakePath": "automation-3.5-above/autoload/select-overlaps.moon",
+      "sha256": "86c2501a3a24ac5938544594049facc786e8f48c19bbf06137e1554337ce8122",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/autoload/strip-tags.lua",
+      "yoakePath": "automation-3.5-above/autoload/strip-tags.lua",
+      "sha256": "aa7d8a8e4d8f26e7dcf3db18509f402c13e6e0cfd71d86ed3d3447344a98738c",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/clipboard.lua",
+      "yoakePath": "automation-3.5-above/include/aegisub/clipboard.lua",
+      "sha256": "e6b8269130c67616f7dfac85d834dd00faeebdcf26639713d5769d971f0ec249",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/internal/argcheck.moon",
+      "yoakePath": "automation-3.5-above/include/aegisub/internal/argcheck.moon",
+      "sha256": "2d41579766ad0b634a6db5aeff6a276356909d095a4443bf1a91dd480652e450",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/internal/ffi.moon",
+      "yoakePath": "automation-3.5-above/include/aegisub/internal/ffi.moon",
+      "sha256": "c20174d79e7a6fb710f74967a6665fdc142b622c286b74bca696f079c5b6661f",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/lfs.moon",
+      "yoakePath": "automation-3.5-above/include/aegisub/lfs.moon",
+      "sha256": "4db218af1a7efc2c76fd5040c825636d1819e2976fb609b38c505690a877f471",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/re.moon",
+      "yoakePath": "automation-3.5-above/include/aegisub/re.moon",
+      "sha256": "c6a045337ff94f13e76af9c3d13e2d25c85658d957451413e923939266daa67f",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/unicode.moon",
+      "yoakePath": "automation-3.5-above/include/aegisub/unicode.moon",
+      "sha256": "d9eaeab487da45a17d7b3348214b4bc824f14ea287abee6828bf07e331a09d42",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/aegisub/util.moon",
+      "yoakePath": "automation-3.5-above/include/aegisub/util.moon",
+      "sha256": "75eec23053107a4f064be81e4bbc90a520e8c1921c81b3b19969a7b0d88c554b",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/cleantags.lua",
+      "yoakePath": "automation-3.5-above/include/cleantags.lua",
+      "sha256": "d7ffee17e2d1d4ec2376c2f71873979d0e0f5d91a14511ddb5d62fa290a017ea",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/clipboard.lua",
+      "yoakePath": "automation-3.5-above/include/clipboard.lua",
+      "sha256": "beab4676007186ba80cce2f801f8ea10a70211def22b5c29823f43bfdad3931a",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/karaskel-auto4.lua",
+      "yoakePath": "automation-3.5-above/include/karaskel-auto4.lua",
+      "sha256": "6fd955d49ac071c2c5c9068d831744e6e0b458e97ecc710188d7eb86da4e9759",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/karaskel.lua",
+      "yoakePath": "automation-3.5-above/include/karaskel.lua",
+      "sha256": "3f33716ac18c253a1d075ce7bfa97d345e7823d15d92f57a2225b3a4fed976d1",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/lfs.lua",
+      "yoakePath": "automation-3.5-above/include/lfs.lua",
+      "sha256": "302211ba9a9cb3f738225c1c71c671b6f9d3de377d282d7d72bcd73a6b4723de",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/moonscript.lua",
+      "yoakePath": "automation-3.5-above/include/moonscript.lua",
+      "sha256": "7f69f7892ae3cfa45b17fa9296b4cf05105177d91872648bd6c13def2696fbb8",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/re.lua",
+      "yoakePath": "automation-3.5-above/include/re.lua",
+      "sha256": "3247ab741f394525c78b67dd69c30510ad1cf38d44ace5f03fd9a434872ea481",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/unicode-monkeypatch.lua",
+      "yoakePath": "automation-3.5-above/include/unicode-monkeypatch.lua",
+      "sha256": "a846cbe68d8d7a4e007e8aa211ff0a96bb4c90330c3673ca8da9d5530ea4a93c",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/unicode.lua",
+      "yoakePath": "automation-3.5-above/include/unicode.lua",
+      "sha256": "78129cbb809a78f8ba2f4628e9fa7cbbe2dfb60471a78e5154519076baf1d4be",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/utils-auto4.lua",
+      "yoakePath": "automation-3.5-above/include/utils-auto4.lua",
+      "sha256": "52b8c6bf998a1457a4dd3da3c2de94ed0f5e7f6d10a2f91df916b6f222cd4ea7",
+      "modifications": "none"
+    },
+    {
+      "sourcePath": "automation/include/utils.lua",
+      "yoakePath": "automation-3.5-above/include/utils.lua",
+      "sha256": "14070a80b7d5070a4b2cee82895f28187c706da2fb556fff60e5066e28e14582",
+      "modifications": "none"
+    }
+  ]
+}

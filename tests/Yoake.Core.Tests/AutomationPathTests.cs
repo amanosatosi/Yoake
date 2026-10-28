@@ -56,6 +56,19 @@ public sealed class AutomationPathTests : IDisposable
         Assert.Equal("?video", resolver.DecodePath("?video"));
         Assert.Throws<ArgumentException>(() => new AutomationPathResolver("relative.lua", []));
     }
+    [Fact]
+    public void ModernScriptsPreferIsolatedModernIncludesWithoutChangingLegacyResolution()
+    {
+        var tokens=new Dictionary<string,string>{{"?user",Path.Combine(_root,"user")},{"?data",Path.Combine(_root,"app")}};
+        var modern=Write("user/automation-3.5-above/autoload/new.lua");
+        var modernModule=Write("user/automation-3.5-above/include/shared.lua","return 'modern'");
+        var legacy=Write("user/automation/autoload/old.lua");var oldModule=Write("user/automation/include/shared.lua","return 'legacy'");
+        var includes=new[]{"?user/automation/include"};
+        Assert.Equal(modernModule,new AutomationPathResolver(modern,includes,tokens).ResolveInclude("shared.lua"));
+        Assert.Equal(oldModule,new AutomationPathResolver(legacy,includes,tokens).ResolveInclude("shared.lua"));
+        var lookalike=Write("user/automation-3.5-above-other/main.lua");
+        Assert.Equal(oldModule,new AutomationPathResolver(lookalike,includes,tokens).ResolveInclude("shared.lua"));
+    }
 
     public void Dispose() { if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true); }
 }
