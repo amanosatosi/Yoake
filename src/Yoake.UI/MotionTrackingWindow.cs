@@ -64,7 +64,7 @@ public sealed class MotionTrackingWindow : Window
         var footer = new StackPanel { Spacing = 6 };
         _status.TextWrapping = TextWrapping.Wrap; footer.Children.Add(_status);
         var actions = new WrapPanel();
-        foreach (var (label, id) in new[] { ("Set reference", "reference"), ("Track backward", "backward"), ("Track forward", "forward"), ("Stop", "stop"), ("Reset", "reset"), ("Apply position", "apply") })
+        foreach (var (label, id) in new[] { ("Set reference", "reference"), ("Track backward", "backward"), ("Back 1 frame", "backward-frame"), ("Forward 1 frame", "forward-frame"), ("Track forward", "forward"), ("Stop", "stop"), ("Reset", "reset"), ("Apply position", "apply") })
         {
             var button = new Button { Name = "MotionTrack_" + id, Content = label, Command = model.Actions["motion-track/" + id], Margin = new(0, 0, 6, 0), Padding = new(8, 3) };
             names.Register(button.Name!, button);

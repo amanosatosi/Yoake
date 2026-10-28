@@ -67,7 +67,7 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
         _points.Clear(); _points[CurrentFrame] = new(CurrentFrame, Region.X, Region.Y);
         Status = "Reference set. Draw or adjust the pattern, then track forward and backward."; Notify();
     }
-    public Task TrackAsync(int direction) => RunAsync(async token =>
+    public Task TrackAsync(int direction, bool singleFrame = false) => RunAsync(async token =>
     {
         direction = Math.Sign(direction); if (direction == 0) return;
         var first = CurrentFrame;
@@ -88,7 +88,7 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
             {
                 token.ThrowIfCancellationRequested(); image = _provider.GetFrame(frame, image.Pixels); token.ThrowIfCancellationRequested();
                 var tracked = tracker.Track(image.Pixels, image.Width, image.Height, image.Stride, previous, frame, token);
-                var show = viewable || elapsed.ElapsedMilliseconds >= 120 || tracked.Confidence < .65 || frame == FirstFrame || frame == LastFrame;
+                var show = singleFrame || viewable || elapsed.ElapsedMilliseconds >= 120 || tracked.Confidence < .65 || frame == FirstFrame || frame == LastFrame;
                 var captured = image;
                 await Dispatcher.UIThread.InvokeAsync(() =>
                 {
@@ -104,6 +104,7 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
                 if (tracked.Confidence < .65) break;
                 previous = tracked;
                 if (show) elapsed.Restart();
+                if (singleFrame) break;
                 if (viewable) await Task.Delay(40, token);
             }
         }, token);
