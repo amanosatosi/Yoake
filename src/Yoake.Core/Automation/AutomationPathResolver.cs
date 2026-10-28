@@ -4,6 +4,7 @@ public sealed class AutomationPathResolver
 {
     private readonly string _masterDirectory;
     private readonly IReadOnlyDictionary<string, string> _tokens;
+    private readonly bool _modern;
     public IReadOnlyList<string> IncludeDirectories { get; }
     public string PackagePath => string.Join(';', IncludeDirectories.SelectMany(p => new[] { Path.Combine(p, "?.lua"), Path.Combine(p, "?", "init.lua") })) + ";";
 
@@ -16,8 +17,8 @@ public sealed class AutomationPathResolver
         var comparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
         var modernRoots = new[] { "?user", "?data" }.Where(_tokens.ContainsKey)
             .Select(key=>Path.Combine(_tokens[key],"automation-3.5-above")).ToArray();
-        var modern = modernRoots.Any(root=>IsWithin(masterScript,root));
-        var includes = modern ? modernRoots.Select(root=>Path.Combine(root,"include")).Concat(configuredIncludes.Select(DecodePath)) : configuredIncludes.Select(DecodePath);
+        _modern = modernRoots.Any(root=>IsWithin(masterScript,root));
+        var includes = _modern ? modernRoots.Select(root=>Path.Combine(root,"include")).Concat(configuredIncludes.Select(DecodePath)) : configuredIncludes.Select(DecodePath);
         IncludeDirectories = new[] { _masterDirectory }.Concat(includes
             .Where(p => Path.IsPathFullyQualified(p) && Directory.Exists(p)).Select(Path.GetFullPath)).Distinct(comparer).ToArray();
     }
@@ -31,6 +32,10 @@ public sealed class AutomationPathResolver
 
     public string DecodePath(string path)
     {
+        if(_modern)
+            foreach(var token in new[]{"?user/automation","?user\\automation","?data/automation","?data\\automation"})
+                if(path.Equals(token,StringComparison.Ordinal) || path.StartsWith(token+"/",StringComparison.Ordinal) || path.StartsWith(token+"\\",StringComparison.Ordinal))
+                {path=path[..(token.Length-"automation".Length)]+"automation-3.5-above"+path[token.Length..];break;}
         foreach (var token in new[] { "?audio", "?data", "?dictionary", "?local", "?script", "?temp", "?user", "?video" })
             if (path.StartsWith(token, StringComparison.Ordinal) && _tokens.TryGetValue(token, out var root) && root.Length > 0)
                 return Path.Combine(root, path[token.Length..].TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar));

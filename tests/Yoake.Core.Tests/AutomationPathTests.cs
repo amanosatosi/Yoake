@@ -64,7 +64,10 @@ public sealed class AutomationPathTests : IDisposable
         var modernModule=Write("user/automation-3.5-above/include/shared.lua","return 'modern'");
         var legacy=Write("user/automation/autoload/old.lua");var oldModule=Write("user/automation/include/shared.lua","return 'legacy'");
         var includes=new[]{"?user/automation/include"};
-        Assert.Equal(modernModule,new AutomationPathResolver(modern,includes,tokens).ResolveInclude("shared.lua"));
+        var resolver=new AutomationPathResolver(modern,includes,tokens);
+        Assert.Equal(modernModule,resolver.ResolveInclude("shared.lua"));
+        Assert.Equal(Path.Combine(_root,"user","automation-3.5-above","include","l0"),resolver.DecodePath("?user/automation/include/l0"));
+        Assert.Equal(Path.Combine(_root,"user","automation-extra"),resolver.DecodePath("?user/automation-extra"));
         Assert.Equal(oldModule,new AutomationPathResolver(legacy,includes,tokens).ResolveInclude("shared.lua"));
         var lookalike=Write("user/automation-3.5-above-other/main.lua");
         Assert.Equal(oldModule,new AutomationPathResolver(lookalike,includes,tokens).ResolveInclude("shared.lua"));
