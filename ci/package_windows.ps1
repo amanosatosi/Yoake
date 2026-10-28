@@ -176,6 +176,7 @@ if (Test-Path -LiteralPath (Join-Path $NativeRoot 'licenses')) {
 }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Avalonia-MIT.txt') -Destination $licenseTarget -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Aegisub-BSD-3-Clause.txt') -Destination $licenseTarget -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\DependencyControl-MIT.txt') -Destination $licenseTarget -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $portable 'LICENSE') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $portable 'THIRD_PARTY_NOTICES.md') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'automation') -Destination $portable -Recurse -Force

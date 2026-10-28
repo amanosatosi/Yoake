@@ -241,7 +241,7 @@ internal sealed partial class LuaAutomationScript : IAutomationScript
             case "include_path": return [_paths.ResolveInclude(Text(1))];
             case "package_path": return [_paths.PackagePath];
             case "module_path": return [_paths.ResolveModule(Text(1), Text(2))];
-            case "decode_path": return [services?.DecodePath(Text(1)) ?? _paths.DecodePath(Text(1))];
+            case "decode_path": return [services?.DecodePath(_paths.RewriteProfilePath(Text(1))) ?? _paths.DecodePath(Text(1))];
             case "register_macro":
                 var name = Text(2);
                 if (!_names.Add(name)) throw new ArgumentException($"A macro named '{name}' is already defined in script '{Path}'.");

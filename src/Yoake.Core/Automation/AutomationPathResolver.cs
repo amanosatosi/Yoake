@@ -31,12 +31,18 @@ public sealed class AutomationPathResolver
         return !Path.IsPathFullyQualified(relative) && relative!=".." && !relative.StartsWith(".."+Path.DirectorySeparatorChar,StringComparison.Ordinal);
     }
 
-    public string DecodePath(string path)
+    public string RewriteProfilePath(string path)
     {
         if(_modern)
             foreach(var token in new[]{"?user/automation","?user\\automation","?data/automation","?data\\automation"})
                 if(path.Equals(token,StringComparison.Ordinal) || path.StartsWith(token+"/",StringComparison.Ordinal) || path.StartsWith(token+"\\",StringComparison.Ordinal))
                 {path=path[..(token.Length-"automation".Length)]+"automation-3.5-above"+path[token.Length..];break;}
+        return path;
+    }
+
+    public string DecodePath(string path)
+    {
+        path = RewriteProfilePath(path);
         foreach (var token in new[] { "?audio", "?data", "?dictionary", "?local", "?script", "?temp", "?user", "?video" })
             if (path.StartsWith(token, StringComparison.Ordinal) && _tokens.TryGetValue(token, out var root) && root.Length > 0)
                 return Path.Combine(root, path[token.Length..].TrimStart('/', '\\').Replace('/', Path.DirectorySeparatorChar));

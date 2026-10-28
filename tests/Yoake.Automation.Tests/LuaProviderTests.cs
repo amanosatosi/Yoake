@@ -48,6 +48,42 @@ aegisub.register_macro(touched and 'modern' or 'legacy','',function() end)
     }
 
     [Fact]
+    public async Task DependencyControlRegistersAndRunsAModernMacro()
+    {
+        var root=Path.Combine(_root,"automation-3.5-above","autoload");Directory.CreateDirectory(root);
+        var path=Path.Combine(root,"fixture.lua");
+        File.WriteAllText(path,"""
+script_name = 'DependencyControl fixture'
+script_description = 'Modern macro test'
+script_author = 'Yoake test'
+script_version = '1.0.0'
+script_namespace = 'test.YoakeFixture'
+local DependencyControl = require('l0.DependencyControl')
+local record = DependencyControl {}
+record:registerMacro(function(subs, sel, active)
+  assert(aegisub.decode_path('?user/automation/include') == '?user/automation-3.5-above/include')
+  local line = subs[active]; line.text = 'DependencyControl ran'; subs[active] = line
+end)
+""");
+        var tokens=new Dictionary<string,string>{{"?user",_root},{"?data",AppContext.BaseDirectory},{"?temp",_root}};
+        using var script=await _provider.LoadAsync(path,new(path,[],tokens),CancellationToken.None);
+        var macro=Assert.Single(script.Macros);var document=Document();var editor=new SubtitleEditor(document);var before=document.Serialize();
+        using var subs=new AutomationSubtitleDocument(document);
+        await script.RunAsync(macro.Index,Context(subs),CancellationToken.None);
+        subs.Commit(editor,macro.Name);Assert.Equal("DependencyControl ran",Assert.Single(document.Events).Text);
+        editor.Undo.Undo();Assert.Equal(before,document.Serialize());
+    }
+
+    [Fact]
+    public async Task DependencyControlToolboxLoadsFromModernProfile()
+    {
+        var path=Path.Combine(AppContext.BaseDirectory,"automation-3.5-above","depctrl-autoload","l0.DependencyControl.Toolbox.moon");
+        var tokens=new Dictionary<string,string>{{"?user",_root},{"?data",AppContext.BaseDirectory},{"?temp",_root}};
+        using var script=await _provider.LoadAsync(path,new(path,[],tokens),CancellationToken.None);
+        Assert.NotEmpty(script.Macros);
+    }
+
+    [Fact]
     public async Task ModernScriptResolutionUsesCapturedDocumentAndExpiresWithSubtitleObject()
     {
         using var script=await Load("""

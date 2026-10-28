@@ -216,3 +216,13 @@ Native module dependencies Boost.Regex/Locale 1.91.0 (BSL-1.0) and ICU 78.3 port
 (ICU license and constituent data licenses) use the pinned vcpkg registry
 `f3419f137f1a1e79b33b880ae6845f873d87820b`. Every installed native port's complete
 copyright notice is included by the authoritative dependency builder.
+
+## DependencyControl
+
+DependencyControl v0.9.0 is distributed under the MIT license. Its sources are
+from https://github.com/TypesettingTools/DependencyControl, commit
+`8cd732eae9cb83de06b1ace6da210423827289f2`, copied without modification. The
+precise source paths and hashes are recorded in
+`third_party/automation/dependencycontrol-provenance.json`. The bundled dkjson
+module retains its own MIT license and copyright notice in its source. The
+DependencyControl license is included as `licenses/DependencyControl-MIT.txt`.

@@ -1,0 +1,504 @@
+{
+  "repository": "https://github.com/TypesettingTools/DependencyControl",
+  "version": "v0.9.0",
+  "commit": "8cd732eae9cb83de06b1ace6da210423827289f2",
+  "license": "MIT; bundled dkjson retains its own MIT license header",
+  "modifications": "none",
+  "files": [
+    {
+      "sourcePath": "modules/l0/DependencyControl/Accessors.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Accessors.moon",
+      "sha256": "fa4dd316f7b8965a7054789d460e7571f14bde68945ddd771512d8fa2081b84c"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/config-schema.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/config-schema.moon",
+      "sha256": "c22f9bd3c549acae3419db7f427ac5e09715a173f9033799820c9c89aa192ddd"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/ConfigHandler.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/ConfigHandler.moon",
+      "sha256": "681d5e46144373c0ed65cbec1088180374749385d3adff4877204151135739b0"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/ConfigView.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/ConfigView.moon",
+      "sha256": "d5122e4c5d115cd44a0284e74a79d01e91eb63d8b902587ded53626d605a5bec"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Constants.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Constants.moon",
+      "sha256": "7ef179731fee722bb2714bc49cc819558be98f2d422adb6dadc59f012f266aee"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/domain.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/domain.moon",
+      "sha256": "5bd2ba2eadb2813580b5b4fc22ec934402fb19e8e566f885ca168b34bbeca18c"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Downloader.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Downloader.moon",
+      "sha256": "f9d21310a7052f036382f8b51a8dfaaa4f3bab3e4a8903d6080c232260cfc56e"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Enum.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Enum.moon",
+      "sha256": "899ed0fd7298b8f871a811eaf00f69b00b174220a19915a39aac7c38b976e1a4"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/environment.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/environment.moon",
+      "sha256": "154df1f9c3670521440a742e8f2b344eb135b2429dd60184c9fc5b679230bf5a"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/EventEmitter.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/EventEmitter.moon",
+      "sha256": "3a011ed7bccc13578774d34655adb71054a535a5f3433ab449b3b34275ae5ab2"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/FeedInventory.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/FeedInventory.moon",
+      "sha256": "f0429dcac2d26090c049a1633b8cd1f0d7287ba7070b11c95c86ac9e64110756"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/FeedLoader.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/FeedLoader.moon",
+      "sha256": "7efc68095bb5d7f79941678a37779cce23ff970238f5d2d6bd92a67f9abe0a96"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/FeedManager.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/FeedManager.moon",
+      "sha256": "5a32a171416b66e9a83ea5cc9d113618ea9764c7a061cfb7f90eb802494a793d"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/FeedTrust.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/FeedTrust.moon",
+      "sha256": "a05a525b9617f80c1404bbff091000c00a7d68be2d78e6428ea47a82a62575f0"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/file-ops.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/file-ops.moon",
+      "sha256": "95048741c5f0ebc0bd04246617a6f7b5c5234e3c8597066e27398beba6a9b61b"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/FileCache.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/FileCache.moon",
+      "sha256": "bb7e51a7ede912d78115b01c049ac5f808abd9777814508dbf2ed4ab99c0ce81"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/FileLock.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/FileLock.moon",
+      "sha256": "d8bea89ddaa8cf2762187303689c747ac4a8622625c5d19b01daf07b585b3699"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Finalizer.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Finalizer.moon",
+      "sha256": "416deba77128acb82312a536cc5da804ac4b5ac2b15e9d91d7a4a3e10b616cc4"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/GitRepository.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/GitRepository.moon",
+      "sha256": "7ce13ec1ea74f376307669e41bd60f8264ce49cbd3b1c28b49ab08b69e44dea6"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/hash.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/hash.moon",
+      "sha256": "b2778fc38e135aeedc3cd83089b51dbf2f887f7edb1e1e42c7ef6accf358925b"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/helpers/ffi-posix.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/helpers/ffi-posix.moon",
+      "sha256": "2cf9660ceaa50ac6f0bd1f6210560501d9ba62fc9e4ac0275699f6a505e7281d"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/helpers/ffi-windows.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/helpers/ffi-windows.moon",
+      "sha256": "d6c6d0d452db1cdd07a4b8837e9c8dcec84d460391ee9e01dbbaf6c631b4ae4c"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/helpers/open-url.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/helpers/open-url.moon",
+      "sha256": "559ef9c58f29a512969f82682b358ba216c9de72d1c456189f4fcf5e5bf36427"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/helpers/resolve-host.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/helpers/resolve-host.moon",
+      "sha256": "d7eca0686f13ff7225201bc2cf5dc9792d04be4a93f433c1a09e86e1c7e9806f"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Host.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Host.moon",
+      "sha256": "d1cd77633abb3799b6c2e27cdbd4fa5899ebcbdc6b4cb49532e2f76ce769221f"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/JsonSchema.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/JsonSchema.moon",
+      "sha256": "137bbcfc01ab2763d2d5e039370adcc436c4ab7d6e941de0eb66276772b82981"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Lock.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Lock.moon",
+      "sha256": "c74bd2c11ade1f48dc8bb7dd3ce0763ede272688ad4b5854efec766192aaf336"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Logger.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Logger.moon",
+      "sha256": "0c95713f72eab6569f93e485f777374ced01d3485bb0cc3a8be65b0d25aba228"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/ModuleLoader.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/ModuleLoader.moon",
+      "sha256": "1908acefdbe303ecc87d54319c181dbc54165f42aa93fdcb7c49f25e6185f5fe"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/ModuleProvider.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/ModuleProvider.moon",
+      "sha256": "d0f5f3530a0ccf5121aeac0add39db63e0cd8a1bc824ae3ff1f21e12293020e6"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/NamedSemaphore.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/NamedSemaphore.moon",
+      "sha256": "4b0cb2bf19d7ee6b3dfbff9190486c777ffc1e2f63a955880c0e43ebf8c53d16"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/PackageRecord.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/PackageRecord.moon",
+      "sha256": "ec737a25dce0b1bbe2d3c779cac412d1688264fb93f5779cb3f5ac9ff40b0968"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/release-notes.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/release-notes.moon",
+      "sha256": "bd98ad7ecb3c6ffb610be156bd7fad76ddc58df3219b8ab6152f9530193012e8"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/ScriptTargetFilter.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/ScriptTargetFilter.moon",
+      "sha256": "77481829b9159d648fc2bb833c45ff780f3104e53029e4f4c74edf7ac3bce0f4"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/ScriptUpdateRecord.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/ScriptUpdateRecord.moon",
+      "sha256": "fdcd1e6a25501e03a122ec860afce0f50549ea1e3b4bb99503c8891f156c7acc"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/SemanticVersion.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/SemanticVersion.moon",
+      "sha256": "dbac156417689bccd567a83459f43442717b0a86120db9c1d97bdd17b8567411"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/shims/BadMutex.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/shims/BadMutex.moon",
+      "sha256": "b2fb3faeabf17fbe469cda791e536c0424e9268927d693523d67a8809aa8f3b3"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/shims/DownloadManager.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/shims/DownloadManager.moon",
+      "sha256": "149b91e03dcc28d5af62fc70f59ea38a1870d59455f96e38c45591ab2a5fa50a"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/shims/PreciseTimer.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/shims/PreciseTimer.moon",
+      "sha256": "a623fe7ea9f5802d51636ce450d89a82fb0ba5aa257fe89ef879f2c42ce88e36"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Stub.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Stub.moon",
+      "sha256": "cf47bbb1a7fd5c263f70fc951ce8023195fd13ec2b84df1015f78f6bcd8fae35"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Accessors.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Accessors.moon",
+      "sha256": "8dead0650b9154513abf483d92773b331e78c5bbab5460dc7cec26af9403cc97"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/BadMutex.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/BadMutex.moon",
+      "sha256": "2739416b2cab7203206fb8cc764dc4c0dc61aad8825cb3024cc86cd1fb9e93d6"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/config-schema.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/config-schema.moon",
+      "sha256": "9016ac4c46f8e8adaedec8e4061466244efe8ea8de6bbf2779cc427d4f119f07"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/ConfigHandler.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/ConfigHandler.moon",
+      "sha256": "e15e4865dae9b91c3cb18fcd5565b2d155efd99f5a3e8400161afce2e0b18c10"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/ConfigView.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/ConfigView.moon",
+      "sha256": "a9bb70a16dc130b21044afe3bda133be9c9d1fa4faa5fa57e0a3d295ee115e7e"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/domain.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/domain.moon",
+      "sha256": "30a141562b143eceff3434efdcc7bfa2569bc29a60f223742b28319237446d44"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Downloader.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Downloader.moon",
+      "sha256": "f54d4990fc08670b52d2727df7210b911232565fe44c0dd8ab7bbea282d2d59f"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Enum.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Enum.moon",
+      "sha256": "8cd527c7f2b5f930b0efb64a3bf2f5a59888a0f7a662f2cfb290f4a6b7bb4d11"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/environment.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/environment.moon",
+      "sha256": "4025d6e0daab399a75d9d3562fbc899c25e949dd8180c4c6032d87128ccf5055"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/FeedInventory.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/FeedInventory.moon",
+      "sha256": "556ffcfb62c7b98b2596cfd97b0345373c176a5ba09f284f85651bd2f4b726b3"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/FeedLoader.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/FeedLoader.moon",
+      "sha256": "680dee49f0c5782c9408a5bd57ad0c8c9d4687529a830643746a5507f8ea4aa8"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/FeedManager.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/FeedManager.moon",
+      "sha256": "4e54c47a95ebca55a66cae26b0d3d1596df45f8a452faa5077a157d64921abe6"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/FeedTrust.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/FeedTrust.moon",
+      "sha256": "7f8d8fa7b9d74aef4bcc788676003e93eebb7f2e4e4d1351801b4ba755e5f478"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/ffi-posix.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/ffi-posix.moon",
+      "sha256": "14178a830735612ca70db16516f7d03c1fc79fe33fb9a452c04c713b940b5e39"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/file-ops.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/file-ops.moon",
+      "sha256": "2c8032aebde049cfc538d12577d906287d72afd9e46ca64330791338a9833435"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/FileCache.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/FileCache.moon",
+      "sha256": "08592d2279553b0507391fff3c67f79017d1a4e6de0f8cf67753ca952e61adaf"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/FileLock.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/FileLock.moon",
+      "sha256": "29e18a44a2cf327583e0dc52f036fbe28abecceab23603436a100200e050a78f"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Finalizer.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Finalizer.moon",
+      "sha256": "36161794fa194a15c723053e61e48d0bba53d3654b107dad157a2523e1dbaa1c"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/GitRepository.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/GitRepository.moon",
+      "sha256": "fdff57b06d9a378946549bfa7104de25eb066f4b483b4ce6001f23f48740e01c"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/hash.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/hash.moon",
+      "sha256": "79146959b5eb7603d795acc6bbcb8af096abded53a64f184d6479b4f7cb2befa"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/helpers/mock-http-server.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/helpers/mock-http-server.moon",
+      "sha256": "854878b81a1554f0f02911848ec1ed02c6dad4f635676b185f85fb9d8bbb92f1"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/helpers/MockHttpServerController.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/helpers/MockHttpServerController.moon",
+      "sha256": "ef621a070187f61a5055171b86f0cb0bfbe738ccf439c30569cb83d0107c10ab"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/helpers/stub-helpers.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/helpers/stub-helpers.moon",
+      "sha256": "87f6b7f6a10785b84def3c6faeba456be18fbcee552e8164c4aa5137dab75153"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Host.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Host.moon",
+      "sha256": "c6ddbf9ab564aa1dfebaac68a5bdea846f75b67c7c28ffc5265bc851ddbefdfa"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/integration/Downloader.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/integration/Downloader.moon",
+      "sha256": "8e2ec3519f16ebeee7baece6f1768871dbe5b262d686f737e01cab9e51e9f749"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/integration/ZipArchiver.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/integration/ZipArchiver.moon",
+      "sha256": "ac09add9bd9c9d36c30ceec3035ecd2f3f07078bdec539c2c30121db962f1e1e"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/JsonSchema.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/JsonSchema.moon",
+      "sha256": "de579fde5c1f16810c18362ae3021419b2bdfdf147c5c30d3da52da28fddd4ea"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Lock.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Lock.moon",
+      "sha256": "198a2ce750f1fc800a85ed3ed93053777461c141526b6cbe804744146db19e0b"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Logger.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Logger.moon",
+      "sha256": "00046fc045e5cf9a5edc48b2745c15af36cc00be3c165495c621be7547690a31"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/ModuleLoader.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/ModuleLoader.moon",
+      "sha256": "1cba5c18286f77131b00c04658f8e9f206e045a774272ae117fc61ad74ea9eb7"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/ModuleProvider.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/ModuleProvider.moon",
+      "sha256": "f4e6c0cd0360b5e27fc2970ff88476135391e3573683030229396e413cd23d55"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/NamedSemaphore.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/NamedSemaphore.moon",
+      "sha256": "daa276c3251309b39b862dc5122dfa31b1657b2e33286e55a18434a2212654b6"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/open-url.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/open-url.moon",
+      "sha256": "0ff7f3aef0889e261dfd77d353e69a586b82da2de0e4a2fe8a8a90bdbeec108d"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/PackageRecord.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/PackageRecord.moon",
+      "sha256": "a1f797a38eb3a1f672e1ec2298823dbbd1dfd817445d54ff60252cdb5983ed81"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/release-notes.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/release-notes.moon",
+      "sha256": "2c0cbf0ccd839ab189109611b12b6f66e7389e424d8b1f6ab3396535673c699a"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/ScriptTargetFilter.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/ScriptTargetFilter.moon",
+      "sha256": "5c0693ea427fb7d683bdf3ac115a80e96dd1c39c5236ba3b7a498be37e119730"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/ScriptUpdateRecord.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/ScriptUpdateRecord.moon",
+      "sha256": "4d7c9ce6899b62fefabc8aae4b77354a4cc8ff5ca3a678538e4cd7073a1da9cc"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/SemanticVersion.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/SemanticVersion.moon",
+      "sha256": "0a2f738f4a7aaf155d95565c2905bfbe5a4ccbe42d52f754aaa4308a05d549c9"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Timer.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Timer.moon",
+      "sha256": "3344a5469d3722e3162c0043723e9cecdd6bd1e654912e22296c08c3bfd86b1c"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/UnitTestSuite.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/UnitTestSuite.moon",
+      "sha256": "ed12514961f2a292a2f7c6ab17a81a68e756bde94cdc07d6f70e6a79dc8dc476"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/UpdateFeed.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/UpdateFeed.moon",
+      "sha256": "d50014b21c98c7ab77c477c4d75178195009ca876c9688d2413fdf0ccf4fb3ca"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/Updater.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/Updater.moon",
+      "sha256": "f51ace94179c90c87fb413814a77dc0827761a0448df6cdc1b099b5e8578d768"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/UpdateTask.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/UpdateTask.moon",
+      "sha256": "d3913fc2a5974db68ad643722a04be41047e290253f515edf9a5a04bd3e20fec"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/utils.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/utils.moon",
+      "sha256": "619508d251af770517c5fb700f32279d5169f1b742eadd0944c6ccb3527d5168"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test/ZipArchiver.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test/ZipArchiver.moon",
+      "sha256": "2d0eae5d75f8ec04ea8150b4ee372b97bebfcff9c6d0a880ed4bb2871b5bc1c6"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/test.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/test.moon",
+      "sha256": "186bcb5f6f9d109178c4b30685ba67778d47c5d76cc0f75af9e0fe5618bfe2aa"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Timer.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Timer.moon",
+      "sha256": "d40b887d57107acb5aa2547ca5e01640f4346733d140491c1c1b6efb19f2c250"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/UnitTestSuite.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/UnitTestSuite.moon",
+      "sha256": "6fb19b3cc6db9537282246f7a5aea1164af8857fd4f6e4630d126557e9080271"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/UpdateFeed.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/UpdateFeed.moon",
+      "sha256": "8a1f73354176e399f7b3cda427ff49e5dcf0db51ca93cc3ba51f3956c2d3c472"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/Updater.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/Updater.moon",
+      "sha256": "563de285e6ba374952ddddba1826ae4bdc194909a9a7840189da0ff652575462"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/UpdateTask.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/UpdateTask.moon",
+      "sha256": "60aa88a1ee1071ce2d114e9359b35fb48a994d271a91f1ff32a247d3c8a55218"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/utils.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/utils.moon",
+      "sha256": "c559b270b41bf7a921d60de7bc3cd8d7f222415b7dc11292a12d4123da9661dd"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl/ZipArchiver.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl/ZipArchiver.moon",
+      "sha256": "daf156f6035c4e33863dd4c6598e11cb64ff4ee7f8f7ea9d9395bad2522f165d"
+    },
+    {
+      "sourcePath": "modules/l0/dkjson/test.moon",
+      "yoakePath": "automation-3.5-above/include/l0/dkjson/test.moon",
+      "sha256": "021235a30a8fc3cb7bae4d0fddfb8f8a2dcfc66ce241c174d90a53a87d2503da"
+    },
+    {
+      "sourcePath": "modules/l0/dkjson/vendor/dkjson.lua",
+      "yoakePath": "automation-3.5-above/include/l0/dkjson/vendor/dkjson.lua",
+      "sha256": "52f30be905216796ccb1e97da6135f3f5cfaaf6359544e66046e40f516a36b94"
+    },
+    {
+      "sourcePath": "macros/l0.DependencyControl.Toolbox/test.moon",
+      "yoakePath": "automation-3.5-above/depctrl-autoload/l0.DependencyControl.Toolbox/test.moon",
+      "sha256": "417d5756e81a105a5187ac9d61e77eaa982f8938def4b4c0da6a4702a7eb1e36"
+    },
+    {
+      "sourcePath": "modules/l0/DependencyControl.moon",
+      "yoakePath": "automation-3.5-above/include/l0/DependencyControl.moon",
+      "sha256": "46bc14660a88f41e666f018e27a690b4ed8006ecb26e087cfaaec49ab5962c49"
+    },
+    {
+      "sourcePath": "modules/l0/dkjson.moon",
+      "yoakePath": "automation-3.5-above/include/l0/dkjson.moon",
+      "sha256": "b56a8afdc2521fa755ca18e021250692888eb9407fe89ddaacebdd1617d41238"
+    },
+    {
+      "sourcePath": "macros/l0.DependencyControl.Toolbox.moon",
+      "yoakePath": "automation-3.5-above/depctrl-autoload/l0.DependencyControl.Toolbox.moon",
+      "sha256": "5938057a9b65d1ae10242046f8f9197415636638ea3da0dd98758e04adda0c58"
+    }
+  ]
+}

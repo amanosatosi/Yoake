@@ -35,6 +35,11 @@ modern=json.loads((ROOT/'third_party/automation/aegisub-3.5.1-provenance.json').
 for entry in modern['files']:
     if hashlib.sha256((ROOT/entry['yoakePath']).read_bytes()).hexdigest()!=entry['sha256']:
         fail(f"Aegisub 3.5.1 source differs from recorded provenance: {entry['yoakePath']}")
+depctrl=json.loads((ROOT/'third_party/automation/dependencycontrol-provenance.json').read_text(encoding='utf-8'))
+if not re.fullmatch(r'[0-9a-f]{40}', depctrl['commit']): fail('DependencyControl must use an immutable commit')
+for entry in depctrl['files']:
+    if hashlib.sha256((ROOT/entry['yoakePath']).read_bytes()).hexdigest()!=entry['sha256']:
+        fail(f"DependencyControl source differs from recorded provenance: {entry['yoakePath']}")
 for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit'], versions['luajit']['commit']):
     if not re.fullmatch(r'[0-9a-f]{40}', pin): fail(f"native dependency ref is not immutable: {pin}")
 if versions.get('mangetsu', {}).get('branch') != 'mangetsu':
