@@ -256,7 +256,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
 
     [Fact] public async Task ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="A{\\future(opaque)\\distort(0,0,1,1)}é👩‍👩‍👧‍👦漢";await Command(CommandIds.EditCommit);
+        _model.Draft!.Text="A{\\future(opaque)\\distort(0,0,1,1)}é👩‍👩‍👧‍👦漢";await Command(CommandIds.EditCommit);
         var editor=_model.ActiveEditor!;var line=_model.SelectedEvent!;var source=editor.Document.Serialize();
         Assert.False(_model.Actions["edit/line/split/before"].CanExecute(null));Assert.False(_model.Actions["edit/line/split/after"].CanExecute(null));
         Assert.Equal("edit/line/split/before",_model.Hotkeys.Resolve(new("D",Yoake.Core.Hotkeys.KeyModifiers.Control),[Yoake.Core.Hotkeys.HotkeyContext.Default])!.CommandId);
@@ -274,7 +274,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
     [Theory] [InlineData("concatenate")][InlineData("keep_first")][InlineData("as_karaoke")]
     public async Task JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo(string variant)
     {
-        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;_model.Draft!.Text="{\\future(x)}日本語";await Command(CommandIds.EditCommit);
+        var first=_model.SelectedEvent!;_model.Draft!.Text="{\\future(x)}日本語";await Command(CommandIds.EditCommit);
         await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent!;_model.Draft!.Text="မြန်မာ 👩‍👩‍👧‍👦";await Command(CommandIds.EditCommit);
         Assert.False(_model.Actions["edit/line/join/"+variant].CanExecute(null));
         _model.SelectedEvent=first;_model.SetSelectedEvents([first,second]);var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
@@ -471,7 +471,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task DraftFeedbackIsLiveCoalescedAndRevertible()
     {
-        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;var revision=_model.PreviewRevision;
+        var line=_model.SelectedEvent!;var revision=_model.PreviewRevision;
         foreach(var text in new[]{"m","mi","mixed မြန်မာ"})_model.Draft.Text=text;
         Assert.Equal("mixed မြန်မာ",line.DisplayText);Assert.Equal("",line.Text);Assert.True(_model.PreviewRevision>revision);
         await Command(CommandIds.EditCancel);Assert.Equal("",line.DisplayText);Assert.Equal("",_model.Draft.Text);
@@ -485,23 +485,23 @@ public sealed partial class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task NewDocumentIsConnectedAndInsertCanBeEdited()
     {
-        Assert.NotNull(_model.ActiveEditor);Assert.Empty(_model.Events);Assert.Null(_model.Draft);Assert.Equal("",_model.EditorDraft.Text);await Command(CommandIds.GridInsertAfter);
-        Assert.Single(_model.Events);Assert.NotNull(_model.Draft);_model.Draft!.Text="日本語 မြန်မာ 👩‍👩‍👧‍👦";
+        Assert.NotNull(_model.ActiveEditor);Assert.Single(_model.Events);Assert.NotNull(_model.Draft);Assert.Equal("",_model.EditorDraft.Text);await Command(CommandIds.GridInsertAfter);
+        Assert.Equal(2,_model.Events.Count);Assert.NotNull(_model.Draft);_model.Draft!.Text="日本語 မြန်မာ 👩‍👩‍👧‍👦";
         Assert.True(_workspace.ActiveDocument!.IsDirty);await Command(CommandIds.EditCommit);
-        Assert.Equal("日本語 မြန်မာ 👩‍👩‍👧‍👦",_model.Events[0].Text);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
+        Assert.Equal("日本語 မြန်မာ 👩‍👩‍👧‍👦",_model.Events[1].Text);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
     }
     [Fact] public async Task TabsHaveIndependentHistoryAndCommitBeforeSwitching()
     {
-        await Command(CommandIds.GridInsertAfter);var first=_workspace.ActiveDocumentId!.Value;_model.Draft!.Text="first draft";
-        await Command(CommandIds.SubtitleNew);Assert.Empty(_model.Events);Assert.False(_model.ActiveEditor!.Undo.CanUndo);
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="second draft";
+        var first=_workspace.ActiveDocumentId!.Value;_model.Draft!.Text="first draft";
+        await Command(CommandIds.SubtitleNew);Assert.Single(_model.Events);Assert.False(_model.ActiveEditor!.Undo.CanUndo);
+        _model.Draft!.Text="second draft";
         await Command(CommandIds.WorkspaceActivateTab,first);Assert.Equal("first draft",_model.Events[0].Text);
         await Command(CommandIds.EditUndo);Assert.Equal("",_model.Events[0].Text);
         await Command(CommandIds.WorkspaceActivateTab,_workspace.Documents[1].Id);Assert.Equal("second draft",_model.Events[0].Text);
     }
     [Fact] public async Task SaveAsChangesPathAndSavedUndoState()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="saved";var path=Path.Combine(_root,"saved.ass");
+        _model.Draft!.Text="saved";var path=Path.Combine(_root,"saved.ass");
         Assert.True(_model.SaveActiveSubtitle(path));Assert.Equal(path,_workspace.ActiveDocument!.Path);Assert.Equal("saved.ass",_workspace.ActiveDocument.Title);Assert.False(_workspace.ActiveDocument.IsDirty);
         _model.Draft!.Actor="Actor";await Command(CommandIds.EditCommit);Assert.True(_workspace.ActiveDocument.IsDirty);
         await Command(CommandIds.EditUndo);Assert.False(_workspace.ActiveDocument.IsDirty);
@@ -657,7 +657,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task MultiRowCommandsWorkAcrossUndo()
     {
-        await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridDuplicate);Assert.Equal(4,_model.Events.Count);
+        await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridDuplicate);Assert.Equal(4,_model.Events.Count);
         await Command(CommandIds.EditUndo);Assert.Equal(2,_model.Events.Count);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridToggleComment);Assert.All(_model.Events,l=>Assert.True(l.IsComment));
     }
     [Fact] public async Task ReopenConnectsLoadedRowsAndRecentFiles()
@@ -668,8 +668,8 @@ public sealed partial class EditorWorkflowTests : IDisposable
 
     [Fact] public async Task UndoCancelsDraftBeforeUndoingCommittedChanges()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="uncommitted";await Command(CommandIds.EditUndo);Assert.Single(_model.Events);Assert.Equal("",_model.Draft!.Text);
-        await Command(CommandIds.EditUndo);Assert.Empty(_model.Events);
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="uncommitted";await Command(CommandIds.EditUndo);Assert.Equal(2,_model.Events.Count);Assert.Equal("",_model.Draft!.Text);
+        await Command(CommandIds.EditUndo);Assert.Single(_model.Events);
     }
     [Fact] public async Task StartingGestureCommitsPendingTextAndCancellationKeepsThatCommit()
     {
@@ -689,7 +689,7 @@ public sealed partial class EditorWorkflowTests : IDisposable
 
     [Fact] public async Task StructuralUndoAndRedoKeepCurrentDraftAttachedToALiveRow()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="first";await Command(CommandIds.EditCommit);
+        _model.Draft!.Text="first";await Command(CommandIds.EditCommit);
         await Command(CommandIds.GridDuplicate);var duplicate=_model.SelectedEvent!;
         await Command(CommandIds.EditUndo);Assert.DoesNotContain(duplicate,_model.Events);Assert.Contains(_model.SelectedEvent!,_model.Events);Assert.Equal("first",_model.Draft!.Text);
         await Command(CommandIds.EditRedo);Assert.Equal(2,_model.Events.Count);Assert.Contains(_model.SelectedEvent!,_model.Events);
