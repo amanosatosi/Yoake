@@ -19,8 +19,9 @@
     {
       "sourcePath": "automation/include/karaskel-auto4.lua",
       "yoakePath": "automation/include/karaskel-auto4.lua",
-      "sha256": "09a3f0c8b66887623b93a132d8c28307170b2232d271d2cb675e09e242f682a0",
-      "modifications": "none"
+      "sha256": "716514ba4a93dfd1074d21f1f8b33ffdd224be6c0c224773a70b75f344fd89b5",
+      "originalSha256": "09a3f0c8b66887623b93a132d8c28307170b2232d271d2cb675e09e242f682a0",
+      "modifications": "Optionally use the Mangetsu virtual karaoke adapter installed by Karaoke Templater; retain the 3.2.2 parser as fallback."
     },
     {
       "sourcePath": "automation/include/karaskel.lua",
@@ -91,8 +92,9 @@
     {
       "sourcePath": "automation/autoload/kara-templater.lua",
       "yoakePath": "automation/autoload/kara-templater.lua",
-      "sha256": "b521224072bff84d14a384ad1e6c2730543e20cd9988b0bdf651fbb914559c5f",
-      "modifications": "none"
+      "sha256": "8950e8bb60dee928b5ca4a2a22a7fddf9c0ab26cbad6f5c0fa63235bbf8d7e17",
+      "originalSha256": "b521224072bff84d14a384ad1e6c2730543e20cd9988b0bdf651fbb914559c5f",
+      "modifications": "Load the Toshi-ban Mangetsu furigana adapter after karaskel.lua."
     },
     {
       "sourcePath": "automation/autoload/karaoke-auto-leadin.lua",

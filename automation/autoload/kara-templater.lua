@@ -40,6 +40,8 @@ script_version = "2.1.7"
 
 
 include("karaskel.lua")
+-- The adapter supplies a virtual karaoke stream for native Mangetsu furigana.
+karaskel.mangetsu_adapter = include("mangetsu-karaskel.lua")
 
 
 -- Find and parse/prepare all karaoke template lines

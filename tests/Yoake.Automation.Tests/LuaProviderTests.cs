@@ -345,7 +345,7 @@ aegisub.register_macro('Filesystem fixture','',function() end)
     [Theory]
     [InlineData(false, 3)]
     [InlineData(true, 2)]
-    public async Task UnmodifiedKaraokeTemplaterGeneratesRealEffectsAndUndoesLosslessly(bool noBlank, int expected)
+    public async Task ShippedKaraokeTemplaterGeneratesRealEffectsAndUndoesLosslessly(bool noBlank, int expected)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "autoload", "kara-templater.lua");
         using var script = await _provider.LoadAsync(path, new(path, [Path.Combine(AppContext.BaseDirectory, "include")]), CancellationToken.None);
@@ -374,6 +374,49 @@ aegisub.register_macro('Filesystem fixture','',function() end)
         Assert.Contains(document.Styles, style => style.Name == "Default-furigana");
         editor.Undo.Undo(); Assert.Equal(before, document.Serialize());
         editor.Undo.Redo(); Assert.Equal(expected, document.Events.Count(line => line.Effect == "fx"));
+    }
+
+    [Fact]
+    public async Task MangetsuKaraskelAdapterRetainsTimingAndFallsBackForLegacySyntax()
+    {
+        using var script=await Load("""
+local adapter=include('mangetsu-karaskel.lua')
+local function check(text,expected)
+  local result=assert(adapter.parse_karaoke_data({text=text}))
+  assert(#result==#expected)
+  for i,e in ipairs(expected) do
+    assert(result[i].text_stripped==e[1] and result[i].start_time==e[2] and result[i].duration==e[3])
+  end
+end
+check('<噛|{\\k60}か>ん{\\k70}だ',{{'噛|<か',0,600},{'ん',0,600},{'だ',600,700}})
+check('<水|{\\k30}みず><鏡|{\\k40}かがみ>',{{'水|<みず',0,300},{'鏡|<かがみ',300,400}})
+check('<病|{\\k30}や{\\k26}ま{\\k10}い>',{{'病|<や',0,300},{'#|ま',300,260},{'#|い',560,100}})
+check('{\\k50}<love|ai>',{{'love|<ai',0,500}})
+assert(adapter.parse_karaoke_data({text='漢字|<かな'})==nil)
+assert(adapter.parse_karaoke_data({text='{\\k20}ordinary'})==nil)
+assert(adapter.parse_karaoke_data({text='<漢字|かな|KANJI>'})==nil)
+aegisub.register_macro('Adapter fixture','',function() end)
+""");
+        Assert.Single(script.Macros);
+    }
+
+    [Fact]
+    public async Task KaraokeTemplaterProcessesNativeMangetsuFuriganaAndUndoesLosslessly()
+    {
+        var path=Path.Combine(AppContext.BaseDirectory,"autoload","kara-templater.lua");
+        using var script=await _provider.LoadAsync(path,new(path,[Path.Combine(AppContext.BaseDirectory,"include")]),CancellationToken.None);
+        var document=AssDocument.CreateEmpty();var editor=new SubtitleEditor(document);
+        var template=editor.Insert(null,true);template.Effect="template furi";template.Text=@"{\k$kdur}";editor.ToggleComment([template]);
+        var song=editor.Insert(template,true);song.Text=@"<病|{\k30}や{\k26}ま{\k10}い>";song.Start="0:00:01.00";song.End="0:00:03.00";
+        editor.MarkSaved();var before=document.Serialize();using var subs=new AutomationSubtitleDocument(document);
+        var macro=Assert.Single(script.Macros);await script.RunAsync(macro.Index,Context(subs),CancellationToken.None);
+        Assert.Equal(before,document.Serialize());subs.Commit(editor,macro.Name);
+        var generated=document.Events.Where(line=>line.Effect=="fx").ToArray();
+        Assert.Contains(generated,line=>line.Text.EndsWith("や",StringComparison.Ordinal));
+        Assert.Contains(generated,line=>line.Text.EndsWith("ま",StringComparison.Ordinal));
+        Assert.Contains(generated,line=>line.Text.EndsWith("い",StringComparison.Ordinal));
+        Assert.Equal(@"<病|{\k30}や{\k26}ま{\k10}い>",song.Text);
+        editor.Undo.Undo();Assert.Equal(before,document.Serialize());editor.Undo.Redo();Assert.Equal(generated.Length,document.Events.Count(line=>line.Effect=="fx"));
     }
 
     [Fact]

@@ -200,7 +200,7 @@ must remain visible in the compatibility ledger and complex-script fixtures.
 The standard modules use 3.2.2's unmodified LPeg 0.10 and luabins sources, its
 unmodified Boost regex/Unicode adapters, and a narrow Yoake implementation of
 the source-defined lfs surface using C++ standard filesystem. Shipped includes
-(including MoonScript 0.2.5) remain unmodified and are hash-recorded in
+(including MoonScript 0.2.5) are hash-recorded in
 `third_party/automation/provenance.json`. Their legacy versions are compatibility
 pins, not claims of modern maintenance; all are trusted-script code.
 

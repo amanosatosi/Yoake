@@ -322,13 +322,13 @@ end)
                 if (model.VideoFrame is null || model.DisplayedPreviewRevision < model.PreviewRevision) return false;
                 var templater = model.AutomationScripts.FirstOrDefault(s => s.DocumentId is null && s.Path.EndsWith("kara-templater.lua", StringComparison.OrdinalIgnoreCase));
                 if (templater is null || templater.Status == "Loading") return false;
-                Require(templater.Error is null, "Shipped unmodified Karaoke Templater must autoload: " + templater.Error);
+                Require(templater.Error is null, "Shipped Karaoke Templater must autoload: " + templater.Error);
                 _templateCommand = AutomationCommandCatalog.CommandId(templater.Path, "Apply karaoke template");
                 if (!model.Registry.CanExecute(_templateCommand, new(_document))) return false;
                 _templatePixels = Pixels(); _running = model.Registry.InvokeAsync(_templateCommand, new(_document)).AsTask(); _stage++; return false;
             case 24:
                 if (!_running!.IsCompleted) return false;
-                Require(_running.GetAwaiter().GetResult(), "Unmodified packaged Karaoke Templater must generate actual effects: " + model.SubtitleStatus);
+                Require(_running.GetAwaiter().GetResult(), "Packaged Karaoke Templater must generate actual effects: " + model.SubtitleStatus);
                 var effects = model.Events.Where(e => e.Effect == "fx").ToArray();
                 Require(effects.Length == 2 && effects.All(e => !e.IsComment && e.Text.Contains("\\pos(", StringComparison.Ordinal) && e.Text.Contains("\\distort(0,0,1,1)", StringComparison.Ordinal)), "Actual templater must generate syllable effects while preserving Mangetsu syntax.");
                 Require(_templateSong!.IsComment && model.ActiveEditor!.Document.Styles.Any(s => s.Name == "Default-furigana"), "Real karaskel must preprocess the song and produce furigana style data.");
@@ -357,7 +357,7 @@ end)
                 RequireUnchanged();
                 File.AppendAllText(report + ".automation.txt", "PASS: packaged Lua runtime, Unicode master path, live validation/isactive, all ten dialog classes, custom/default buttons, responsive dispatcher, real mutation/insertion, lossless source, grid/draft refresh, actual Mangetsu pixel change, selection undo/redo.\n");
                 File.AppendAllText(report + ".automation.txt", "PASS: actual Unicode clipboard round trip, default empty-label OK result, signed integer limits, negative float, empty dropdown, multiline text, checkbox edit, forced loop cancellation and checkpoint rollback, log-level filtering, full failure traceback, interpreter reuse, embedded export settings and isolated Unicode ASS output with unchanged live history.\n");
-                File.AppendAllText(report + ".automation.txt", "PASS: actual Manager metadata and repeated reload command cleanup, document-local Add and Save As persistence/reopen, shipped unmodified Karaoke Templater with real karaskel/furigana, generated syllables/Mangetsu syntax and changed video pixels, exact source undo/redo, independent tab media and clean disposal.\n");
+                File.AppendAllText(report + ".automation.txt", "PASS: actual Manager metadata and repeated reload command cleanup, document-local Add and Save As persistence/reopen, shipped Karaoke Templater with real karaskel/furigana, generated syllables/Mangetsu syntax and changed video pixels, exact source undo/redo, independent tab media and clean disposal.\n");
                 _stage++; return true;
             default: return true;
         }

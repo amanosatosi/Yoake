@@ -3,6 +3,7 @@ automation/include/cleantags.lua -text
 automation/include/clipboard.lua -text
 automation/include/karaskel-auto4.lua -text
 automation/include/karaskel.lua -text
+automation/include/mangetsu-karaskel.lua -text
 automation/include/moonscript.lua -text
 automation/include/re.lua -text
 automation/include/unicode.lua -text

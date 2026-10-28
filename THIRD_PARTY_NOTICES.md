@@ -182,8 +182,15 @@ unmodified release regression fixtures under
 `tests/Yoake.Automation.Tests/Fixtures`. Their original license headers are
 retained; Yoake's module assertion runner is original test code. Source-policy
 checks verify raw SHA-256 hashes, and Git attributes preserve the recorded bytes.
-Source files are unchanged; the native helper boundary and lfs implementation are original Yoake
-code. Original source license/copyright headers are retained.
+Except for the two documented Mangetsu adapter hooks, the recorded release source files are unchanged; the native helper boundary and lfs implementation are original Yoake code. Original source license/copyright headers are retained.
+
+The Mangetsu Karaskel adapter is copied without modification from the user-supplied
+`Aegisub_Toshi-ban-release/automation/include/mangetsu-karaskel.lua` archive from
+https://github.com/amanosatosi/Aegisub_Toshi-ban. The archive has no Git metadata;
+its exact SHA-256 and source path are recorded in
+`third_party/automation/mangetsu-adapter.json`. Its headerless source is covered
+by the fork's root BSD-3-Clause LICENCE, copyright (c) 2004-2012 Aegisub Project;
+the full text is included in `licenses/Aegisub-BSD-3-Clause.txt` in packages.
 
 Aegisub library licenses vary by file: BSD 3-Clause and ISC, with authors including
 Niels Martin Hansen, Rodrigo Braz Monteiro and Thomas Goyne. MoonScript 0.2.5 is
