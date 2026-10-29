@@ -193,7 +193,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 var shifted=model.VisibleVisualLines().ToArray();
                 for(var i=0;i<2;i++)Require(Math.Abs(shifted[i].Position.X-selected[i].Position.X-Size.Width*.05)<.01,"Multi-line drag must preserve relative offsets.");
                 Invoke(CommandIds.EditUndo);Require(selected.Select(l=>l.Line.Text).SequenceEqual(originals),"One undo must restore all selected lines.");
-                foreach(var line in model.Events.Where(line=>!line.IsComment))model.ActiveEditor!.SetTiming(line,0,200);
+                foreach(var fixtureEvent in model.Events.Where(item=>!item.IsComment))model.ActiveEditor!.SetTiming(fixtureEvent,0,200);
                 return false;
             case 14:
                 capture(Overlay,"visual-outside-line-time",1);Require(model.VisibleVisualLines(true).Count==0&&Overlay.RenderedHandles==0,"Position handles must disappear when no dialogue is visible at the current frame.");
