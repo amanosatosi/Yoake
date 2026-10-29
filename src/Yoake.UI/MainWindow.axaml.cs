@@ -41,6 +41,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(OperatingSystem.IsWindows()){WindowDecorations=Avalonia.Controls.WindowDecorations.Full;ExtendClientAreaToDecorationsHint=true;ExtendClientAreaTitleBarHeightHint=36;}
         StartupDiagnostics.Checkpoint("MainWindow native decorations configured");
         SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
+        SubtitleRows.PropertyChanged+=(_,e)=>{if(e.Property==ItemsControl.ItemsSourceProperty)Dispatcher.UIThread.Post(SyncSelection);};
         SubtitleRows.AddHandler(PointerPressedEvent,GridDoubleClick,RoutingStrategies.Bubble,handledEventsToo:true);
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
@@ -49,6 +50,7 @@ public partial class MainWindow : Window, IEditorDialogs
         AddHandler(DragDrop.DragOverEvent, HandleFileDragOver, RoutingStrategies.Tunnel);
         AddHandler(DragDrop.DropEvent, HandleFileDrop, RoutingStrategies.Tunnel);
         Opened+=(_,_)=>{UpdateChrome();UpdateEmbeddedVideoHost();};
+        Loaded+=(_,_)=>SyncSelection();
         Opened+=StartAutomation;
         LayoutUpdated+=(_,_)=>UpdateChrome();
         ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(()=>{UpdateChrome();RefreshVideoScaling();});
@@ -156,6 +158,7 @@ public partial class MainWindow : Window, IEditorDialogs
             for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
             UpdateWorkspaceView();UpdateEmbeddedVideoHost();
             _model.PropertyChanged+=ModelChanged;_model.WindowCloseRequested+=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
+            Dispatcher.UIThread.Post(SyncSelection);
             RefreshAutomationMenu(); StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
     }
     private int _resizeColumn=-1;
@@ -352,7 +355,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }
     private void SyncSelection()
     {
-        if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null)return;
+        if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null||!ReferenceEquals(SubtitleRows.ItemsSource,_model.Events))return;
         if(SubtitleRows.SelectedItems.OfType<AssEvent>().SequenceEqual(_model.SelectedEvents))return;
         _selectionSync=true;
         try{var owned=_model.Events.ToHashSet();SubtitleRows.SelectedItems=_model.SelectedEvents.Where(owned.Contains).ToList();}
@@ -360,7 +363,7 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private void GridSelectionChanged(object? sender,SelectionChangedEventArgs e)
     {
-        if(_model is null||_model.IsSynchronizingSelection||_selectionSync||SubtitleRows.SelectedItems is null)return;
+        if(_model is null||_model.IsSynchronizingSelection||_selectionSync||SubtitleRows.SelectedItems is null||!ReferenceEquals(SubtitleRows.ItemsSource,_model.Events))return;
         _selectionSync=true;
         try
         {
