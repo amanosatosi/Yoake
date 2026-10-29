@@ -4,10 +4,13 @@ $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
 $work = Join-Path $env:RUNNER_TEMP 'yoake-motion-build'
 $vcpkg = Join-Path $work 'vcpkg'
-$prefix = Join-Path $vcpkg 'installed\x64-windows-static-md'
+$versions = Get-Content -LiteralPath (Join-Path $repo 'third_party\versions.json') -Raw | ConvertFrom-Json
+$triplet = $versions.motionOpenCv.triplet
+$prefix = Join-Path $vcpkg "installed\$triplet"
 $destination = Join-Path $OutputRoot 'motion'
 New-Item -ItemType Directory -Force $work, $destination | Out-Null
-$revision = '19780d9cdf84d0944cf9a318666703b89ab6629c'
+$revision = $versions.motionOpenCv.vcpkgCommit
+if ($revision -notmatch '^[a-f0-9]{40}$') { throw 'Invalid OpenCV registry revision.' }
 git clone --no-checkout https://github.com/microsoft/vcpkg.git $vcpkg
 if ($LASTEXITCODE -ne 0) { throw 'Could not clone pinned vcpkg.' }
 git -C $vcpkg checkout --detach $revision
@@ -15,10 +18,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not select pinned vcpkg revision.' }
 & (Join-Path $vcpkg 'bootstrap-vcpkg.bat') -disableMetrics
 if ($LASTEXITCODE -ne 0) { throw 'Could not bootstrap vcpkg.' }
 $env:VCPKG_DISABLE_METRICS = '1'
-& (Join-Path $vcpkg 'vcpkg.exe') install 'opencv4[core,calib3d]:x64-windows-static-md'
+& (Join-Path $vcpkg 'vcpkg.exe') install "$($versions.motionOpenCv.port):$triplet"
 if ($LASTEXITCODE -ne 0) { throw 'Could not build OpenCV.' }
 $build = Join-Path $work 'bridge'
-cmake -S (Join-Path $repo 'third_party\motion_tracking') -B $build -A x64 "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $vcpkg 'scripts\buildsystems\vcpkg.cmake')" -DVCPKG_TARGET_TRIPLET=x64-windows-static-md "-DOpenCV_DIR=$prefix\share\opencv4"
+cmake -S (Join-Path $repo 'third_party\motion_tracking') -B $build -A x64 "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $vcpkg 'scripts\buildsystems\vcpkg.cmake')" "-DVCPKG_TARGET_TRIPLET=$triplet" "-DOpenCV_DIR=$prefix\share\opencv4"
 if ($LASTEXITCODE -ne 0) { throw 'Could not configure motion provider.' }
 cmake --build $build --config Release
 if ($LASTEXITCODE -ne 0) { throw 'Could not build motion provider.' }

@@ -3,6 +3,13 @@
   "vcpkg": {
     "commit": "f3419f137f1a1e79b33b880ae6845f873d87820b"
   },
+  "motionOpenCv": {
+    "vcpkgCommit": "19780d9cdf84d0944cf9a318666703b89ab6629c",
+    "port": "opencv4[core,calib3d]",
+    "triplet": "x64-windows-static-md",
+    "license": "Apache-2.0",
+    "linkage": "static in yoake-motion.dll"
+  },
   "ffmpeg": {
     "version": "7.1.1",
     "tagCommit": "a1328e68877e12ab5a6e5d92a84aefa566783ea5",

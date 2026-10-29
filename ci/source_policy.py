@@ -40,7 +40,7 @@ if not re.fullmatch(r'[0-9a-f]{40}', depctrl['commit']): fail('DependencyControl
 for entry in depctrl['files']:
     if hashlib.sha256((ROOT/entry['yoakePath']).read_bytes()).hexdigest()!=entry['sha256']:
         fail(f"DependencyControl source differs from recorded provenance: {entry['yoakePath']}")
-for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit'], versions['luajit']['commit']):
+for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit'], versions['luajit']['commit'], versions['motionOpenCv']['vcpkgCommit']):
     if not re.fullmatch(r'[0-9a-f]{40}', pin): fail(f"native dependency ref is not immutable: {pin}")
 if versions.get('mangetsu', {}).get('branch') != 'mangetsu':
     fail("Mangetsu must follow the live 'mangetsu' branch")
@@ -136,7 +136,7 @@ for marker in ('ass_render_frame_rgba', 'ass_composite_images_bgra', 'mangetsu.d
     if marker not in renderer: fail(f'Mangetsu preview marker missing: {marker}')
 for marker in ('waveOutOpen', 'waveOutWrite', 'waveOutGetPosition'):
     if marker not in audio_output: fail(f'audio output marker missing: {marker}')
-for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll', 'yoake-automation-modern.dll')"):
+for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll', 'yoake-automation-modern.dll', 'yoake-motion.dll')"):
     if marker not in package: fail(f'Mangetsu portable staging marker missing: {marker}')
 
 result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--check'])
