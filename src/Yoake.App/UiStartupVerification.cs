@@ -44,8 +44,10 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
         {
             if (!_inserted)
             {
-                Require(model.Draft is null&&StartupDiagnostics.BindingWarningCount==0,"Initial empty document must produce no binding warnings.");
-                Invoke(CommandIds.GridInsertAfter);
+                Require(model.Events.Count == 1 && model.Draft is not null && ReferenceEquals(model.SelectedEvent, model.Events[0]) &&
+                    model.Draft.Text == "" && !model.ActiveEditor!.IsDirty && !model.ActiveEditor.Undo.CanUndo,
+                    "A new document must start with one selected, editable, clean dialogue line.");
+                Require(StartupDiagnostics.BindingWarningCount == 0, "Initial document must produce no binding warnings.");
                 _inserted = true;
                 return; // Let real row containers/bindings and selection initialize.
             }
@@ -111,7 +113,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
                 Require(text.Text == formatted, "IME preedit presentation must not modify the source.");
                 Invoke(CommandIds.EditUndo);
                 Require(model.SelectedEvent.Text == source, "Formatting undo must restore the exact tagged Unicode source.");
-                Invoke(CommandIds.EditUndo); // Undo text entry; the inserted row remains for style preview.
+                Invoke(CommandIds.EditUndo); // Undo text entry; the initial row remains for style preview.
                 _editorVerified = true;
                 return;
             }

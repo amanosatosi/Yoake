@@ -55,7 +55,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     var restored=model.HotkeyProfile.Overrides.Any(item=>item.Context==HotkeyContext.Default&&item.CommandId==CommandIds.SubtitleNew);
                     Require(model.Actions[CommandIds.SubtitleNew].Shortcut==(restored?"Ctrl-Alt-K":"Ctrl-N"),"Profile must restore the effective shortcut on a subsequent launch.");
                     Require(model.VideoAutoSeek==!restored,"The video autoseek preference must restore independently on the second launch.");
-                    Invoke(CommandIds.GridInsertAfter);Invoke(CommandIds.GridInsertAfter);
+                    Invoke(CommandIds.GridInsertAfter);
                     model.SelectedEvent=model.Events[0];model.Draft!.Text=Source;Invoke(CommandIds.EditCommit);
                     _document=model.ActiveDocumentId;_line=model.SelectedEvent;_editor=model.ActiveEditor;
                     _savedPath=Path.Combine(options.ProfileDirectory!,"keyboard-fixture.ass");Require(model.SaveActiveSubtitle(_savedPath),"Prepare a saved Unicode fixture.");
@@ -236,7 +236,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Press(_find!.FindControl<Button>("FindClose")!,Key.Enter);return;
                 case 34:
                     Require(!window.OwnedWindows.OfType<FindWindow>().Any(),"The semantic Close action must close the actual search window.");
-                    Invoke(CommandIds.SubtitleNew);Invoke(CommandIds.GridInsertAfter);Invoke(CommandIds.GridInsertAfter);
+                    Invoke(CommandIds.SubtitleNew);Invoke(CommandIds.GridInsertAfter);
                     model.SelectedEvent=model.Events[0];Press(window.FindControl<ToggleButton>("FastActorToggle")!,Key.Enter);return;
                 case 35:
                     Require(model.FastActorEnabled,"The real fast actor toggle must enable the document-owned mode.");

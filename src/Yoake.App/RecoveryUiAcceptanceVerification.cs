@@ -49,7 +49,7 @@ internal sealed class RecoveryUiAcceptanceVerification(IClassicDesktopStyleAppli
                 Require(model.OpenSubtitle(PathA),"Open first original.");Text.SetCurrentValue(TextBox.TextProperty,"committed translation 日本語");return;
             case 1:
                 Require(model.Draft!.Text=="committed translation 日本語","Real TextBox binding.");await Invoke(CommandIds.EditCommit);
-                await Invoke(CommandIds.SubtitleNew);await Invoke(CommandIds.GridInsertAfter);Text.SetCurrentValue(TextBox.TextProperty,"never saved");return;
+                await Invoke(CommandIds.SubtitleNew);Text.SetCurrentValue(TextBox.TextProperty,"never saved");return;
             case 2:
                 await Invoke(CommandIds.EditCommit);Require(model.OpenSubtitle(PathB),"Open same basename in another directory.");
                 window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen=true;Press(window.FindControl<MenuItem>("OptionsMenu")!,Key.Enter);return;

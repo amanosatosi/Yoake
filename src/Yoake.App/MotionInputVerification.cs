@@ -24,7 +24,7 @@ internal sealed class MotionInputVerification(MainWindow window, MainWindowViewM
         switch (_stage++)
         {
             case 0:
-                Invoke(CommandIds.SubtitleNew); Invoke(CommandIds.GridInsertAfter);
+                Invoke(CommandIds.SubtitleNew);
                 model.Draft!.Text = @"{\pos(400,300)\an7\fs120\1c&HFF00FF&\future(opaque)}Track\Nမြန်မာ";
                 model.Draft.Start = "0:00:00.00"; model.Draft.End = "0:00:01.60"; Invoke(CommandIds.EditCommit);
                 model.ActiveEditor!.MarkSaved(); _original = model.ActiveEditor.Document.Serialize();
