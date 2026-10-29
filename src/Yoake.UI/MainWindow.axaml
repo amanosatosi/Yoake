@@ -8,7 +8,7 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Yoake"
         Width="1440" Height="900"
-        MinWidth="1040" MinHeight="690"
+        MinWidth="1040" MinHeight="728"
         FontSize="12"
         Background="{DynamicResource AppBackgroundBrush}">
   <Window.Styles>
@@ -18,7 +18,8 @@
     <Style Selector="CheckBox"><Setter Property="MinHeight" Value="24" /></Style>
   </Window.Styles>
   <Grid>
-    <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="54" /><RowDefinition Height="3*" MinHeight="444" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="140" /></Grid.RowDefinitions>
+    <!-- Reserve 140 DIP for actual rows, plus the 24-DIP header, borders and margins. -->
+    <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="{Binding ToolbarRowHeight}" /><RowDefinition Height="3*" MinHeight="444" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="178" /></Grid.RowDefinitions>
     <Border Grid.Row="0" Name="TitleTabStrip" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <ScrollViewer Name="TabScroll" Grid.Column="0" MaxWidth="980" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
@@ -51,91 +52,338 @@
     </Border>
 
     <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}"><Grid RowDefinitions="24,*"><Menu>
-<MenuItem Header="File">
+<MenuItem Name="FileMenu" Header="File">
 <MenuItem Header="Recent files" ItemsSource="{Binding RecentFiles}"><MenuItem.ItemTemplate><DataTemplate x:DataType="x:String"><Button Content="{Binding}" Click="RecentFileClick" /></DataTemplate></MenuItem.ItemTemplate></MenuItem>
-<MenuItem Header="New" Command="{Binding Actions[subtitle/new]}" />
-<MenuItem Header="Open…" Command="{Binding Actions[subtitle/open]}" />
-<MenuItem Header="Save" Command="{Binding Actions[subtitle/save]}" />
-<MenuItem Header="Save As…" Command="{Binding Actions[subtitle/save-as]}" />
-<MenuItem Header="Reload from disk…" Command="{Binding Actions[subtitle/revert]}" />
-<MenuItem Header="Close tab" Command="{Binding Actions[subtitle/close]}" />
+<MenuItem Name="NewMenu" Header="New" InputGesture="{Binding Actions[subtitle/new].InputGesture}" Command="{Binding Actions[subtitle/new]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.New}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Open…" InputGesture="{Binding Actions[subtitle/open].InputGesture}" Command="{Binding Actions[subtitle/open]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Open}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="RecoveryMenu" Header="Recover Subtitles…" InputGesture="{Binding Actions[subtitle/open/autosave].InputGesture}" Command="{Binding Actions[subtitle/open/autosave]}" />
+<MenuItem Name="AttachmentsMenu" Header="Attachments…" InputGesture="{Binding Actions[subtitle/attachment].InputGesture}" Command="{Binding Actions[subtitle/attachment]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Attachments}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Save" InputGesture="{Binding Actions[subtitle/save].InputGesture}" Command="{Binding Actions[subtitle/save]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Save}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Save As…" InputGesture="{Binding Actions[subtitle/save-as].InputGesture}" Command="{Binding Actions[subtitle/save-as]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SaveAs}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Export subtitles…" InputGesture="{Binding Actions[automation/export].InputGesture}" Command="{Binding Actions[automation/export]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Export}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Reload from disk…" InputGesture="{Binding Actions[subtitle/revert].InputGesture}" Command="{Binding Actions[subtitle/revert]}" />
+<MenuItem Header="Exit" InputGesture="{Binding Actions[app/exit].InputGesture}" Command="{Binding Actions[app/exit]}" />
+<MenuItem Header="Close tab" InputGesture="{Binding Actions[subtitle/close].InputGesture}" Command="{Binding Actions[subtitle/close]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Close}" /></MenuItem.Icon></MenuItem>
 </MenuItem>
-<MenuItem Header="Edit">
-<MenuItem Header="Undo" Command="{Binding Actions[edit/undo]}" />
-<MenuItem Header="Redo" Command="{Binding Actions[edit/redo]}" />
-<MenuItem Header="Copy lines" Command="{Binding Actions[grid/copy]}" />
-<MenuItem Header="Cut lines" Command="{Binding Actions[grid/cut]}" />
-<MenuItem Header="Paste lines" Command="{Binding Actions[grid/paste]}" />
-<MenuItem Header="Select all lines" Command="{Binding Actions[grid/select-all]}" />
-<MenuItem Header="Find / Replace…" Command="{Binding Actions[edit/find]}" />
+<MenuItem Name="EditMenu" Header="Edit">
+<MenuItem Name="OptionsMenu" Header="Options…" InputGesture="{Binding Actions[app/options].InputGesture}" Command="{Binding Actions[app/options]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Options}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="UndoMenu" Header="{Binding Actions[edit/undo].Label}" InputGesture="{Binding Actions[edit/undo].InputGesture}" Command="{Binding Actions[edit/undo]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Undo}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="RedoMenu" Header="{Binding Actions[edit/redo].Label}" InputGesture="{Binding Actions[edit/redo].InputGesture}" Command="{Binding Actions[edit/redo]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Redo}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Copy lines" InputGesture="{Binding Actions[grid/copy].InputGesture}" Command="{Binding Actions[grid/copy]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Copy}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Cut lines" InputGesture="{Binding Actions[grid/cut].InputGesture}" Command="{Binding Actions[grid/cut]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Cut}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Paste lines" InputGesture="{Binding Actions[grid/paste].InputGesture}" Command="{Binding Actions[grid/paste]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Paste}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="PasteOverMenu" Header="Paste Lines Over…" InputGesture="{Binding Actions[edit/line/paste/over].InputGesture}" Command="{Binding Actions[edit/line/paste/over]}" />
+<MenuItem Name="ShowOriginalMenu" Header="Show Original" ToggleType="CheckBox" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" />
+<MenuItem Header="Insert Original" Command="{Binding Actions[edit/insert_original]}" InputGesture="{Binding Actions[edit/insert_original].InputGesture}" />
+<MenuItem Header="Revert to original" Command="{Binding Actions[edit/revert]}" InputGesture="{Binding Actions[edit/revert].InputGesture}" />
+<MenuItem Header="Select all lines" InputGesture="{Binding Actions[grid/select-all].InputGesture}" Command="{Binding Actions[grid/select-all]}" />
+<MenuItem Name="SelectLinesMenu" Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectLines}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="SelectVisibleMenu" Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectVisible}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Clear line text" InputGesture="{Binding Actions[edit/clear].InputGesture}" Command="{Binding Actions[edit/clear]}" />
+<MenuItem Header="Clear visible text" InputGesture="{Binding Actions[edit/clear/text].InputGesture}" Command="{Binding Actions[edit/clear/text]}" />
+<MenuItem Header="Find…" InputGesture="{Binding Actions[edit/find].InputGesture}" Command="{Binding Actions[edit/find]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Find}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="FindNextMenu" Header="Find next" InputGesture="{Binding Actions[subtitle/find/next].InputGesture}" Command="{Binding Actions[subtitle/find/next]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FindNext}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Find / Replace…" InputGesture="{Binding Actions[edit/find_replace].InputGesture}" Command="{Binding Actions[edit/find_replace]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Replace}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Cancel background operation" Command="{Binding Actions[editor/cancel-operation]}" />
 </MenuItem>
 <MenuItem Header="Subtitle">
-<MenuItem Header="Insert before" Command="{Binding Actions[grid/insert/before]}" />
-<MenuItem Header="Insert after" Command="{Binding Actions[grid/insert/after]}" />
-<MenuItem Header="Duplicate" Command="{Binding Actions[grid/duplicate]}" />
-<MenuItem Header="Delete selected" Command="{Binding Actions[grid/delete]}" />
-<MenuItem Header="Dialogue / Comment" Command="{Binding Actions[grid/toggle-comment]}" />
-<MenuItem Header="Split at text cursor" Command="{Binding Actions[grid/split]}" />
-<MenuItem Header="Join selected" Command="{Binding Actions[grid/join]}" />
-<MenuItem Header="Move up" Command="{Binding Actions[grid/move/up]}" />
-<MenuItem Header="Move down" Command="{Binding Actions[grid/move/down]}" />
-<MenuItem Header="Styles Manager…" Command="{Binding Actions[styles/manage]}" />
-<MenuItem Header="Script Info…" Command="{Binding Actions[script-info/edit]}" />
+<MenuItem Header="Insert before" InputGesture="{Binding Actions[grid/insert/before].InputGesture}" Command="{Binding Actions[grid/insert/before]}" />
+<MenuItem Header="Insert after" InputGesture="{Binding Actions[grid/insert/after].InputGesture}" Command="{Binding Actions[grid/insert/after]}" />
+<MenuItem Header="Insert before at video time" Command="{Binding Actions[subtitle/insert/before/videotime]}" InputGesture="{Binding Actions[subtitle/insert/before/videotime].InputGesture}" />
+<MenuItem Header="Insert after at video time" Command="{Binding Actions[subtitle/insert/after/videotime]}" InputGesture="{Binding Actions[subtitle/insert/after/videotime].InputGesture}" />
+<MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />
+<MenuItem Header="Delete selected" InputGesture="{Binding Actions[grid/delete].InputGesture}" Command="{Binding Actions[grid/delete]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Delete}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Comment / Uncomment Lines" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
+<MenuItem Header="Split at text cursor">
+<MenuItem Header="Preserve times" InputGesture="{Binding Actions[edit/line/split/preserve].InputGesture}" Command="{Binding Actions[edit/line/split/preserve]}" />
+<MenuItem Header="Estimate times" InputGesture="{Binding Actions[edit/line/split/estimate].InputGesture}" Command="{Binding Actions[edit/line/split/estimate]}" />
+<MenuItem Header="At video frame" InputGesture="{Binding Actions[edit/line/split/video].InputGesture}" Command="{Binding Actions[edit/line/split/video]}" />
+<MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
+</MenuItem>
+<MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
+<MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />
+<MenuItem Header="Join selected">
+<MenuItem Header="Concatenate" InputGesture="{Binding Actions[edit/line/join/concatenate].InputGesture}" Command="{Binding Actions[edit/line/join/concatenate]}" />
+<MenuItem Header="Keep first text" InputGesture="{Binding Actions[edit/line/join/keep_first].InputGesture}" Command="{Binding Actions[edit/line/join/keep_first]}" />
+<MenuItem Header="As karaoke" InputGesture="{Binding Actions[edit/line/join/as_karaoke].InputGesture}" Command="{Binding Actions[edit/line/join/as_karaoke]}" />
+<MenuItem Header="With line breaks" InputGesture="{Binding Actions[grid/join].InputGesture}" Command="{Binding Actions[grid/join]}" />
+</MenuItem>
+<MenuItem Header="Swap selected lines" InputGesture="{Binding Actions[grid/swap].InputGesture}" Command="{Binding Actions[grid/swap]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StyleSort}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Sort all lines">
+<MenuItem Header="By start" InputGesture="{Binding Actions[grid/sort/start].InputGesture}" Command="{Binding Actions[grid/sort/start]}" />
+<MenuItem Header="By end" InputGesture="{Binding Actions[grid/sort/end].InputGesture}" Command="{Binding Actions[grid/sort/end]}" />
+<MenuItem Header="By style" InputGesture="{Binding Actions[grid/sort/style].InputGesture}" Command="{Binding Actions[grid/sort/style]}" />
+<MenuItem Header="By actor" InputGesture="{Binding Actions[grid/sort/actor].InputGesture}" Command="{Binding Actions[grid/sort/actor]}" />
+<MenuItem Header="By effect" InputGesture="{Binding Actions[grid/sort/effect].InputGesture}" Command="{Binding Actions[grid/sort/effect]}" />
+<MenuItem Header="By layer" InputGesture="{Binding Actions[grid/sort/layer].InputGesture}" Command="{Binding Actions[grid/sort/layer]}" />
+<MenuItem Header="By text including tags" Command="{Binding Actions[grid/sort/text]}" InputGesture="{Binding Actions[grid/sort/text].InputGesture}" />
+<MenuItem Header="By text without tags" Command="{Binding Actions[grid/sort/text_stripped]}" InputGesture="{Binding Actions[grid/sort/text_stripped].InputGesture}" />
+</MenuItem>
+<MenuItem Header="Sort selected blocks">
+<MenuItem Header="By start" InputGesture="{Binding Actions[grid/sort/start/selected].InputGesture}" Command="{Binding Actions[grid/sort/start/selected]}" />
+<MenuItem Header="By end" InputGesture="{Binding Actions[grid/sort/end/selected].InputGesture}" Command="{Binding Actions[grid/sort/end/selected]}" />
+<MenuItem Header="By style" InputGesture="{Binding Actions[grid/sort/style/selected].InputGesture}" Command="{Binding Actions[grid/sort/style/selected]}" />
+<MenuItem Header="By actor" InputGesture="{Binding Actions[grid/sort/actor/selected].InputGesture}" Command="{Binding Actions[grid/sort/actor/selected]}" />
+<MenuItem Header="By effect" InputGesture="{Binding Actions[grid/sort/effect/selected].InputGesture}" Command="{Binding Actions[grid/sort/effect/selected]}" />
+<MenuItem Header="By layer" InputGesture="{Binding Actions[grid/sort/layer/selected].InputGesture}" Command="{Binding Actions[grid/sort/layer/selected]}" />
+<MenuItem Header="By text including tags" Command="{Binding Actions[grid/sort/text/selected]}" InputGesture="{Binding Actions[grid/sort/text/selected].InputGesture}" />
+<MenuItem Header="By text without tags" Command="{Binding Actions[grid/sort/text_stripped/selected]}" InputGesture="{Binding Actions[grid/sort/text_stripped/selected].InputGesture}" />
+</MenuItem>
+<MenuItem Header="Move up" InputGesture="{Binding Actions[grid/move/up].InputGesture}" Command="{Binding Actions[grid/move/up]}" />
+<MenuItem Header="Move down" InputGesture="{Binding Actions[grid/move/down].InputGesture}" Command="{Binding Actions[grid/move/down]}" />
+<MenuItem Header="Styles Manager…" InputGesture="{Binding Actions[styles/manage].InputGesture}" Command="{Binding Actions[styles/manage]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StylesManager}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectLines}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectVisible}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Script Info…" InputGesture="{Binding Actions[script-info/edit].InputGesture}" Command="{Binding Actions[script-info/edit]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ScriptProperties}" /></MenuItem.Icon></MenuItem>
 </MenuItem>
 <MenuItem Header="Timing">
-<MenuItem Header="Set start to current time" Command="{Binding Actions[timing/set-start]}" />
-<MenuItem Header="Set end to current time" Command="{Binding Actions[timing/set-end]}" />
-<MenuItem Header="Jump to line start" Command="{Binding Actions[timing/jump-start]}" />
-<MenuItem Header="Jump to line end" Command="{Binding Actions[timing/jump-end]}" />
-<MenuItem Header="Previous subtitle" Command="{Binding Actions[grid/line/previous]}" />
-<MenuItem Header="Next subtitle" Command="{Binding Actions[grid/line/next]}" />
+<MenuItem Name="ShiftTimesMenu" Header="Shift Times…" InputGesture="{Binding Actions[time/shift].InputGesture}" Command="{Binding Actions[time/shift]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ShiftTimes}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Make continuous"><MenuItem Header="Change starts" Command="{Binding Actions[time/continuous/start]}" /><MenuItem Header="Change ends" Command="{Binding Actions[time/continuous/end]}" /></MenuItem>
+<MenuItem Header="Snap starts to video" InputGesture="{Binding Actions[time/snap/start_video].InputGesture}" Command="{Binding Actions[time/snap/start_video]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StartToVideo}" Foreground="{DynamicResource IconTimingStartBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Snap ends to video" InputGesture="{Binding Actions[time/snap/end_video].InputGesture}" Command="{Binding Actions[time/snap/end_video]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.EndToVideo}" Foreground="{DynamicResource IconTimingEndBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Snap to scene" InputGesture="{Binding Actions[time/snap/scene].InputGesture}" Command="{Binding Actions[time/snap/scene]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SnapScene}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Shift selection to current frame" InputGesture="{Binding Actions[time/frame/current].InputGesture}" Command="{Binding Actions[time/frame/current]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ShiftToFrame}" /></MenuItem.Icon></MenuItem>
+<Separator />
+<MenuItem Header="Set start to current time" InputGesture="{Binding Actions[timing/set-start].InputGesture}" Command="{Binding Actions[timing/set-start]}" />
+<MenuItem Header="Set end to current time" InputGesture="{Binding Actions[timing/set-end].InputGesture}" Command="{Binding Actions[timing/set-end]}" />
+<MenuItem Header="Jump to line start" InputGesture="{Binding Actions[timing/jump-start].InputGesture}" Command="{Binding Actions[timing/jump-start]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoToStart}" Foreground="{DynamicResource IconTimingStartBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Jump to line end" InputGesture="{Binding Actions[timing/jump-end].InputGesture}" Command="{Binding Actions[timing/jump-end]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoToEnd}" Foreground="{DynamicResource IconTimingEndBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Previous subtitle" InputGesture="{Binding Actions[grid/line/previous].InputGesture}" Command="{Binding Actions[grid/line/previous]}" />
+<MenuItem Header="Next subtitle" InputGesture="{Binding Actions[grid/line/next].InputGesture}" Command="{Binding Actions[grid/line/next]}" />
 </MenuItem>
-<MenuItem Header="Video">
-<MenuItem Header="Open video/audio…" Command="{Binding Actions[media/open]}" />
-<MenuItem Header="Play / Pause" Command="{Binding Actions[video/play]}" />
-<MenuItem Header="Stop" Command="{Binding Actions[video/stop]}" />
-<MenuItem Header="Previous frame" Command="{Binding Actions[video/frame/previous]}" />
-<MenuItem Header="Next frame" Command="{Binding Actions[video/frame/next]}" />
-<MenuItem Header="Position tool" Command="{Binding Actions[video/tool/position]}" />
-<MenuItem Header="Clip tool" Command="{Binding Actions[video/tool/clip]}" />
+<MenuItem Name="VideoMenu" Header="Video">
+<MenuItem Name="OpenVideoMenu" Header="Open video…" InputGesture="{Binding Actions[video/open].InputGesture}" Command="{Binding Actions[video/open]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoOpen}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="CloseVideoMenu" Header="Close video" InputGesture="{Binding Actions[video/close].InputGesture}" Command="{Binding Actions[video/close]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoClose}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="RecentVideoMenu" Header="Recent video" />
+<MenuItem Name="OpenDummyVideoMenu" Header="Use dummy video…" Command="{Binding Actions[video/open/dummy]}" InputGesture="{Binding Actions[video/open/dummy].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoDummy}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="VideoDetailsMenu" Header="Show video details" Command="{Binding Actions[video/details]}" InputGesture="{Binding Actions[video/details].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoDetails}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Track motion…" Command="{Binding Actions[video/motion-track]}" InputGesture="{Binding Actions[video/motion-track].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.MotionTrack}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="VideoAspectMenu" Header="Aspect ratio">
+<MenuItem Name="VideoAspectdefaultMenu" Header="Default" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/default].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/default]}" InputGesture="{Binding Actions[video/aspect/default].InputGesture}" />
+<MenuItem Name="VideoAspectfullMenu" Header="Fullscreen (4:3)" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/full].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/full]}" InputGesture="{Binding Actions[video/aspect/full].InputGesture}" />
+<MenuItem Name="VideoAspectwideMenu" Header="Widescreen (16:9)" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/wide].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/wide]}" InputGesture="{Binding Actions[video/aspect/wide].InputGesture}" />
+<MenuItem Name="VideoAspectcinematicMenu" Header="Cinematic (2.35)" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/cinematic].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/cinematic]}" InputGesture="{Binding Actions[video/aspect/cinematic].InputGesture}" />
+<MenuItem Name="VideoAspectcustomMenu" Header="Custom…" ToggleType="Radio" IsChecked="{Binding Actions[video/aspect/custom].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/aspect/custom]}" InputGesture="{Binding Actions[video/aspect/custom].InputGesture}" />
 </MenuItem>
-<MenuItem Header="Audio">
-<MenuItem Header="Play current line" Command="{Binding Actions[audio/play/selection]}" />
-<MenuItem Header="Play from cursor" Command="{Binding Actions[audio/play/cursor]}" />
-<MenuItem Header="Zoom in" Command="{Binding Actions[audio/zoom/in]}" />
-<MenuItem Header="Zoom out" Command="{Binding Actions[audio/zoom/out]}" />
+<MenuItem Name="VideoZoomMenu" Header="Set Zoom">
+<MenuItem Name="VideoZoom50Menu" Header="50%" ToggleType="Radio" IsChecked="{Binding Actions[video/zoom/50].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/zoom/50]}" InputGesture="{Binding Actions[video/zoom/50].InputGesture}" />
+<MenuItem Name="VideoZoom100Menu" Header="100%" ToggleType="Radio" IsChecked="{Binding Actions[video/zoom/100].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/zoom/100]}" InputGesture="{Binding Actions[video/zoom/100].InputGesture}" />
+<MenuItem Name="VideoZoom200Menu" Header="200%" ToggleType="Radio" IsChecked="{Binding Actions[video/zoom/200].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/zoom/200]}" InputGesture="{Binding Actions[video/zoom/200].InputGesture}" />
+<MenuItem Name="VideoZoomInMenu" Header="Zoom In" Command="{Binding Actions[video/zoom/in]}" InputGesture="{Binding Actions[video/zoom/in].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ZoomIn}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="VideoZoomOutMenu" Header="Zoom Out" Command="{Binding Actions[video/zoom/out]}" InputGesture="{Binding Actions[video/zoom/out].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ZoomOut}" /></MenuItem.Icon></MenuItem>
+</MenuItem>
+<MenuItem Name="VideoResetPanMenu" Header="Reset Video Pan" Command="{Binding Actions[video/reset_pan]}" InputGesture="{Binding Actions[video/reset_pan].InputGesture}" />
+<MenuItem Name="VideoDetachMenu" Header="Detach Video" ToggleType="CheckBox" IsChecked="{Binding Actions[video/detach].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/detach]}" InputGesture="{Binding Actions[video/detach].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoDetach}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="VideoFrameImageMenu" Header="Frame images">
+<MenuItem Name="FramecopyMenu" Header="copy: Full frame" Command="{Binding Actions[video/frame/copy]}" InputGesture="{Binding Actions[video/frame/copy].InputGesture}" />
+<MenuItem Name="FramecopyrawMenu" Header="copy: Video only" Command="{Binding Actions[video/frame/copy/raw]}" InputGesture="{Binding Actions[video/frame/copy/raw].InputGesture}" />
+<MenuItem Name="FramecopysubsMenu" Header="copy: Subtitles only (transparent)" Command="{Binding Actions[video/frame/copy/subs]}" InputGesture="{Binding Actions[video/frame/copy/subs].InputGesture}" />
+<MenuItem Name="FramesaveMenu" Header="save: Full frame" Command="{Binding Actions[video/frame/save]}" InputGesture="{Binding Actions[video/frame/save].InputGesture}" />
+<MenuItem Name="FramesaverawMenu" Header="save: Video only" Command="{Binding Actions[video/frame/save/raw]}" InputGesture="{Binding Actions[video/frame/save/raw].InputGesture}" />
+<MenuItem Name="FramesavesubsMenu" Header="save: Subtitles only (transparent)" Command="{Binding Actions[video/frame/save/subs]}" InputGesture="{Binding Actions[video/frame/save/subs].InputGesture}" />
+</MenuItem>
+<MenuItem Name="VideoCopyCoordinatesMenu" Header="Copy coordinates to clipboard" Command="{Binding Actions[video/copy_coordinates]}" InputGesture="{Binding Actions[video/copy_coordinates].InputGesture}" />
+<MenuItem Name="VideoOverscanMenu" Header="Show overscan mask" ToggleType="CheckBox" IsChecked="{Binding Actions[video/show_overscan].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/show_overscan]}" InputGesture="{Binding Actions[video/show_overscan].InputGesture}" />
+<MenuItem Name="TimecodesMenu" Header="Timecodes">
+<MenuItem Name="OpenTimecodesMenu" Header="Open timecodes…" Command="{Binding Actions[timecode/open]}" InputGesture="{Binding Actions[timecode/open].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimecodesOpen}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="SaveTimecodesMenu" Header="Save timecodes…" Command="{Binding Actions[timecode/save]}" InputGesture="{Binding Actions[timecode/save].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimecodesSave}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="CloseTimecodesMenu" Header="Close external timecodes" Command="{Binding Actions[timecode/close]}" InputGesture="{Binding Actions[timecode/close].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimecodesClose}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="RecentTimecodesMenu" Header="Recent timecodes" />
+</MenuItem>
+<MenuItem Name="KeyframesMenu" Header="Keyframes">
+<MenuItem Name="OpenKeyframesMenu" Header="Open keyframes…" Command="{Binding Actions[keyframe/open]}" InputGesture="{Binding Actions[keyframe/open].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.KeyframesOpen}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="SaveKeyframesMenu" Header="Save keyframes…" Command="{Binding Actions[keyframe/save]}" InputGesture="{Binding Actions[keyframe/save].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.KeyframesSave}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="CloseKeyframesMenu" Header="Close external keyframes" Command="{Binding Actions[keyframe/close]}" InputGesture="{Binding Actions[keyframe/close].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.KeyframesClose}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="RecentKeyframesMenu" Header="Recent keyframes" />
+</MenuItem>
+<MenuItem Name="VideoAutoSeekMenu" Header="Autoseek to selected line" ToggleType="CheckBox" IsChecked="{Binding Actions[video/autoseek].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/autoseek]}" />
+<MenuItem Header="Open video/audio…" InputGesture="{Binding Actions[media/open].InputGesture}" Command="{Binding Actions[media/open]}" />
+<MenuItem Name="VideoPlayMenu" Header="Play / Pause" ToggleType="CheckBox" IsChecked="{Binding Actions[video/play].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[video/play].InputGesture}" Command="{Binding Actions[video/play]}" />
+<MenuItem Name="VideoPlayLineMenu" Header="Play current line" InputGesture="{Binding Actions[video/play/line].InputGesture}" Command="{Binding Actions[video/play/line]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayLine}" Foreground="{DynamicResource IconAudioLineBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="VideoJumpMenu" Header="Jump to frame or time…" InputGesture="{Binding Actions[video/jump].InputGesture}" Command="{Binding Actions[video/jump]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoJump}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Jump to subtitle start" InputGesture="{Binding Actions[timing/jump-start].InputGesture}" Command="{Binding Actions[timing/jump-start]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoToStart}" Foreground="{DynamicResource IconTimingStartBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Jump to subtitle end" InputGesture="{Binding Actions[timing/jump-end].InputGesture}" Command="{Binding Actions[timing/jump-end]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoToEnd}" Foreground="{DynamicResource IconTimingEndBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Toggle seek focus" InputGesture="{Binding Actions[video/focus_seek].InputGesture}" Command="{Binding Actions[video/focus_seek]}" />
+<MenuItem Header="Navigate">
+<MenuItem Header="Previous keyframe" InputGesture="{Binding Actions[video/frame/previous-keyframe].InputGesture}" Command="{Binding Actions[video/frame/previous-keyframe]}" />
+<MenuItem Header="Next keyframe" InputGesture="{Binding Actions[video/frame/next-keyframe].InputGesture}" Command="{Binding Actions[video/frame/next-keyframe]}" />
+<MenuItem Header="Previous subtitle boundary" InputGesture="{Binding Actions[video/frame/prev/boundary].InputGesture}" Command="{Binding Actions[video/frame/prev/boundary]}" />
+<MenuItem Header="Next subtitle boundary" InputGesture="{Binding Actions[video/frame/next/boundary].InputGesture}" Command="{Binding Actions[video/frame/next/boundary]}" />
+<MenuItem Header="Fast jump backward" InputGesture="{Binding Actions[video/frame/prev/large].InputGesture}" Command="{Binding Actions[video/frame/prev/large]}" />
+<MenuItem Header="Fast jump forward" InputGesture="{Binding Actions[video/frame/next/large].InputGesture}" Command="{Binding Actions[video/frame/next/large]}" />
+</MenuItem>
+<MenuItem Header="Stop" InputGesture="{Binding Actions[video/stop].InputGesture}" Command="{Binding Actions[video/stop]}"><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoPause}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Previous frame" InputGesture="{Binding Actions[video/frame/previous].InputGesture}" Command="{Binding Actions[video/frame/previous]}" />
+<MenuItem Header="Next frame" InputGesture="{Binding Actions[video/frame/next].InputGesture}" Command="{Binding Actions[video/frame/next]}" />
+<MenuItem Header="Visual tools">
+<MenuItem Name="VideoToolCrosshairMenu" Header="Crosshair" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/crosshair].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" InputGesture="{Binding Actions[video/tool/crosshair].InputGesture}" />
+<MenuItem Name="VideoToolPositionMenu" Header="Position" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/position].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/position]}" InputGesture="{Binding Actions[video/tool/position].InputGesture}" />
+<MenuItem Name="VideoToolRotateZMenu" Header="RotateZ" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/rotatez].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatez]}" InputGesture="{Binding Actions[video/tool/rotatez].InputGesture}" />
+<MenuItem Name="VideoToolRotateXYMenu" Header="RotateXY" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/rotatexy].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatexy]}" InputGesture="{Binding Actions[video/tool/rotatexy].InputGesture}" />
+<MenuItem Name="VideoToolScaleMenu" Header="Scale" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/scale].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/scale]}" InputGesture="{Binding Actions[video/tool/scale].InputGesture}" />
+<MenuItem Name="VideoToolClipMenu" Header="Clip" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/clip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/clip]}" InputGesture="{Binding Actions[video/tool/clip].InputGesture}" />
+<MenuItem Name="VideoToolVectorClipMenu" Header="VectorClip" ToggleType="Radio" IsChecked="{Binding Actions[video/tool/vectorclip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" InputGesture="{Binding Actions[video/tool/vectorclip].InputGesture}" />
+<MenuItem Header="Vector modes">
+<MenuItem Name="VideoVectorSelectMenu" Header="Select" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/select].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/select]}" InputGesture="{Binding Actions[video/vector/select].InputGesture}" />
+<MenuItem Name="VideoVectorLineMenu" Header="Line" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/line].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/line]}" InputGesture="{Binding Actions[video/vector/line].InputGesture}" />
+<MenuItem Name="VideoVectorBicubicMenu" Header="Bicubic" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/bicubic].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/bicubic]}" InputGesture="{Binding Actions[video/vector/bicubic].InputGesture}" />
+<MenuItem Name="VideoVectorConvertMenu" Header="Convert" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/convert].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/convert]}" InputGesture="{Binding Actions[video/vector/convert].InputGesture}" />
+<MenuItem Name="VideoVectorInsertMenu" Header="Insert" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/insert].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/insert]}" InputGesture="{Binding Actions[video/vector/insert].InputGesture}" />
+<MenuItem Name="VideoVectorRemoveMenu" Header="Remove" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/remove].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/remove]}" InputGesture="{Binding Actions[video/vector/remove].InputGesture}" />
+<MenuItem Name="VideoVectorFreehandMenu" Header="Freehand" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/freehand].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/freehand]}" InputGesture="{Binding Actions[video/vector/freehand].InputGesture}" />
+<MenuItem Name="VideoVectorSmoothMenu" Header="Smooth" ToggleType="Radio" IsChecked="{Binding Actions[video/vector/smooth].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/smooth]}" InputGesture="{Binding Actions[video/vector/smooth].InputGesture}" />
+</MenuItem>
+</MenuItem>
+</MenuItem>
+<MenuItem Name="AudioMenu" Header="Audio">
+<MenuItem Name="OpenAudioMenu" Header="Open audio…" InputGesture="{Binding Actions[audio/open].InputGesture}" Command="{Binding Actions[audio/open]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioOpen}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="CloseAudioMenu" Header="Close audio" InputGesture="{Binding Actions[audio/close].InputGesture}" Command="{Binding Actions[audio/close]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioClose}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="RecentAudioMenu" Header="Recent audio" />
+<MenuItem Name="KaraokeMenu" Header="Toshiki K-Timing" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/karaoke].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/karaoke]}" InputGesture="{Binding Actions[audio/karaoke].InputGesture}" />
+<MenuItem Name="KaraokeCancelMenu" Header="Cancel pending karaoke edits" Command="{Binding Actions[karaoke/cancel]}" InputGesture="{Binding Actions[karaoke/cancel].InputGesture}"><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.KaraokeCancel}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="AudioTimingMenu" Header="Timing">
+<MenuItem Name="AudioCommitMenu" Header="Commit timing" Command="{Binding Actions[audio/commit]}" InputGesture="{Binding Actions[audio/commit].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioCommit}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="AudioCommitStayMenu" Header="Commit and stay" Command="{Binding Actions[audio/commit/stay]}" InputGesture="{Binding Actions[audio/commit/stay].InputGesture}" />
+<MenuItem Header="Commit and next" Command="{Binding Actions[audio/commit/next]}" InputGesture="{Binding Actions[audio/commit/next].InputGesture}" />
+<MenuItem Header="Commit and default next" Command="{Binding Actions[audio/commit/default]}" InputGesture="{Binding Actions[audio/commit/default].InputGesture}" />
+<MenuItem Header="Revert pending timing" Command="{Binding Actions[audio/timing/revert]}" InputGesture="{Binding Actions[audio/timing/revert].InputGesture}" />
+<Separator />
+<MenuItem Name="AudioAutoCommitMenu" Header="Auto-commit timing" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/opt/autocommit].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autocommit]}" InputGesture="{Binding Actions[audio/opt/autocommit].InputGesture}" />
+<MenuItem Name="AudioAutoNextMenu" Header="Next line on commit" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/opt/autonext].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autonext]}" InputGesture="{Binding Actions[audio/opt/autonext].InputGesture}" />
+<MenuItem Header="Timing preferences…" Command="{Binding Actions[audio/timing/options]}" />
+<Separator />
+<MenuItem Header="Previous timing line" Command="{Binding Actions[time/prev]}" InputGesture="{Binding Actions[time/prev].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimingPrevious}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Next timing line" Command="{Binding Actions[time/next]}" InputGesture="{Binding Actions[time/next].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimingNext}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Add lead-in" Command="{Binding Actions[time/lead/in]}" InputGesture="{Binding Actions[time/lead/in].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.LeadIn}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Add lead-out" Command="{Binding Actions[time/lead/out]}" InputGesture="{Binding Actions[time/lead/out].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.LeadOut}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Add lead-in and out" Command="{Binding Actions[time/lead/both]}" InputGesture="{Binding Actions[time/lead/both].InputGesture}" />
+<MenuItem Header="Adjust markers">
+<MenuItem Header="Start −10 ms" Command="{Binding Actions[time/start/decrease]}" InputGesture="{Binding Actions[time/start/decrease].InputGesture}" />
+<MenuItem Header="Start +10 ms" Command="{Binding Actions[time/start/increase]}" InputGesture="{Binding Actions[time/start/increase].InputGesture}" />
+<MenuItem Header="Length −10 ms" Command="{Binding Actions[time/length/decrease]}" InputGesture="{Binding Actions[time/length/decrease].InputGesture}" />
+<MenuItem Header="Length +10 ms" Command="{Binding Actions[time/length/increase]}" InputGesture="{Binding Actions[time/length/increase].InputGesture}" />
+<MenuItem Header="Length −10 ms and shift syllables" Command="{Binding Actions[time/length/decrease/shift]}" InputGesture="{Binding Actions[time/length/decrease/shift].InputGesture}" />
+<MenuItem Header="Length +10 ms and shift syllables" Command="{Binding Actions[time/length/increase/shift]}" InputGesture="{Binding Actions[time/length/increase/shift].InputGesture}" />
+</MenuItem>
+</MenuItem>
+<Separator />
+<MenuItem Name="SaveAudioClipMenu" Header="Save selected-line audio clip…" Command="{Binding Actions[audio/save/clip]}" InputGesture="{Binding Actions[audio/save/clip].InputGesture}" />
+<MenuItem Header="Cancel audio clip export" Command="{Binding Actions[audio/save/cancel]}" InputGesture="{Binding Actions[audio/save/cancel].InputGesture}" />
+<Separator />
+<MenuItem Name="AudioWaveformMenu" Header="Waveform" ToggleType="Radio" IsChecked="{Binding Actions[audio/view/waveform].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/view/waveform]}" InputGesture="{Binding Actions[audio/view/waveform].InputGesture}" />
+<MenuItem Name="AudioSpectrumMenu" Header="Spectrum" ToggleType="Radio" IsChecked="{Binding Actions[audio/view/spectrum].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/view/spectrum]}" InputGesture="{Binding Actions[audio/view/spectrum].InputGesture}" />
+<MenuItem Name="AudioAutoScrollMenu" Header="Autoscroll to selected line" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/opt/autoscroll].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autoscroll]}" InputGesture="{Binding Actions[audio/opt/autoscroll].InputGesture}" />
+<MenuItem Name="AudioLinkMenu" Header="Link amplitude and volume" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/opt/vertical_link].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/vertical_link]}" InputGesture="{Binding Actions[audio/opt/vertical_link].InputGesture}" />
+<MenuItem Header="Go to selection" Command="{Binding Actions[audio/go_to]}" InputGesture="{Binding Actions[audio/go_to].InputGesture}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioGoTo}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Center selection start" Command="{Binding Actions[audio/go_to/start]}" InputGesture="{Binding Actions[audio/go_to/start].InputGesture}" />
+<MenuItem Header="Center selection end" Command="{Binding Actions[audio/go_to/end]}" InputGesture="{Binding Actions[audio/go_to/end].InputGesture}" />
+<MenuItem Header="Scroll left" Command="{Binding Actions[audio/scroll/left]}" InputGesture="{Binding Actions[audio/scroll/left].InputGesture}" />
+<MenuItem Header="Scroll right" Command="{Binding Actions[audio/scroll/right]}" InputGesture="{Binding Actions[audio/scroll/right].InputGesture}" />
+<Separator />
+<MenuItem Name="AudioPlaybackMenu" Header="Playback">
+<MenuItem Name="AudioPlaySelectionMenu" Header="Play selection" InputGesture="{Binding Actions[audio/play/selection].InputGesture}" Command="{Binding Actions[audio/play/selection]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlaySelection}" Foreground="{DynamicResource IconAudioSelectionBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Play current line" InputGesture="{Binding Actions[audio/play/line].InputGesture}" Command="{Binding Actions[audio/play/line]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayLine}" Foreground="{DynamicResource IconAudioLineBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="AudioPlayCurrentMenu" Header="Play captured selection" InputGesture="{Binding Actions[audio/play/current].InputGesture}" Command="{Binding Actions[audio/play/current]}" />
+<MenuItem Header="Play selection or stop" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/play/toggle].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[audio/play/toggle].InputGesture}" Command="{Binding Actions[audio/play/toggle]}" />
+<MenuItem Header="Stop playback" InputGesture="{Binding Actions[audio/stop].InputGesture}" Command="{Binding Actions[audio/stop]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Stop}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Preview selection">
+<MenuItem Header="500 ms before" InputGesture="{Binding Actions[audio/play/selection/before].InputGesture}" Command="{Binding Actions[audio/play/selection/before]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayBefore}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="500 ms after" InputGesture="{Binding Actions[audio/play/selection/after].InputGesture}" Command="{Binding Actions[audio/play/selection/after]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayAfter}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="First 500 ms" InputGesture="{Binding Actions[audio/play/selection/begin].InputGesture}" Command="{Binding Actions[audio/play/selection/begin]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayBegin}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Last 500 ms" InputGesture="{Binding Actions[audio/play/selection/end].InputGesture}" Command="{Binding Actions[audio/play/selection/end]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayEnd}" /></MenuItem.Icon></MenuItem>
+</MenuItem>
+<MenuItem Header="Play selection to end of audio" InputGesture="{Binding Actions[audio/play/to_end].InputGesture}" Command="{Binding Actions[audio/play/to_end]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayToEnd}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Play from cursor" InputGesture="{Binding Actions[audio/play/cursor].InputGesture}" Command="{Binding Actions[audio/play/cursor]}" />
+</MenuItem>
+<MenuItem Header="Zoom in" InputGesture="{Binding Actions[audio/zoom/in].InputGesture}" Command="{Binding Actions[audio/zoom/in]}" />
+<MenuItem Header="Zoom out" InputGesture="{Binding Actions[audio/zoom/out].InputGesture}" Command="{Binding Actions[audio/zoom/out]}" />
+</MenuItem>
+<MenuItem Name="AutomationMacroMenu" Header="Automation" SubmenuOpened="AutomationMenuOpened">
+<MenuItem Header="Automation Manager…" InputGesture="{Binding Actions[automation/manager].InputGesture}" Command="{Binding Actions[automation/manager]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AutomationManager}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Rescan autoload" InputGesture="{Binding Actions[automation/rescan].InputGesture}" Command="{Binding Actions[automation/rescan]}" />
+<Separator />
 </MenuItem>
 <MenuItem Header="View">
-<MenuItem Header="Cycle theme" Command="{Binding Actions[view/theme/cycle]}" />
+<MenuItem Header="Grid tag display">
+<MenuItem Name="FullTagsMenu" Header="Full tags" ToggleType="Radio" GroupName="GridTagDisplay" IsChecked="{Binding Actions[grid/tags/show].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[grid/tags/show].InputGesture}" Command="{Binding Actions[grid/tags/show]}" />
+<MenuItem Name="SimplifiedTagsMenu" Header="Simplified tags" ToggleType="Radio" GroupName="GridTagDisplay" IsChecked="{Binding Actions[grid/tags/simplify].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[grid/tags/simplify].InputGesture}" Command="{Binding Actions[grid/tags/simplify]}" />
+<MenuItem Name="HideTagsMenu" Header="Hide tags" ToggleType="Radio" GroupName="GridTagDisplay" IsChecked="{Binding Actions[grid/tags/hide].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[grid/tags/hide].InputGesture}" Command="{Binding Actions[grid/tags/hide]}" />
+<MenuItem Header="Cycle tag display" InputGesture="{Binding Actions[grid/tag/cycle_hiding].InputGesture}" Command="{Binding Actions[grid/tag/cycle_hiding]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TagDisplay}" /></MenuItem.Icon></MenuItem>
 </MenuItem>
-</Menu><Grid Grid.Row="1" Margin="6,2" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12"><TextBlock Grid.Column="2" MaxWidth="360" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /><TextBlock Grid.Column="1" Name="VisualToolStatus" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="10" VerticalAlignment="Center" /><StackPanel Orientation="Horizontal" Spacing="4">
-<Button Content="New" Command="{Binding NewDocumentCommand}" Padding="6,1" ToolTip.Tip="Ctrl+N" /><Button Content="Open ASS" Command="{Binding Actions[subtitle/open]}" Padding="6,1" ToolTip.Tip="Ctrl+O" /><Button Content="Save" Command="{Binding Actions[subtitle/save]}" Padding="6,1" ToolTip.Tip="Ctrl+S" /><Button Content="Open media" Command="{Binding Actions[media/open]}" Padding="6,1" />
-<Button Command="{Binding UndoCommand}" Padding="6,1" ToolTip.Tip="Undo (Ctrl+Z)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Undo}" /></Button><Button Command="{Binding RedoCommand}" Padding="6,1" ToolTip.Tip="Redo (Ctrl+Y)"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.Redo}" /></Button>
-</StackPanel></Grid></Grid></Border>
+<MenuItem Name="ViewDefault" Header="Default" ToggleType="Radio" IsChecked="{Binding Actions[view/default].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[view/default].InputGesture}" Command="{Binding Actions[view/default]}" />
+<MenuItem Name="ViewAudio" Header="Audio" ToggleType="Radio" IsChecked="{Binding Actions[view/audio].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[view/audio].InputGesture}" Command="{Binding Actions[view/audio]}" />
+<MenuItem Name="ViewVideo" Header="Video" ToggleType="Radio" IsChecked="{Binding Actions[view/video].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[view/video].InputGesture}" Command="{Binding Actions[view/video]}" />
+<MenuItem Name="ViewAudioVideo" Header="Audio + Video" ToggleType="Radio" IsChecked="{Binding Actions[view/audio-video].IsChecked, Mode=OneWay}" InputGesture="{Binding Actions[view/audio-video].InputGesture}" Command="{Binding Actions[view/audio-video]}" />
+<Separator />
+<MenuItem Name="ToolbarMenu" Header="Toolbar" ToggleType="CheckBox" IsChecked="{Binding Actions[app/toggle/toolbar].IsChecked, Mode=OneWay}" Command="{Binding Actions[app/toggle/toolbar]}" />
+<MenuItem Header="Log window…" Command="{Binding Actions[app/log]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Information}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Cycle theme" InputGesture="{Binding Actions[view/theme/cycle].InputGesture}" Command="{Binding Actions[view/theme/cycle]}" />
+</MenuItem>
+<MenuItem Name="ToolsMenu" Header="Tools">
+<MenuItem Name="ResampleMenu" Header="Resample Resolution…" InputGesture="{Binding Actions[tool/resampleres].InputGesture}" Command="{Binding Actions[tool/resampleres]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Resample}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="FontCollectorMenu" Header="Fonts Collector…" InputGesture="{Binding Actions[tool/font_collector].InputGesture}" Command="{Binding Actions[tool/font_collector]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FontCollector}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="AssDrawMenu" Header="ASSDraw3…" InputGesture="{Binding Actions[tool/assdraw].InputGesture}" Command="{Binding Actions[tool/assdraw]}" />
+</MenuItem>
+</Menu><Grid Name="MainToolbar" IsVisible="{Binding ToolbarVisible}" Grid.Row="1" Margin="6,2" ColumnDefinitions="*,Auto" ColumnSpacing="6">
+<ScrollViewer Name="MainActionScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+<StackPanel Orientation="Horizontal" Spacing="2">
+<Button Command="{Binding Actions[subtitle/new]}" Padding="4,2" ToolTip.Tip="New subtitle"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.New}" /></Button>
+<Button Command="{Binding Actions[subtitle/open]}" Padding="4,2" ToolTip.Tip="Open subtitle"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Open}" /></Button>
+<Button Command="{Binding Actions[subtitle/save]}" Padding="4,2" ToolTip.Tip="Save subtitle"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Save}" /></Button>
+<Button Command="{Binding Actions[subtitle/save-as]}" Padding="4,2" ToolTip.Tip="Save subtitle as"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SaveAs}" /></Button>
+<Button Command="{Binding Actions[edit/undo]}" Padding="4,2" ToolTip.Tip="Undo"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Undo}" /></Button>
+<Button Command="{Binding Actions[edit/redo]}" Padding="4,2" ToolTip.Tip="Redo"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Redo}" /></Button>
+<Button Command="{Binding Actions[video/open]}" Padding="4,2" ToolTip.Tip="Open video"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoOpen}" /></Button>
+<Button Command="{Binding Actions[video/close]}" Padding="4,2" ToolTip.Tip="Close video"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoClose}" /></Button>
+<Button Command="{Binding Actions[audio/open]}" Padding="4,2" ToolTip.Tip="Open audio"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioOpen}" /></Button>
+<Button Command="{Binding Actions[audio/close]}" Padding="4,2" ToolTip.Tip="Close audio"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioClose}" /></Button>
+<Button Command="{Binding Actions[video/jump]}" Padding="4,2" ToolTip.Tip="Jump to frame or time"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoJump}" /></Button>
+<Button Command="{Binding Actions[video/zoom/in]}" Padding="4,2" ToolTip.Tip="Zoom video in"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ZoomIn}" /></Button>
+<Button Command="{Binding Actions[video/zoom/out]}" Padding="4,2" ToolTip.Tip="Zoom video out"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ZoomOut}" /></Button>
+<Button Command="{Binding Actions[timing/jump-start]}" Padding="4,2" ToolTip.Tip="Jump to subtitle start"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoToStart}" Foreground="{DynamicResource IconTimingStartBrush}" /></Button>
+<Button Command="{Binding Actions[timing/jump-end]}" Padding="4,2" ToolTip.Tip="Jump to subtitle end"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoToEnd}" Foreground="{DynamicResource IconTimingEndBrush}" /></Button>
+<Button Command="{Binding Actions[time/snap/start_video]}" Padding="4,2" ToolTip.Tip="Snap subtitle start to video"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StartToVideo}" Foreground="{DynamicResource IconTimingStartBrush}" /></Button>
+<Button Command="{Binding Actions[time/snap/end_video]}" Padding="4,2" ToolTip.Tip="Snap subtitle end to video"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.EndToVideo}" Foreground="{DynamicResource IconTimingEndBrush}" /></Button>
+<Button Command="{Binding Actions[subtitle/select/visible]}" Padding="4,2" ToolTip.Tip="Select visible lines"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectVisible}" /></Button>
+<Button Command="{Binding Actions[time/snap/scene]}" Padding="4,2" ToolTip.Tip="Snap subtitles to scene"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SnapScene}" /></Button>
+<Button Command="{Binding Actions[time/frame/current]}" Padding="4,2" ToolTip.Tip="Shift selection to current frame"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ShiftToFrame}" /></Button>
+<Button Command="{Binding Actions[styles/manage]}" Padding="4,2" ToolTip.Tip="Styles Manager"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StylesManager}" /></Button>
+<Button Command="{Binding Actions[script-info/edit]}" Padding="4,2" ToolTip.Tip="Subtitle properties"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ScriptProperties}" /></Button>
+<Button Command="{Binding Actions[subtitle/attachment]}" Padding="4,2" ToolTip.Tip="Attachments"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Attachments}" /></Button>
+<Button Command="{Binding Actions[tool/font_collector]}" Padding="4,2" ToolTip.Tip="Font Collector"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FontCollector}" /></Button>
+<Button Command="{Binding Actions[automation/manager]}" Padding="4,2" ToolTip.Tip="Automation Manager"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AutomationManager}" /></Button>
+<Button Command="{Binding Actions[time/shift]}" Padding="4,2" ToolTip.Tip="Shift times"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ShiftTimes}" /></Button>
+<Button Command="{Binding Actions[tool/resampleres]}" Padding="4,2" ToolTip.Tip="Resample resolution"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Resample}" /></Button>
+<Button Command="{Binding Actions[app/options]}" Padding="4,2" ToolTip.Tip="Options"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Options}" /></Button>
+<Button Command="{Binding Actions[grid/tag/cycle_hiding]}" Padding="4,2" ToolTip.Tip="Cycle tag display"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TagDisplay}" /></Button>
+</StackPanel></ScrollViewer>
+<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"><TextBlock Name="VisualToolStatus" MaxWidth="120" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="10" VerticalAlignment="Center" /><TextBlock MaxWidth="160" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /></StackPanel>
+</Grid></Grid></Border>
 <Grid Grid.Row="2" Name="UpperWorkspace">
   <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
-  <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn">
-    <Border Grid.Row="0" Background="{DynamicResource PanelBrush}">
-      <Grid Name="VideoRegion" Margin="6" RowDefinitions="*,22,26,Auto" RowSpacing="4">
+  <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn" IsVisible="{Binding ShowEmbeddedVideo}">
+    <Border Name="VideoDock" Grid.Row="0" Background="{DynamicResource PanelBrush}">
+      <Grid Name="VideoRegion" Margin="6" VerticalAlignment="Top" RowDefinitions="Auto,22,26,Auto" RowSpacing="4">
         <Grid Grid.Row="0" ColumnDefinitions="Auto,*">      <StackPanel Name="VisualPrimaryTools" Grid.Column="0" Orientation="Vertical" Spacing="3" Margin="0,0,8,0">
-        <ToggleButton Name="VisualToolCrosshair" Classes="authoring" IsChecked="{Binding IsCrosshairTool, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" Padding="5,2" ToolTip.Tip="Crosshair"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualCrosshair}" /></ToggleButton>
-        <ToggleButton Name="VisualToolPosition" Classes="authoring" IsChecked="{Binding IsPositionTool, Mode=OneWay}" Command="{Binding Actions[video/tool/position]}" Padding="5,2" ToolTip.Tip="Position"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualPosition}" /></ToggleButton>
+        <ToggleButton Name="VisualToolCrosshair" Classes="authoring" IsChecked="{Binding Actions[video/tool/crosshair].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" Padding="5,2" ToolTip.Tip="Crosshair"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualCrosshair}" /></ToggleButton>
+        <ToggleButton Name="VisualToolPosition" Classes="authoring" IsChecked="{Binding Actions[video/tool/position].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/position]}" Padding="5,2" ToolTip.Tip="Position"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualPosition}" /></ToggleButton>
         <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
-        <ToggleButton Name="VisualToolRotateZ" Classes="authoring" IsChecked="{Binding IsRotateZTool, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatez]}" Padding="5,2" ToolTip.Tip="RotateZ"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRotateZ}" /></ToggleButton>
-        <ToggleButton Name="VisualToolRotateXY" Classes="authoring" IsChecked="{Binding IsRotateXYTool, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatexy]}" Padding="5,2" ToolTip.Tip="RotateXY"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRotateXy}" /></ToggleButton>
-        <ToggleButton Name="VisualToolScale" Classes="authoring" IsChecked="{Binding IsScaleTool, Mode=OneWay}" Command="{Binding Actions[video/tool/scale]}" Padding="5,2" ToolTip.Tip="Scale"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualScale}" /></ToggleButton>
+        <ToggleButton Name="VisualToolRotateZ" Classes="authoring" IsChecked="{Binding Actions[video/tool/rotatez].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatez]}" Padding="5,2" ToolTip.Tip="RotateZ"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRotateZ}" /></ToggleButton>
+        <ToggleButton Name="VisualToolRotateXY" Classes="authoring" IsChecked="{Binding Actions[video/tool/rotatexy].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatexy]}" Padding="5,2" ToolTip.Tip="RotateXY"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRotateXy}" /></ToggleButton>
+        <ToggleButton Name="VisualToolScale" Classes="authoring" IsChecked="{Binding Actions[video/tool/scale].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/scale]}" Padding="5,2" ToolTip.Tip="Scale"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualScale}" /></ToggleButton>
         <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
-        <ToggleButton Name="VisualToolClip" Classes="authoring" IsChecked="{Binding IsClipTool, Mode=OneWay}" Command="{Binding Actions[video/tool/clip]}" Padding="5,2" ToolTip.Tip="Clip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRectangle}" /></ToggleButton>
-        <ToggleButton Name="VisualToolVectorClip" Classes="authoring" IsChecked="{Binding IsVectorClipTool, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" Padding="5,2" ToolTip.Tip="VectorClip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualVector}" /></ToggleButton>
+        <ToggleButton Name="VisualToolClip" Classes="authoring" IsChecked="{Binding Actions[video/tool/clip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/clip]}" Padding="5,2" ToolTip.Tip="Clip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualRectangle}" /></ToggleButton>
+        <ToggleButton Name="VisualToolVectorClip" Classes="authoring" IsChecked="{Binding Actions[video/tool/vectorclip].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/vectorclip]}" Padding="5,2" ToolTip.Tip="VectorClip"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualVector}" /></ToggleButton>
         <Border Height="1" Margin="4,3" Background="{DynamicResource DividerBrush}" />
-        <ToggleButton Name="VisualToolDistort" Classes="authoring" IsChecked="{Binding IsDistortTool, Mode=OneWay}" Command="{Binding Actions[video/tool/distort]}" Padding="5,2" ToolTip.Tip="Distort"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualDistort}" /></ToggleButton>
-      </StackPanel><Border Grid.Column="1" Background="Black" ClipToBounds="True"><Grid><Image Name="VideoImage" Source="{Binding VideoFrame}" Stretch="Uniform" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
+        <Button Name="VisualMotionTrack" Command="{Binding Actions[video/motion-track]}" Padding="5,2" ToolTip.Tip="Motion Track"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.MotionTrack}" /></Button>
+        <ToggleButton Name="VisualToolDistort" Classes="authoring" IsChecked="{Binding Actions[video/tool/distort].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/distort]}" Padding="5,2" ToolTip.Tip="Distort"><PathIcon Width="17" Height="17" Data="{x:Static icons:IconGeometries.VisualDistort}" /></ToggleButton>
+      </StackPanel><Border Name="VideoCanvasHost" Grid.Column="1" Background="Black" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Top"><Grid><controls:VideoPresentationControl Name="VideoImage" Model="{Binding}" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border></Grid>
         <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="1" Model="{Binding}" />
         <Grid Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="8">        <StackPanel Orientation="Horizontal" Spacing="4">
-          <Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="5,1" /><Button Content="Stop" Command="{Binding Actions[video/stop]}" Padding="5,1" />
-          <Button Content="◀" Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame" /><Button Content="▶" Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame" />
+          <Button Command="{Binding Actions[video/play]}" Padding="5,1" ToolTip.Tip="Play or pause video"><StackPanel Orientation="Horizontal" Spacing="3"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.VideoPlay}" IsVisible="{Binding !IsPlaying}" /><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.VideoPause}" IsVisible="{Binding IsPlaying}" /><TextBlock Text="{Binding PlayPauseText}" /></StackPanel></Button><Button Command="{Binding Actions[video/stop]}" Padding="4,2" ToolTip.Tip="Stop video playback"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoPause}" /></Button><Button Command="{Binding Actions[video/play/line]}" Padding="4,2" ToolTip.Tip="Play current subtitle line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayLine}" Foreground="{DynamicResource IconAudioLineBrush}" /></Button><ToggleButton Classes="authoring" IsChecked="{Binding Actions[video/autoseek].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/autoseek]}" Padding="4,2" ToolTip.Tip="Automatically seek video to the selected line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoAutoseek}" /></ToggleButton>
+          <Button Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.FramePrevious}" /></Button><Button Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.FrameNext}" /></Button>
           <TextBox Margin="4,0,0,0" Name="ExactTime" Width="92" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
-        </StackPanel>        <Grid Grid.Column="1" ColumnDefinitions="*" ColumnSpacing="4"><TextBlock Text="{Binding FramePositionDisplay}" ToolTip.Tip="{Binding RelativeTimingDisplay}" VerticalAlignment="Center" FontSize="10" TextTrimming="CharacterEllipsis" /></Grid></Grid>
+        </StackPanel>        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="4"><controls:VideoZoomControl Name="VideoZoom" Grid.Column="1" /><TextBlock Text="{Binding FramePositionDisplay}" ToolTip.Tip="{Binding RelativeTimingDisplay}" VerticalAlignment="Center" FontSize="10" TextTrimming="CharacterEllipsis" /></Grid></Grid>
 
     <Border Grid.Row="3" Name="VisualToolsBar" ToolTip.Tip="{Binding VisualHint}" IsVisible="{Binding HasVisualOptions}" Padding="0,4,0,0"><StackPanel>
       <WrapPanel Name="VisualToolGroups">
@@ -143,14 +391,14 @@
       <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,12,0"><Button Name="MoveToggle" Command="{Binding Actions[video/position/toggle-move]}" Padding="4,1" ToolTip.Tip="Convert position to frame-timed movement, or keep movement start as position"><StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VisualMoveToggle}" /><TextBlock Text="pos ⇄ move" FontSize="11" /></StackPanel></Button></StackPanel>
 
       <StackPanel Name="VectorSubtoolbar" Orientation="Horizontal" IsVisible="{Binding IsVectorClipTool}" Spacing="3" Margin="0,0,12,0">
-        <ToggleButton Name="VectorSelect" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding IsVectorSelect, Mode=OneWay}" Command="{Binding Actions[video/vector/select]}" Padding="4,1" ToolTip.Tip="Select"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSelect}" /></ToggleButton>
-        <ToggleButton Name="VectorLine" Classes="authoring" IsChecked="{Binding IsVectorLine, Mode=OneWay}" Command="{Binding Actions[video/vector/line]}" Padding="4,1" ToolTip.Tip="Line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorLine}" /></ToggleButton>
-        <ToggleButton Name="VectorBicubic" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding IsVectorBicubic, Mode=OneWay}" Command="{Binding Actions[video/vector/bicubic]}" Padding="4,1" ToolTip.Tip="Bicubic"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorBicubic}" /></ToggleButton>
-        <ToggleButton Name="VectorConvert" Classes="authoring" IsChecked="{Binding IsVectorConvert, Mode=OneWay}" Command="{Binding Actions[video/vector/convert]}" Padding="4,1" ToolTip.Tip="Convert"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorConvert}" /></ToggleButton>
-        <ToggleButton Name="VectorInsert" Classes="authoring" IsChecked="{Binding IsVectorInsert, Mode=OneWay}" Command="{Binding Actions[video/vector/insert]}" Padding="4,1" ToolTip.Tip="Insert"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorInsert}" /></ToggleButton>
-        <ToggleButton Name="VectorRemove" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding IsVectorRemove, Mode=OneWay}" Command="{Binding Actions[video/vector/remove]}" Padding="4,1" ToolTip.Tip="Remove"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorRemove}" /></ToggleButton>
-        <ToggleButton Name="VectorFreehand" Classes="authoring" IsChecked="{Binding IsVectorFreehand, Mode=OneWay}" Command="{Binding Actions[video/vector/freehand]}" Padding="4,1" ToolTip.Tip="Freehand"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorFreehand}" /></ToggleButton>
-        <ToggleButton Name="VectorSmooth" Classes="authoring" IsChecked="{Binding IsVectorSmooth, Mode=OneWay}" Command="{Binding Actions[video/vector/smooth]}" Padding="4,1" ToolTip.Tip="Smooth"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSmooth}" /></ToggleButton>
+        <ToggleButton Name="VectorSelect" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding Actions[video/vector/select].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/select]}" Padding="4,1" ToolTip.Tip="Select"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSelect}" /></ToggleButton>
+        <ToggleButton Name="VectorLine" Classes="authoring" IsChecked="{Binding Actions[video/vector/line].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/line]}" Padding="4,1" ToolTip.Tip="Line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorLine}" /></ToggleButton>
+        <ToggleButton Name="VectorBicubic" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding Actions[video/vector/bicubic].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/bicubic]}" Padding="4,1" ToolTip.Tip="Bicubic"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorBicubic}" /></ToggleButton>
+        <ToggleButton Name="VectorConvert" Classes="authoring" IsChecked="{Binding Actions[video/vector/convert].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/convert]}" Padding="4,1" ToolTip.Tip="Convert"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorConvert}" /></ToggleButton>
+        <ToggleButton Name="VectorInsert" Classes="authoring" IsChecked="{Binding Actions[video/vector/insert].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/insert]}" Padding="4,1" ToolTip.Tip="Insert"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorInsert}" /></ToggleButton>
+        <ToggleButton Name="VectorRemove" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding Actions[video/vector/remove].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/remove]}" Padding="4,1" ToolTip.Tip="Remove"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorRemove}" /></ToggleButton>
+        <ToggleButton Name="VectorFreehand" Classes="authoring" IsChecked="{Binding Actions[video/vector/freehand].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/freehand]}" Padding="4,1" ToolTip.Tip="Freehand"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorFreehand}" /></ToggleButton>
+        <ToggleButton Name="VectorSmooth" Classes="authoring" IsChecked="{Binding Actions[video/vector/smooth].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/smooth]}" Padding="4,1" ToolTip.Tip="Smooth"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSmooth}" /></ToggleButton>
       </StackPanel>
       <StackPanel Orientation="Horizontal" IsVisible="{Binding IsClipFamily}" Spacing="3" Margin="0,0,0,0"><CheckBox Content="New inverse clip" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="11" /><Button Content="Invert clip" Command="{Binding Actions[video/clip/invert]}" Padding="4,1" FontSize="11" /></StackPanel>
       </WrapPanel>
@@ -159,12 +407,35 @@
     </Border>
 
   </Grid>
-  <GridSplitter Grid.Column="1" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
+  <GridSplitter Name="VideoSplitter" Grid.Column="1" IsVisible="{Binding ShowEmbeddedVideo}" ResizeDirection="Columns" Background="{DynamicResource SplitterBrush}" />
   <Grid Grid.Column="2" Name="TemporalTextColumn">
     <Grid.RowDefinitions><RowDefinition Height="180" MinHeight="160" /><RowDefinition Height="4" /><RowDefinition Height="*" MinHeight="280" /></Grid.RowDefinitions>
-    <Border Grid.Row="0" Background="{DynamicResource PanelBrush}">
-      <Grid Name="AudioRegion" Margin="6,6,6,4" RowDefinitions="24,*,14" RowSpacing="4">
-        <Grid ColumnDefinitions="Auto,*" ColumnSpacing="10" Margin="0,0,132,0"><StackPanel Orientation="Horizontal" Spacing="4"><Button Content="−" Command="{Binding Actions[audio/zoom/out]}" Padding="5,0" /><Button Content="+" Command="{Binding Actions[audio/zoom/in]}" Padding="5,0" /><Button Content="Play line" Command="{Binding Actions[audio/play/selection]}" Padding="5,0" /><ToggleButton Classes="authoring" Content="Mute" IsChecked="{Binding PlaybackMuted, Mode=TwoWay}" Padding="4,0" ToolTip.Tip="Mute editor playback" /><Button Content="{Binding PlayPauseText}" Command="{Binding Actions[video/play]}" Padding="4,0" ToolTip.Tip="Play / pause from cursor" /><ComboBox Name="AudioMode" Margin="4,0,0,0" SelectedIndex="0" SelectionChanged="AudioModeChanged" Padding="5,0"><ComboBoxItem Content="Waveform" /><ComboBoxItem Content="Spectrogram" /></ComboBox></StackPanel><TextBlock Grid.Column="1" Name="AudioStatus" Text="{Binding MediaStatus}" ToolTip.Tip="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10" /></Grid>
+    <Border Grid.Row="0" IsVisible="{Binding ShowAudio}" Background="{DynamicResource PanelBrush}">
+      <Grid Name="AudioHost" RowDefinitions="*,Auto">
+      <Grid Name="AudioRegion" Margin="6,6,6,4" RowDefinitions="40,*,14" RowSpacing="4">
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6" Margin="0,0,132,0"><ScrollViewer Name="AudioActionScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"><StackPanel Orientation="Horizontal" Spacing="2">
+<Button Command="{Binding Actions[audio/zoom/out]}" Padding="4,2" ToolTip.Tip="Zoom audio out"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ZoomOut}" /></Button><Button Command="{Binding Actions[audio/zoom/in]}" Padding="4,2" ToolTip.Tip="Zoom audio in"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ZoomIn}" /></Button><Button Command="{Binding Actions[time/prev]}" Padding="4,2" ToolTip.Tip="Previous timing line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimingPrevious}" /></Button>
+<Button Command="{Binding Actions[time/next]}" Padding="4,2" ToolTip.Tip="Next timing line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TimingNext}" /></Button>
+<Button Command="{Binding Actions[audio/play/selection]}" Padding="4,2" ToolTip.Tip="Play selection"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlaySelection}" Foreground="{DynamicResource IconAudioSelectionBrush}" /></Button>
+<Button Command="{Binding Actions[audio/play/line]}" Padding="4,2" ToolTip.Tip="Play current line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayLine}" Foreground="{DynamicResource IconAudioLineBrush}" /></Button>
+<Button Command="{Binding Actions[audio/stop]}" Padding="4,2" ToolTip.Tip="Stop playback"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Stop}" /></Button>
+<Button Command="{Binding Actions[audio/play/selection/before]}" Padding="4,2" ToolTip.Tip="Play 500 ms before selection"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayBefore}" /></Button>
+<Button Command="{Binding Actions[audio/play/selection/after]}" Padding="4,2" ToolTip.Tip="Play 500 ms after selection"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayAfter}" /></Button>
+<Button Command="{Binding Actions[audio/play/selection/begin]}" Padding="4,2" ToolTip.Tip="Play first 500 ms"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayBegin}" /></Button>
+<Button Command="{Binding Actions[audio/play/selection/end]}" Padding="4,2" ToolTip.Tip="Play last 500 ms"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayEnd}" /></Button>
+<Button Command="{Binding Actions[audio/play/to_end]}" Padding="4,2" ToolTip.Tip="Play selection to end of audio"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayToEnd}" /></Button>
+<Button Command="{Binding Actions[time/lead/in]}" Padding="4,2" ToolTip.Tip="Add lead-in"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.LeadIn}" /></Button>
+<Button Command="{Binding Actions[time/lead/out]}" Padding="4,2" ToolTip.Tip="Add lead-out"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.LeadOut}" /></Button>
+<Button Command="{Binding Actions[audio/commit]}" Padding="4,2" ToolTip.Tip="Commit timing"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioCommit}" /></Button>
+<Button Command="{Binding Actions[audio/go_to]}" Padding="4,2" ToolTip.Tip="Go to selection"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioGoTo}" /></Button>
+<ToggleButton Classes="authoring" IsChecked="{Binding Actions[audio/opt/autocommit].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autocommit]}" Padding="4,2" ToolTip.Tip="Auto-commit timing"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioAutocommit}" /></ToggleButton>
+<ToggleButton Classes="authoring" IsChecked="{Binding Actions[audio/opt/autonext].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autonext]}" Padding="4,2" ToolTip.Tip="Next line on commit"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioAutonext}" /></ToggleButton>
+<ToggleButton Classes="authoring" IsChecked="{Binding Actions[audio/opt/autoscroll].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/autoscroll]}" Padding="4,2" ToolTip.Tip="Autoscroll audio"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioAutoscroll}" /></ToggleButton>
+<ToggleButton Classes="authoring" IsChecked="{Binding Actions[audio/opt/spectrum].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/spectrum]}" Padding="4,2" ToolTip.Tip="Spectrum analyzer"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioSpectrum}" /></ToggleButton>
+<ToggleButton Classes="authoring" Name="KaraokeToggle" IsChecked="{Binding Actions[audio/karaoke].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/karaoke]}" Padding="4,2" ToolTip.Tip="Toshiki K-Timing"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.KaraokeTiming}" /></ToggleButton>
+<ToggleButton Classes="authoring" Content="Mute" IsChecked="{Binding PlaybackMuted, Mode=TwoWay}" Padding="4,0" ToolTip.Tip="Mute editor playback" />
+<ComboBox Name="AudioMode" Margin="4,0,0,0" SelectedIndex="{Binding AudioDisplayModeIndex, Mode=TwoWay}" Padding="5,0"><ComboBoxItem Content="Waveform" /><ComboBoxItem Content="Spectrogram" /></ComboBox>
+</StackPanel></ScrollViewer><TextBlock Grid.Column="1" MaxWidth="100" Name="AudioStatus" Text="{Binding MediaStatus}" ToolTip.Tip="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10" /></Grid>
         <controls:AudioWaveformControl Grid.Row="1" Margin="0,4,132,0" Name="AudioDisplay" ToolTip.Tip="Click: seek · Green/red: drag start/end · Shift+drag inside line: move timing · Wheel: pan · Ctrl+wheel: zoom · Shift+wheel: amplitude" Model="{Binding}" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
         <Border Grid.Row="1" Grid.RowSpan="2" HorizontalAlignment="Right" Width="1" Margin="0,8,124,20" Background="{DynamicResource DividerBrush}" />
         <Grid Grid.Row="1" Grid.RowSpan="2" HorizontalAlignment="Right" ColumnDefinitions="32,32,32" RowDefinitions="14,*,18" ColumnSpacing="10" RowSpacing="4" Margin="0,4,0,0">
@@ -174,12 +445,14 @@
           <Slider Grid.Row="1" Grid.Column="0" Name="AudioHorizontalZoom" Orientation="Vertical" Minimum="0" Maximum="100" Value="{Binding AudioHorizontalZoom, Mode=TwoWay}" ToolTip.Tip="Horizontal zoom · time per pixel" />
           <Slider Grid.Row="1" Grid.Column="1" Name="AudioIntensity" Orientation="Vertical" Minimum="10" Maximum="100" Value="{Binding AudioAmplitude, Mode=TwoWay}" ToolTip.Tip="Display amplitude / spectral intensity (independent of volume)" />
           <Slider Grid.Row="1" Grid.Column="2" Name="AudioVolume" IsEnabled="{Binding IsVolumeIndependent}" Orientation="Vertical" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding PlaybackVolume, Mode=TwoWay}" ToolTip.Tip="Playback volume · 0–100%" />
-          <ToggleButton Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Name="AudioVolumeLink" Classes="authoring" Content="Link" HorizontalAlignment="Stretch" MinWidth="44" FontSize="10" MinHeight="16" Padding="2,0" IsChecked="{Binding AudioVolumeLinked, Mode=TwoWay}" ToolTip.Tip="Link display amplitude to playback level" />
+          <ToggleButton Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Name="AudioVolumeLink" Classes="authoring" HorizontalAlignment="Stretch" MinWidth="44" FontSize="10" MinHeight="16" Padding="2,0" IsChecked="{Binding Actions[audio/opt/vertical_link].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/vertical_link]}" ToolTip.Tip="Link display amplitude to playback level"><StackPanel Orientation="Horizontal" Spacing="2"><PathIcon Width="13" Height="13" Data="{x:Static icons:IconGeometries.AudioLink}" /><TextBlock Text="Link" /></StackPanel></ToggleButton>
         </Grid>
         <ScrollBar Grid.Row="2" Name="AudioPanner" Orientation="Horizontal" Minimum="0" Maximum="{Binding #AudioDisplay.MaximumPan}" ViewportSize="{Binding #AudioDisplay.VisibleSeconds}" Value="{Binding #AudioDisplay.ViewportStart, Mode=TwoWay}" SmallChange="0.5" LargeChange="5" Margin="0,0,132,0" ToolTip.Tip="Pan the visible audio time range" />
       </Grid>
+      <controls:KaraokeSlotsControl Grid.Row="1" Name="KaraokeSlots" Model="{Binding}" IsVisible="{Binding ShowKaraoke}" Margin="6,0,6,4" />
+      </Grid>
     </Border>
-    <GridSplitter Name="AudioSplitter" Grid.Row="1" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
+    <GridSplitter Name="AudioSplitter" Grid.Row="1" IsVisible="{Binding ShowAudio}" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
     <Border Grid.Row="2" Background="{DynamicResource PanelBrush}">
       <Grid Name="EventEditorRegion" Margin="6" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="4" IsEnabled="{Binding HasSelectedEvent}">
         <Grid.Styles>
@@ -193,13 +466,21 @@
             <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
             <Grid Grid.Column="1" Name="StyleControls" ColumnDefinitions="*,26" ColumnSpacing="3">
               <ComboBox Name="LineStyle" Height="26" VerticalAlignment="Center" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding EditorDraft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
-              <Button Grid.Column="1" Height="26" Content="…" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" />
+              <Button Grid.Column="1" Height="26" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.StylesManager}" /></Button>
             </Grid>
           </Grid>
           <Grid Name="MetadataOtherFields" Width="336" ColumnDefinitions="*,*,86" ColumnSpacing="12" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="*,26" ColumnSpacing="2">
             <AutoCompleteBox Name="LineActor" Height="26" VerticalAlignment="Center" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
+            <ToggleButton Name="FastActorToggle" Grid.Column="1" Height="26" Padding="2,0" Content="»" IsChecked="{Binding Actions[actor/fast/toggle].IsChecked, Mode=OneWay}" Command="{Binding Actions[actor/fast/toggle]}" ToolTip.Tip="Fast actor naming" />
+            <Popup Name="FastActorPopup" PlacementTarget="{Binding #LineActor}" Placement="Bottom" IsLightDismissEnabled="False">
+              <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Padding="5" MinWidth="180">
+                <StackPanel Spacing="3"><TextBlock Text="Recent actors" FontSize="11" /><ListBox Name="FastActorList" MaxHeight="240" ItemsSource="{Binding FastActorRecent}" SelectedIndex="{Binding FastActorSelectedIndex, Mode=OneWay}" /><TextBlock Text="Fast naming mode" FontSize="11" /><ComboBox Name="FastActorMode" SelectedItem="{Binding FastActorMode, Mode=OneWay}" ToolTip.Tip="Nanashi: tap Ctrl for next line, Alt for previous line" /><TextBlock Text="After advancing, play" FontSize="11" /><ComboBox Name="FastActorPlayback" SelectedItem="{Binding FastActorPlayback, Mode=OneWay}" /></StackPanel>
+              </Border>
+            </Popup>
+            </Grid>
             <TextBox Name="LineEffect" Grid.Column="1" Height="26" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
-            <NumericUpDown Name="LineLayer" Grid.Column="2" Value="{Binding EditorDraft.LayerNumber, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
+            <NumericUpDown Name="LineLayer" Grid.Column="2" Text="{Binding EditorDraft.Layer, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
           </Grid>
         </WrapPanel>
         <WrapPanel Grid.Row="1" Name="TimingFields">
@@ -209,20 +490,20 @@
             <TextBlock Grid.Column="4" Text="Dur." FontSize="10" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding EditorDraft.Duration}" FontSize="11" VerticalAlignment="Center" />
           </Grid>
           <Grid Name="LineMarginGroup" ColumnDefinitions="Auto,86,Auto,86,Auto,86" ColumnSpacing="3" Margin="0,0,0,8">
-            <TextBlock Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Value="{Binding EditorDraft.LeftMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
-            <TextBlock Grid.Column="2" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Value="{Binding EditorDraft.RightMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
-            <TextBlock Grid.Column="4" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Value="{Binding EditorDraft.VerticalMargin, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
+            <TextBlock Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Text="{Binding EditorDraft.MarginL, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
+            <TextBlock Grid.Column="2" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Text="{Binding EditorDraft.MarginR, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
+            <TextBlock Grid.Column="4" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Text="{Binding EditorDraft.MarginV, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
           </Grid>
         </WrapPanel>
         <WrapPanel Grid.Row="2" Name="FormattingToolbar" Margin="0,0,0,4">
           <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,0,12,4">
-            <ToggleButton Classes="authoring" Content="B" FontWeight="Bold" IsThreeState="True" IsChecked="{Binding Formatting.Bold, Mode=OneWay}" Command="{Binding Actions[text/format/bold]}" ToolTip.Tip="Bold · Ctrl+B (mixed/animated state is indeterminate)" />
-            <ToggleButton Classes="authoring" Content="I" FontStyle="Italic" IsThreeState="True" IsChecked="{Binding Formatting.Italic, Mode=OneWay}" Command="{Binding Actions[text/format/italic]}" ToolTip.Tip="Italic · Ctrl+I" />
-            <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Underline, Mode=OneWay}" Command="{Binding Actions[text/format/underline]}" ToolTip.Tip="Underline · Ctrl+U"><TextBlock Text="U" TextDecorations="Underline" /></ToggleButton>
-            <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Strikeout, Mode=OneWay}" Command="{Binding Actions[text/format/strikeout]}" ToolTip.Tip="Strikeout"><TextBlock Text="S" TextDecorations="Strikethrough" /></ToggleButton>
+            <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Bold, Mode=OneWay}" Command="{Binding Actions[text/format/bold]}" ToolTip.Tip="{Binding Actions[text/format/bold].Tooltip}"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FormatBold}" /></ToggleButton>
+            <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Italic, Mode=OneWay}" Command="{Binding Actions[text/format/italic]}" ToolTip.Tip="{Binding Actions[text/format/italic].Tooltip}"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FormatItalic}" /></ToggleButton>
+            <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Underline, Mode=OneWay}" Command="{Binding Actions[text/format/underline]}" ToolTip.Tip="{Binding Actions[text/format/underline].Tooltip}"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FormatUnderline}" /></ToggleButton>
+            <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Strikeout, Mode=OneWay}" Command="{Binding Actions[text/format/strikeout]}" ToolTip.Tip="Strikeout"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FormatStrikeout}" /></ToggleButton>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,12,4">
-            <Button Content="Font…" Command="{Binding Actions[text/format/font]}" Padding="5,0" ToolTip.Tip="Font family and size for selection" />
+            <Button Command="{Binding Actions[text/format/font]}" Padding="5,0" ToolTip.Tip="Font family and size for selection"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FormatFont}" /></Button>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,0,12,4">
             <controls:AssColorButton Value="{Binding Formatting.Primary}" Label="1" Command="{Binding Actions[text/format/primary]}" ToolTip.Tip="Primary color and alpha at caret (static state)" />
@@ -233,9 +514,22 @@
           <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
             <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="5,0" FontSize="11" ToolTip.Tip="Reset to line style at caret / selection" />
           </StackPanel>
+          <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" Height="24" MinHeight="24" FontSize="11" Margin="8,0,0,4" />
+          <CheckBox Name="BetterViewToggle" Content="Better View" IsChecked="{Binding Actions[edit/better-view].IsChecked, Mode=OneWay}" Command="{Binding Actions[edit/better-view]}" Height="24" MinHeight="24" FontSize="11" Margin="8,0,0,4" ToolTip.Tip="Show hard line breaks and compact motion data" />
         </WrapPanel>
 
-        <controls:AssTextBox Name="SubtitleText" Grid.Row="3" ToolTip.Tip="Enter: commit and next · Ctrl+Enter: commit and stay · Shift+Enter: insert \N · Ctrl+Shift+D: split" FontSize="14" Text="{Binding EditorDraft.Text, Mode=TwoWay}" AcceptsReturn="True" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+        <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto">
+          <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="36" MaxHeight="76" Margin="0,0,0,3" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
+          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="14" SourceText="{Binding EditorDraft.Text, Mode=TwoWay}" BetterView="{Binding BetterView}" ShowMotionData="{Binding ShowMotionData}" MotionToggleCommand="{Binding Actions[edit/motion-block/toggle]}" MotionCopyCommand="{Binding Actions[edit/motion-block/copy]}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+          <WrapPanel Grid.Row="2" IsVisible="{Binding ShowOriginal}" Margin="0,3,0,0">
+            <StackPanel IsVisible="{Binding ShowOriginal}" Orientation="Horizontal" Spacing="3">
+              <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="11" />
+              <Button Name="OriginalClear" Content="Clear" Command="{Binding Actions[edit/clear]}" Padding="5,0" FontSize="11" />
+              <Button Name="OriginalClearText" Content="Clear Text" Command="{Binding Actions[edit/clear/text]}" Padding="5,0" FontSize="11" />
+              <Button Name="OriginalInsert" Content="Insert Original" Command="{Binding Actions[edit/insert_original]}" Padding="5,0" FontSize="11" />
+            </StackPanel>
+          </WrapPanel>
+        </Grid>
       </Grid>
     </Border>
   </Grid>
@@ -244,23 +538,71 @@
 <Border Grid.Row="4" Margin="6" Name="SubtitleGridRegion" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
 <Grid RowDefinitions="24,*" ToolTip.Tip="SUBTITLE GRID">
 <Border Padding="10,2" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1"><Grid Name="ColumnHeader" PointerPressed="HeaderPressed" PointerMoved="HeaderMoved" PointerReleased="HeaderReleased" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4" ToolTip.Tip="Drag a column boundary to resize"><TextBlock Text="#" /><TextBlock Grid.Column="1" Text="L" ToolTip.Tip="Layer" /><TextBlock Grid.Column="2" Text="Start" /><TextBlock Grid.Column="3" Text="End" /><TextBlock Grid.Column="4" Text="Style" /><TextBlock Grid.Column="5" Text="Actor" /><TextBlock Grid.Column="6" Text="Effect" /><TextBlock Grid.Column="7" Text="Text" /></Grid></Border>
-<ListBox Name="SubtitleRows" Grid.Row="1" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
+<ListBox Name="SubtitleRows" controls:SubtitleGridText.TagDisplayMode="{Binding GridTagDisplay}" Grid.Row="1" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
 <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,0" /><Setter Property="Height" Value="26" /><Setter Property="MinHeight" Value="26" /><Setter Property="MaxHeight" Value="26" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style><Style Selector="Grid.subtitle-row TextBlock"><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" /></Style><Style Selector="Grid.subtitle-row.comment TextBlock"><Setter Property="Foreground" Value="{DynamicResource AssSyntaxUnknown}" /></Style><Style Selector="ListBoxItem:selected Grid.subtitle-row TextBlock"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style></ListBox.Styles>
 <ListBox.ContextMenu><ContextMenu>
-<MenuItem Header="Insert before" Command="{Binding Actions[grid/insert/before]}" />
-<MenuItem Header="Insert after" Command="{Binding Actions[grid/insert/after]}" />
-<MenuItem Header="Duplicate" Command="{Binding Actions[grid/duplicate]}" />
-<MenuItem Header="Delete selected" Command="{Binding Actions[grid/delete]}" />
-<MenuItem Header="Dialogue / Comment" Command="{Binding Actions[grid/toggle-comment]}" />
-<MenuItem Header="Split at text cursor" Command="{Binding Actions[grid/split]}" />
-<MenuItem Header="Join selected" Command="{Binding Actions[grid/join]}" />
-<MenuItem Header="Move up" Command="{Binding Actions[grid/move/up]}" />
-<MenuItem Header="Move down" Command="{Binding Actions[grid/move/down]}" />
-<MenuItem Header="Styles Manager…" Command="{Binding Actions[styles/manage]}" />
-<MenuItem Header="Copy lines" Command="{Binding Actions[grid/copy]}" />
-<MenuItem Header="Cut lines" Command="{Binding Actions[grid/cut]}" />
-<MenuItem Header="Paste lines" Command="{Binding Actions[grid/paste]}" />
-<MenuItem Header="Select all lines" Command="{Binding Actions[grid/select-all]}" />
+<MenuItem Header="Save selected-line audio clip…" Command="{Binding Actions[audio/save/clip]}" InputGesture="{Binding Actions[audio/save/clip].InputGesture}" />
+<MenuItem Name="SelectLinesContextMenu" Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectLines}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Select visible lines" InputGesture="{Binding Actions[subtitle/select/visible].InputGesture}" Command="{Binding Actions[subtitle/select/visible]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectVisible}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Timing">
+<MenuItem Header="Shift Times…" InputGesture="{Binding Actions[time/shift].InputGesture}" Command="{Binding Actions[time/shift]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ShiftTimes}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Make starts continuous" Command="{Binding Actions[time/continuous/start]}" />
+<MenuItem Header="Make ends continuous" Command="{Binding Actions[time/continuous/end]}" />
+<MenuItem Header="Snap starts to video" InputGesture="{Binding Actions[time/snap/start_video].InputGesture}" Command="{Binding Actions[time/snap/start_video]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StartToVideo}" Foreground="{DynamicResource IconTimingStartBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Snap ends to video" InputGesture="{Binding Actions[time/snap/end_video].InputGesture}" Command="{Binding Actions[time/snap/end_video]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.EndToVideo}" Foreground="{DynamicResource IconTimingEndBrush}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Snap to scene" InputGesture="{Binding Actions[time/snap/scene].InputGesture}" Command="{Binding Actions[time/snap/scene]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SnapScene}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Shift to current frame" InputGesture="{Binding Actions[time/frame/current].InputGesture}" Command="{Binding Actions[time/frame/current]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.ShiftToFrame}" /></MenuItem.Icon></MenuItem>
+</MenuItem>
+<MenuItem Header="Insert before" InputGesture="{Binding Actions[grid/insert/before].InputGesture}" Command="{Binding Actions[grid/insert/before]}" />
+<MenuItem Header="Insert after" InputGesture="{Binding Actions[grid/insert/after].InputGesture}" Command="{Binding Actions[grid/insert/after]}" />
+<MenuItem Header="Insert before at video time" Command="{Binding Actions[subtitle/insert/before/videotime]}" InputGesture="{Binding Actions[subtitle/insert/before/videotime].InputGesture}" />
+<MenuItem Header="Insert after at video time" Command="{Binding Actions[subtitle/insert/after/videotime]}" InputGesture="{Binding Actions[subtitle/insert/after/videotime].InputGesture}" />
+<MenuItem Header="Duplicate" InputGesture="{Binding Actions[grid/duplicate].InputGesture}" Command="{Binding Actions[grid/duplicate]}" />
+<MenuItem Header="Delete selected" InputGesture="{Binding Actions[grid/delete].InputGesture}" Command="{Binding Actions[grid/delete]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Delete}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Comment / Uncomment Lines" InputGesture="{Binding Actions[grid/toggle-comment].InputGesture}" Command="{Binding Actions[grid/toggle-comment]}" />
+<MenuItem Header="Split at text cursor">
+<MenuItem Header="Preserve times" InputGesture="{Binding Actions[edit/line/split/preserve].InputGesture}" Command="{Binding Actions[edit/line/split/preserve]}" />
+<MenuItem Header="Estimate times" InputGesture="{Binding Actions[edit/line/split/estimate].InputGesture}" Command="{Binding Actions[edit/line/split/estimate]}" />
+<MenuItem Header="At video frame" InputGesture="{Binding Actions[edit/line/split/video].InputGesture}" Command="{Binding Actions[edit/line/split/video]}" />
+<MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
+</MenuItem>
+<MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
+<MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />
+<MenuItem Header="Join selected">
+<MenuItem Header="Concatenate" InputGesture="{Binding Actions[edit/line/join/concatenate].InputGesture}" Command="{Binding Actions[edit/line/join/concatenate]}" />
+<MenuItem Header="Keep first text" InputGesture="{Binding Actions[edit/line/join/keep_first].InputGesture}" Command="{Binding Actions[edit/line/join/keep_first]}" />
+<MenuItem Header="As karaoke" InputGesture="{Binding Actions[edit/line/join/as_karaoke].InputGesture}" Command="{Binding Actions[edit/line/join/as_karaoke]}" />
+<MenuItem Header="With line breaks" InputGesture="{Binding Actions[grid/join].InputGesture}" Command="{Binding Actions[grid/join]}" />
+</MenuItem>
+<MenuItem Header="Swap selected lines" InputGesture="{Binding Actions[grid/swap].InputGesture}" Command="{Binding Actions[grid/swap]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StyleSort}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Sort selected blocks">
+<MenuItem Header="By start" InputGesture="{Binding Actions[grid/sort/start/selected].InputGesture}" Command="{Binding Actions[grid/sort/start/selected]}" />
+<MenuItem Header="By end" InputGesture="{Binding Actions[grid/sort/end/selected].InputGesture}" Command="{Binding Actions[grid/sort/end/selected]}" />
+<MenuItem Header="By style" InputGesture="{Binding Actions[grid/sort/style/selected].InputGesture}" Command="{Binding Actions[grid/sort/style/selected]}" />
+<MenuItem Header="By actor" InputGesture="{Binding Actions[grid/sort/actor/selected].InputGesture}" Command="{Binding Actions[grid/sort/actor/selected]}" />
+<MenuItem Header="By effect" InputGesture="{Binding Actions[grid/sort/effect/selected].InputGesture}" Command="{Binding Actions[grid/sort/effect/selected]}" />
+<MenuItem Header="By layer" InputGesture="{Binding Actions[grid/sort/layer/selected].InputGesture}" Command="{Binding Actions[grid/sort/layer/selected]}" />
+<MenuItem Header="By text including tags" Command="{Binding Actions[grid/sort/text/selected]}" InputGesture="{Binding Actions[grid/sort/text/selected].InputGesture}" />
+<MenuItem Header="By text without tags" Command="{Binding Actions[grid/sort/text_stripped/selected]}" InputGesture="{Binding Actions[grid/sort/text_stripped/selected].InputGesture}" />
+</MenuItem>
+<MenuItem Header="Move up" InputGesture="{Binding Actions[grid/move/up].InputGesture}" Command="{Binding Actions[grid/move/up]}" />
+<MenuItem Header="Move down" InputGesture="{Binding Actions[grid/move/down].InputGesture}" Command="{Binding Actions[grid/move/down]}" />
+<MenuItem Header="Styles Manager…" InputGesture="{Binding Actions[styles/manage].InputGesture}" Command="{Binding Actions[styles/manage]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StylesManager}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Copy lines" InputGesture="{Binding Actions[grid/copy].InputGesture}" Command="{Binding Actions[grid/copy]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Copy}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Cut lines" InputGesture="{Binding Actions[grid/cut].InputGesture}" Command="{Binding Actions[grid/cut]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Cut}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Paste lines" InputGesture="{Binding Actions[grid/paste].InputGesture}" Command="{Binding Actions[grid/paste]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Paste}" /></MenuItem.Icon></MenuItem>
+<MenuItem Header="Select all lines" InputGesture="{Binding Actions[grid/select-all].InputGesture}" Command="{Binding Actions[grid/select-all]}" />
 </ContextMenu></ListBox.ContextMenu><ListBox.ItemTemplate><DataTemplate x:DataType="sub:AssEvent"><Grid Tag="SubtitleRow" Classes="subtitle-row" Classes.comment="{Binding IsComment}" Height="26" ClipToBounds="True" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4">
-<Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource IconAccentBrush}" IsVisible="{Binding IsCurrent}" /><Border Grid.ColumnSpan="8" Background="{DynamicResource IconAccentBrush}" Opacity="0.12" IsVisible="{Binding IsActive}" /><TextBlock Text="{Binding Number}" FontSize="11" Margin="5,0,0,0" /><TextBlock Grid.Column="1" Text="{Binding DisplayLayer}" FontSize="11" /><TextBlock Grid.Column="2" Text="{Binding DisplayStart}" FontSize="11" /><TextBlock Grid.Column="3" Text="{Binding DisplayEnd}" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DisplayStyle}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="5" Text="{Binding DisplayActor}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="6" Text="{Binding DisplayEffect}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="7" Text="{Binding DisplayText}" MaxLines="1" TextTrimming="CharacterEllipsis" FontSize="12" />
-</Grid></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></Border></Grid></Window>
+<Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource IconAccentBrush}" IsVisible="{Binding IsCurrent}" /><Border Grid.ColumnSpan="8" Background="{DynamicResource IconAccentBrush}" Opacity="0.12" IsVisible="{Binding IsActive}" /><TextBlock Text="{Binding Number}" FontSize="11" Margin="5,0,0,0" /><TextBlock Grid.Column="1" Text="{Binding DisplayLayer}" FontSize="11" /><TextBlock Grid.Column="2" Text="{Binding DisplayStart}" FontSize="11" /><TextBlock Grid.Column="3" Text="{Binding DisplayEnd}" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DisplayStyle}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="5" Text="{Binding DisplayActor}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="6" Text="{Binding DisplayEffect}" TextTrimming="CharacterEllipsis" FontSize="11" /><controls:SubtitleGridText Grid.Column="7" SourceText="{Binding DisplayText}" MaxLines="1" TextTrimming="CharacterEllipsis" FontSize="12" />
+</Grid></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></Border>
+    <Border Name="SubtitleLoadingOverlay" Grid.RowSpan="5" Background="#99000000" IsVisible="{Binding OpeningSubtitle}">
+      <Border Background="{DynamicResource AppBackgroundBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="4" Padding="20" Width="380" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="10">
+          <TextBlock Text="Opening subtitle" FontWeight="SemiBold" FontSize="15" />
+          <TextBlock Text="{Binding OpeningSubtitleText}" TextWrapping="Wrap" />
+          <ProgressBar IsIndeterminate="True" Height="5" />
+          <Button Content="Cancel" HorizontalAlignment="Right" Command="{Binding Actions[subtitle/cancel-open]}" />
+        </StackPanel>
+      </Border>
+    </Border>
+  </Grid></Window>

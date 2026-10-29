@@ -70,9 +70,9 @@ public sealed partial class MainWindowViewModel
         var text=pointIndex==-2 ? AssVisualTags.TranslateClip(_gestureText,new(point.X-anchor.X,point.Y-anchor.Y)) : pointIndex>=0 ? AssVisualTags.MoveClipPoint(_gestureText,pointIndex,point) : AssVisualTags.SetRectangle(_gestureText,InverseClip,anchor,point);
         _gestureEditor.SetField(_gestureLine,"Text",text,"Edit subtitle clip");GestureChanged();
     }
-    private void GestureChanged(){InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));}
+    private void GestureChanged(){InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();}
     private void EndGestureCore() { var gesture=_gesture; _gesture=null; try { gesture?.Commit(); } finally { gesture?.Dispose(); _visualBaseline=[]; ReloadDraft(); GestureEnded?.Invoke(this,EventArgs.Empty); } }
-    private void CancelGestureCore() { var gesture=_gesture; _gesture=null; gesture?.Dispose(); _visualBaseline=[]; if(gesture is not null){ReloadDraft();GestureEnded?.Invoke(this,EventArgs.Empty);} }
+    private void CancelGestureCore() { FinishKaraokeGesture(false);FinishAudioTimingGesture(false);var gesture=_gesture; _gesture=null; gesture?.Dispose(); _visualBaseline=[]; if(gesture is not null){ReloadDraft();GestureEnded?.Invoke(this,EventArgs.Empty);} }
     public (double Width,double Height) ScriptSize => (int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResX"),out var w)&&w>0?w:384,int.TryParse(_activeSubtitleDocument?.GetScriptInfo("PlayResY"),out var h)&&h>0?h:288);
     private AssEvent[] Selection() => SelectedEvents.Where(Events.Contains).DefaultIfEmpty(SelectedEvent).OfType<AssEvent>().Distinct().ToArray();
     private void Select(AssEvent? line) { SetSelectedEvents(line is null?Array.Empty<AssEvent>():new[]{line}); SelectedEvent=line; }
@@ -103,31 +103,33 @@ public sealed partial class MainWindowViewModel
     }
     private void RegisterEditorCommands()
     {
-        void R(string id,string label,Func<CommandInvocation,ValueTask> action,Func<bool>? available=null)
+        RegisterViewCommands();
+        void R(string id,string label,Func<CommandInvocation,ValueTask> action,Func<bool>? available=null,Func<string>? display=null,Func<bool>? isChecked=null)
         {
-            _registry.Register(new AppCommand(new(id,label,label,id.Split('/')[0]),(i,_)=>action(i),_=>available?.Invoke()??true));
-            Actions[id]=new RegistryCommand(_registry,id,CurrentContext);
+            _registry.Register(new AppCommand(new(id,label,label,id.Split('/')[0]),(i,_)=>action(i),_=>available?.Invoke()??true,
+                isChecked is null?null:_=>isChecked(),display is null?null:_=>display()));
+            Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
-        void S(string id,string label,Action action,Func<bool>? available=null)=>R(id,label,_=>{action();return ValueTask.CompletedTask;},available);
+        void S(string id,string label,Action action,Func<bool>? available=null,Func<string>? display=null,Func<bool>? isChecked=null)=>R(id,label,_=>{action();return ValueTask.CompletedTask;},available,display,isChecked);
         R("styles/layout","Remember style list proportions",i=>
         {
             if(i.Parameter is double[] weights&&weights.Length==3&&weights.All(w=>double.IsFinite(w)&&w>0))
             {_settings=(_settings with{StyleSplitWeights=(double[])weights.Clone()}).Normalize();_settingsStore.Save(_settings);}
             return ValueTask.CompletedTask;
         });
-        bool HasLine()=>HasSelectedEvent && _gesture is null;
+        bool HasLine()=>HasSelectedEvent && !HasGesture;
         foreach(var setting in new[]{"audio/volume","audio/mute","audio/display/height","audio/display/intensity","audio/display/zoom","audio/volume/link"})
         {var id=setting;R(id,id,i=>{SaveAudioSetting(id,i.Parameter);return ValueTask.CompletedTask;});}
-        S(CommandIds.TextHardNewline,"Insert ASS hard newline  Shift+Enter",InsertHardNewline,HasLine);
-        S(CommandIds.FormatBold,"Bold  Ctrl+B",()=>ToggleFormat("b"),HasLine);
-        S(CommandIds.FormatItalic,"Italic  Ctrl+I",()=>ToggleFormat("i"),HasLine);
-        S(CommandIds.FormatUnderline,"Underline  Ctrl+U",()=>ToggleFormat("u"),HasLine);
+        S(CommandIds.TextHardNewline,"Insert ASS hard newline",InsertHardNewline,HasLine);
+        S(CommandIds.FormatBold,"Bold",()=>ToggleFormat("b"),HasLine);
+        S(CommandIds.FormatItalic,"Italic",()=>ToggleFormat("i"),HasLine);
+        S(CommandIds.FormatUnderline,"Underline",()=>ToggleFormat("u"),HasLine);
         S(CommandIds.FormatStrikeout,"Strikeout",()=>ToggleFormat("s"),HasLine);
         R(CommandIds.FormatFont,"Font family and size…",_=>FormatFontAsync(),HasLine);
         foreach(var item in new[]{(CommandIds.FormatPrimary,1),(CommandIds.FormatSecondary,2),(CommandIds.FormatOutline,3),(CommandIds.FormatShadow,4)})
         {var channel=item.Item2;R(item.Item1,"Choose subtitle color…",_=>FormatColorAsync(channel),HasLine);}
         S(CommandIds.FormatReset,"Reset to line style",()=>FormatText("Reset formatting",(text,start,end,style)=>AssFormatting.Reset(text,start,end,style,ResolveFormatStyle)),HasLine);
-        R(CommandIds.EditComment,"Dialogue / Comment",invocation=>{if(invocation.Parameter is bool desired)RunEdit(e=>{if(SelectedEvent!.IsComment!=desired)e.ToggleComment([SelectedEvent]);});return ValueTask.CompletedTask;},HasLine);
+        R(CommandIds.EditComment,"Comment / Uncomment Lines",invocation=>{if(invocation.Parameter is bool desired)RunEdit(e=>{if(SelectedEvent!.IsComment!=desired)e.ToggleComment([SelectedEvent]);});return ValueTask.CompletedTask;},HasLine);
 
         void GestureStep(Action action){try{action();}catch{CancelGestureCore();throw;}}
         R(CommandIds.GestureBegin,"Begin editor gesture",i=>{BeginGestureCore(i.Parameter as string??"Edit subtitle");return ValueTask.CompletedTask;});
@@ -143,72 +145,59 @@ public sealed partial class MainWindowViewModel
             {_settings=_settings with{CompactGridColumnWidths=(double[])widths.Clone()};_settingsStore.Save(_settings);}
             return ValueTask.CompletedTask;
         });
-        S(CommandIds.SubtitleNew,"New  Ctrl+N",CreateNewDocument);
-        R(CommandIds.SubtitleOpen,"Open…  Ctrl+O",async i=>{var path=i.Parameter as string ?? (Dialogs is null?null:await Dialogs.OpenSubtitleAsync()); if(path is not null&&OpenSubtitle(path)&&_media is null&&FindAssociatedMedia(path) is {} mediaPath)await OpenMediaAsync(mediaPath);});
-        R(CommandIds.SubtitleSave,"Save  Ctrl+S",async _=>{await SaveAsync();});
-        R(CommandIds.SubtitleSaveAs,"Save As…  Ctrl+Shift+S",async _=>{await SaveAsync(true);});
-        R(CommandIds.SubtitleClose,"Close tab  Ctrl+W",async i=>{if(i.Parameter is Guid id)await CloseDocumentAsync(id);else if(_activeId is {} active)await CloseDocumentAsync(active);});
-        R(CommandIds.SubtitleRevert,"Reload from disk…",async _=>{if(!CommitDraft() || ActiveSubtitlePath is not {} path || Dialogs is null || !await Dialogs.ConfirmRevertAsync())return; var doc=AssDocument.Load(path); var session=_workspace.ActiveDocument!; var state=_documents[session.Id]; Attach(session,doc); var replacement=_documents[session.Id]; replacement.Media=state.Media; replacement.Waveform=state.Waveform; replacement.Time=state.Time; state.Loading?.Cancel(); _activeId=null; SynchronizeActiveDocument();},()=>ActiveSubtitlePath is not null);
+        S(CommandIds.SubtitleNew,"New",CreateNewDocument);
+        R(CommandIds.SubtitleOpen,"Open…",async i=>{var path=i.Parameter as string ?? (Dialogs is null?null:await Dialogs.OpenSubtitleAsync()); if(path is not null)await OpenSubtitleForUserAsync(path);});
+        S("subtitle/cancel-open","Cancel opening",CancelSubtitleOpen,()=>OpeningSubtitle);
+        R(CommandIds.SubtitleSave,"Save",async _=>{await SaveAsync();});
+        R(CommandIds.SubtitleSaveAs,"Save As…",async _=>{await SaveAsync(true);});
+        R(CommandIds.SubtitleClose,"Close tab",async i=>{if(i.Parameter is Guid id)await CloseDocumentAsync(id);else if(_activeId is {} active)await CloseDocumentAsync(active);});
+        R(CommandIds.SubtitleRevert,"Reload from disk…",async _=>{if(!CommitDraft() || ActiveSubtitlePath is not {} path || Dialogs is null || !await Dialogs.ConfirmRevertAsync())return; var doc=AssDocument.Load(path); var session=_workspace.ActiveDocument!; var state=_documents[session.Id]; Attach(session,doc); var replacement=_documents[session.Id]; replacement.Media=state.Media; replacement.VideoAspect=state.VideoAspect;replacement.VideoView=state.VideoView;replacement.VideoProviderRevision=state.VideoProviderRevision; state.FrameExtraction?.Cancel(); replacement.Waveform=state.Waveform; replacement.Time=state.Time; state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); _activeId=null; SynchronizeActiveDocument();},()=>ActiveSubtitlePath is not null);
         R(CommandIds.WorkspaceActivateTab,"Activate tab",i=>{CancelGesture();if(i.Parameter is Guid id && CommitDraft())_workspace.Activate(id);return ValueTask.CompletedTask;});
-        S(CommandIds.EditUndo,"Undo  Ctrl+Z",()=>{var wasGesture=_gesture is not null;CancelGesture();if(wasGesture)return; if(Draft?.IsChanged==true){ReloadDraft();return;} ApplyHistory(false);},()=>Draft?.IsChanged==true || _undo.CanUndo || _gesture is not null);
-        S(CommandIds.EditRedo,"Redo  Ctrl+Y",()=>{CancelGesture(); if(CommitDraft())ApplyHistory(true);},()=>_undo.CanRedo);
-        S(CommandIds.EditCommit,"Commit line  Ctrl+Enter",()=>CommitDraft(),HasLine);
-        S(CommandIds.EditCommitNext,"Commit and next  Enter",()=>{if(CommitDraft()){if(SelectedEvent==Events.LastOrDefault())RunEdit(e=>Select(e.Insert(SelectedEvent,true,SelectedEvent?.EndMilliseconds??0)));else Navigate(1);}},HasLine);
-        S(CommandIds.EditCancel,"Cancel edit / gesture  Esc",()=>{CancelGesture(); ReloadDraft();});
-        S(CommandIds.GridLineNext,"Next subtitle  Alt+Down",()=>Navigate(1));
-        S(CommandIds.GridLinePrevious,"Previous subtitle  Alt+Up",()=>Navigate(-1));
-        S(CommandIds.GridInsertBefore,"Insert before  Ctrl+Insert",()=>RunEdit(e=>Select(e.Insert(SelectedEvent,false,(long)(CurrentTimeSeconds*1000)))));
-        S(CommandIds.GridInsertAfter,"Insert after  Insert",()=>RunEdit(e=>Select(e.Insert(SelectedEvent,true,SelectedEvent?.EndMilliseconds??(long)(CurrentTimeSeconds*1000)))));
-        S(CommandIds.GridDuplicate,"Duplicate  Ctrl+D",()=>RunEdit(e=>{var copies=e.Duplicate(Selection()); Select(copies.FirstOrDefault());}),HasLine);
-        S(CommandIds.GridDelete,"Delete selected  Delete",()=>RunEdit(e=>{var index=SelectedEvent is null?0:Events.ToList().IndexOf(SelectedEvent); e.Delete(Selection());Select(Events.ElementAtOrDefault(Math.Min(index,Events.Count-1)));}),HasLine);
-        S(CommandIds.GridToggleComment,"Dialogue / Comment",()=>RunEdit(e=>e.ToggleComment(Selection())),HasLine);
-        S(CommandIds.GridSplit,"Split at cursor  Ctrl+Shift+D",()=>RunEdit(e=>Select(e.Split(SelectedEvent!,TextCursor))),HasLine);
+        S(CommandIds.EditUndo,"Undo",()=>{var wasGesture=HasGesture;CancelGesture();if(wasGesture)return; if(Draft?.IsChanged==true){ReloadDraft();return;} ApplyHistory(false);},()=>Draft?.IsChanged==true || _undo.CanUndo || HasGesture,
+            ()=>_gesture is not null?"Undo gesture":Draft?.IsChanged==true?"Undo draft":_undo.NextUndoName is {} name?"Undo "+name:"Nothing to undo");
+        S(CommandIds.EditRedo,"Redo",()=>{CancelGesture(); if(CommitDraft())ApplyHistory(true);},()=>_undo.CanRedo,
+            ()=>_undo.NextRedoName is {} name?"Redo "+name:"Nothing to redo");
+        S(CommandIds.EditCommit,"Commit line",()=>CommitDraft(),HasLine);
+        S(CommandIds.EditCommitNext,"Commit and next",CommitEditingNext,HasLine);
+        S(CommandIds.EditCancel,"Cancel edit / gesture",()=>{CancelGesture(); ReloadDraft();});
+        S(CommandIds.GridLineNext,"Next subtitle",()=>Navigate(1));
+        S(CommandIds.GridLinePrevious,"Previous subtitle",()=>Navigate(-1));
+        S(CommandIds.GridInsertBefore,"Insert before",()=>RunEdit(e=>Select(e.Insert(SelectedEvent,false,(long)(CurrentTimeSeconds*1000)))));
+        S(CommandIds.GridInsertAfter,"Insert after",()=>RunEdit(e=>Select(e.Insert(SelectedEvent,true,SelectedEvent?.EndMilliseconds??(long)(CurrentTimeSeconds*1000)))));
+        foreach(var after in new[]{false,true})
+        {
+            var id=after?"subtitle/insert/after/videotime":"subtitle/insert/before/videotime";
+            _registry.Register(new AppCommand(new(id,after?"Insert after at video time":"Insert before at video time","Insert a subtitle at the current video frame","Subtitle"),
+                (_,token)=>{token.ThrowIfCancellationRequested();RunEdit(e=>Select(e.InsertAtVideoTime(SelectedEvent!,after,ActiveFrameTiming().SubtitleBoundary(CurrentFrame,Yoake.Core.Media.FrameTimeKind.Start),_settings.AudioDefaultDuration??3000)));return ValueTask.CompletedTask;},
+                context=>_activeId is { } active && (context.DocumentId is null||context.DocumentId==active) && HasLine() && _media?.HasVideo==true && CanShiftByFrames && FrameTimes.Count>0));
+            Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
+        }
+        S(CommandIds.GridDuplicate,"Duplicate",()=>RunEdit(e=>{var copies=e.Duplicate(Selection()); SelectCopies(copies);}),HasLine);
+        S(CommandIds.GridDelete,"Delete selected",()=>RunEdit(e=>{var index=SelectedEvent is null?0:Events.ToList().IndexOf(SelectedEvent); e.Delete(Selection());Select(Events.ElementAtOrDefault(Math.Min(index,Events.Count-1)));}),HasLine);
+        S(CommandIds.GridToggleComment,"Comment / Uncomment Lines",()=>RunEdit(e=>e.ToggleComment(Selection())),HasLine);
+        S(CommandIds.GridSplit,"Split at cursor",()=>RunEdit(e=>Select(e.Split(SelectedEvent!,TextCursor))),HasLine);
         S(CommandIds.GridJoin,"Join selected lines",()=>RunEdit(e=>e.Join(Selection())),HasLine);
-        S(CommandIds.GridMoveUp,"Move up  Alt+Shift+Up",()=>RunEdit(e=>e.Move(Selection(),-1)),HasLine);
-        S(CommandIds.GridMoveDown,"Move down  Alt+Shift+Down",()=>RunEdit(e=>e.Move(Selection(),1)),HasLine);
-        S(CommandIds.GridSelectAll,"Select all  Ctrl+A",()=>SetSelectedEvents(Events));
-        R(CommandIds.GridCopy,"Copy lines  Ctrl+C",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} e)await Dialogs.WriteClipboardAsync(e.Copy(Selection()));},HasLine);
-        R(CommandIds.GridCut,"Cut lines  Ctrl+X",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} e){await Dialogs.WriteClipboardAsync(e.Copy(Selection()));RunEdit(editor=>editor.Delete(Selection()));}},HasLine);
-        R(CommandIds.GridPaste,"Paste lines  Ctrl+V",async _=>{if(Dialogs is not null&&await Dialogs.ReadClipboardAsync() is {} text)RunEdit(e=>Select(e.Paste(text,SelectedEvent).FirstOrDefault()));});
+        S(CommandIds.GridMoveUp,"Move up",()=>RunEdit(e=>e.Move(Selection(),-1)),HasLine);
+        S(CommandIds.GridMoveDown,"Move down",()=>RunEdit(e=>e.Move(Selection(),1)),HasLine);
+        S(CommandIds.GridSelectAll,"Select all",()=>SetSelectedEvents(Events));
+        R(CommandIds.GridCopy,"Copy lines",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} e)await Dialogs.WriteClipboardAsync(e.Copy(Selection()));},HasLine);
+        R(CommandIds.GridCut,"Cut lines",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} e){await Dialogs.WriteClipboardAsync(e.Copy(Selection()));RunEdit(editor=>editor.Delete(Selection()));}},HasLine);
+        R(CommandIds.GridPaste,"Paste lines",async _=>{if(Dialogs is not null&&await Dialogs.ReadClipboardAsync() is {} text)RunEdit(e=>Select(e.Paste(text,SelectedEvent).FirstOrDefault()));});
         R(CommandIds.MediaOpen,"Open video/audio…",async _=>{var path=Dialogs is null?null:await Dialogs.OpenMediaAsync();if(path is not null)await OpenMediaAsync(path);});
         // Playback is a continuing activity; registry invocation completes once started.
-        S(CommandIds.VideoPlay,"Play / Pause  Space",()=>{if(IsPlaying)StopPlayback();else _=StartPlaybackAsync();},()=>CanPlayMedia);
-        S(CommandIds.VideoStop,"Stop  Escape",StopPlayback,()=>CanPlayMedia);
-        S(CommandIds.AudioPlayCursor,"Play from cursor",()=>{_ = StartPlaybackAsync();},()=>CanPlayMedia);
-        S(CommandIds.AudioPlaySelection,"Play current line  R",()=>{if(!CommitDraft()||SelectedEvent is null)return;StopPlayback();CurrentTimeSeconds=(SelectedEvent.StartMilliseconds??0)/1000d;_=StartPlaybackAsync((SelectedEvent.EndMilliseconds??0)/1000d);},()=>CanPlayMedia&&HasLine());
-        R(CommandIds.VideoFrameNext,"Next frame  Right",async _=>await StepFrameAsync(1),()=>_media?.HasVideo==true);
-        R("video/seek/frame","Seek to frame",async i=>{if(i.Parameter is int frame)await SeekFrameAsync(frame);},()=>_media?.HasVideo==true);
-        foreach(var delta in new[]{-1,1}){var step=delta;R(step>0?"video/frame/next-keyframe":"video/frame/previous-keyframe","Step keyframe",async _=>await SeekFrameAsync(Yoake.Core.Media.FrameNavigation.StepKeyframe(Keyframes,CurrentFrame,step)),()=>_media?.HasVideo==true);}
-        R(CommandIds.VideoFramePrevious,"Previous frame  Left",async _=>await StepFrameAsync(-1),()=>_media?.HasVideo==true);
-        R(CommandIds.VideoSeek,"Seek to exact time",async i=>{if(i.Parameter is string text&&AssTime.TryParse(text,out var ms))await SeekPlaybackAsync(ms/1000d);else throw new ArgumentException("Enter h:mm:ss.cc");},()=>CanPlayMedia);
-        S(CommandIds.TimingSetStart,"Set start to current time  Ctrl+3",()=>RunEdit(e=>{var line=SelectedEvent!;using var t=e.Undo.BeginTransaction("Set line start");e.SetTiming(line,(long)(CurrentTimeSeconds*1000),Math.Max((long)(CurrentTimeSeconds*1000),line.EndMilliseconds??0));t.Commit();}),HasLine);
-        S(CommandIds.TimingSetEnd,"Set end to current time  Ctrl+4",()=>RunEdit(e=>{var line=SelectedEvent!;using var t=e.Undo.BeginTransaction("Set line end");e.SetTiming(line,Math.Min((long)(CurrentTimeSeconds*1000),line.StartMilliseconds??0),(long)(CurrentTimeSeconds*1000));t.Commit();}),HasLine);
-        S(CommandIds.TimingJumpStart,"Jump to line start",()=>{if(SelectedEvent?.StartMilliseconds is {} ms){StopPlayback();CurrentTimeSeconds=ms/1000d;}},HasLine);
-        S(CommandIds.TimingJumpEnd,"Jump to line end",()=>{if(SelectedEvent?.EndMilliseconds is {} ms){StopPlayback();CurrentTimeSeconds=ms/1000d;}},HasLine);
+        RegisterVideoNavigationCommands();
+        S(CommandIds.TimingSetStart,"Set start to current time",()=>RunEdit(e=>{var line=SelectedEvent!;using var t=e.Undo.BeginTransaction("Set line start");e.SetTiming(line,(long)(CurrentTimeSeconds*1000),Math.Max((long)(CurrentTimeSeconds*1000),line.EndMilliseconds??0));t.Commit();}),HasLine);
+        S(CommandIds.TimingSetEnd,"Set end to current time",()=>RunEdit(e=>{var line=SelectedEvent!;using var t=e.Undo.BeginTransaction("Set line end");e.SetTiming(line,Math.Min((long)(CurrentTimeSeconds*1000),line.StartMilliseconds??0),(long)(CurrentTimeSeconds*1000));t.Commit();}),HasLine);
         R(CommandIds.StylesManage,"Styles Manager…",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} editor){await Dialogs.ShowStylesAsync(editor);OnPropertyChanged(nameof(StyleNames));ReloadDraft();}});
         R(CommandIds.ScriptInfoEdit,"Script Info…",async _=>{if(CommitDraft()&&Dialogs is not null&&ActiveEditor is {} editor)await Dialogs.ShowScriptInfoAsync(editor);});
-        R(CommandIds.EditFind,"Find / Replace…  Ctrl+F",async _=>{if(CommitDraft()&&Dialogs is not null)await Dialogs.ShowFindAsync(this);});
-        S(CommandIds.AudioZoomIn,"Zoom audio in  +",()=>AudioWindowSeconds=Math.Max(0.02,AudioWindowSeconds/2));
-        S(CommandIds.AudioZoomOut,"Zoom audio out  -",()=>AudioWindowSeconds=Math.Min(3600,AudioWindowSeconds*2));
-        foreach(var name in VisualToolNames){var tool=name;S("video/tool/"+(tool=="Clip"?"clip":tool=="Position"?"position":tool.ToLowerInvariant()),tool+" tool",()=>SelectVisualTool(tool));}
-        foreach(var name in VectorModes){var mode=name;S("video/vector/"+mode.ToLowerInvariant(),"Vector clip: "+mode,()=>{CancelGesture();VectorMode=mode;});}
+        R(CommandIds.EditFind,"Find / Replace…",async _=>{if(CommitDraft()&&Dialogs is not null)await Dialogs.ShowFindAsync(this);});
+        S(CommandIds.AudioZoomIn,"Zoom audio in",()=>AudioWindowSeconds=Math.Max(0.02,AudioWindowSeconds/2));
+        S(CommandIds.AudioZoomOut,"Zoom audio out",()=>AudioWindowSeconds=Math.Min(3600,AudioWindowSeconds*2));
+        RegisterVisualToolCommands();
         S("video/position/toggle-move","Toggle position / movement",ToggleVisualMove,HasLine);
         S("video/clip/invert","Invert selected clips",InvertVisualClip,HasLine);
         S(CommandIds.ViewThemeCycle,"Cycle theme",()=>{_settings=_settings with{Theme=_theme.Next()};_settingsStore.Save(_settings);});
-        void H(string id,string key,KeyModifiers modifiers=KeyModifiers.None,HotkeyContext context=HotkeyContext.Always)=>Hotkeys.Add(new(id,context,new(key,modifiers)));
-        H(CommandIds.SubtitleNew,"N",KeyModifiers.Control);H(CommandIds.SubtitleOpen,"O",KeyModifiers.Control);H(CommandIds.SubtitleSave,"S",KeyModifiers.Control);H(CommandIds.SubtitleSaveAs,"S",KeyModifiers.Control|KeyModifiers.Shift);H(CommandIds.SubtitleClose,"W",KeyModifiers.Control);
-        H(CommandIds.EditUndo,"Z",KeyModifiers.Control);H(CommandIds.EditRedo,"Y",KeyModifiers.Control);H(CommandIds.EditRedo,"Z",KeyModifiers.Control|KeyModifiers.Shift);H(CommandIds.EditFind,"F",KeyModifiers.Control);
-        H(CommandIds.FormatBold,"B",KeyModifiers.Control,HotkeyContext.SubtitleEdit);H(CommandIds.FormatItalic,"I",KeyModifiers.Control,HotkeyContext.SubtitleEdit);H(CommandIds.FormatUnderline,"U",KeyModifiers.Control,HotkeyContext.SubtitleEdit);
-        H(CommandIds.TextHardNewline,"Enter",KeyModifiers.Shift,HotkeyContext.SubtitleEdit);H(CommandIds.EditCommit,"Enter",KeyModifiers.Control);H(CommandIds.EditCommitNext,"Enter",context:HotkeyContext.SubtitleEdit);H(CommandIds.EditCommitNext,"Enter",context:HotkeyContext.SubtitleGrid);
-        H(CommandIds.EditCancel,"Escape");H(CommandIds.VideoStop,"Escape",context:HotkeyContext.Video);H(CommandIds.VideoStop,"Escape",context:HotkeyContext.Audio);
-        foreach(var context in new[]{HotkeyContext.Video,HotkeyContext.Audio,HotkeyContext.SubtitleGrid}){H(CommandIds.VideoPlay,"Space",context:context);H(CommandIds.AudioPlaySelection,"R",context:context);}
-        H(CommandIds.VideoFrameNext,"Right",context:HotkeyContext.Video);H(CommandIds.VideoFramePrevious,"Left",context:HotkeyContext.Video);
-        H(CommandIds.GridLineNext,"Down",KeyModifiers.Alt);H(CommandIds.GridLinePrevious,"Up",KeyModifiers.Alt);H(CommandIds.GridDuplicate,"D",KeyModifiers.Control);H(CommandIds.GridSplit,"D",KeyModifiers.Control|KeyModifiers.Shift);
-        H(CommandIds.GridInsertAfter,"Insert",context:HotkeyContext.SubtitleGrid);H(CommandIds.GridInsertBefore,"Insert",KeyModifiers.Control,HotkeyContext.SubtitleGrid);H(CommandIds.GridDelete,"Delete",context:HotkeyContext.SubtitleGrid);
-        H(CommandIds.GridMoveUp,"Up",KeyModifiers.Alt|KeyModifiers.Shift);H(CommandIds.GridMoveDown,"Down",KeyModifiers.Alt|KeyModifiers.Shift);
-        H(CommandIds.GridCopy,"C",KeyModifiers.Control,HotkeyContext.SubtitleGrid);H(CommandIds.GridCut,"X",KeyModifiers.Control,HotkeyContext.SubtitleGrid);H(CommandIds.GridPaste,"V",KeyModifiers.Control,HotkeyContext.SubtitleGrid);H(CommandIds.GridSelectAll,"A",KeyModifiers.Control,HotkeyContext.SubtitleGrid);
-        H(CommandIds.TimingSetStart,"D3",KeyModifiers.Control);H(CommandIds.TimingSetEnd,"D4",KeyModifiers.Control);
-        H(CommandIds.AudioZoomIn,"OemPlus",context:HotkeyContext.Audio);H(CommandIds.AudioZoomOut,"OemMinus",context:HotkeyContext.Audio);
+
     }
     private string? FindAssociatedMedia(string subtitlePath)
     {
@@ -223,11 +212,18 @@ public sealed partial class MainWindowViewModel
         var stem=Path.Combine(directory,Path.GetFileNameWithoutExtension(subtitlePath));
         return new[]{".mkv",".mp4",".webm",".m2ts",".ts",".avi",".mov"}.Select(ext=>stem+ext).FirstOrDefault(File.Exists);
     }
-    private async Task StepFrameAsync(int delta)
+    private Task StepFrameAsync(int delta)
     {
-        StopPlayback(); var media=_media; if(media is null)return;
-        CurrentTimeSeconds=await Task.Run(()=>media.AdjacentFrameTime(CurrentTimeSeconds,delta));
-        await RefreshVideoFrameAsync(CurrentTimeSeconds);
+        StopPlayback();return SeekFrameAsync((int)Math.Clamp((long)CurrentFrame+delta,0,Math.Max(0,FrameTimes.Count-1)));
     }
-    public void SelectSearchResult(SubtitleSearchMatch match) { Select(match.Line); TextCursor=match.Index; }
+    public event EventHandler? SearchSelectionApplied;
+    public void SelectSearchResult(SubtitleSearchMatch match,IEnumerable<AssEvent>? scope=null)
+    {
+        if(!Events.Contains(match.Line))throw new InvalidOperationException("Search result belongs to another document.");
+        if(scope is null)Select(match.Line);
+        else{SetSelectedEvents(scope.Where(Events.Contains));SelectedEvent=match.Line;}
+        if(match.FieldName!="Text")return;
+        TextSelectionStart=match.Index;TextSelectionEnd=match.Index+match.Length;TextCursor=TextSelectionEnd;
+        SearchSelectionApplied?.Invoke(this,EventArgs.Empty);
+    }
 }

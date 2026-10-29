@@ -193,10 +193,10 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 var shifted=model.VisibleVisualLines().ToArray();
                 for(var i=0;i<2;i++)Require(Math.Abs(shifted[i].Position.X-selected[i].Position.X-Size.Width*.05)<.01,"Multi-line drag must preserve relative offsets.");
                 Invoke(CommandIds.EditUndo);Require(selected.Select(l=>l.Line.Text).SequenceEqual(originals),"One undo must restore all selected lines.");
-                model.ActiveEditor!.SetTiming(_line!,0,200);model.ActiveEditor.SetTiming(selected.Single(l=>!l.Active).Line,0,200);
+                foreach(var fixtureEvent in model.Events.Where(item=>!item.IsComment))model.ActiveEditor!.SetTiming(fixtureEvent,0,200);
                 return false;
             case 14:
-                capture(Overlay,"visual-outside-line-time",1);Require(Overlay.RenderedHandles==0,"Seeking outside selected line times must remove stale handles.");
+                capture(Overlay,"visual-outside-line-time",1);Require(model.VisibleVisualLines(true).Count==0&&Overlay.RenderedHandles==0,"Position handles must disappear when no dialogue is visible at the current frame.");
                 model.SetSelectedEvents([_line!]);model.ActiveEditor!.SetTiming(_line!,0,1000);Tool("Crosshair");return false;
             case 15:
                 Fixture(Plain);model.InverseClip=false;Tool("Clip");WaitForPreview();return false;

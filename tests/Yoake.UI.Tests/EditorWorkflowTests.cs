@@ -9,7 +9,7 @@ using Yoake.UI.ViewModels;
 
 namespace Yoake.UI.Tests;
 
-public sealed class EditorWorkflowTests : IDisposable
+public sealed partial class EditorWorkflowTests : IDisposable
 {
     private readonly string _root=Path.Combine(Path.GetTempPath(),"Yoake-tests-"+Guid.NewGuid());
     private readonly WorkspaceManager _workspace=new();
@@ -22,9 +22,456 @@ public sealed class EditorWorkflowTests : IDisposable
         _model.Dialogs=_dialogs;
     }
     private async Task Command(string id,object? parameter=null)=>Assert.True(await _model.Registry.InvokeAsync(id,new(),parameter));
+    [Fact] public async Task AudioPreviewsRequireAudioAndCannotCommitDraftsOrUseAnotherDocument()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語 é မြန်မာ 👩‍👩‍👧";
+        _model.Draft.Start="0:00:00.30";_model.Draft.End="0:00:01.40";await Command(CommandIds.EditCommit);
+        var source=_model.ActiveEditor!.Document.Serialize();var history=_model.ActiveEditor.Undo.NextUndoName;
+        _model.Draft!.Start="unfinished";var draft=_model.Draft;
+        foreach(var id in new[]{"audio/play/current","audio/play/line","audio/play/selection","audio/play/selection/before","audio/play/selection/after","audio/play/selection/begin","audio/play/selection/end","audio/play/to_end","audio/play/cursor","audio/play/toggle","audio/stop"})
+        {
+            Assert.False(_model.Actions[id].CanExecute(null));Assert.False(await _model.Registry.InvokeAsync(id,new()));
+            Assert.False(await _model.Registry.InvokeAsync(id,new(Guid.NewGuid())));
+        }
+        Assert.Null(_model.ActiveAudioPlayback);Assert.False(_model.IsPlaying);Assert.Same(draft,_model.Draft);
+        Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+        Assert.False(_model.Registry.GetRequired("audio/play/toggle").IsChecked(new()));
+    }
+    [Fact] public async Task AudioOverlayPreviewsValidDraftBoundariesWithNonDestructiveInvalidFieldFallback()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Start="0:00:00.30";_model.Draft.End="0:00:01.40";await Command(CommandIds.EditCommit);
+        var source=_model.ActiveEditor!.Document.Serialize();var history=_model.ActiveEditor.Undo.NextUndoName;
+        _model.Draft!.Start="unfinished";_model.Draft.End="0:00:01.50";
+        Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(300,1500),_model.PrimaryAudioRange);
+        _model.Draft.End="0:00:00.20";Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(300,1400),_model.PrimaryAudioRange);
+        _model.Draft.Start="0:00:00.10";Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(100,200),_model.PrimaryAudioRange);
+        Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+    }
+    [Fact] public async Task AudioOverlayFollowsLiveTimingGestureAndRestoresItsIntervalOnCancel()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Start="0:00:00.30";_model.Draft.End="0:00:01.40";await Command(CommandIds.EditCommit);
+        var source=_model.ActiveEditor!.Document.Serialize();var history=_model.ActiveEditor.Undo.NextUndoName;
+        Assert.True(_model.BeginGesture("Adjust audio timing"));_model.UpdateTimingGesture(1,.2);
+        Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(300,1600),_model.PrimaryAudioRange);Assert.True(_model.HasGesture);
+        _model.CancelGesture();Assert.Equal(new Yoake.Core.Audio.AudioClipInterval(300,1400),_model.PrimaryAudioRange);
+        Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+    }
+    [Fact] public async Task AudioClipExportRequiresLoadedAudioAndActualSelectedRows()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)}日本語 é";await Command(CommandIds.EditCommit);var editor=_model.ActiveEditor!;
+        var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;_model.Draft.Start="unfinished";var draft=_model.Draft;
+        Assert.False(_model.Actions["audio/save/clip"].CanExecute(null));Assert.False(_model.Actions["audio/save/cancel"].CanExecute(null));Assert.False(_model.HasAudioExportOperation);
+        Assert.False(await _model.Registry.InvokeAsync("audio/save/clip",new(),Path.Combine(_root,"clip.wav")));Assert.False(await _model.Registry.InvokeAsync("audio/save/clip",new(Guid.NewGuid()),Path.Combine(_root,"clip.wav")));
+        Assert.Same(draft,_model.Draft);Assert.Equal("unfinished",_model.Draft.Start);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(File.Exists(Path.Combine(_root,"clip.wav")));
+    }
+    [Fact] public async Task SelectLinesOwnsSetOperationsEmptySelectionPendingDraftValidationCancellationAndSettings()
+    {
+        var path=Path.Combine(_root,"selection.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,Actor,0,0,0,,{\\future(x)\\distort(0,0,1,1)}日本語 é\n"+
+            "Comment: 0,0:00:01.00,0:00:02.00,Default,Other,0,0,0,,日本語\n"+
+            "Dialogue: 0,0:00:02.00,0:00:03.00,Default,Actor,0,0,0,,မြန်မာ\n");
+        Assert.True(_model.OpenSubtitle(path));var editor=_model.ActiveEditor!;var rows=_model.Events.ToArray();var source=editor.Document.Serialize();var document=_model.ActiveDocumentId;
+        Assert.False(_model.Actions["subtitle/select/visible"].CanExecute(null));Assert.False(await _model.Registry.InvokeAsync("selection/apply",new(Guid.NewGuid()),new SubtitleSelectionRequest(new())));
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="日本語",IncludeComments=true}));Assert.Equal(new[]{rows[0],rows[1]},_model.SelectedEvents);Assert.Same(rows[0],_model.SelectedEvent);
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="Actor",Field=SubtitleSearchField.Actor,Action=SubtitleSelectionAction.Intersect}));Assert.Equal(new[]{rows[0]},_model.SelectedEvents);
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="no matches"}));Assert.Empty(_model.SelectedEvents);Assert.Same(rows[0],_model.SelectedEvent);
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="မြန်မာ",Action=SubtitleSelectionAction.Add}));Assert.Equal(new[]{rows[2]},_model.SelectedEvents);Assert.Same(rows[2],_model.SelectedEvent);
+        _model.Draft!.Start="unfinished";var draft=_model.Draft;var selected=_model.SelectedEvents.ToArray();var position=_model.CurrentTimeSeconds;
+        Assert.False(await _model.Registry.InvokeAsync("selection/apply",new(),new SubtitleSelectionRequest(new(){Query="[",Mode=SubtitleSelectionMode.RegularExpression})));
+        Assert.Same(draft,_model.Draft);Assert.Equal(selected,_model.SelectedEvents);Assert.Equal(position,_model.CurrentTimeSeconds);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="日本語"}));Assert.Equal(selected,_model.SelectedEvents);Assert.Same(rows[2],_model.SelectedEvent);Assert.Contains("draft",_model.SelectionStatus);
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)_=_model.Registry.InvokeAsync("selection/close",new(document));};
+        _model.PropertyChanged+=cancel;await Command("selection/apply",new SubtitleSelectionRequest(new()));_model.PropertyChanged-=cancel;Assert.Equal(selected,_model.SelectedEvents);Assert.False(editor.Undo.CanUndo);
+        _model.Draft.Start=rows[2].Start;await Command("selection/apply",new SubtitleSelectionRequest(new(){Query="Actor",Field=SubtitleSearchField.Actor}));Assert.Equal(new[]{rows[0],rows[2]},_model.SelectedEvents);Assert.Same(rows[2],_model.SelectedEvent);
+        Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);var restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal("Actor",restored.SelectionPreferences!.Query);Assert.Equal(SubtitleSearchField.Actor,restored.SelectionPreferences.Field);
+        File.WriteAllText(Path.Combine(_root,"settings.json"),"""{"selectionPreferences":{"query":null,"field":999,"mode":999,"action":999,"includeDialogue":false,"includeComments":false},"toolbarVisible":false}""");
+        restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal("",restored.SelectionPreferences!.Query);Assert.Equal(SubtitleSearchField.Text,restored.SelectionPreferences.Field);Assert.True(restored.SelectionPreferences.IncludeDialogue);Assert.False(restored.ToolbarVisible);
+    }
+    [Fact] public async Task AudioPresentationCommandsShareOneCheckedSettingAndPreserveDraftDocumentSelectionAndHistory()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é";await Command(CommandIds.EditCommit);
+        var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;var selection=_model.SelectedEvents.ToArray();
+        _model.Draft!.Start="unfinished";var draft=_model.Draft;_model.CurrentTimeSeconds=.7;
+        Assert.False(_model.IsAudioSpectrum);Assert.True(_model.Registry.GetRequired("audio/view/waveform").IsChecked(new()));
+        foreach(var id in new[]{"audio/scroll/left","audio/scroll/right","audio/go_to","audio/go_to/start","audio/go_to/end"})Assert.False(_model.Actions[id].CanExecute(null));
+        Assert.False(await _model.Registry.InvokeAsync("audio/view/spectrum",new(Guid.NewGuid())));
+        await Command("audio/view/spectrum");Assert.True(_model.IsAudioSpectrum);Assert.Equal(1,_model.AudioDisplayModeIndex);Assert.True(_model.Registry.GetRequired("audio/opt/spectrum").IsChecked(new()));Assert.False(_model.Registry.GetRequired("audio/view/waveform").IsChecked(new()));
+        _model.AudioDisplayModeIndex=0;Assert.False(_model.IsAudioSpectrum);await Command("audio/opt/spectrum");Assert.True(_model.IsAudioSpectrum);
+        Assert.True(_model.AudioAutoScroll);await Command("audio/opt/autoscroll");Assert.False(_model.AudioAutoScroll);Assert.False(_model.Registry.GetRequired("audio/opt/autoscroll").IsChecked(new()));
+        await Command("audio/opt/vertical_link");Assert.True(_model.AudioVolumeLinked);Assert.True(_model.Registry.GetRequired("audio/opt/vertical_link").IsChecked(new()));
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Equal(selection,_model.SelectedEvents);Assert.Equal(.7,_model.CurrentTimeSeconds);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        var restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.True(restored.AudioSpectrum);Assert.False(restored.AudioAutoScroll);Assert.True(restored.AudioVolumeLinked);
+        File.WriteAllText(Path.Combine(_root,"settings.json"),"""{"audioSpectrum":"bad","audioAutoScroll":9,"videoAutoSeek":false}""");restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();
+        Assert.False(restored.AudioSpectrum);Assert.True(restored.AudioAutoScroll);Assert.False(restored.VideoAutoSeek);
+    }
+    [Fact] public async Task TimecodesAreDocumentLocalMetadataWithAtomicValidationCancellationExportAndPersistedRecents()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é မြန်မာ";await Command(CommandIds.EditCommit);
+        var document=_model.ActiveDocumentId;var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        _model.CurrentTimeSeconds=.7;var originalStart=_model.Draft!.Start;_model.Draft.Start="unfinished";var draft=_model.Draft;var selection=_model.SelectedEvents.ToArray();
+        var input=Path.Combine(_root,"日本語.tc.txt");File.WriteAllText(input,"# timecode format v1\nAssume 25\n0,1,50\n");
+        Assert.False(_model.CanShiftByFrames);Assert.False(_model.Actions["timecode/close"].CanExecute(null));Assert.False(_model.Actions["timecode/save"].CanExecute(null));
+        Assert.False(await _model.Registry.InvokeAsync("timecode/open",new(Guid.NewGuid()),input));
+        await Command("timecode/open",input);Assert.Equal(input,_model.ExternalTimecodePath);Assert.True(_model.CanShiftByFrames);Assert.Empty(_model.FrameTimes);
+        Assert.True(_model.Actions["timecode/save"].CanExecute(null));Assert.False(_model.Actions["time/snap/start_video"].CanExecute(null));Assert.False(_model.Actions["edit/line/split/before"].CanExecute(null));
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Equal(selection,_model.SelectedEvents);Assert.Equal(.7,_model.CurrentTimeSeconds);
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        var exported=Path.Combine(_root,"export.tc.txt");await Command("timecode/save",exported);Assert.Equal(new long[]{0,20,40},Yoake.Core.Media.TimecodeFile.Load(exported).Milliseconds);
+        Assert.Equal(exported,_model.RecentTimecodeItems[0].Path);Assert.Equal("timecode/open",_model.RecentTimecodeItems[0].Command.CommandId);
+        var bad=Path.Combine(_root,"bad.tc.txt");File.WriteAllText(bad,"# timecode format v2\n0\nNaN");
+        Assert.False(await _model.Registry.InvokeAsync("timecode/open",new(),bad));Assert.Equal(input,_model.ExternalTimecodePath);Assert.Same(draft,_model.Draft);Assert.Equal(source,editor.Document.Serialize());
+        _model.Draft.Start=originalStart;await Command(CommandIds.SubtitleNew);Assert.False(_model.CanShiftByFrames);Assert.Null(_model.ExternalTimecodePath);
+        await Command(CommandIds.WorkspaceActivateTab,document);Assert.True(_model.CanShiftByFrames);Assert.Equal(input,_model.ExternalTimecodePath);
+        await Command("timecode/close");Assert.False(_model.CanShiftByFrames);Assert.False(_model.Actions["timecode/save"].CanExecute(null));
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasTimecodeOperation)&&_model.HasTimecodeOperation)_=_model.Registry.InvokeAsync("timecode/close",new());};
+        _model.PropertyChanged+=cancel;await Command("timecode/open",input);_model.PropertyChanged-=cancel;Assert.Null(_model.ExternalTimecodePath);Assert.False(_model.CanShiftByFrames);
+        File.Delete(exported);Assert.False(await _model.Registry.InvokeAsync("timecode/open",new(),exported));Assert.DoesNotContain(_model.RecentTimecodeItems,item=>item.Path==exported);
+        var restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Contains(input,restored.RecentTimecodes!);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        File.WriteAllText(Path.Combine(_root,"settings.json"),"""{"recentTimecodes":[null,7,"日本語.tc.txt","日本語.tc.txt"],"toolbarVisible":false}""");
+        restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal(new[]{"日本語.tc.txt"},restored.RecentTimecodes);Assert.False(restored.ToolbarVisible);
+    }
+    [Fact] public async Task ExternalTimecodesEnableUndoableFrameShiftingWithoutVideoAndCloseDisablesIt()
+    {
+        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;var editor=_model.ActiveEditor!;
+        editor.SetTiming(line,40,120);editor.SetField(line,"Text","{\\future(x)\\distort(0,0,1,1)}é 日本語","Set text");
+        var source=editor.Document.Serialize();var path=Path.Combine(_root,"frames.tc.txt");File.WriteAllText(path,"Assume 25\n0,1,50");await Command("timecode/open",path);
+        await Command("time/shift/apply",new SubtitleShiftToolRequest(new(){ByFrames=true,Frames=1},_model.SelectedEvents.ToArray()));
+        Assert.NotEqual(source,editor.Document.Serialize());Assert.Contains("\\future(x)\\distort(0,0,1,1)",line.Text);await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+        await Command("timecode/close");Assert.False(await _model.Registry.InvokeAsync("time/shift/apply",new(),new SubtitleShiftToolRequest(new(){ByFrames=true,Frames=1},_model.SelectedEvents.ToArray())));
+        Assert.Equal(source,editor.Document.Serialize());
+    }
+    [Fact] public async Task KeyframeCommandsAreDocumentLocalCancellableNonDestructiveAndPersistSemanticRecents()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(x)\\distort(0,0,1,1)}日本語 é";await Command(CommandIds.EditCommit);
+        var document=_model.ActiveDocumentId;var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        _model.CurrentTimeSeconds=.7;_model.Draft!.Actor="unfinished မြန်မာ";var draft=_model.Draft;var selection=_model.SelectedEvents.ToArray();
+        var input=Path.Combine(_root,"日本語.key.txt");File.WriteAllText(input,"# WWXD log file, using qpfile format\n0 I -1\n5 P -1\n7 I -1\n");
+        Assert.False(_model.Actions["keyframe/close"].CanExecute(null));Assert.False(_model.Actions["keyframe/save"].CanExecute(null));
+        Assert.False(await _model.Registry.InvokeAsync("keyframe/open",new(Guid.NewGuid()),input));
+        await Command("keyframe/open",input);Assert.Equal(new[]{0,7},_model.Keyframes);Assert.Equal(input,_model.ExternalKeyframePath);
+        Assert.True(_model.Actions["keyframe/save"].CanExecute(null));Assert.True(_model.Actions["keyframe/close"].CanExecute(null));
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Equal(selection,_model.SelectedEvents);Assert.Equal(.7,_model.CurrentTimeSeconds);
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        var exported=Path.Combine(_root,"export.key.txt");await Command("keyframe/save",exported);Assert.Equal(new[]{0,7},Yoake.Core.Media.KeyframeFile.Load(exported));
+        Assert.Equal(exported,_model.RecentKeyframeItems[0].Path);Assert.Equal("keyframe/open",_model.RecentKeyframeItems[0].Command.CommandId);
+        var malformed=Path.Combine(_root,"bad.key.txt");File.WriteAllText(malformed,"bad header");
+        Assert.False(await _model.Registry.InvokeAsync("keyframe/open",new(),malformed));Assert.Equal(new[]{0,7},_model.Keyframes);Assert.Equal(input,_model.ExternalKeyframePath);
+        _model.Draft.Actor="";await Command(CommandIds.SubtitleNew);Assert.Empty(_model.Keyframes);Assert.Null(_model.ExternalKeyframePath);
+        await Command(CommandIds.WorkspaceActivateTab,document);Assert.Equal(new[]{0,7},_model.Keyframes);Assert.Equal(input,_model.ExternalKeyframePath);
+        await Command("keyframe/close");Assert.Empty(_model.Keyframes);Assert.Null(_model.ExternalKeyframePath);Assert.False(_model.Actions["keyframe/close"].CanExecute(null));
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasKeyframeOperation)&&_model.HasKeyframeOperation)_=_model.Registry.InvokeAsync("keyframe/close",new());};
+        _model.PropertyChanged+=cancel;await Command("keyframe/open",input);_model.PropertyChanged-=cancel;Assert.Empty(_model.Keyframes);Assert.Null(_model.ExternalKeyframePath);
+        File.Delete(exported);Assert.False(await _model.Registry.InvokeAsync("keyframe/open",new(),exported));Assert.DoesNotContain(_model.RecentKeyframeItems,item=>item.Path==exported);
+        var restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Contains(input,restored.RecentKeyframes!);Assert.Equal(history,editor.Undo.NextUndoName);Assert.Equal(source,editor.Document.Serialize());
+        File.WriteAllText(Path.Combine(_root,"settings.json"),"""{"recentKeyframes":[null,7,"日本語.key.txt","日本語.key.txt"],"toolbarVisible":false}""");
+        restored=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Equal(new[]{"日本語.key.txt"},restored.RecentKeyframes);Assert.False(restored.ToolbarVisible);
+    }
+    [Fact] public async Task TimingCommandsOwnSelectedScopeHistoryCancellationAndAbsentVideoAvailability()
+    {
+        var path=Path.Combine(_root,"timing.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+
+            "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,{\\future(x)\\distort(0,0,1,1)}日本語\n"+
+            "Dialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,,မြန်မာ é\n"+
+            "Dialogue: 0,0:00:05.00,0:00:06.00,Default,,0,0,0,,漢\n");
+        Assert.True(_model.OpenSubtitle(path));var rows=_model.Events.ToArray();var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
+        _model.SelectedEvent=rows[0];_model.SetSelectedEvents([rows[0],rows[2]]);
+        Assert.False(_model.Actions["time/continuous/start"].CanExecute(null));
+        foreach(var id in new[]{"time/snap/start_video","time/snap/end_video","time/snap/scene","time/frame/current"})Assert.False(_model.Actions[id].CanExecute(null));
+        Assert.Equal("Ctrl-3",_model.Actions["time/snap/start_video"].Shortcut);Assert.Equal("Ctrl-I",_model.Actions["time/shift"].Shortcut);
+        var preferences=new SubtitleShiftPreferences{Milliseconds=100,Scope=SubtitleTimingScope.Selected};
+        await Command("time/shift/apply",new SubtitleShiftToolRequest(preferences,[rows[0],rows[2]]));
+        Assert.Equal(1100,rows[0].StartMilliseconds);Assert.Equal(3000,rows[1].StartMilliseconds);Assert.Equal(5100,rows[2].StartMilliseconds);
+        Assert.Same(rows[0],_model.SelectedEvent);Assert.Equal(2,_model.SelectedEvents.Count);Assert.Single(_model.ShiftHistory);
+        Assert.Equal(preferences,new SettingsStore(Path.Combine(_root,"settings.json")).Load().ShiftPreferences);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        _model.SelectedEvent=rows[1];_model.SetSelectedEvents([rows[1]]);await Command("time/continuous/start");Assert.Equal(2000,rows[1].StartMilliseconds);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+        await Command("time/shift/history/clear");Assert.Empty(_model.ShiftHistory);Assert.False(_model.Actions["time/shift/history/clear"].CanExecute(null));
+        _model.Draft!.Text="unfinished {\\future(x)}日本語";var pending=_model.Draft;
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)_=_model.Registry.InvokeAsync("editor/cancel-operation",new());};
+        _model.PropertyChanged+=cancel;await Command("time/shift/apply",new SubtitleShiftToolRequest(preferences,[rows[1]]));_model.PropertyChanged-=cancel;
+        Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);Assert.Empty(_model.ShiftHistory);Assert.False(_model.HasEditOperation);
+        Assert.Same(pending,_model.Draft);Assert.True(pending.IsChanged);
+        Assert.False(await _model.Registry.InvokeAsync("time/shift/apply",new(),new SubtitleShiftToolRequest(preferences with{Milliseconds=5000,Fields=SubtitleTimingFields.Start},[rows[1]])));
+        Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        Assert.Same(pending,_model.Draft);Assert.True(pending.IsChanged);
+        await Command("time/shift/apply",new SubtitleShiftToolRequest(preferences,[rows[1]]));Assert.Equal(pending.Text,rows[1].Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+    }
+    [Fact] public async Task VideoAutoseekIsPersistedCheckedStateWithoutChangingDraftHistoryOrPosition()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="unfinished 日本語";_model.CurrentTimeSeconds=.5;
+        var editor=_model.ActiveEditor!;var draft=_model.Draft;var line=_model.SelectedEvent;var history=editor.Undo.NextUndoName;
+        Assert.True(_model.VideoAutoSeek);Assert.True(_model.Actions["video/autoseek"].IsChecked);await Command("video/autoseek");
+        Assert.False(_model.VideoAutoSeek);Assert.False(_model.Actions["video/autoseek"].IsChecked);Assert.Equal(.5,_model.CurrentTimeSeconds);
+        Assert.Same(draft,_model.Draft);Assert.Same(line,_model.SelectedEvent);Assert.Equal(history,editor.Undo.NextUndoName);
+        var store=new SettingsStore(Path.Combine(_root,"settings.json"));Assert.False(store.Load().VideoAutoSeek);
+        File.WriteAllText(store.Path,"""{"videoAutoSeek":"bad","toolbarVisible":false}""");Assert.True(store.Load().VideoAutoSeek);Assert.False(store.Load().ToolbarVisible);
+    }
+    [Fact] public async Task SearchCommandsPreserveSelectedScopeAndOwnAtomicVisibleTextReplacement()
+    {
+        var path=Path.Combine(_root,"search.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,a{\\future(x)\\distort(0,0,1,1)}bc abc\n"+
+            "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,abc unselected\n"+
+            "Dialogue: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,abc é 👩‍👩‍👧‍👦\n");
+        Assert.True(_model.OpenSubtitle(path));var rows=_model.Events.ToArray();var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
+        _model.SelectedEvent=rows[0];_model.SetSelectedEvents([rows[0],rows[2]]);
+        var preferences=new SubtitleSearchPreferences{Query="abc",SelectionOnly=true,Replacement="日本語"};
+        await Command("search/next",new SubtitleSearchRequest(preferences,[rows[0],rows[2]]));
+        Assert.Same(rows[0],_model.SelectedEvent);Assert.Equal(2,_model.SelectedEvents.Count);Assert.Equal(0,_model.TextSelectionStart);Assert.True(_model.TextSelectionEnd>3);Assert.False(editor.Undo.CanUndo);
+        await Command(CommandIds.FindNext);Assert.Same(rows[0],_model.SelectedEvent);Assert.True(_model.TextSelectionStart>0);
+        await Command(CommandIds.FindNext);Assert.Same(rows[2],_model.SelectedEvent);Assert.Equal(2,_model.SelectedEvents.Count);
+        Assert.Equal("F3",_model.Actions[CommandIds.FindNext].Shortcut);Assert.Equal("Ctrl-H",_model.Actions[CommandIds.FindReplace].Shortcut);
+        await Command("search/replace-all",new SubtitleSearchRequest(preferences,[rows[0],rows[2]]));Assert.Same(rows[2],_model.SelectedEvent);
+        Assert.Equal("abc unselected",rows[1].Text);Assert.Contains("\\future(x)\\distort(0,0,1,1)",rows[0].Text);Assert.Contains("日本語",rows[2].Text);
+        Assert.Contains("Changed 2",_model.SearchState(_model.ActiveDocumentId!.Value).Status);Assert.False(_model.HasEditOperation);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        Assert.Equal(preferences,new SettingsStore(Path.Combine(_root,"settings.json")).Load().SearchPreferences);
+    }
+    [Fact] public async Task FindNextAdvancesPastZeroWidthRegexMatchesAndWraps()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="日本語";await Command(CommandIds.EditCommit);
+        var line=_model.SelectedEvent!;var history=_model.ActiveEditor!.Undo.NextUndoName;
+        await Command("search/next",new SubtitleSearchRequest(new(){Query="^|$",RegularExpression=true}));
+        Assert.Equal(0,_model.TextSelectionStart);Assert.Equal(0,_model.TextSelectionEnd);
+        await Command(CommandIds.FindNext);Assert.Equal(line.Text.Length,_model.TextSelectionStart);Assert.Equal(line.Text.Length,_model.TextSelectionEnd);
+        await Command(CommandIds.FindNext);Assert.Equal(0,_model.TextSelectionStart);Assert.Equal(history,_model.ActiveEditor.Undo.NextUndoName);
+    }
+    [Fact] public async Task SearchIsDocumentLocalAndCancellationOrInvalidRegexCannotCommitAnUnfinishedDraft()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="abc 日本語";await Command(CommandIds.EditCommit);
+        var first=_model.ActiveDocumentId!.Value;var editor=_model.ActiveEditor!;var tool=_model.SearchState(first);var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        System.ComponentModel.PropertyChangedEventHandler cancel=(sender,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)_=_model.Registry.InvokeAsync("search/cancel",new(first));};
+        _model.PropertyChanged+=cancel;await Command("search/next",new SubtitleSearchRequest(new(){Query="abc"}));_model.PropertyChanged-=cancel;
+        Assert.Equal("Search canceled.",tool.Status);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
+        _model.Draft!.Text="unfinished é";var draft=_model.Draft;
+        Assert.False(await _model.Registry.InvokeAsync("search/next",new(first),new SubtitleSearchRequest(new(){Query="[",RegularExpression=true})));
+        Assert.StartsWith("Invalid regular expression:",tool.Status);
+        Assert.Same(draft,_model.Draft);Assert.True(draft.IsChanged);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);
+        await Command(CommandIds.EditCancel);await Command(CommandIds.SubtitleNew);var second=_model.ActiveDocumentId!.Value;
+        Assert.NotSame(tool,_model.SearchState(second));Assert.False(_model.Registry.CanExecute("search/next",new(first)));
+        await Command("search/next",new SubtitleSearchRequest(new(){Query="second"}));Assert.Equal("abc",tool.Preferences.Query);
+        await Command(CommandIds.WorkspaceActivateTab,first);Assert.Same(tool,_model.SearchState(first));Assert.Equal("abc",tool.Preferences.Query);
+        await Command(CommandIds.FindNext);Assert.Same(editor,_model.ActiveEditor);Assert.Equal(source,editor.Document.Serialize());
+    }
+
+    [Fact] public async Task ModernSplitBindingsAreDisabledWithoutVideoAndCursorCommandsPreserveUnknownUnicodeSource()
+    {
+        _model.Draft!.Text="A{\\future(opaque)\\distort(0,0,1,1)}é👩‍👩‍👧‍👦漢";await Command(CommandIds.EditCommit);
+        var editor=_model.ActiveEditor!;var line=_model.SelectedEvent!;var source=editor.Document.Serialize();
+        Assert.False(_model.Actions["edit/line/split/before"].CanExecute(null));Assert.False(_model.Actions["edit/line/split/after"].CanExecute(null));
+        Assert.Equal("edit/line/split/before",_model.Hotkeys.Resolve(new("D",Yoake.Core.Hotkeys.KeyModifiers.Control),[Yoake.Core.Hotkeys.HotkeyContext.Default])!.CommandId);
+        Assert.Equal("edit/line/split/after",_model.Hotkeys.Resolve(new("D",Yoake.Core.Hotkeys.KeyModifiers.Control|Yoake.Core.Hotkeys.KeyModifiers.Shift),[Yoake.Core.Hotkeys.HotkeyContext.Default])!.CommandId);
+        _model.TextCursor=0;Assert.False(_model.Actions["edit/line/split/preserve"].CanExecute(null));
+        _model.TextCursor=line.Text.IndexOf("é",StringComparison.Ordinal)+2;Assert.True(_model.Actions["edit/line/split/preserve"].CanExecute(null));
+        Assert.False(_model.Actions["edit/line/split/video"].CanExecute(null));await Command("edit/line/split/preserve");
+        Assert.Equal(2,_model.Events.Count);Assert.Equal(line.Start,_model.SelectedEvent!.Start);Assert.Equal(line.End,_model.SelectedEvent.End);
+        Assert.Equal("{\\future(opaque)\\distort(0,0,1,1)}👩‍👩‍👧‍👦漢",_model.SelectedEvent.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());_model.SelectedEvent=line;
+        await Command("edit/clear/text");Assert.Equal("{\\future(opaque)\\distort(0,0,1,1)}",line.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());await Command("edit/clear");Assert.Equal("",line.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+    }
+    [Theory] [InlineData("concatenate")][InlineData("keep_first")][InlineData("as_karaoke")]
+    public async Task JoinVariantsAndDuplicationUseTheActiveDocumentSelectionAndUndo(string variant)
+    {
+        var first=_model.SelectedEvent!;_model.Draft!.Text="{\\future(x)}日本語";await Command(CommandIds.EditCommit);
+        await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent!;_model.Draft!.Text="မြန်မာ 👩‍👩‍👧‍👦";await Command(CommandIds.EditCommit);
+        Assert.False(_model.Actions["edit/line/join/"+variant].CanExecute(null));
+        _model.SelectedEvent=first;_model.SetSelectedEvents([first,second]);var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();
+        await Command("edit/line/join/"+variant);Assert.Single(_model.Events);Assert.Same(first,_model.SelectedEvent);Assert.Single(_model.SelectedEvents);Assert.Contains("\\future(x)",first.Text);
+        if(variant=="as_karaoke")Assert.StartsWith("{\\k200}",first.Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+        _model.SelectedEvent=first;_model.SetSelectedEvents([first,second]);await Command(CommandIds.GridDuplicate);
+        Assert.Equal(4,_model.Events.Count);Assert.Equal(2,_model.SelectedEvents.Count);Assert.Same(_model.Events[2],_model.SelectedEvent);
+        Assert.All(_model.SelectedEvents,item=>Assert.DoesNotContain(item,new[]{first,second}));await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+    }
+
+    [Theory]
+    [InlineData(SubtitleSortKey.Start)][InlineData(SubtitleSortKey.End)][InlineData(SubtitleSortKey.Style)]
+    [InlineData(SubtitleSortKey.Actor)][InlineData(SubtitleSortKey.Effect)][InlineData(SubtitleSortKey.Layer)]
+    public async Task SortingCommandsOwnStableSelectionAndOneUndoOperation(SubtitleSortKey key)
+    {
+        var path=Path.Combine(_root,"sort.ass");
+        File.WriteAllText(path,"[Events]\nFormat: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Extra,Text\n"+
+            string.Concat(new[]{4,2,3,1}.Select(n=>$"Dialogue: {n},0:00:0{n}.00,0:00:0{n+4}.00,{n},{n},0,0,0,{n},opaque,{n}日本語 {{\\future(opaque)\\distort(0,0,1,1)}}\n")));
+        Assert.True(_model.OpenSubtitle(path));var editor=_model.ActiveEditor!;var rows=_model.Events.ToArray();var source=editor.Document.Serialize();
+        _model.SelectedEvent=rows[0];_model.SetSelectedEvents([rows[0],rows[1],rows[3]]);
+        var id="grid/sort/"+key.ToString().ToLowerInvariant();
+        Assert.True(_model.Actions[id+"/selected"].CanExecute(null));
+        Assert.False(_model.Registry.CanExecute(id,new(Guid.NewGuid())));
+        await Command(id+"/selected");Assert.Equal(new[]{rows[1],rows[0],rows[2],rows[3]},_model.Events);
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(rows[0],_model.SelectedEvent);Assert.Equal(new[]{rows[0],rows[1],rows[3]},_model.SelectedEvents);
+        Assert.Equal("Sort subtitles",editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.False(editor.Undo.CanUndo);
+        await Command(CommandIds.EditRedo);Assert.Equal(new[]{rows[1],rows[0],rows[2],rows[3]},_model.Events);
+        await Command(id);Assert.Equal(new[]{rows[3],rows[1],rows[2],rows[0]},_model.Events);Assert.Same(rows[0],_model.SelectedEvent);
+        Assert.Equal("opaque",rows[0].Get("Extra"));Assert.Contains("\\future(opaque)\\distort(0,0,1,1)",rows[0].Text);
+    }
+    [Fact] public async Task SwapAndCanceledSortRespectAvailabilityAndPreserveHistory()
+    {
+        Assert.False(_model.Actions["grid/swap"].CanExecute(null));Assert.False(_model.Actions["grid/sort/start"].CanExecute(null));
+        await Command(CommandIds.GridInsertAfter);var editor=_model.ActiveEditor!;var rows=_model.Events.ToArray();
+        editor.SetTiming(rows[0],4000,6000);editor.SetTiming(rows[1],2000,3000);_model.SelectedEvent=rows[0];_model.SetSelectedEvents(rows);
+        Assert.True(_model.Actions["grid/swap"].CanExecute(null));var source=editor.Document.Serialize();var history=editor.Undo.NextUndoName;
+        using var cancellation=new CancellationTokenSource();cancellation.Cancel();
+        Assert.False(await _model.Registry.InvokeAsync("grid/sort/start",new(),cancellationToken:cancellation.Token));
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
+        System.ComponentModel.PropertyChangedEventHandler cancel=(_,args)=>{if(args.PropertyName==nameof(MainWindowViewModel.HasEditOperation)&&_model.HasEditOperation)_=_model.Registry.InvokeAsync("editor/cancel-operation",new());};
+        _model.PropertyChanged+=cancel;
+        await Command("grid/sort/start");_model.PropertyChanged-=cancel;
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(history,editor.Undo.NextUndoName);Assert.False(_model.HasEditOperation);
+        await Command("grid/swap");Assert.Equal(new[]{rows[1],rows[0]},_model.Events);Assert.Same(rows[0],_model.SelectedEvent);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+        _model.SetSelectedEvents([rows[0]]);Assert.False(_model.Actions["grid/swap"].CanExecute(null));Assert.False(_model.Actions["grid/sort/start/selected"].CanExecute(null));
+    }
+    [Theory]
+    [InlineData("grid/sort/text")][InlineData("grid/sort/text_stripped")]
+    public async Task TextSortingCommandsPreserveSourceThroughUndo(string id)
+    {
+        _model.Draft!.Text="z{\\future(x)}";await Command(CommandIds.EditCommit);
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="a{\\distort(1,2,3,4)}";await Command(CommandIds.EditCommit);
+        var editor=_model.ActiveEditor!;var source=editor.Document.Serialize();var rows=_model.Events.ToArray();
+        _model.SetSelectedEvents(rows);Assert.True(_model.Actions[id+"/selected"].CanExecute(null));
+        await Command(id+"/selected");Assert.Equal(new[]{rows[1],rows[0]},_model.Events);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());
+    }
+    [Fact] public async Task TagDisplayCommandsArePersistedRadioPresentationAndRetainDraftAndHistory()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="{\\future(opaque)}日本語 unfinished";
+        var editor=_model.ActiveEditor!;var draft=_model.Draft;var line=_model.SelectedEvent;var history=editor.Undo.NextUndoName;
+        var ids=new[]{"grid/tags/show","grid/tags/simplify","grid/tags/hide"};
+        foreach(var mode in Enum.GetValues<GridTagDisplayMode>())
+        {
+            await Command(ids[(int)mode]);Assert.Equal(mode,_model.GridTagDisplay);
+            Assert.Equal(1,ids.Count(id=>_model.Actions[id].IsChecked));Assert.True(_model.Actions[ids[(int)mode]].IsChecked);
+            Assert.Same(draft,_model.Draft);Assert.Same(line,_model.SelectedEvent);Assert.Same(editor,_model.ActiveEditor);Assert.Equal(history,editor.Undo.NextUndoName);
+            Assert.True(draft.IsChanged);Assert.Equal(mode,new SettingsStore(Path.Combine(_root,"settings.json")).Load().GridTagDisplay);
+        }
+        await Command("grid/tag/cycle_hiding");Assert.Equal(GridTagDisplayMode.Full,_model.GridTagDisplay);
+        await Command("grid/tag/cycle_hiding");Assert.Equal(GridTagDisplayMode.Simplified,_model.GridTagDisplay);
+    }
+
+    [Fact] public async Task ToolbarVisibilityIsCheckedPersistedPresentationAndRecoversIndependently()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="unfinished 日本語";
+        var editor=_model.ActiveEditor;var line=_model.SelectedEvent;var draft=_model.Draft;var undo=editor!.Undo.NextUndoName;
+        Assert.True(_model.ToolbarVisible);Assert.True(_model.Actions[CommandIds.AppToggleToolbar].IsChecked);
+        await Command(CommandIds.AppToggleToolbar);
+        Assert.False(_model.ToolbarVisible);Assert.False(_model.Actions[CommandIds.AppToggleToolbar].IsChecked);
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(line,_model.SelectedEvent);Assert.Same(draft,_model.Draft);Assert.Equal(undo,editor.Undo.NextUndoName);
+        var store=new SettingsStore(Path.Combine(_root,"settings.json"));Assert.False(store.Load().ToolbarVisible);
+        File.WriteAllText(store.Path,"""{"toolbarVisible":false,"viewMode":"corrupt"}""");
+        Assert.False(store.Load().ToolbarVisible);Assert.Equal(WorkspaceViewMode.Default,store.Load().ViewMode);
+        File.WriteAllText(store.Path,"""{"toolbarVisible":"corrupt","viewMode":2}""");Assert.True(store.Load().ToolbarVisible);Assert.Equal(WorkspaceViewMode.Video,store.Load().ViewMode);
+        await Command(CommandIds.AppToggleToolbar);Assert.True(_model.ToolbarVisible);
+    }
+
+    [Fact] public async Task ExitCommandHonorsUnsavedCancellationAndRequestsNativeCloseAfterSuccess()
+    {
+        await Command(CommandIds.GridInsertAfter);var document=_workspace.ActiveDocument!.Id;var editor=_model.ActiveEditor;var requests=0;
+        _model.WindowCloseRequested+=(_,_)=>requests++;
+        await Command(CommandIds.AppExit);Assert.Equal(0,requests);Assert.Same(editor,_model.ActiveEditor);Assert.Equal(document,_workspace.ActiveDocument.Id);Assert.True(editor!.Undo.CanUndo);
+        _dialogs.Choice=UnsavedChoice.Discard;await Command(CommandIds.AppExit);Assert.Equal(1,requests);Assert.DoesNotContain(_workspace.Documents,item=>item.Id==document);
+    }
+    [Fact] public void KeyAliasesAndModifierBitsMatchTheShippingInputProtocol()
+    {
+        foreach(var key in new[]{Avalonia.Input.Key.Return,Avalonia.Input.Key.Enter})Assert.Equal("Enter",Yoake.UI.Commands.EditorKeyNames.FromKey(key));
+        Assert.Equal("Backspace",Yoake.UI.Commands.EditorKeyNames.FromKey(Avalonia.Input.Key.Back));
+        Assert.Equal("OEM1",Yoake.UI.Commands.EditorKeyNames.FromKey(Avalonia.Input.Key.OemSemicolon));
+        Assert.Equal("KP_2",Yoake.UI.Commands.EditorKeyNames.FromKey(Avalonia.Input.Key.NumPad2));
+        Assert.Equal("KP_Enter",Yoake.UI.Commands.EditorKeyNames.FromEvent(new(){Key=Avalonia.Input.Key.Enter,PhysicalKey=Avalonia.Input.PhysicalKey.NumPadEnter}));
+        var modifiers=Yoake.UI.Commands.EditorKeyNames.FromModifiers(Avalonia.Input.KeyModifiers.Control|Avalonia.Input.KeyModifiers.Alt);
+        Assert.Equal(Yoake.Core.Hotkeys.KeyModifiers.Control|Yoake.Core.Hotkeys.KeyModifiers.Alt,modifiers);
+        Assert.Equal(Avalonia.Input.KeyModifiers.Control|Avalonia.Input.KeyModifiers.Alt,Yoake.UI.Commands.EditorKeyNames.ToGesture(new("K",modifiers))!.KeyModifiers);
+    }
+    [Fact] public async Task HotkeySettingsCommandsUpdateAdaptersAndPersistenceWithoutChangingTheEditor()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="日本語 {\\future(1,2)}";
+        var editor=_model.ActiveEditor;var draft=_model.Draft;var line=_model.SelectedEvent;
+        var command=_model.Actions[CommandIds.SubtitleNew];Assert.Equal("Ctrl-N",command.Shortcut);
+        await Command("settings/hotkeys/set",new HotkeyChange(Yoake.Core.Hotkeys.HotkeyContext.Default,CommandIds.SubtitleNew,["F10","Ctrl-Alt-N"]));
+        Assert.Equal("F10",command.Shortcut);Assert.Equal(Avalonia.Input.Key.F10,command.InputGesture!.Key);
+        Assert.Contains("F10",command.Tooltip);
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Same(line,_model.SelectedEvent);
+        var persisted=new SettingsStore(Path.Combine(_root,"settings.json")).Load();Assert.Single(persisted.HotkeyOverrides!);
+        await Command("settings/hotkeys/set",new HotkeyChange(Yoake.Core.Hotkeys.HotkeyContext.Default,CommandIds.SubtitleNew,[]));
+        Assert.Equal("",command.Shortcut);Assert.Null(command.InputGesture);
+        await Command("settings/hotkeys/reset-command",new HotkeyCommandReset(Yoake.Core.Hotkeys.HotkeyContext.Default,CommandIds.SubtitleNew));
+        Assert.Equal("Ctrl-N",command.Shortcut);
+    }
+    [Fact] public async Task CommandAdapterHistoryLabelsFollowDraftUndoRedoAndActiveDocument()
+    {
+        var undo = _model.Actions[CommandIds.EditUndo]; var redo = _model.Actions[CommandIds.EditRedo];
+        Assert.Equal("Nothing to undo", undo.Label); Assert.Equal("Nothing to redo", redo.Label);
+        await Command(CommandIds.GridInsertAfter);
+        _model.Draft!.Text = "日本語 draft";
+        Assert.Equal("Undo draft", undo.Label);
+        await Command(CommandIds.EditUndo); Assert.Equal("", _model.Draft.Text);
+        Assert.Equal("Undo " + _model.ActiveEditor!.Undo.NextUndoName, undo.Label);
+        await Command(CommandIds.EditUndo); Assert.Equal("Nothing to undo", undo.Label);
+        Assert.Equal("Redo " + _model.ActiveEditor.Undo.NextRedoName, redo.Label);
+        Assert.True(redo.CanExecute(null));
+        var first = _workspace.ActiveDocument!.Id;
+        await Command(CommandIds.SubtitleNew);
+        Assert.Equal("Nothing to redo", redo.Label); Assert.False(redo.CanExecute(null));
+        await Command(CommandIds.WorkspaceActivateTab, first);
+        Assert.StartsWith("Redo ", redo.Label); Assert.True(redo.CanExecute(null));
+    }
+
+    [Fact] public async Task VisualCommandsRequireVideoAndRejectForeignOrCancelledInvocationWithoutEditingDraft()
+    {
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text=@"{uture(keep)}uncommitted";
+        var draft=_model.Draft;var source=_model.ActiveEditor!.Document.Serialize();var revision=_model.PreviewRevision;
+        foreach(var id in MainWindowViewModel.VisualToolNames.Select(tool=>"video/tool/"+(tool=="Position"?"position":tool.ToLowerInvariant()))
+            .Concat(MainWindowViewModel.VectorModes.Select(mode=>"video/vector/"+mode.ToLowerInvariant())))
+        {
+            Assert.False(_model.Actions[id].CanExecute(null));Assert.False(await _model.Registry.InvokeAsync(id,new()));
+            Assert.False(await _model.Registry.InvokeAsync(id,new(Guid.NewGuid())));
+            Assert.False(_model.Registry.GetRequired(id).IsChecked(new(Guid.NewGuid())));
+        }
+        Assert.Equal("Crosshair",_model.ActiveVisualTool);Assert.Equal("Select",_model.VectorMode);
+        Assert.Same(draft,_model.Draft);Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Equal(revision,_model.PreviewRevision);
+        // Positive radio and capture-switch proofs require the real provider and
+        // run in VideoUiAcceptanceVerification, including every prior tool/mode.
+    }
+    [Fact] public async Task ViewCommandsRequireMediaAndNeverRestoreEmptyPanels()
+    {
+        await Command(CommandIds.GridInsertAfter);
+        await Command(CommandIds.GridSelectAll);
+        _model.Draft!.Text = "committed"; await Command(CommandIds.EditCommit);
+        var editor=_model.ActiveEditor!; var draft=_model.Draft; var selected=_model.SelectedEvent;
+        var source=editor.Document.Serialize(); var undo=editor.Undo.NextUndoName;
+        Assert.Equal(WorkspaceViewMode.Default,_model.ViewMode);
+        foreach(var id in new[]{CommandIds.ViewAudio,CommandIds.ViewVideo,CommandIds.ViewAudioVideo})
+        {
+            Assert.False(_model.Actions[id].CanExecute(null));
+            Assert.False(await _model.Registry.InvokeAsync(id,new()));
+        }
+        Assert.True(_model.Actions[CommandIds.ViewDefault].CanExecute(null));
+        Assert.False(_model.ShowVideo); Assert.False(_model.ShowAudio);
+        Assert.True(await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=10}));
+        Assert.Equal(WorkspaceViewMode.Video,_model.ViewMode);
+        Assert.True(_model.Actions[CommandIds.ViewVideo].CanExecute(null));
+        Assert.False(_model.Actions[CommandIds.ViewAudio].CanExecute(null));
+        Assert.False(_model.Actions[CommandIds.ViewAudioVideo].CanExecute(null));
+        await Command(CommandIds.ViewDefault);
+        Assert.Equal(WorkspaceViewMode.Default,_model.ViewMode);
+        await Command(CommandIds.ViewVideo);
+        Assert.Equal(WorkspaceViewMode.Video,_model.ViewMode);
+        Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Same(selected,_model.SelectedEvent);
+        Assert.Equal(source,editor.Document.Serialize());Assert.Equal(undo,editor.Undo.NextUndoName);
+        using(var restored=new MainWindowViewModel(new(),new(),new(),new ThemeService(),
+            new SettingsStore(Path.Combine(_root,"settings.json")),
+            new AppSettings{ViewMode=WorkspaceViewMode.AudioVideo}))
+            Assert.Equal(WorkspaceViewMode.Default,restored.ViewMode);
+        await Command("video/close");
+        Assert.Equal(WorkspaceViewMode.Default,_model.ViewMode);
+        Assert.False(_model.Actions[CommandIds.ViewVideo].CanExecute(null));
+        Assert.False(_model.Actions[CommandIds.ViewAudioVideo].CanExecute(null));
+    }
     [Fact] public async Task DraftFeedbackIsLiveCoalescedAndRevertible()
     {
-        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;var revision=_model.PreviewRevision;
+        var line=_model.SelectedEvent!;var revision=_model.PreviewRevision;
         foreach(var text in new[]{"m","mi","mixed မြန်မာ"})_model.Draft.Text=text;
         Assert.Equal("mixed မြန်မာ",line.DisplayText);Assert.Equal("",line.Text);Assert.True(_model.PreviewRevision>revision);
         await Command(CommandIds.EditCancel);Assert.Equal("",line.DisplayText);Assert.Equal("",_model.Draft.Text);
@@ -38,33 +485,64 @@ public sealed class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task NewDocumentIsConnectedAndInsertCanBeEdited()
     {
-        Assert.NotNull(_model.ActiveEditor);Assert.Empty(_model.Events);Assert.Null(_model.Draft);Assert.Equal("",_model.EditorDraft.Text);await Command(CommandIds.GridInsertAfter);
-        Assert.Single(_model.Events);Assert.NotNull(_model.Draft);_model.Draft!.Text="日本語 မြန်မာ 👩‍👩‍👧‍👦";
+        Assert.NotNull(_model.ActiveEditor);Assert.Single(_model.Events);Assert.NotNull(_model.Draft);Assert.Equal("",_model.EditorDraft.Text);await Command(CommandIds.GridInsertAfter);
+        Assert.Equal(2,_model.Events.Count);Assert.NotNull(_model.Draft);_model.Draft!.Text="日本語 မြန်မာ 👩‍👩‍👧‍👦";
         Assert.True(_workspace.ActiveDocument!.IsDirty);await Command(CommandIds.EditCommit);
-        Assert.Equal("日本語 မြန်မာ 👩‍👩‍👧‍👦",_model.Events[0].Text);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
+        Assert.Equal("日本語 မြန်မာ 👩‍👩‍👧‍👦",_model.Events[1].Text);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
     }
     [Fact] public async Task TabsHaveIndependentHistoryAndCommitBeforeSwitching()
     {
-        await Command(CommandIds.GridInsertAfter);var first=_workspace.ActiveDocumentId!.Value;_model.Draft!.Text="first draft";
-        await Command(CommandIds.SubtitleNew);Assert.Empty(_model.Events);Assert.False(_model.ActiveEditor!.Undo.CanUndo);
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="second draft";
+        var first=_workspace.ActiveDocumentId!.Value;_model.Draft!.Text="first draft";
+        await Command(CommandIds.SubtitleNew);Assert.Single(_model.Events);Assert.False(_model.ActiveEditor!.Undo.CanUndo);
+        _model.Draft!.Text="second draft";
         await Command(CommandIds.WorkspaceActivateTab,first);Assert.Equal("first draft",_model.Events[0].Text);
         await Command(CommandIds.EditUndo);Assert.Equal("",_model.Events[0].Text);
         await Command(CommandIds.WorkspaceActivateTab,_workspace.Documents[1].Id);Assert.Equal("second draft",_model.Events[0].Text);
     }
     [Fact] public async Task SaveAsChangesPathAndSavedUndoState()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="saved";var path=Path.Combine(_root,"saved.ass");
+        _model.Draft!.Text="saved";var path=Path.Combine(_root,"saved.ass");
         Assert.True(_model.SaveActiveSubtitle(path));Assert.Equal(path,_workspace.ActiveDocument!.Path);Assert.Equal("saved.ass",_workspace.ActiveDocument.Title);Assert.False(_workspace.ActiveDocument.IsDirty);
         _model.Draft!.Actor="Actor";await Command(CommandIds.EditCommit);Assert.True(_workspace.ActiveDocument.IsDirty);
         await Command(CommandIds.EditUndo);Assert.False(_workspace.ActiveDocument.IsDirty);
         Assert.Equal("saved",AssDocument.Load(path).Events[0].Text);
+    }
+    [Fact] public void SaveAsKeepsExistingAutomationScriptLocationAndRollsBackFailedSave()
+    {
+        _model.AutomationRuntimeProvider = new UnavailableAutomationProvider();
+        var script = Path.Combine(_root, "日本語.lua"); File.WriteAllText(script, "script_name='Fixture'");
+        var original = Path.Combine(_root, "original.ass"); Assert.True(_model.SaveActiveSubtitle(original));
+        _model.ActiveEditor!.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = "~日本語.lua|~missing.lua|!future.lua" });
+        var before = _model.ActiveEditor.Document.Serialize();
+        var dirty = _model.ActiveEditor.IsDirty; var undo = _model.ActiveEditor.Undo.NextUndoName;
+        var destination = Path.Combine(_root, "moved"); Directory.CreateDirectory(destination);
+        Assert.False(_model.SaveActiveSubtitle(destination));
+        Assert.Equal(original, _workspace.ActiveDocument!.Path); Assert.Equal(before, _model.ActiveEditor.Document.Serialize());
+        Assert.Equal(dirty, _model.ActiveEditor.IsDirty); Assert.Equal(undo, _model.ActiveEditor.Undo.NextUndoName);
+        var saved = Path.Combine(destination, "new.ass"); Assert.True(_model.SaveActiveSubtitle(saved));
+        var references = AssDocument.Load(saved).GetSectionValue("[Aegisub Project Garbage]", "Automation Scripts");
+        Assert.EndsWith("|~missing.lua|!future.lua", references);
+        Assert.Equal(script, Yoake.Core.Automation.AutomationScriptReference.Resolve(references.Split('|')[0], saved, _model.AutomationBaseDirectory));
+        Assert.False(_model.ActiveEditor.IsDirty);
+        _model.ActiveEditor.Undo.Undo(); Assert.Equal(before, _model.ActiveEditor.Document.Serialize());
     }
     [Fact] public async Task CancelUnsavedCloseRetainsDocumentAndDiscardClosesIt()
     {
         await Command(CommandIds.GridInsertAfter);var id=_workspace.ActiveDocumentId!.Value;
         _dialogs.Choice=UnsavedChoice.Cancel;Assert.False(await _model.CloseDocumentAsync(id));Assert.Contains(_workspace.Documents,d=>d.Id==id);
         _dialogs.Choice=UnsavedChoice.Discard;Assert.True(await _model.CloseDocumentAsync(id));Assert.DoesNotContain(_workspace.Documents,d=>d.Id==id);
+    }
+    [Fact] public async Task ClosingActiveTabDisablesMediaCommandsDuringTabRemoval()
+    {
+        await Command(CommandIds.SubtitleNew);var closing=_model.ActiveDocumentId!.Value;var observed=false;
+        _model.Tabs.CollectionChanged+=(_,e)=>
+        {
+            if(e.Action!=System.Collections.Specialized.NotifyCollectionChangedAction.Remove)return;
+            observed=true;var context=new CommandContext(closing);
+            Assert.False(_model.Registry.CanExecute("video/close",context));
+            Assert.False(_model.Registry.CanExecute("audio/close",context));
+        };
+        Assert.True(await _model.CloseDocumentAsync(closing));Assert.True(observed);
     }
     [Fact] public async Task FailedValidationKeepsDraftAndCurrentRow()
     {
@@ -73,7 +551,7 @@ public sealed class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task ProgrammaticRowJumpSelectsDestinationAndRetainsAnExistingBulkSelection()
     {
-        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;
+        var first=_model.SelectedEvent!;
         await Command(CommandIds.GridInsertAfter);var second=_model.SelectedEvent!;
         _model.Draft!.Text="pending second";_model.SelectedEvent=first;
         Assert.Same(first,Assert.Single(_model.SelectedEvents));Assert.Equal("pending second",second.Text);
@@ -92,14 +570,14 @@ public sealed class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task TimingAndVisualGesturesRollbackOnCancelAndCommitOnce()
     {
-        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;
+        var line=_model.SelectedEvent!;
         Assert.True(_model.BeginGesture("Timing gesture"));_model.UpdateTimingGesture(2,1);_model.UpdateTimingGesture(2,2);_model.CancelGesture();Assert.Equal(0,line.StartMilliseconds);
         Assert.True(_model.BeginGesture("Position gesture"));_model.UpdatePositionGesture(100,200);Assert.Equal(new AssPoint(100,200),AssVisualTags.Position(_model.VisualText));Assert.Contains("\\pos(100,200)",_model.PreviewSource());_model.UpdatePositionGesture(300,400);_model.EndGesture();Assert.Equal(new AssPoint(300,400),AssVisualTags.Position(line.Text));
         Assert.Equal("Position gesture",_model.ActiveEditor!.Undo.NextUndoName);await Command(CommandIds.EditUndo);Assert.Equal("",line.Text);
     }
     [Fact] public async Task VisualSelectionIsVisibleOnlyTransactionalAndUsesLiveGestureText()
     {
-        await Command(CommandIds.GridInsertAfter);var first=_model.SelectedEvent!;
+        var first=_model.SelectedEvent!;
         _model.ActiveEditor!.SetTiming(first,0,1000);_model.ActiveEditor.SetField(first,"Text","{\\pos(100,100)\\org(50,50)\\future(x)}first","Fixture");
         await Command(CommandIds.GridDuplicate);var second=_model.SelectedEvent!;_model.ActiveEditor.SetField(second,"Text","{\\pos(200,150)}second","Fixture");
         await Command(CommandIds.GridDuplicate);var comment=_model.SelectedEvent!;_model.ActiveEditor.ToggleComment([comment]);
@@ -123,12 +601,12 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.Equal(new AssPoint(40,50),AssVisualTags.Origin(visible.Text));Assert.Equal("",hidden.Text);
         await Command(CommandIds.EditUndo);Assert.Equal("",visible.Text);
     }
-    [Theory][InlineData("edit/cancel")][InlineData("video/tool/rotatez")][InlineData("video/tool/vectorclip")]
+    [Theory][InlineData("edit/cancel")][InlineData("workspace/activate-tab")]
     public async Task VisualCancellationAndToolSwitchRestoreTheBatch(string command)
     {
-        await Command(CommandIds.GridInsertAfter);var line=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(line,0,1000);var source=line.Text;
+        var line=_model.SelectedEvent!;_model.ActiveEditor!.SetTiming(line,0,1000);var source=line.Text;
         Assert.True(_model.BeginGesture("Visual gesture"));_model.UpdateVisualGesture(l=>AssVisualTags.SetOrigin(l.Text,new(20,30)));Assert.NotEqual(source,line.Text);
-        await Command(command);Assert.Equal(source,line.Text);Assert.False(_model.HasGesture);Assert.DoesNotContain("\\org(20,30)",_model.PreviewSource());
+        await Command(command,command=="workspace/activate-tab"?_model.ActiveDocumentId:null);Assert.Equal(source,line.Text);Assert.False(_model.HasGesture);Assert.DoesNotContain("\\org(20,30)",_model.PreviewSource());
     }
     [Theory]
     [InlineData(@"{\iclip(3,m 0 0 l 80 0 80 80)\clippos(5,6)\future(x)}vector")]
@@ -179,7 +657,7 @@ public sealed class EditorWorkflowTests : IDisposable
     }
     [Fact] public async Task MultiRowCommandsWorkAcrossUndo()
     {
-        await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridDuplicate);Assert.Equal(4,_model.Events.Count);
+        await Command(CommandIds.GridInsertAfter);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridDuplicate);Assert.Equal(4,_model.Events.Count);
         await Command(CommandIds.EditUndo);Assert.Equal(2,_model.Events.Count);await Command(CommandIds.GridSelectAll);await Command(CommandIds.GridToggleComment);Assert.All(_model.Events,l=>Assert.True(l.IsComment));
     }
     [Fact] public async Task ReopenConnectsLoadedRowsAndRecentFiles()
@@ -190,12 +668,12 @@ public sealed class EditorWorkflowTests : IDisposable
 
     [Fact] public async Task UndoCancelsDraftBeforeUndoingCommittedChanges()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="uncommitted";await Command(CommandIds.EditUndo);Assert.Single(_model.Events);Assert.Equal("",_model.Draft!.Text);
-        await Command(CommandIds.EditUndo);Assert.Empty(_model.Events);
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="uncommitted";await Command(CommandIds.EditUndo);Assert.Equal(2,_model.Events.Count);Assert.Equal("",_model.Draft!.Text);
+        await Command(CommandIds.EditUndo);Assert.Single(_model.Events);
     }
     [Fact] public async Task StartingGestureCommitsPendingTextAndCancellationKeepsThatCommit()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="pending";Assert.True(_model.BeginGesture("Drag"));_model.UpdateTimingGesture(2,1);_model.CancelGesture();Assert.Equal("pending",_model.SelectedEvent!.Text);Assert.Equal(0,_model.SelectedEvent.StartMilliseconds);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
+        _model.Draft!.Text="pending";Assert.True(_model.BeginGesture("Drag"));_model.UpdateTimingGesture(2,1);_model.CancelGesture();Assert.Equal("pending",_model.SelectedEvent!.Text);Assert.Equal(0,_model.SelectedEvent.StartMilliseconds);Assert.Equal("Edit subtitle text",_model.ActiveEditor!.Undo.NextUndoName);
     }
     [Fact] public async Task LowercaseFormatFieldsRemainEditable()
     {
@@ -211,7 +689,7 @@ public sealed class EditorWorkflowTests : IDisposable
 
     [Fact] public async Task StructuralUndoAndRedoKeepCurrentDraftAttachedToALiveRow()
     {
-        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="first";await Command(CommandIds.EditCommit);
+        _model.Draft!.Text="first";await Command(CommandIds.EditCommit);
         await Command(CommandIds.GridDuplicate);var duplicate=_model.SelectedEvent!;
         await Command(CommandIds.EditUndo);Assert.DoesNotContain(duplicate,_model.Events);Assert.Contains(_model.SelectedEvent!,_model.Events);Assert.Equal("first",_model.Draft!.Text);
         await Command(CommandIds.EditRedo);Assert.Equal(2,_model.Events.Count);Assert.Contains(_model.SelectedEvent!,_model.Events);
@@ -227,7 +705,9 @@ public sealed class EditorWorkflowTests : IDisposable
         await Command(CommandIds.FormatBold);Assert.Equal("Hello {\\b1}world{\\b0}",_model.SelectedEvent!.Text);
         Assert.Equal("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
         await Command(CommandIds.EditUndo);Assert.Equal("Hello world",_model.SelectedEvent.Text);
+        Assert.Equal("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
         await Command(CommandIds.EditRedo);Assert.Equal("Hello {\\b1}world{\\b0}",_model.SelectedEvent.Text);
+        Assert.Equal("world",_model.Draft!.Text[_model.TextSelectionStart.._model.TextSelectionEnd]);
     }
     [Fact] public async Task FormattingSwatchesAndFlagsFollowDraftStyleAndCaretWithoutMutatingText()
     {
@@ -261,16 +741,34 @@ public sealed class EditorWorkflowTests : IDisposable
         Assert.Equal(CommandIds.TextHardNewline,_model.Hotkeys.Resolve(new(name,Yoake.Core.Hotkeys.KeyModifiers.Shift),contexts)!.CommandId);
     }
     public void Dispose(){_model.Dispose();Directory.Delete(_root,true);}
+    private sealed class UnavailableAutomationProvider : Yoake.Core.Automation.IAutomationRuntimeProvider
+    {
+        public ValueTask<Yoake.Core.Automation.IAutomationScript> LoadAsync(string path, Yoake.Core.Automation.AutomationPathResolver paths, CancellationToken token)
+            => ValueTask.FromException<Yoake.Core.Automation.IAutomationScript>(new InvalidOperationException("No interpreter in this persistence test."));
+    }
     private sealed class TestDialogs : IEditorDialogs
     {
         public UnsavedChoice Choice=UnsavedChoice.Cancel;
+        public Yoake.Native.DecodedVideoFrame? FrameImage;
+        public string? ClipboardText;
+        public VideoDetails? VideoDetails;
+        public bool FailFrameClipboard;
+        public bool Detached;
+        public Task SetVideoDetachedAsync(bool detached,CancellationToken token){token.ThrowIfCancellationRequested();Detached=detached;return Task.CompletedTask;}
         public Task<string?> OpenSubtitleAsync()=>Task.FromResult<string?>(null);
         public Task<string?> OpenMediaAsync()=>Task.FromResult<string?>(null);
         public Task<string?> SaveSubtitleAsync(string suggestedName)=>Task.FromResult<string?>(null);
         public Task<UnsavedChoice> ConfirmUnsavedAsync(string title)=>Task.FromResult(Choice);
         public Task<bool> ConfirmRevertAsync()=>Task.FromResult(false);
-        public Task<string?> ReadClipboardAsync()=>Task.FromResult<string?>(null);
-        public Task WriteClipboardAsync(string text)=>Task.CompletedTask;
+        public bool FailTextClipboard;
+        public PasteOverFields? PasteFields;
+        public Func<Task<PasteOverFields?>>? PasteDialog;
+        public Task<string?> ReadClipboardAsync()=>FailTextClipboard?Task.FromException<string?>(new IOException("Clipboard unavailable.")):Task.FromResult(ClipboardText);
+        public Task<PasteOverFields?> ShowPasteOverAsync(PasteOverFields initial,CancellationToken token=default)=>PasteDialog?.Invoke()??Task.FromResult(PasteFields);
+        public Task WriteClipboardAsync(string text){ClipboardText=text;return Task.CompletedTask;}
+        public Task WriteFrameClipboardAsync(Yoake.Native.DecodedVideoFrame image,Func<bool> isCurrent,CancellationToken token)
+        {token.ThrowIfCancellationRequested();if(FailFrameClipboard)throw new IOException("Clipboard unavailable.");if(!isCurrent())throw new OperationCanceledException();FrameImage=image;return Task.CompletedTask;}
+        public Task ShowVideoDetailsAsync(VideoDetails details){VideoDetails=details;return Task.CompletedTask;}
         public Task ShowStylesAsync(SubtitleEditor editor)=>Task.CompletedTask;
         public Task ShowScriptInfoAsync(SubtitleEditor editor)=>Task.CompletedTask;
         public Task ShowFindAsync(MainWindowViewModel model)=>Task.CompletedTask;

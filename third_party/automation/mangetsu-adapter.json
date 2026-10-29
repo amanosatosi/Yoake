@@ -1,0 +1,10 @@
+{
+  "source": "User-supplied Aegisub_Toshi-ban-release local source archive; no Git metadata",
+  "repository": "https://github.com/amanosatosi/Aegisub_Toshi-ban",
+  "sourcePath": "automation/include/mangetsu-karaskel.lua",
+  "yoakePath": "automation/include/mangetsu-karaskel.lua",
+  "sha256": "92b267d817954b73f24df158588df010e8a7133f020c2e439b978b40d7d50b56",
+  "modifications": "none",
+  "license": "BSD-3-Clause; root LICENCE applies to headerless files",
+  "copyright": "Copyright (c) 2004-2012, Aegisub Project"
+}

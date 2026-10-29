@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Text;
+using Yoake.Core.Media;
 
 namespace Yoake.Native;
 
@@ -124,6 +125,58 @@ public sealed unsafe partial class MangetsuSubtitleRenderer : IDisposable
                 Native.ass_free_images_rgba(images);
             }
         }
+    }
+
+    /// <summary>Source-resolution, straight BGRA subtitle layer with actual rendered coverage.</summary>
+    public DecodedVideoFrame RenderSubtitles(int width, int height, double seconds)
+    {
+        lock (_gate)
+        {
+            ThrowIfDisposed();
+            if (width != _width || height != _height) ConfigureSize(width, height);
+            var stride = checked(width * 4); var pixels = new byte[checked(stride * height)];
+            var changed = 0;
+            var images = Native.ass_render_frame_rgba(_renderer, _track, (long)Math.Round(Math.Max(0, seconds) * 1000), &changed);
+            try
+            {
+                if (images == 0) return new(width, height, stride, pixels);
+                fixed (byte* destination = pixels)
+                {
+                    // Native RGB composition over black yields premultiplied RGB.
+                    // Its destination-alpha behavior is unsuitable for transparent
+                    // exports, so reconstruct coverage in native image order.
+                    if (Native.ass_composite_images_bgra(images, destination, width, height, stride) != 0)
+                        throw new InvalidOperationException("Mangetsu failed to render the subtitle layer.");
+                    for (var i = 3; i < pixels.Length; i += 4) pixels[i] = 0;
+                    for (var image = (ImageRgba*)images; image != null; image = image->Next)
+                    {
+                        var left = Math.Max(0, image->X); var right = Math.Min(width, (long)image->X + image->Width);
+                        var top = Math.Max(0, image->Y); var bottom = Math.Min(height, (long)image->Y + image->Height);
+                        for (var y = top; y < bottom; y++)
+                        {
+                            var count = checked((int)Math.Max(0, right - left) * 4);
+                            if (count == 0) continue;
+                            var source = image->Rgba + (y - image->Y) * image->Stride + (left - image->X) * 4;
+                            SubtitleAlpha.AccumulateRow(new ReadOnlySpan<byte>(source, count), pixels.AsSpan(y * stride + left * 4, count));
+                        }
+                    }
+                }
+                SubtitleAlpha.UnpremultiplyBgra(pixels);
+                return new(width, height, stride, pixels);
+            }
+            finally { Native.ass_free_images_rgba(images); }
+        }
+    }
+
+    // ASS_ImageRGBA prefix from pinned libassmod's libass/ass.h. Native pointers
+    // are confined to this provider boundary, for export and provider verification.
+    [StructLayout(LayoutKind.Sequential)]
+    private struct ImageRgba
+    {
+        public int Width, Height, Stride;
+        public byte* Rgba;
+        public int X, Y, Type;
+        public ImageRgba* Next;
     }
 
     public void Dispose()

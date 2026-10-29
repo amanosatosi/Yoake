@@ -2,6 +2,18 @@ namespace Yoake.Core.Commands;
 
 public static class CommandIds
 {
+    public const string AppExit="app/exit",AppOptions="app/options",AppLog="app/log",AppToggleToolbar="app/toggle/toolbar";
+    public const string ViewDefault = "view/default";
+    public const string ViewAudio = "view/audio";
+    public const string ViewVideo = "view/video";
+    public const string ViewAudioVideo = "view/audio-video";
+    public const string AutomationManager = "automation/manager";
+    public const string AutomationLoad = "automation/load";
+    public const string AutomationRemove = "automation/remove";
+    public const string AutomationReload = "automation/reload";
+    public const string AutomationRescan = "automation/rescan";
+    public const string AutomationExport = "automation/export";
+    public const string AutomationPaths = "automation/paths";
     public const string FormatBold="text/format/bold", FormatItalic="text/format/italic", FormatUnderline="text/format/underline", FormatStrikeout="text/format/strikeout";
     public const string FormatFont="text/format/font", FormatPrimary="text/format/primary", FormatSecondary="text/format/secondary", FormatOutline="text/format/outline", FormatShadow="text/format/shadow", FormatReset="text/format/reset";
     public const string TextHardNewline="text/insert/hard-newline";
@@ -49,6 +61,7 @@ public static class CommandIds
     public const string EditCommit = "edit/commit";
     public const string EditCommitNext = "edit/commit-next";
     public const string EditFind = "edit/find";
+    public const string FindNext="subtitle/find/next",FindReplace="edit/find_replace";
     public const string TimingSetStart = "timing/set-start";
     public const string TimingSetEnd = "timing/set-end";
     public const string TimingJumpStart = "timing/jump-start";

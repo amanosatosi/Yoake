@@ -1,5 +1,6 @@
 using Yoake.Core.Commands;
 using Yoake.Core.Subtitles;
+using Yoake.UI.Commands;
 
 namespace Yoake.UI.ViewModels;
 
@@ -8,12 +9,12 @@ public sealed record VisualLine(AssEvent Line,string Text,AssPoint DefaultPositi
 public sealed partial class MainWindowViewModel
 {
     private VisualLine[] _visualBaseline=[];
-    public bool HasGesture=>_gesture is not null;
+    public bool HasGesture=>_gesture is not null||_audioTimingGesture is not null||_karaokeGesture is not null;
     public event EventHandler? GestureEnded;
     public static readonly string[] VisualToolNames=["Crosshair","Position","RotateZ","RotateXY","Scale","Clip","VectorClip","Distort"];
     public static readonly string[] VectorModes=["Select","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];
     private string _vectorMode="Select";
-    public string VectorMode {get=>_vectorMode;private set{SetField(ref _vectorMode,value);OnPropertyChanged(nameof(VisualHint));foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);}}
+    public string VectorMode {get=>VisualState?.VectorMode??_vectorMode;private set{if(VisualState is {} state)state.VectorMode=value;SetField(ref _vectorMode,value);OnPropertyChanged();OnPropertyChanged(nameof(VisualHint));foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);}}
     public bool IsCrosshairTool=>ActiveVisualTool=="Crosshair";
     public bool IsRotateZTool=>ActiveVisualTool=="RotateZ";
     public bool IsRotateXYTool=>ActiveVisualTool=="RotateXY";
@@ -54,21 +55,40 @@ public sealed partial class MainWindowViewModel
             return ScriptSize.Height/Math.Max(1,height);
         }
     }
-    public IReadOnlyList<VisualLine> VisibleVisualLines()
+    public IReadOnlyList<VisualLine> VisibleVisualLines(bool includeUnselected = false)
     {
         if(ActiveEditor is null)return [];
         var time=(FrameTimes.Count>0?FrameTimes[CurrentFrame]:CurrentTimeSeconds)*1000;var size=ScriptSize;
-        var visible=Selection().Where(l=>!l.IsComment&&time>=(l.StartMilliseconds??0)&&time<(l.EndMilliseconds??0)).ToArray();
-        var primary=visible.FirstOrDefault(l=>ReferenceEquals(l,SelectedEvent))??visible.FirstOrDefault();
-        return visible.Select(line=>
+        // Use the same active-line timing values as the subtitle compositor,
+        // including pending markers during a visual gesture. The audio primary
+        // range intentionally falls back to stored timing while such a gesture
+        // owns input, so it cannot be used as a second preview timing model here.
+        var preview=AudioPreviewValues();
+        (long Start,long End) Range(AssEvent line)
         {
-            var active=ReferenceEquals(line,SelectedEvent);var text=active?VisualText:line.Text;
+            if(ReferenceEquals(line,SelectedEvent)&&preview is not null&&
+                AssTime.TryParse(preview.GetValueOrDefault("Start"),out var start)&&
+                AssTime.TryParse(preview.GetValueOrDefault("End"),out var end)&&end>=start)return(start,end);
+            return(line.StartMilliseconds??0,line.EndMilliseconds??0);
+        }
+        var visible=(includeUnselected?Events:Selection()).Select(line=>(Line:line,Timing:Range(line)))
+            .Where(entry=>!entry.Line.IsComment&&time>=entry.Timing.Start&&time<entry.Timing.End).ToArray();
+        var primary=visible.FirstOrDefault(entry=>ReferenceEquals(entry.Line,SelectedEvent)).Line??visible.FirstOrDefault().Line;
+        return visible.Select(entry=>
+        {
+            var line=entry.Line;var active=ReferenceEquals(line,SelectedEvent);var text=active?VisualText:line.Text;
             var style=ActiveEditor.Document.Styles.FirstOrDefault(s=>s.Name==(active?EditorDraft.Style:line.Style));
             var fallback=AssVisualTags.DefaultPosition(line,style,size.Width,size.Height,text);
-            var relative=time-(line.StartMilliseconds??0);var duration=(line.EndMilliseconds??0)-(line.StartMilliseconds??0);
+            var relative=time-entry.Timing.Start;var duration=entry.Timing.End-entry.Timing.Start;
             var position=AssVisualTags.PositionAtTime(text,(long)relative,duration)??fallback;
             return new VisualLine(line,text,fallback,position,AssVisualTags.Origin(text)??position,AssVisualTags.Transform(text,style),relative,duration,ReferenceEquals(line,primary));
         }).ToArray();
+    }
+    public bool SelectVisualLine(AssEvent line)
+    {
+        var suppress=_suppressSelectionSeek;_suppressSelectionSeek=true;
+        try { SelectedEvent=line; return ReferenceEquals(SelectedEvent,line); }
+        finally { _suppressSelectionSeek=suppress; }
     }
     public void UpdateVisualGesture(Func<VisualLine,string> edit)=>InvokeGesture("video/visual/update",edit);
     private void UpdateVisualGestureCore(Func<VisualLine,string> edit)
@@ -83,7 +103,36 @@ public sealed partial class MainWindowViewModel
     private void SelectVisualTool(string tool)
     {
         CancelGesture();ActiveVisualTool=tool;
+        NotifyVisualToolState();
+    }
+    private void NotifyVisualToolState()
+    {
+        OnPropertyChanged(nameof(ActiveVisualTool));OnPropertyChanged(nameof(VectorMode));
+        foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);
         foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(HasVisualOptions),nameof(VisualHint)})OnPropertyChanged(property);
+    }
+    private DocumentState? VisualState=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?state:null;
+    private void RegisterVisualToolCommands()
+    {
+        bool Owns(CommandContext context)=>_activeId is not null&&(context.DocumentId is null||context.DocumentId==_activeId);
+        void Register(string id,string label,Action select,Func<bool> check)
+        {
+            _registry.Register(new(new(id,label,label,"Video visual tools"),(_,token)=>
+            {token.ThrowIfCancellationRequested();select();return ValueTask.CompletedTask;},
+                c=>Owns(c)&&_media?.HasVideo==true&&!HasEditOperation,isChecked:c=>Owns(c)&&check()));
+            Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
+        }
+        foreach(var name in VisualToolNames)
+        {
+            var tool=name;var id="video/tool/"+(tool=="Position"?"position":tool.ToLowerInvariant());
+            Register(id,tool+" tool",()=>SelectVisualTool(tool),()=>ActiveVisualTool==tool);
+        }
+        foreach(var name in VectorModes)
+        {
+            var mode=name;
+            Register("video/vector/"+mode.ToLowerInvariant(),"Vector clip: "+mode,
+                ()=>{CancelGesture();SelectVisualTool("VectorClip");VectorMode=mode;},()=>IsVectorClipTool&&VectorMode==mode);
+        }
     }
     private void ToggleVisualMove()
     {

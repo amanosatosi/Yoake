@@ -1,0 +1,227 @@
+/* Yoake's native Lua error boundary. See the repository LICENSE. */
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
+#include <luajit.h>
+#include "aegisub-3.2.2/vendor/luabins/src/luabins.h"
+#ifdef _WIN32
+#include <windows.h>
+#include <objbase.h>
+#define API __declspec(dllexport)
+#else
+#include <stdatomic.h>
+#define API __attribute__((visibility("default")))
+#endif
+
+typedef char *(*host_callback)(void *, const char *, int, int *);
+extern int ya_safe_preload_modules(lua_State *L);
+typedef struct reply_buffer {
+    char *data;
+    struct reply_buffer *next;
+} reply_buffer;
+typedef struct runtime {
+    lua_State *L;
+    host_callback host;
+    void *context;
+    reply_buffer *replies;
+    char *result;
+    const char *source, *name;
+    int source_length;
+    int trace_moon, trace_line;
+    char *trace_source;
+#ifdef _WIN32
+    volatile LONG cancelled;
+#else
+    atomic_int cancelled;
+#endif
+} runtime;
+
+static void release_reply(runtime *r, reply_buffer *reply) {
+    reply_buffer **link = &r->replies;
+    while (*link && *link != reply) link = &(*link)->next;
+    if (!*link) return;
+    *link = reply->next;
+#ifdef _WIN32
+    CoTaskMemFree(reply->data);
+#else
+    free(reply->data);
+#endif
+    free(reply);
+}
+
+static void release_replies(runtime *r) {
+    while (r->replies) release_reply(r, r->replies);
+}
+
+static runtime *owner(lua_State *L) {
+    lua_getfield(L, LUA_REGISTRYINDEX, "yoake.runtime");
+    runtime *r = (runtime *)lua_touserdata(L, -1);
+    lua_pop(L, 1);
+    return r;
+}
+
+static void cancellation_hook(lua_State *L, lua_Debug *ar) {
+    runtime *r = owner(L);
+    if (ar->event == LUA_HOOKLINE && lua_getinfo(L, "Sl", ar)) {
+        size_t length = strlen(ar->source);
+        if (length >= 5 && !strcmp(ar->source + length - 5, ".moon")) {
+            if (!r->trace_source || strcmp(r->trace_source, ar->source)) {
+                char *copy = (char *)malloc(length + 1);
+                if (!copy) luaL_error(L, "Out of memory recording MoonScript source");
+                memcpy(copy, ar->source, length + 1);
+                free(r->trace_source); r->trace_source = copy;
+            }
+            r->trace_line = ar->currentline;
+        }
+    }
+#ifdef _WIN32
+    if (InterlockedCompareExchange(&r->cancelled, 0, 0))
+#else
+    if (atomic_load(&r->cancelled))
+#endif
+        luaL_error(L, "Automation execution cancelled");
+}
+
+/* LuaJIT elides a tail call into error(). Keep its MoonScript call site in
+   the same hook as cancellation; never replace the count hook from Lua. */
+static int moon_location(lua_State *L) {
+    runtime *r = owner(L);
+    if (lua_gettop(L)) {
+        if (lua_toboolean(L, 1)) {
+            r->trace_moon = 1;
+            lua_sethook(L, cancellation_hook, LUA_MASKCOUNT | LUA_MASKLINE, 10000);
+        }
+        r->trace_line = 0;
+        return 0;
+    }
+    if (!r->trace_line || !r->trace_source) return 0;
+    lua_pushstring(L, r->trace_source); lua_pushinteger(L, r->trace_line);
+    return 2;
+}
+
+static int dispatch(lua_State *L) {
+    runtime *r = owner(L);
+    size_t length;
+    const char *request = luaL_checklstring(L, 1, &length);
+    if (length > 0x7fffffff) return luaL_error(L, "Automation request too large");
+    /* Decoding can collect Lua objects whose finalizers re-enter dispatch.
+       Each protected native frame retains its own buffer. Unwound frames are
+       cleaned at the execute boundary, never by a nested dispatch. */
+    reply_buffer *reply = (reply_buffer *)calloc(1, sizeof(reply_buffer));
+    if (!reply) return luaL_error(L, "Out of memory tracking Automation reply");
+    reply->next = r->replies; r->replies = reply;
+    /* No Lua C API calls occur in managed code. Its callback returns before
+       allocations/errors below can unwind to the native protected frame. */
+    int reply_length = 0, count = 0;
+    reply->data = r->host(r->context, request, (int)length, &reply_length);
+    if (!reply->data) { release_reply(r, reply); return luaL_error(L, "Automation host could not return a response"); }
+    if (reply_length < 1) { release_reply(r, reply); return luaL_error(L, "Invalid Automation response length"); }
+    int status = luabins_load(L, (const unsigned char *)reply->data, (size_t)reply_length, &count);
+    release_reply(r, reply);
+    if (status) return lua_error(L);
+    if (count < 1) return luaL_error(L, "Empty Automation response tuple");
+    return count;
+}
+
+static int traceback(lua_State *L) {
+    const char *message = lua_tostring(L, 1);
+    if (!message) { lua_pushvalue(L, 1); return 1; }
+    luaL_traceback(L, L, message, 1);
+    return 1;
+}
+
+/* Only called by the private adapter when invocation diagnostics are enabled. */
+static int diagnostic_clock(lua_State *L) {
+#ifdef _WIN32
+    LARGE_INTEGER now, frequency;
+    QueryPerformanceCounter(&now); QueryPerformanceFrequency(&frequency);
+    lua_pushnumber(L, (double)now.QuadPart / (double)frequency.QuadPart * 1000.0);
+#else
+    struct timespec now;
+    timespec_get(&now, TIME_UTC);
+    lua_pushnumber(L, (double)now.tv_sec * 1000.0 + now.tv_nsec / 1000000.0);
+#endif
+    return 1;
+}
+
+static int initialize(lua_State *L) {
+    runtime *r = (runtime *)lua_touserdata(L, 1);
+    luaL_openlibs(L);
+    ya_safe_preload_modules(L);
+    lua_pushlightuserdata(L, r);
+    lua_setfield(L, LUA_REGISTRYINDEX, "yoake.runtime");
+    lua_pushcfunction(L, dispatch);
+    lua_setglobal(L, "__yoake_transport");
+    lua_pushcfunction(L, moon_location);
+    lua_setglobal(L, "__yoake_moon_location");
+    lua_pushcfunction(L, diagnostic_clock);
+    lua_setglobal(L, "__yoake_clock");
+    /* Count hooks cannot reliably interrupt compiled tight loops. Disable
+       Lua JIT for this cancellable host; this does not affect managed AOT. */
+    luaJIT_setmode(L, 0, LUAJIT_MODE_ENGINE | LUAJIT_MODE_OFF);
+    return 0;
+}
+
+static int execute(lua_State *L) {
+    runtime *r = (runtime *)lua_touserdata(L, 1);
+    lua_settop(L, 0);
+    lua_pushcfunction(L, traceback);
+    if (luaL_loadbuffer(L, r->source, (size_t)r->source_length, r->name)) return lua_error(L);
+    if (lua_pcall(L, 0, 1, 1)) return lua_error(L);
+    if (lua_type(L, -1) == LUA_TSTRING) {
+        size_t length;
+        const char *value = lua_tolstring(L, -1, &length);
+        r->result = (char *)malloc(length + 1);
+        if (!r->result) return luaL_error(L, "Out of memory returning Automation result");
+        memcpy(r->result, value, length); r->result[length] = 0;
+    }
+    return 0;
+}
+
+/* Version the callback ABI: an old packaged DLL must fail symbol resolution,
+   never call a length-returning managed callback with the old signature. */
+API runtime *ya_create_v2(host_callback host, void *context) {
+    runtime *r = (runtime *)calloc(1, sizeof(runtime));
+    if (!r) return NULL;
+    r->host = host; r->context = context; r->L = luaL_newstate();
+    if (!r->L) { free(r); return NULL; }
+    if (lua_cpcall(r->L, initialize, r)) { lua_close(r->L); free(r); return NULL; }
+    return r;
+}
+
+API void ya_cancel(runtime *r) {
+#ifdef _WIN32
+    InterlockedExchange(&r->cancelled, 1);
+#else
+    atomic_store(&r->cancelled, 1);
+#endif
+}
+
+API void ya_reset_cancellation(runtime *r) {
+#ifdef _WIN32
+    InterlockedExchange(&r->cancelled, 0);
+#else
+    atomic_store(&r->cancelled, 0);
+#endif
+}
+
+/* Return strings stay owned by the runtime until its next call/disposal. */
+API int ya_execute(runtime *r, const char *source, int length, const char *name, const char **result) {
+    free(r->result); r->result = NULL; release_replies(r);
+    r->source = source; r->source_length = length; r->name = name;
+    lua_settop(r->L, 0);
+    lua_sethook(r->L, cancellation_hook, LUA_MASKCOUNT | (r->trace_moon ? LUA_MASKLINE : 0), 10000);
+    int status = lua_cpcall(r->L, execute, r);
+    lua_sethook(r->L, NULL, 0, 0);
+    release_replies(r);
+    *result = status ? (lua_type(r->L, -1) == LUA_TSTRING ? lua_tostring(r->L, -1) : "Lua error without a string message") : r->result;
+    return status;
+}
+
+API void ya_destroy(runtime *r) {
+    if (!r) return;
+    lua_close(r->L); release_replies(r); free(r->result); free(r->trace_source); free(r);
+}

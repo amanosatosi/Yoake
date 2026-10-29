@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Yoake.Core.Audio;
 
 namespace Yoake.Native;
 
@@ -13,6 +14,19 @@ public sealed record DecodedAudioFrames(
 
 public sealed unsafe partial class FfmsMediaSession
 {
+    public void SaveAudioClip(string path,AudioClipInterval interval,CancellationToken token=default,Action<double>? progress=null)
+    {
+        if(string.Equals(Path.GetFullPath(path),SourcePath,OperatingSystem.IsWindows()?StringComparison.OrdinalIgnoreCase:StringComparison.Ordinal))
+            throw new ArgumentException("Choose a destination other than the opened media file.");
+        if(!HasAudio)throw new InvalidOperationException("The opened media has no audio.");
+        var info=Info;
+        AudioClipFile.Save(path,new(info.SampleRate,info.Channels,info.AudioSamples),interval,(start,count)=>
+        {
+            token.ThrowIfCancellationRequested();
+            try{return ReadAudioFrames(start,count).Samples;}
+            catch(ObjectDisposedException)when(token.IsCancellationRequested){token.ThrowIfCancellationRequested();throw;}
+        },token,progress);
+    }
     public long TimeToAudioFrame(double seconds)
     {
         if (Info.SampleRate <= 0 || Info.AudioSamples <= 0)

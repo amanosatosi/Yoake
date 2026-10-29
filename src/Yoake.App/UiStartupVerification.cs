@@ -6,6 +6,7 @@ using Yoake.Core.Commands;
 using Yoake.Core.Logging;
 using Yoake.UI;
 using Yoake.UI.Controls;
+using Yoake.UI.Icons;
 using Yoake.UI.ViewModels;
 
 namespace Yoake.App;
@@ -17,9 +18,13 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private int _ticks, _layouts;
-    private bool _opened, _loaded, _inserted, _editorVerified;
+    private bool _opened, _loaded, _inserted, _editorVerified, _iconsVerified;
     private StylesWindow? _styles;
     private AuthoringUiVerification? _authoring;
+    private AutomationUiVerification? _automation;
+    private bool _authoringCompleted;
+    private WorkspaceViewVerification? _emptyViews, _loadedViews;
+    private bool _emptyViewsCompleted;
 
     public void Start()
     {
@@ -33,12 +38,16 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
     private void Verify(object? sender, EventArgs args)
     {
         if (!_opened || !_loaded || _layouts == 0) return;
+        if (options.MarkStartupVerified())
+            StartupDiagnostics.Checkpoint("UI startup gate passed: opened, loaded, first layout, dispatcher responsive");
         try
         {
             if (!_inserted)
             {
-                Require(model.Draft is null&&StartupDiagnostics.BindingWarningCount==0,"Initial empty document must produce no binding warnings.");
-                Invoke(CommandIds.GridInsertAfter);
+                Require(model.Events.Count == 1 && model.Draft is not null && ReferenceEquals(model.SelectedEvent, model.Events[0]) &&
+                    model.Draft.Text == "" && !model.ActiveEditor!.IsDirty && !model.ActiveEditor.Undo.CanUndo,
+                    "A new document must start with one selected, editable, clean dialogue line.");
+                Require(StartupDiagnostics.BindingWarningCount == 0, "Initial document must produce no binding warnings.");
                 _inserted = true;
                 return; // Let real row containers/bindings and selection initialize.
             }
@@ -55,17 +64,44 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             Require(ReferenceEquals(window.FindControl<AudioWaveformControl>("AudioDisplay")?.Model, model), "Waveform model binding must initialize.");
             Require(ReferenceEquals(window.FindControl<VisualOverlayControl>("VisualOverlay")?.Model, model), "Visual overlay model binding must initialize.");
             Require(window.GetVisualDescendants().OfType<Button>().Count(b => b.Command is not null) >= 8, "Toolbar command bindings must initialize.");
+            if (!_iconsVerified)
+            {
+                var toolbar = window.FindControl<Grid>("MainToolbar")!;
+                Require(window.FindControl<ScrollViewer>("MainActionScroll")!.Viewport.Height >= 24,
+                    "Toolbar scrolling must leave the full command buttons visible.");
+                var toolbarButtons = toolbar.GetVisualDescendants().OfType<Button>().ToArray();
+                foreach (var (id, geometry) in new[]
+                {
+                    ("video/open", IconGeometries.VideoOpen),
+                    ("video/close", IconGeometries.VideoClose),
+                    ("timing/jump-start", IconGeometries.VideoToStart),
+                    ("timing/jump-end", IconGeometries.VideoToEnd),
+                    ("time/snap/start_video", IconGeometries.StartToVideo),
+                    ("time/snap/end_video", IconGeometries.EndToVideo),
+                    ("styles/manage", IconGeometries.StylesManager),
+                    ("automation/manager", IconGeometries.AutomationManager),
+                })
+                {
+                    var action = toolbarButtons.Single(b => ReferenceEquals(b.Command, model.Actions[id]));
+                    Require(action.Content is PathIcon icon && ReferenceEquals(icon.Data, geometry)
+                        && ToolTip.GetTip(action) is string { Length: > 0 },
+                        $"Toolbar action {id} must retain its mapped icon and tooltip.");
+                }
+                Require(!toolbarButtons.Single(b => ReferenceEquals(b.Command, model.Actions["video/close"])).IsEffectivelyEnabled,
+                    "The close-video toolbar action must be disabled when no video is open.");
+                _iconsVerified = true;
+            }
             var text = window.FindControl<AssTextBox>("SubtitleText")!;
             var presenter = text.GetVisualDescendants().OfType<AssTextPresenter>().Single();
             if (!_editorVerified)
             {
                 const string source = "{\\bord2\\1c&H88FF00&\\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦\\NHello";
-                text.SetCurrentValue(TextBox.TextProperty, source);
+                text.SetCurrentValue(AssTextBox.SourceTextProperty, source);
                 Require(model.Draft?.Text == source, "Real ASS TextBox must update the edit draft without rewriting source.");
                 Invoke(CommandIds.EditCommit);
-                text.CaretIndex = source.Length;
-                text.SelectionStart = source.Length - 5;
-                text.SelectionEnd = source.Length;
+                text.CaretIndex = text.DisplayIndex(source.Length);
+                text.SelectionStart = text.DisplayIndex(source.Length - 5);
+                text.SelectionEnd = text.DisplayIndex(source.Length);
                 Invoke(CommandIds.FormatBold);
                 Require(model.SelectedEvent!.Text.EndsWith("{\\b1}Hello{\\b0}", StringComparison.Ordinal), "Real selection formatting must preserve text and restore bold state.");
                 Require(text.Text![Math.Min(text.SelectionStart,text.SelectionEnd)..Math.Max(text.SelectionStart,text.SelectionEnd)]=="Hello", "Native text selection must stay on formatted visible text.");
@@ -77,9 +113,24 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
                 Require(text.Text == formatted, "IME preedit presentation must not modify the source.");
                 Invoke(CommandIds.EditUndo);
                 Require(model.SelectedEvent.Text == source, "Formatting undo must restore the exact tagged Unicode source.");
-                Invoke(CommandIds.EditUndo); // Undo text entry; the inserted row remains for style preview.
+                Invoke(CommandIds.EditUndo); // Undo text entry; the initial row remains for style preview.
                 _editorVerified = true;
                 return;
+            }
+            if (!_authoringCompleted)
+            {
+            Require(window.FindControl<MenuItem>("UndoMenu")!.Header as string==model.Actions[CommandIds.EditUndo].Label,
+                "Shipping undo menu must display the contextual command label after history changes.");
+            Require(window.FindControl<MenuItem>("RedoMenu")!.Header as string==model.Actions[CommandIds.EditRedo].Label,
+                "Shipping redo menu must display the contextual command label after history changes.");
+            if (!_emptyViewsCompleted)
+            {
+                // Startup autoload runs asynchronously and adds scripts one by one.
+                // Capture a stable baseline only after that independent work ends.
+                if (!model.Actions[CommandIds.AutomationRescan].CanExecute(null)) return;
+                _emptyViews ??= new(window, model, options.VerificationReport!, false);
+                if (!_emptyViews.Tick()) return;
+                _emptyViewsCompleted = true;
             }
             if (_styles is null)
             {
@@ -95,6 +146,16 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             _authoring??=new(window,model,_styles,options.VerificationReport!,options.VerificationMedia);
             if(!_authoring.Tick())return;
             _styles.Close();
+            _authoringCompleted = true;
+            }
+            _automation ??= new(window, model, options.VerificationReport!, options.VerificationMedia!);
+            if (!_automation.Tick()) return;
+            // Automation has just restored the original tab. Let its normal
+            // asynchronous preview finish before comparing retained media.
+            if (_loadedViews is null && (model.VideoFrame is null || model.WaveformSamples is null || model.DisplayedPreviewRevision < model.PreviewRevision ||
+                !model.Actions[CommandIds.AutomationRescan].CanExecute(null))) return;
+            _loadedViews ??= new(window, model, options.VerificationReport!, true);
+            if (!_loadedViews.Tick()) return;
             Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
             Require(StartupDiagnostics.BindingWarningCount==0,"Authoring controls logged binding warnings; inspect startup.log.");
             while(model.ActiveEditor!.Undo.CanUndo)Invoke(CommandIds.EditUndo); // Undo the real editing probe before normal shutdown.

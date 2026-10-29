@@ -1,4 +1,5 @@
 using Yoake.Core.Audio;
+using Yoake.Core.Media;
 using System.Runtime.InteropServices;
 
 namespace Yoake.Native;
@@ -16,7 +17,10 @@ public sealed record MediaInfo(
 
 public sealed record DecodedVideoFrame(int Width, int Height, int Stride, byte[] Pixels);
 
-public sealed unsafe partial class FfmsMediaSession : IDisposable
+[Flags]
+public enum MediaTracks { Video = 1, Audio = 2, Both = Video | Audio }
+
+public sealed unsafe partial class FfmsMediaSession : IVideoProvider
 {
     private const int VideoTrackType = 0;
     private const int AudioTrackType = 1;
@@ -38,24 +42,62 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     private bool _disposed;
     private double[] _frameTimes = [];
     private int[] _keyframes=[];
-    public IReadOnlyList<double> FrameTimes=>_frameTimes;
-    public IReadOnlyList<int> Keyframes=>_keyframes;
+    private sealed record EffectiveTiming(VideoTimecodeMap Map,MediaInfo Info);
+    private EffectiveTiming? _externalTiming;
+    public IReadOnlyList<double> FrameTimes=>Volatile.Read(ref _externalTiming)?.Map.FrameTimes??_frameTimes;
+    public void SetExternalTimecodes(VideoTimecodeMap? map)
+    {
+        lock(_videoGate)
+        {
+            ThrowIfDisposed();
+            if(map is not null&&(!HasVideo||map.FrameTimes.Count!=_providerInfo.FrameCount))throw new ArgumentException("Timecodes must be prepared for this video's frame count.");
+            var duration=map is null?0:Math.Max(map.DurationSeconds,HasAudio&&_providerInfo.SampleRate>0?_providerInfo.AudioSamples/(double)_providerInfo.SampleRate:0);
+            Volatile.Write(ref _externalTiming,map is null?null:new(map,_providerInfo with{DurationSeconds=duration}));
+        }
+    }
+    private IReadOnlyList<int>? _externalKeyframes;
+    public IReadOnlyList<int> Keyframes=>Volatile.Read(ref _externalKeyframes)??_keyframes;
+    // Managed metadata override only. Decoder handles, clocks and native
+    // indexing survive loading/closing an external keyframe list.
+    public void SetExternalKeyframes(IReadOnlyList<int>? keyframes)
+    {
+        IReadOnlyList<int>? snapshot=null;
+        if(keyframes is not null)
+        {
+            var previous=-1;
+            foreach(var frame in keyframes)
+            {if(frame<0||frame<=previous)throw new ArgumentException("Keyframes must be ordered, unique and non-negative.");previous=frame;}
+            snapshot=Array.AsReadOnly(keyframes.Where(frame=>frame<Info.FrameCount).ToArray());
+        }
+        Volatile.Write(ref _externalKeyframes,snapshot);
+    }
 
     private FfmsMediaSession(string path, nint videoSource, nint audioSource, MediaInfo info)
     {
         SourcePath = path;
         _videoSource = videoSource;
         _audioSource = audioSource;
-        Info = info;
+        _providerInfo = info;
     }
 
     public string SourcePath { get; }
-    public MediaInfo Info { get; private set; }
+    public string DecoderName => "FFMS2 / FFmpeg";
+    public bool IsDummy => false;
+    public double DisplayAspectRatio { get; private set; }
+    public MediaInfo SourceInfo => _providerInfo;
+    private double _videoDurationSeconds;
+    // A video command ends at video EOF even when an independent audio span
+    // contributes a longer combined timeline duration. External VFR maps own
+    // their video's endpoint without changing the audio sample domain.
+    public double VideoDurationSeconds=>HasVideo?(Volatile.Read(ref _externalTiming)?.Map.DurationSeconds??_videoDurationSeconds):0;
+    private MediaInfo _providerInfo;
+    public MediaInfo Info=>Volatile.Read(ref _externalTiming)?.Info??_providerInfo;
     public bool HasVideo => _videoSource != 0;
     public bool HasAudio => _audioSource != 0;
 
-    public static FfmsMediaSession Open(string path, CancellationToken cancellationToken = default)
+    public static FfmsMediaSession Open(string path, CancellationToken cancellationToken = default, MediaTracks tracks = MediaTracks.Both)
     {
+        if (tracks is not (MediaTracks.Video or MediaTracks.Audio or MediaTracks.Both)) throw new ArgumentOutOfRangeException(nameof(tracks));
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         path = System.IO.Path.GetFullPath(path);
         if (!File.Exists(path))
@@ -71,7 +113,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             throw CreateException("FFMS_CreateIndexer", errorBuffer);
 
         Native.FFMS_TrackTypeIndexSettings(indexer, VideoTrackType, IndexTrack, 0);
-        Native.FFMS_TrackTypeIndexSettings(indexer, AudioTrackType, IndexTrack, 0);
+        Native.FFMS_TrackTypeIndexSettings(indexer, AudioTrackType, tracks.HasFlag(MediaTracks.Audio) ? IndexTrack : 0, 0);
         ResetError(ref error, errorBuffer);
         var cancellationHandle = GCHandle.Alloc(cancellationToken);
         nint index;
@@ -92,7 +134,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             ResetError(ref error, errorBuffer);
             var audioTrack = Native.FFMS_GetFirstIndexedTrackOfType(index, AudioTrackType, &error);
 
-            if (videoTrack >= 0)
+            if (videoTrack >= 0 && tracks.HasFlag(MediaTracks.Video))
             {
                 ResetError(ref error, errorBuffer);
                 videoSource = Native.FFMS_CreateVideoSource(path, videoTrack, index, 0, SeekNormal, &error);
@@ -100,7 +142,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
                     throw CreateException("FFMS_CreateVideoSource", errorBuffer);
             }
 
-            if (audioTrack >= 0)
+            if (audioTrack >= 0 && tracks.HasFlag(MediaTracks.Audio))
             {
                 ResetError(ref error, errorBuffer);
                 var delayMode = videoTrack >= 0 ? videoTrack : DelayTimeZero;
@@ -117,6 +159,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             var frameCount = 0;
             var fps = 0d;
             var videoDuration = 0d;
+            var sar = 1d;
 
             if (videoSource != 0)
             {
@@ -124,6 +167,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
                 if (properties == null)
                     throw new InvalidOperationException("FFMS_GetVideoProperties returned null.");
                 frameCount = properties->NumFrames;
+                if (properties->SARNum > 0 && properties->SARDen > 0) sar = properties->SARNum / (double)properties->SARDen;
                 fps = properties->FPSDenominator != 0
                     ? (double)properties->FPSNumerator / properties->FPSDenominator
                     : 0d;
@@ -185,7 +229,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
 
             var duration = Math.Max(videoDuration, audioDuration);
             var info = new MediaInfo(path, width, height, frameCount, fps, duration, sampleRate, channels, audioSamples);
-            var session = new FfmsMediaSession(path, videoSource, audioSource, info);
+            var session = new FfmsMediaSession(path, videoSource, audioSource, info){_videoDurationSeconds=videoDuration,DisplayAspectRatio=height>0?width*sar/height:0};
             if (videoSource != 0)
             {
                 var track = Native.FFMS_GetTrackFromVideo(videoSource);
@@ -207,7 +251,8 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             {
                 var last=session._frameTimes[^1];
                 var frameDuration=session._frameTimes.Length>1?last-session._frameTimes[^2]:fps>0?1/fps:0;
-                session.Info=info with{DurationSeconds=Math.Max(audioDuration,last+Math.Max(0,frameDuration))};
+                session._videoDurationSeconds=last+Math.Max(0,frameDuration);
+                session._providerInfo=info with{DurationSeconds=Math.Max(audioDuration,session._videoDurationSeconds)};
             }
             return session;
         }
@@ -225,7 +270,32 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         }
     }
 
+    // Transfer handles opened against one index without reopening either track.
+    // The source is left empty and can be disposed immediately. Allocation is
+    // completed before either handle changes owner.
+    internal (FfmsMediaSession? Video, FfmsMediaSession? Audio) SeparateResources()
+    {
+        lock (_videoGate) lock (_audioGate)
+        {
+            ThrowIfDisposed();
+            FfmsMediaSession? video = _videoSource == 0 ? null : new(SourcePath, _videoSource, 0,
+                _providerInfo with { SampleRate = 0, Channels = 0, AudioSamples = 0, DurationSeconds = _videoDurationSeconds })
+            { _frameTimes = _frameTimes, _keyframes = _keyframes, _videoDurationSeconds = _videoDurationSeconds, DisplayAspectRatio = DisplayAspectRatio };
+            FfmsMediaSession? audio = _audioSource == 0 ? null : new(SourcePath, 0, _audioSource,
+                _providerInfo with { Width = 0, Height = 0, FrameCount = 0, FramesPerSecond = 0,
+                    DurationSeconds = _providerInfo.SampleRate > 0 ? _providerInfo.AudioSamples / (double)_providerInfo.SampleRate : 0 });
+            _videoSource = _audioSource = 0;
+            return (video, audio);
+        }
+    }
+
     public DecodedVideoFrame GetFrameAtTime(double seconds, byte[]? destinationPixels = null)
+        => GetFrameCore(null, seconds, destinationPixels);
+
+    public DecodedVideoFrame GetFrame(int frame, byte[]? destinationPixels = null)
+        => GetFrameCore(frame, 0, destinationPixels);
+
+    private DecodedVideoFrame GetFrameCore(int? frameIndex, double seconds, byte[]? destinationPixels)
     {
         lock (_videoGate)
         {
@@ -236,7 +306,10 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
             byte* errorBuffer = stackalloc byte[ErrorBufferSize];
             var error = CreateErrorInfo(errorBuffer);
             var time = Info.DurationSeconds > 0 ? Math.Clamp(seconds, 0, Info.DurationSeconds) : Math.Max(0, seconds);
-            var framePointer = Native.FFMS_GetFrameByTime(_videoSource, time, &error);
+            var timing=Volatile.Read(ref _externalTiming);
+            if (frameIndex is { } requested && (requested < 0 || requested >= _providerInfo.FrameCount)) throw new ArgumentOutOfRangeException(nameof(frameIndex));
+            var framePointer = frameIndex is { } index ? Native.FFMS_GetFrame(_videoSource, index, &error) : timing is null?Native.FFMS_GetFrameByTime(_videoSource,time,&error)
+                :Native.FFMS_GetFrame(_videoSource,FrameNavigation.AtTime(timing.Map.FrameTimes,time),&error);
             if (framePointer == 0)
                 throw CreateException($"FFMS_GetFrameByTime({time:0.###})", errorBuffer);
 
@@ -293,10 +366,8 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
     }
     public double AdjacentFrameTime(double seconds, int direction)
     {
-        if (_frameTimes.Length == 0) return 0;
-        var index = Array.BinarySearch(_frameTimes, seconds + 0.000001);
-        if (index < 0) index = Math.Max(0, ~index - 1);
-        return _frameTimes[Math.Clamp(index + Math.Sign(direction), 0, _frameTimes.Length - 1)];
+        var times=FrameTimes;if(times.Count==0)return 0;
+        return times[Math.Clamp(FrameNavigation.AtTime(times,seconds)+Math.Sign(direction),0,times.Count-1)];
     }
     [UnmanagedCallersOnly]
     private static int IndexProgress(long current, long total, nint state)
@@ -388,6 +459,7 @@ public sealed unsafe partial class FfmsMediaSession : IDisposable
         public int RFFDenominator;
         public int RFFNumerator;
         public int NumFrames;
+        public int SARNum, SARDen;
     }
 
     [StructLayout(LayoutKind.Sequential)]

@@ -1,6 +1,6 @@
 param(
   [Parameter(Mandatory = $true)][string]$OutputRoot,
-  [ValidateSet('FFmpeg', 'FFMS2', 'Mangetsu', 'Finalize', 'All')][string]$Stage = 'All'
+  [ValidateSet('FFmpeg', 'FFMS2', 'Mangetsu', 'Automation', 'Finalize', 'All')][string]$Stage = 'All'
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -45,6 +45,60 @@ $ffmpegInstall = Join-Path $OutputRoot 'ffmpeg'
 $ffmpegPrefix = Join-Path $ffmpegInstall 'x64-windows'
 $ffmsInstall = Join-Path $OutputRoot 'ffms2'
 $mangetsuInstall = Join-Path $OutputRoot 'mangetsu'
+$automationInstall = Join-Path $OutputRoot 'automation'
+
+if ($Stage -in @('Automation', 'All')) {
+  $luaSource = [IO.Path]::GetFullPath((Join-Path $workRoot 'luajit'))
+  if (-not $luaSource.StartsWith([IO.Path]::GetFullPath($workRoot) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Lua checkout escaped native build root.' }
+  Checkout-Pinned $versions.luajit.repository $versions.luajit.commit $luaSource
+  Push-Location (Join-Path $luaSource 'src')
+  try { & .\msvcbuild.bat; Assert-LastExitCode 'LuaJIT build' } finally { Pop-Location }
+  # A separate DLL name prevents the Windows loader from reusing the legacy
+  # interpreter when both profiles are active in the same process.
+  $modernLuaSource = [IO.Path]::GetFullPath((Join-Path $workRoot 'luajit-modern'))
+  if (-not $modernLuaSource.StartsWith([IO.Path]::GetFullPath($workRoot) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Modern Lua checkout escaped native build root.' }
+  Checkout-Pinned $versions.luajit.repository $versions.luajit.commit $modernLuaSource
+  $modernBuildScript = Join-Path $modernLuaSource 'src\msvcbuild.bat'
+  $modernScriptText = [IO.File]::ReadAllText($modernBuildScript)
+  if (!$modernScriptText.Contains('@set LJDLLNAME=lua51.dll') -or !$modernScriptText.Contains('@set LJLIBNAME=lua51.lib')) { throw 'Pinned LuaJIT build script DLL names changed.' }
+  $modernScriptText = $modernScriptText.Replace('@set LJDLLNAME=lua51.dll','@set LJDLLNAME=lua52-yoake.dll').Replace('@set LJLIBNAME=lua51.lib','@set LJLIBNAME=lua52-yoake.lib')
+  [IO.File]::WriteAllText($modernBuildScript,$modernScriptText)
+  Push-Location (Join-Path $modernLuaSource 'src')
+  try { & .\msvcbuild.bat lua52compat; Assert-LastExitCode 'Modern LuaJIT build' } finally { Pop-Location }
+  $automationVcpkg = [IO.Path]::GetFullPath((Join-Path $workRoot 'vcpkg-automation'))
+  if (-not $automationVcpkg.StartsWith([IO.Path]::GetFullPath($workRoot) + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Automation registry escaped native build root.' }
+  Checkout-Pinned 'https://github.com/microsoft/vcpkg.git' $versions.vcpkg.commit $automationVcpkg $true
+  & (Join-Path $automationVcpkg 'bootstrap-vcpkg.bat') -disableMetrics; Assert-LastExitCode 'Automation vcpkg bootstrap'
+  $env:VCPKG_DISABLE_METRICS = '1'
+  $env:VCPKG_BINARY_SOURCES = "clear;files,$binaryCache,readwrite"
+  Remove-Item Env:VCPKG_ROOT -ErrorAction SilentlyContinue
+  $automationBuild = Join-Path $workRoot 'automation-bridge'
+  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $automationBuild -A x64 "-DLUAJIT_ROOT=$luaSource" "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $automationVcpkg 'scripts\buildsystems\vcpkg.cmake')" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+  Assert-LastExitCode 'Automation bridge configure'
+  cmake --build $automationBuild --config Release
+  Assert-LastExitCode 'Automation bridge build'
+  $modernBuild = Join-Path $workRoot 'automation-modern-bridge'
+  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $modernBuild -A x64 "-DLUAJIT_ROOT=$modernLuaSource" "-DYOAKE_AUTOMATION_TARGET=yoake-automation-modern" "-DYOAKE_LUAJIT_LIB=lua52-yoake.lib" "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $automationVcpkg 'scripts\buildsystems\vcpkg.cmake')" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+  Assert-LastExitCode 'Modern Automation bridge configure'
+  cmake --build $modernBuild --config Release
+  Assert-LastExitCode 'Modern Automation bridge build'
+  $bin = Join-Path $automationInstall 'bin'
+  $licenses = Join-Path $automationInstall 'licenses'
+  New-Item -ItemType Directory -Force -Path $bin, $licenses | Out-Null
+  Copy-Item -LiteralPath (Join-Path $luaSource 'src\lua51.dll') -Destination $bin -Force
+  Copy-Item -LiteralPath (Join-Path $automationBuild 'Release\yoake-automation.dll') -Destination $bin -Force
+  Copy-Item -LiteralPath (Join-Path $modernLuaSource 'src\lua52-yoake.dll') -Destination $bin -Force
+  Copy-Item -LiteralPath (Join-Path $modernBuild 'Release\yoake-automation-modern.dll') -Destination $bin -Force
+  Copy-Item -LiteralPath (Join-Path $luaSource 'COPYRIGHT') -Destination (Join-Path $licenses 'LuaJIT-MIT.txt') -Force
+  Get-ChildItem -LiteralPath (Join-Path $automationBuild 'vcpkg_installed\x64-windows-static\share') -Recurse -File -Filter copyright | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $licenses ($_.Directory.Name + '-copyright.txt')) -Force
+  }
+  foreach ($name in @('LPeg-0.10-MIT.txt','Luabins-MIT.txt','MoonScript-0.2.5-MIT.txt','Aegisub-Automation-ISC.txt')) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot "third_party\licenses\$name") -Destination $licenses -Force
+  }
+  Get-ChildItem -LiteralPath $bin -File | Select-Object Name,Length | ConvertTo-Json | Set-Content (Join-Path $automationInstall 'binary-sizes.json') -Encoding utf8
+  New-Item -ItemType File -Force -Path (Join-Path $automationInstall '.complete') | Out-Null
+}
 
 if ($Stage -in @('FFmpeg', 'All')) {
   Write-Host "Building pinned FFmpeg $($versions.ffmpeg.version) via vcpkg $($versions.vcpkg.commit)"
@@ -157,13 +211,13 @@ if ($Stage -in @('Mangetsu', 'All')) {
 }
 
 if ($Stage -in @('Finalize', 'All')) {
-  foreach ($component in @('ffmpeg','ffms2','mangetsu')) {
+  foreach ($component in @('ffmpeg','ffms2','mangetsu','automation','motion')) {
     if (-not (Test-Path -LiteralPath (Join-Path $OutputRoot "$component\.complete"))) { throw "Native dependency stage is incomplete: $component" }
   }
   $licenseRoot = Join-Path $OutputRoot 'licenses'
   if (Test-Path $licenseRoot) { Remove-Item $licenseRoot -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $licenseRoot | Out-Null
-  foreach ($component in @($ffmpegInstall,$ffmsInstall,$mangetsuInstall)) {
+  foreach ($component in @($ffmpegInstall,$ffmsInstall,$mangetsuInstall,$automationInstall,(Join-Path $OutputRoot 'motion'))) {
     Get-ChildItem (Join-Path $component 'licenses') -File | ForEach-Object { Copy-Item $_.FullName $licenseRoot }
   }
   Copy-Item (Join-Path $repoRoot 'third_party\versions.json') (Join-Path $OutputRoot 'versions.json')

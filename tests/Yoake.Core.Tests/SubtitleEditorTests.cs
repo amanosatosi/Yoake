@@ -69,6 +69,16 @@ public sealed class SubtitleEditorTests
         var e = Open(); Assert.Throws<ArgumentException>(()=>e.EditEvent(e.Document.Events[0],new Dictionary<string,string>{{"Text","changed"},{"End","bad"}}));
         Assert.Equal(Fixture,e.Document.Serialize()); Assert.False(e.IsDirty);
     }
+    [Fact] public void DraftEditJoinsOwningTransactionAndRollsBackUnlessCommitted()
+    {
+        var editor=Open();var line=editor.Document.Events[0];
+        using(editor.Undo.BeginTransaction("Fast naming"))
+            editor.EditEvent(line,new Dictionary<string,string>{{"Name","日本語"},{"Text","changed"}});
+        Assert.Equal(Fixture,editor.Document.Serialize());Assert.False(editor.IsDirty);
+        using(var action=editor.Undo.BeginTransaction("Fast naming"))
+        {editor.EditEvent(line,new Dictionary<string,string>{{"Name","日本語"},{"Text","changed"}});action.Commit();}
+        Assert.Equal("Fast naming",editor.Undo.NextUndoName);editor.Undo.Undo();Assert.Equal(Fixture,editor.Document.Serialize());
+    }
     [Fact] public void StylesPreserveExtensionsAndRenameReferencesAtomically()
     {
         var e = Open(); var style = e.Document.Styles[0];

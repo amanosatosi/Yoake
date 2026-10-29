@@ -1,4 +1,5 @@
 using Yoake.Core.Audio;
+using Yoake.Core.Media;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -25,12 +26,61 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private sealed class DocumentState(SubtitleEditor editor)
     {
         public SubtitleEditor Editor { get; } = editor;
+        public string? PlaceholderBaseline;
+        public PendingAudioTiming AudioTiming {get;}=new(editor);
+        public bool KaraokeEnabled;
+        public Dictionary<AssEvent,KaraokeEntry> Karaoke = [];
+        public string KaraokeStatus="";
+        public string VisualTool="Crosshair",VectorMode="Select";
+        public FastActorState FastActor = new();
+        public bool ShowMotionData;
+        public VideoAspect VideoAspect = new();
+        public VideoViewState VideoView = new();
+        public int VideoProviderRevision;
+        public CancellationTokenSource? FrameExtraction;
         public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
-        public FfmsMediaSession? Media;
+        public DocumentMedia? Media;
+        public FrameTiming? FrameTiming;
+        public FrameTiming? ProviderFrameTiming;
+        public ExternalTimecodes? ExternalTimecodes;
+        public string? TimecodePath;
+        public CancellationTokenSource? TimecodeLoading;
+        public IReadOnlyList<int>? ExternalKeyframes;
+        public string? KeyframePath;
+        public CancellationTokenSource? KeyframeLoading;
         public WaveformData? Waveform;
         public double Time;
         public AssEvent? Selected;
+        public AssEvent? OriginalLine;
+        public string OriginalText="";
+        public RecoveryLease RecoveryLease = new();
+        public CancellationTokenSource? RecoveryWriting;
+        public long RecoverySequence, DraftRevision;
+        public string? LastRecoveryStamp;
+        public EventEditDraft? RetainedDraft;
+        public bool RecoveredUnsaved;
+        public string? RecoveryProvenance;
+        public CancellationTokenSource? AttachmentWork;
+        public RecoveryLease AttachmentLease=new();
+        public string AttachmentStatus="";
+        public CancellationTokenSource? FontWork;
+        public RecoveryLease FontLease=new();
+        public Yoake.Core.Fonts.FontCollectionReport? FontReport;
+        public Yoake.Core.Fonts.FontCollectionOutput? FontOutput;
+        public long FontReportRevision=-1,FontReportDraftRevision=-1;
+        public bool FontReportUnused;
+        public List<string> FontLog=[];
+        public string FontStatus="";
+        public double FontProgress;
         public CancellationTokenSource? Loading;
+        public CancellationTokenSource? VideoLoading, AudioLoading;
+        public int MediaDraftPauses;
+        public CancellationTokenSource? Editing;
+        public SubtitleSearchToolState Search=new(new());
+        public string SelectionStatus="";
+        public CancellationTokenSource? SelectionCancellation;
+        public CancellationTokenSource? AudioExport;
+        public CancellationTokenSource AudioAnalysis = new();
         public double AudioStart,AudioSpan=20;
     }
     private readonly CommandRegistry _registry;
@@ -46,10 +96,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private Guid? _activeId;
     private AssDocument? _activeSubtitleDocument;
     private AssEvent? _selectedEvent;
-    private FfmsMediaSession? _media;
+    private DocumentMedia? _media;
     private WriteableBitmap? _videoFrame;
     private WaveformData? _waveformSamples;
-    private string _activeVisualTool = "Position";
+    private string _activeVisualTool = "Crosshair";
     private string _subtitleStatus = "Ready";
     private string _mediaStatus = "Open video/audio";
     private double _mediaDurationSeconds, _currentTimeSeconds;
@@ -60,7 +110,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public string? PreviewSource()
     {
         var revision=PreviewRevision;if(_previewSourceRevision==revision)return _previewSource;
-        try{_previewSource=_activeSubtitleDocument?.SerializePreview(SelectedEvent,_gesture is null&&Draft?.IsChanged==true?Draft.Values:null);}
+        try{_previewSource=_activeSubtitleDocument?.SerializePreview(SelectedEvent,AudioPreviewValues());}
         catch(ArgumentException){_previewSource=_activeSubtitleDocument?.Serialize();}
         _previewSourceRevision=revision;return _previewSource;
     }
@@ -74,18 +124,20 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private CancellationTokenSource? _editBurstDelay;
     public IEditorDialogs? Dialogs { get; set; }
     public SubtitleEditor? ActiveEditor => _activeId is { } id && _documents.TryGetValue(id,out var state) ? state.Editor : null;
+    public Guid? ActiveDocumentId => _activeId;
     public CommandRegistry Registry => _registry;
     public (double Start,double Span) AudioViewport=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?(state.AudioStart,state.AudioSpan):(0,20);
     public void RememberAudioViewport(double start,double span){if(_activeId is {} id&&_documents.TryGetValue(id,out var state)){state.AudioStart=start;state.AudioSpan=span;}}
-    public HotkeyResolver Hotkeys { get; } = new();
+    public HotkeyProfile HotkeyProfile { get; private set; } = null!;
+    public HotkeyResolver Hotkeys => HotkeyProfile.Resolver;
     public ObservableCollection<DocumentTabViewModel> Tabs { get; } = [];
-    public Dictionary<string,ICommand> Actions { get; } = [];
+    public Dictionary<string,RegistryCommand> Actions { get; } = [];
     public IReadOnlyList<string> RecentFiles => _settings.RecentFiles;
     private readonly EventSelection _selection=[];
     public IList<AssEvent> SelectedEvents=>_selection;
-    public void SetSelectedEvents(IEnumerable<AssEvent> lines)=>_selection.Replace(lines);
+    public void SetSelectedEvents(IEnumerable<AssEvent> lines) { _selection.Replace(lines);_registry.NotifyStateChanged(); if (_automationCatalog is not null) ScheduleAutomationValidation(); }
     public bool IsSynchronizingSelection { get; private set; }
-    public int TextCursor { get; set; }
+    public int TextCursor {get=>_textCursor;set{if(_textCursor==value)return;_textCursor=value;_registry.NotifyStateChanged();}}
     public EventEditDraft? Draft
     {
         get => _draft;
@@ -99,18 +151,28 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     private void DraftChanged(object? sender,PropertyChangedEventArgs e)
     {
+        if(_publishingAudioTiming)return;
         if(e.PropertyName is nameof(EventEditDraft.IsChanged) or nameof(EventEditDraft.Duration))return;
+        if(e.PropertyName==nameof(EventEditDraft.Actor))FastActorDraftChanged();
+        if(_activeId is {} recoveryId&&_documents.TryGetValue(recoveryId,out var recoveryState))recoveryState.DraftRevision++;
+        if(_activeId is {} fontOwner)CancelFontWork(fontOwner);
+        InvalidateResamplePreview(_activeId);
+        if((e.PropertyName is nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))&&SelectedEvent is {} timed)AudioTiming?.Clear(timed);
+        if(_activeId is {} editingId&&_documents.TryGetValue(editingId,out var editingState))editingState.Editing?.Cancel();
         try{SelectedEvent?.ShowDraft(Draft?.Values);}catch(ArgumentException){/* Invalid metadata remains editable, never saved. */}
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));
-        _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();var delay=new CancellationTokenSource();_editBurstDelay=delay;
-        _=FinalizeBurstAsync(delay.Token);
-        if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false);
+        _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
+        if(_activeId is not {} draftOwner||!_documents.TryGetValue(draftOwner,out var draftState)||draftState.MediaDraftPauses==0&&!draftState.KaraokeEnabled)
+        {var delay=new CancellationTokenSource();_editBurstDelay=delay;_=FinalizeBurstAsync(delay.Token);}
+        if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||(_documents.GetValueOrDefault(session.Id)?.Karaoke.Values.Any(e=>e.Plan.Changed)??false)||(_documents.GetValueOrDefault(session.Id)?.RecoveredUnsaved??false);
         _registry.NotifyStateChanged();
         if(e.PropertyName is nameof(EventEditDraft.Text) or nameof(EventEditDraft.Style))RefreshFormatting();
+        KaraokeDraftChanged();
+        if(e.PropertyName is nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))UpdateAudioPlaybackEnd();
     }
     private async Task FinalizeBurstAsync(CancellationToken token)
     {
-        try{await Task.Delay(900,token);Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(!token.IsCancellationRequested&&!_disposed)CommitDraft();});}catch(OperationCanceledException){}
+        try{await Task.Delay(900,token);Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(!token.IsCancellationRequested&&!_disposed&&!IsKaraokeMode)CommitDraft();});}catch(OperationCanceledException){}
     }
     public IReadOnlyList<AssEvent> Events => _activeSubtitleDocument?.Events ?? (IReadOnlyList<AssEvent>)Array.Empty<AssEvent>();
     public IReadOnlyList<string> StyleNames => _activeId is {} id&&_documents.TryGetValue(id,out var state)?state.StyleNames:[];
@@ -123,14 +185,25 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (ReferenceEquals(_selectedEvent,value)) return;
             CancelGesture();
             if (!CommitDraft()) { OnPropertyChanged(); return; }
-            _selectedEvent?.ShowDraft(null);_selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft();
+            var previousActor=_selectedEvent?.Actor;
+            _selectedEvent?.ShowDraft(null);_selectedEvent=value; _activeSubtitleDocument?.UpdateCurrentEvent(value); ReloadDraft();EnsureKaraokeSafe();NotifyKaraoke();
             // A programmatic jump outside the bulk selection must select its
             // destination. Moving the current row inside that selection keeps it.
             if(value is null)SetSelectedEvents([]);
             else if(!SelectedEvents.Contains(value))SetSelectedEvents([value]);
+            if(!IsSynchronizingSelection)FastActorLineChanged(previousActor);
             OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedEvent));OnPropertyChanged(nameof(SelectedIsComment));
-            if (value?.StartMilliseconds is { } start && !IsPlaying) CurrentTimeSeconds=start/1000d;
+            if (!_suppressSelectionSeek&&value?.StartMilliseconds is { } start && !IsPlaying&&(_media?.HasVideo!=true||VideoAutoSeek))
+            {
+                // A subtitle can start between frames. The containing frame's
+                // timestamp precedes the line, so seek to its first visible frame.
+                var times=FrameTimes;
+                CurrentTimeSeconds=times.Count>0&&CanShiftByFrames
+                    ? times[Math.Clamp(ActiveFrameTiming().FrameAtMilliseconds(start,FrameTimeKind.Start),0,times.Count-1)]
+                    : start/1000d;
+            }
             _registry.NotifyStateChanged();
+            UpdateAudioPlaybackEnd();
         }
     }
     public bool HasSelectedEvent => SelectedEvent is not null;
@@ -139,7 +212,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public string SuggestedSubtitleFileName => _workspace.ActiveDocument?.Title is { Length:>0 } title ? (Path.HasExtension(title) ? title : title+".ass") : "subtitle.ass";
     public string SubtitleStatus { get=>_subtitleStatus; private set=>SetField(ref _subtitleStatus,value); }
     public string MediaStatus { get=>_mediaStatus; private set=>SetField(ref _mediaStatus,value); }
-    public string ActiveVisualTool { get=>_activeVisualTool; private set{SetField(ref _activeVisualTool,value);OnPropertyChanged(nameof(IsPositionTool));OnPropertyChanged(nameof(IsClipTool));} }
+    public string ActiveVisualTool { get=>VisualState?.VisualTool??_activeVisualTool; private set{if(VisualState is {} state)state.VisualTool=value;SetField(ref _activeVisualTool,value);OnPropertyChanged();OnPropertyChanged(nameof(IsPositionTool));OnPropertyChanged(nameof(IsClipTool));} }
     public bool IsPositionTool=>ActiveVisualTool=="Position";
     public bool IsClipTool=>ActiveVisualTool=="Clip";
     public long PreviewRevision => Volatile.Read(ref _subtitleRevision);
@@ -151,6 +224,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         private set { if (ReferenceEquals(_videoFrame,value)) return; var old=_videoFrame; _videoFrame=value; OnPropertyChanged(); old?.Dispose(); }
     }
     public WaveformData? WaveformSamples { get=>_waveformSamples; private set=>SetField(ref _waveformSamples,value); }
+    public bool HasAudio => _media?.HasAudio == true;
     public double MediaDurationSeconds { get=>_mediaDurationSeconds; private set { SetField(ref _mediaDurationSeconds,Math.Max(0,value)); OnPropertyChanged(nameof(DurationDisplay)); } }
     public double CurrentTimeSeconds
     {
@@ -159,7 +233,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         {
             var time=MediaDurationSeconds>0 ? Math.Clamp(value,0,MediaDurationSeconds) : Math.Max(0,value);
             if (!double.IsFinite(time) || Math.Abs(_currentTimeSeconds-time)<0.00001) return;
-            CancelGesture();
+            if(!_clockUpdateFromPlayback)CancelGesture();
+            if (_activeId is { } frameOwner && _documents.TryGetValue(frameOwner, out var frameState) &&
+                FrameNavigation.AtTime(FrameTimes,time)!=FrameNavigation.AtTime(FrameTimes,_currentTimeSeconds)) frameState.FrameExtraction?.Cancel();
             _currentTimeSeconds=time; OnPropertyChanged(); OnPropertyChanged(nameof(TimeDisplay));OnPropertyChanged(nameof(FramePositionDisplay));OnPropertyChanged(nameof(RelativeTimingDisplay));
             _activeSubtitleDocument?.UpdateActiveTime((long)(time*1000));
             if (!_clockUpdateFromPlayback && _media?.HasVideo==true) _=RefreshVideoFrameAsync(time);
@@ -168,15 +244,43 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public MainWindowViewModel(CommandRegistry registry, WorkspaceManager workspace, UndoManager undo, IThemeService theme, SettingsStore settingsStore, AppSettings settings)
     {
         _registry=registry; _workspace=workspace; _theme=theme; _settingsStore=settingsStore; _settings=settings.Normalize();
+        InitializeHotkeyCommands();
+        RegisterApplicationCommands();
         RegisterEditorCommands();
+        RegisterFastActorCommands();
+        RegisterGridCommands();
+        RegisterLineCommands();
+        RegisterVideoOptions();
+        RegisterSearchCommands();
+        RegisterTimingCommands();
+        RegisterKeyframeCommands();
+        RegisterTimecodeCommands();
+        RegisterAudioPresentationCommands();
+        RegisterSelectionCommands();
+        RegisterAudioExportCommands();
+        RegisterAudioPlaybackCommands();
+        RegisterAudioTimingCommands();
+        RegisterKaraokeCommands();
+        RegisterMediaOwnershipCommands();
+        RegisterVideoUtilityCommands();
+        RegisterVideoPresentationCommands();
+        RegisterFrameImageCommands();
+        InitializeRecovery();
+        RegisterAttachmentCommands();
+        RegisterResampleCommands();
+        RegisterFontCollectorCommands();
+        RegisterAssDrawCommands();
+        RegisterMotionTrackingCommands();
+        InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;
         _workspace.Changed+=OnWorkspaceChanged;
         CreateNewDocument();
     }
     public bool CommitDraft()
     {
-        if(_gesture is not null){SubtitleStatus="Finish or cancel the current gesture first.";return false;}
+        if(HasGesture){SubtitleStatus="Finish or cancel the current gesture first.";return false;}
         if (Draft?.IsChanged!=true || SelectedEvent is null || ActiveEditor is null) return true;
+        if(IsKaraokeMode&&KaraokePlan?.Changed==true){SubtitleStatus="Commit or cancel the karaoke plan before publishing this edit draft.";return false;}
         try { ActiveEditor.EditEvent(SelectedEvent,Draft.Values); ReloadDraft(); return true; }
         catch(Exception e) { SubtitleStatus=e.Message; return false; }
     }
@@ -184,23 +288,30 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
         SelectedEvent?.ShowDraft(null);Draft=SelectedEvent is {} line?new EventEditDraft(line):null;
+        RestoreTextPosition();
+        RefreshOriginalText();
+        if(!_publishingKaraoke)EnsureKaraokeSafe();NotifyKaraoke(false);UpdateAudioPlaybackEnd();
         if(AssVisualTags.Clip(Draft?.Text??"") is {} clip)InverseClip=clip.Inverse;
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));OnPropertyChanged(nameof(SelectedIsComment));
-        if(_workspace.ActiveDocument is {} session)session.IsDirty=ActiveEditor?.IsDirty??false;
+        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(_documents.GetValueOrDefault(session.Id)?.Karaoke.Values.Any(e=>e.Plan.Changed)??false)||(_documents.GetValueOrDefault(session.Id)?.RecoveredUnsaved??false);
     }
     private void CreateNewDocument()
     {
         CancelGesture();
         if (!CommitDraft()) return;
-        var session=_workspace.CreateUntitled(); Attach(session,AssDocument.CreateEmpty()); SynchronizeActiveDocument(); SubtitleStatus="New ASS document";
+        var session=_workspace.CreateUntitled(); Attach(session,AssDocument.CreateNew());
+        _documents[session.Id].PlaceholderBaseline=_documents[session.Id].Editor.Document.Serialize();
+        SynchronizeActiveDocument(); SubtitleStatus="New ASS document";
     }
     private void Attach(DocumentSession session, AssDocument document)
     {
-        var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds}; _documents[session.Id]=state;
-        document.Changed+=(_,_)=> { session.IsDirty=true; if (_activeId==session.Id) { InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision)); } };
+        if(_documents.TryGetValue(session.Id,out var previous)){CancelAttachmentWork(session.Id);CancelFontWork(session.Id);InvalidateRecovery(session.Id);previous.AudioExport?.Cancel();}
+        var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds,Search=new(_settings.SearchPreferences??new())}; _documents[session.Id]=state;
+        session.PropertyChanged+=(_,args)=>{if(args.PropertyName is nameof(DocumentSession.Path) or nameof(DocumentSession.Title)){InvalidateRecovery(session.Id);CancelFontWork(session.Id);}};
+        document.Changed+=(_,_)=> { CancelFontWork(session.Id);if(!_publishingAttachments)CancelAttachmentWork(session.Id);state.AudioTiming.Reconcile();ReconcileKaraoke(state);state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
-            session.IsDirty=state.Editor.IsDirty;
+            session.IsDirty=state.Editor.IsDirty||state.RecoveredUnsaved||state.Karaoke.Values.Any(e=>e.Plan.Changed)||(_activeId==session.Id&&Draft?.IsChanged==true);
             var names=document.Styles.Select(s=>s.Name).ToArray();var namesChanged=!names.SequenceEqual(state.StyleNames);
             if(namesChanged)state.StyleNames=names;
             if(_activeId==session.Id)
@@ -208,10 +319,12 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                 // Refresh choices before the draft binding selects the renamed
                 // style. Otherwise ComboBox retains an absent/blank selection.
                 if(namesChanged)OnPropertyChanged(nameof(StyleNames));
-                ReloadDraft();_registry.NotifyStateChanged();
+                if(!_publishingAudioTiming&&!_publishingPasteOver&&!_publishingAttachments&&!_publishingKaraoke&&!_publishingResample&&
+                    !(state.KaraokeEnabled&&state.Karaoke.Values.Any(p=>p.Plan.Changed)&&Draft?.IsChanged==true))ReloadDraft();_registry.NotifyStateChanged();
             }
         };
         state.Editor.MarkSaved();
+        ScheduleDocumentAutomationSync(session.Id);
     }
     public bool OpenSubtitle(string path)
     {
@@ -221,9 +334,75 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         {
             var full=Path.GetFullPath(path); var existing=_workspace.Documents.FirstOrDefault(s=>string.Equals(s.Path,full,StringComparison.OrdinalIgnoreCase));
             if (existing is not null) { _workspace.Activate(existing.Id); return true; }
-            var doc=AssDocument.Load(full); var session=_workspace.Open(full); Attach(session,doc); SynchronizeActiveDocument(); Remember(full); SubtitleStatus=$"Loaded {doc.Events.Count} events"; return true;
+            var doc=AssDocument.Load(full); OpenLoadedSubtitle(full,doc,_activeId); Remember(full); SubtitleStatus=$"Loaded {doc.Events.Count} events"; return true;
         }
         catch(Exception e) { SubtitleStatus=$"Open failed: {e.Message}"; return false; }
+    }
+    private DocumentSession OpenLoadedSubtitle(string full,AssDocument document,Guid? originatingTab)
+    {
+        var session=_workspace.ActiveDocument;
+        if(session is not null && session.Id==originatingTab && session.Path is null && !session.IsDirty &&
+           _documents.TryGetValue(session.Id,out var state) && !state.Editor.IsDirty &&
+           !state.Editor.Undo.CanUndo && !state.Editor.Undo.CanRedo && Draft?.IsChanged!=true &&
+           !state.RecoveredUnsaved && state.Media is null && state.ExternalTimecodes is null && state.ExternalKeyframes is null &&
+           state.Loading is null && state.VideoLoading is null && state.AudioLoading is null &&
+           state.TimecodeLoading is null && state.KeyframeLoading is null && state.Editing is null &&
+           !state.Karaoke.Values.Any(k=>k.Plan.Changed) &&
+           state.PlaceholderBaseline is { } baseline && state.Editor.Document.Serialize()==baseline)
+        {
+            // Reuse only a genuinely untouched placeholder; preserve edited,
+            // recovered, media-bearing and undoable untitled documents.
+            state.Search.Cancellation?.Cancel();state.AudioAnalysis.Cancel();state.AudioAnalysis.Dispose();
+            CloseAutomationDocument(session.Id);
+            session.Path=full;session.Title=Path.GetFileName(full);
+            Attach(session,document);SynchronizeActiveDocument();return session;
+        }
+        session=_workspace.Open(full);Attach(session,document);SynchronizeActiveDocument();return session;
+    }
+    private bool _openingSubtitle;
+    private CancellationTokenSource? _subtitleOpenCancellation;
+    private Guid? _subtitleOpenMediaDocument;
+    public bool OpeningSubtitle { get => _openingSubtitle; private set { SetField(ref _openingSubtitle, value); _registry.NotifyStateChanged(); } }
+    public string OpeningSubtitleText { get; private set; } = "Opening subtitle…";
+    private async Task OpenSubtitleForUserAsync(string path)
+    {
+        if (OpeningSubtitle) return;
+        CancelGesture();
+        if (!CommitDraft()) return;
+        var originatingTab=_activeId;
+        OpeningSubtitleText = $"Opening {Path.GetFileName(path)}…";
+        OnPropertyChanged(nameof(OpeningSubtitleText)); OpeningSubtitle = true;
+        using var cancellation = new CancellationTokenSource(); _subtitleOpenCancellation = cancellation;
+        try
+        {
+            var full = Path.GetFullPath(path);
+            var existing = _workspace.Documents.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null) { _workspace.Activate(existing.Id); return; }
+            var doc = await Task.Run(() => AssDocument.Load(full), cancellation.Token);
+            cancellation.Token.ThrowIfCancellationRequested();
+            if (_disposed) return;
+            // A second route may have opened the same file while parsing.
+            existing = _workspace.Documents.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null) { _workspace.Activate(existing.Id); return; }
+            var session = OpenLoadedSubtitle(full, doc, originatingTab);
+            Remember(full); SubtitleStatus = $"Loaded {doc.Events.Count} events";
+            if (_media is null && FindAssociatedMedia(full) is { } mediaPath)
+            {
+                OpeningSubtitleText = $"Opening video and audio for {Path.GetFileName(full)}…";
+                OnPropertyChanged(nameof(OpeningSubtitleText));
+                _subtitleOpenMediaDocument = session.Id;
+                await OpenMediaAsync(mediaPath);
+                cancellation.Token.ThrowIfCancellationRequested();
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { SubtitleStatus = "Opening canceled."; }
+        catch (Exception e) { SubtitleStatus = $"Open failed: {e.Message}"; _registry.ReportFailure(CommandIds.SubtitleOpen, e); }
+        finally { _subtitleOpenMediaDocument=null; if (ReferenceEquals(_subtitleOpenCancellation,cancellation)) _subtitleOpenCancellation=null; OpeningSubtitle = false; }
+    }
+    private void CancelSubtitleOpen()
+    {
+        _subtitleOpenCancellation?.Cancel();
+        if (_subtitleOpenMediaDocument is { } id && _documents.TryGetValue(id,out var state)) { state.Loading?.Cancel(); state.AudioLoading?.Cancel(); }
     }
     private void Remember(string path)
     {
@@ -234,8 +413,27 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         CancelGesture();
         if (!CommitDraft() || ActiveEditor is null || _workspace.ActiveDocument is not { } session) return false;
-        try { var full=Path.GetFullPath(path); if (_workspace.Documents.Any(s=>s.Id!=session.Id && string.Equals(s.Path,full,StringComparison.OrdinalIgnoreCase))) throw new InvalidOperationException("This path is already open in another tab."); ActiveEditor.Document.Save(full); session.Path=full; session.Title=Path.GetFileName(full); ActiveEditor.MarkSaved(); Remember(full); SubtitleStatus=$"Saved {session.Title}"; OnPropertyChanged(nameof(ActiveSubtitlePath)); return true; }
+        _automationReferenceSaves.Add(session.Id);
+        try
+        {
+            var full = Path.GetFullPath(path);
+            if (_workspace.Documents.Any(s => s.Id != session.Id && string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException("This path is already open in another tab.");
+            var references = RebaseLocalAutomationReferences(session.Id, full);
+            using (var transaction = ActiveEditor.Undo.BeginTransaction("Update Automation references for Save As"))
+            {
+                if (references != LocalAutomationReferences(ActiveEditor.Document))
+                    ActiveEditor.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = references });
+                ActiveEditor.Document.Save(full);
+                session.Path = full; session.Title = Path.GetFileName(full);
+                transaction.Commit();
+            }
+            InvalidateRecovery(session.Id);_documents[session.Id].RecoveredUnsaved=false;
+            ActiveEditor.MarkSaved(); Remember(full); SubtitleStatus = $"Saved {session.Title}";
+            OnPropertyChanged(nameof(ActiveSubtitlePath)); return true;
+        }
         catch(Exception e) { SubtitleStatus=$"Save failed: {e.Message}"; return false; }
+        finally { _automationReferenceSaves.Remove(session.Id); ScheduleDocumentAutomationSync(session.Id); }
     }
     private async Task<bool> SaveAsync(bool saveAs=false)
     {
@@ -249,21 +447,26 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         CancelGesture();
         if (!CommitDraft()) return false;
         if (!_workspace.Activate(id)) return false;
-        if (state.Editor.IsDirty)
+        if (state.Editor.IsDirty||state.RecoveredUnsaved||state.Karaoke.Values.Any(e=>e.Plan.Changed))
         {
             var choice=Dialogs is null ? UnsavedChoice.Cancel : await Dialogs.ConfirmUnsavedAsync(_workspace.ActiveDocument!.Title);
-            if (choice==UnsavedChoice.Cancel || choice==UnsavedChoice.Save && !await SaveAsync()) return false;
+            if (choice==UnsavedChoice.Cancel) return false;
+            if(choice==UnsavedChoice.Save&&state.Karaoke.Values.Any(e=>e.Plan.Changed)){SubtitleStatus="Commit or cancel pending karaoke slots before saving and closing this document.";return false;}
+            if(choice==UnsavedChoice.Save&&!await SaveAsync())return false;
         }
-        CancelGesture(); StopPlayback(); state.Loading?.Cancel(); state.Loading?.Dispose();
+        InvalidateRecovery(id);
+        CancelAttachmentWork(id);
+        CancelGesture(); StopPlayback(); CancelFontWork(id);state.FrameExtraction?.Cancel(); ResetAudioAnalysis(state); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
         var media=state.Media; state.Media=null; if (media is not null) _=Task.Run(media.Dispose);
-        _documents.Remove(id); _workspace.Close(id); if (_workspace.Documents.Count==0) CreateNewDocument(); return true;
+        SearchWindowCloseRequested?.Invoke(this,new(id));
+        CloseAutomationDocument(id); _documents.Remove(id); _workspace.Close(id); if (_workspace.Documents.Count==0) CreateNewDocument(); return true;
     }
     public async Task<bool> CloseWindowAsync()
     {
         foreach (var id in _workspace.Documents.Select(s=>s.Id).ToArray()) if (!await CloseDocumentAsync(id)) return false;
         return true;
     }
-    private void OnWorkspaceChanged(object? sender,EventArgs e) { SynchronizeTabs(); SynchronizeActiveDocument(); }
+    private void OnWorkspaceChanged(object? sender,EventArgs e) { SynchronizeTabs(); SynchronizeActiveDocument(); ScheduleAutomationValidation(); OnPropertyChanged(nameof(AutomationScripts)); OnPropertyChanged(nameof(AutomationMacros)); }
     private void SynchronizeActiveDocument()
     {
         var id=_workspace.ActiveDocumentId;
@@ -272,14 +475,21 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         try
         {
             CancelGesture(); CancelVisualBounds(); StopPlayback(); Interlocked.Increment(ref _seekGeneration);
-            if (_activeId is { } old && _documents.TryGetValue(old,out var previous)) { previous.Time=CurrentTimeSeconds; previous.Selected=SelectedEvent; }
+            if (_activeId is { } old && _documents.TryGetValue(old,out var previous)&&ReferenceEquals(previous.Editor.Document,_activeSubtitleDocument)) { CancelAttachmentWork(old);CancelFontWork(old);previous.RetainedDraft=Draft?.IsChanged==true?Draft:null;previous.Search.Cancellation?.Cancel();previous.Time=CurrentTimeSeconds; previous.Selected=SelectedEvent; }
             _activeId=id;
             var state=id is { } key && _documents.TryGetValue(key,out var found) ? found : null;
             _activeSubtitleDocument=state?.Editor.Document; _media=state?.Media;
+            ReconcileWorkspaceView();
+            NotifyVisualToolState(); NotifyVideoPresentation(); OnPropertyChanged(nameof(VideoAspectRatio)); OnPropertyChanged(nameof(ShowVideoOverscan)); _videoPointer=null;
             _selectedEvent=state?.Selected ?? _activeSubtitleDocument?.Events.FirstOrDefault(); SetSelectedEvents(_selectedEvent is null?Array.Empty<AssEvent>():new[]{_selectedEvent});
-            _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft(); VideoFrame=null; WaveformSamples=state?.Waveform; MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
+            NotifyFastActor();
+            OnPropertyChanged(nameof(ShowMotionData));
+            _activeSubtitleDocument?.UpdateCurrentEvent(_selectedEvent); ReloadDraft();
+            if(state?.RetainedDraft is {} retained&&ReferenceEquals(retained.Line,_selectedEvent)){Draft=retained;PresentRecoveredDraft();}
+            EnsureKaraokeSafe();NotifyKaraoke();
+            VideoFrame=null; WaveformSamples=state?.Waveform; MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
             _currentTimeSeconds=state?.Time ?? 0;
-            foreach(var name in new[]{nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds)}) OnPropertyChanged(name);
+            foreach(var name in new[]{nameof(VideoSourcePath),nameof(AudioSourcePath),nameof(HasEditOperation),nameof(SelectionStatus),nameof(HasAudioExportOperation),nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(ExternalKeyframePath),nameof(HasKeyframeOperation),nameof(ExternalTimecodePath),nameof(HasTimecodeOperation),nameof(CanShiftByFrames),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds),nameof(IsKaraokeMode),nameof(ShowKaraoke),nameof(KaraokeSlots),nameof(KaraokeStatus),nameof(KaraokeTag)}) OnPropertyChanged(name);
             MediaStatus=_media?.SourcePath ?? "Open video/audio"; InvalidateSubtitlePreview(true); _registry.NotifyStateChanged();
         }
         finally{IsSynchronizingSelection=false;}
@@ -287,25 +497,37 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public async Task<bool> OpenMediaAsync(string path)
     {
         if (_activeId is not { } id || !_documents.TryGetValue(id,out var state)) return false;
-        CancelGesture(); StopPlayback(); state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
+        CancelGesture(); StopPlayback(); state.FrameExtraction?.Cancel(); ResetAudioAnalysis(state); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
         MediaStatus=$"FFMS2 indexing {Path.GetFileName(path)}窶ｦ";
-        FfmsMediaSession? opened=null;
+        DocumentMedia? opened=null;FrameTiming? frameTiming=null;Exception? boundaryError=null;
         try
         {
-            var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>FfmsMediaSession.Open(path,ct),ct); },token); await job.Completion;
+            var external=state.ExternalTimecodes;
+            var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>DocumentMedia.Open(path,ct),ct);if(opened.HasVideo){try{frameTiming=new(opened.FrameTimes,opened.Info.FramesPerSecond,ct);}catch(Exception exception)when(exception is ArgumentException or OverflowException){boundaryError=exception;}if(external is not null)opened.SetExternalTimecodes(external.ForVideoMap(opened.Info.FrameCount,ct));} },token); await job.Completion;
             token.ThrowIfCancellationRequested();
-            if (_disposed || !_documents.ContainsKey(id)) { opened?.Dispose(); return false; }
+            if(boundaryError is not null)_registry.ReportFailure("media/frame-boundaries",boundaryError);
+            if (_disposed || !_documents.TryGetValue(id,out var owner) || !ReferenceEquals(owner,state)) { opened?.Dispose(); return false; }
             if(_activeId==id){CancelGesture();CancelVisualBounds();}
-            var old=state.Media; state.Media=opened; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
-            if (_activeId==id) { _media=state.Media;if(!_media!.HasVideo)VideoFrame=null; MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
-            var media=state.Media!; WaveformData? peaks=null;
+            opened!.SetExternalKeyframes(state.ExternalKeyframes);
+            var old=state.Media; state.Media=opened;state.ProviderFrameTiming=frameTiming;state.FrameTiming=state.ExternalTimecodes?.Timing??frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
+            state.VideoProviderRevision++;state.VideoView.ResetContent();state.VideoAspect=InitialVideoAspect(state.Media.VideoProvider); _videoPointer=null;
+            var media=state.Media.AudioProvider;
+            // Native indexing is complete. Audio analysis now belongs to the
+            // published audio resource, not to future video replacements.
+            state.Loading=null;if(media is not null)state.AudioLoading=cts;
+            if(state.Media.HasVideo)RememberMedia(path,true);if(media is not null)RememberMedia(path,false);
+            if (_activeId==id) { _media=state.Media;NotifyVideoPresentation();OnPropertyChanged(nameof(VideoAspectRatio));if(!_media!.HasVideo)VideoFrame=null; ReconcileWorkspaceView(); OnPropertyChanged(nameof(HasAudio)); MediaDurationSeconds=_media.Info.DurationSeconds; CurrentTimeSeconds=0; WaveformSamples=state.Waveform; OnPropertyChanged(nameof(VideoSourcePath));OnPropertyChanged(nameof(AudioSourcePath));OnPropertyChanged(nameof(CanPlayMedia));OnPropertyChanged(nameof(FrameTimes));OnPropertyChanged(nameof(Keyframes));OnPropertyChanged(nameof(FramePositionDisplay)); MediaStatus=Path.GetFileName(path); await RefreshVideoFrameAsync(0); }
+            _registry.NotifyStateChanged();
+            if(media is null)return true;
+            WaveformData? peaks=null;
             var analysis=_jobs.Run("Audio peaks",ct=> { peaks=media.BuildWaveform(cancellationToken:ct); return Task.CompletedTask; },token); await analysis.Completion;
-            token.ThrowIfCancellationRequested(); state.Waveform=peaks;
-            if (_activeId==id && ReferenceEquals(_media,media)) WaveformSamples=peaks;
+            token.ThrowIfCancellationRequested(); if(!ReferenceEquals(state.Media?.AudioProvider,media))return false;state.Waveform=peaks;
+            if (_activeId==id && ReferenceEquals(_media?.AudioProvider,media)) WaveformSamples=peaks;
             return true;
         }
         catch(OperationCanceledException) { opened?.Dispose(); return false; }
         catch(Exception e) { opened?.Dispose(); if (_activeId==id) MediaStatus=e.Message; return false; }
+        finally {if(ReferenceEquals(state.Loading,cts))state.Loading=null;if(ReferenceEquals(state.AudioLoading,cts))state.AudioLoading=null;cts.Dispose();OnPropertyChanged(nameof(CanShiftByFrames));_registry.NotifyStateChanged();}
     }
     private async Task RefreshVideoFrameAsync(double seconds)
     {
@@ -317,7 +539,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             try
             {
                 if (_disposed || generation!=Volatile.Read(ref _seekGeneration) || revision!=Volatile.Read(ref _subtitleRevision) || !ReferenceEquals(session,_media)) return;
-                var result=await Task.Run(()=> { var frame=session.GetFrameAtTime(seconds,_decodedPixels);_decodedPixels=frame.Pixels; return (Frame:frame,Error:CompositeSubtitles(frame,seconds,subtitleText,revision)); });
+                var result=await Task.Run(()=> { var index=FrameNavigation.AtTime(session.FrameTimes,seconds);var frame=session.VideoProvider!.GetFrame(index,_decodedPixels);_decodedPixels=frame.Pixels; return (Frame:frame,Error:CompositeSubtitles(frame,session.FrameTimes[index],subtitleText,revision)); });
                 if (_disposed || generation!=Volatile.Read(ref _seekGeneration) || revision!=Volatile.Read(ref _subtitleRevision) || !ReferenceEquals(session,_media)) return;
                 var frame=result.Frame;
                 if(VideoFrame is not {} bitmap||bitmap.PixelSize.Width!=frame.Width||bitmap.PixelSize.Height!=frame.Height)VideoFrame=CreateBitmap(frame);
@@ -329,7 +551,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         }
         catch(Exception e) { if (!_disposed && generation==Volatile.Read(ref _seekGeneration)) MediaStatus=e.Message; }
     }
-    private static WriteableBitmap CreateBitmap(DecodedVideoFrame frame)
+    internal static WriteableBitmap CreateBitmap(DecodedVideoFrame frame)
     {
         var bitmap=new WriteableBitmap(new PixelSize(frame.Width,frame.Height),new Vector(96,96),PixelFormat.Bgra8888,AlphaFormat.Unpremul);
         using var buffer=bitmap.Lock(); for(var y=0;y<frame.Height;y++) Marshal.Copy(frame.Pixels,y*frame.Stride,buffer.Address+y*buffer.RowBytes,frame.Width*4); return bitmap;
@@ -344,8 +566,11 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public void Dispose()
     {
-        if (_disposed) return; CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
-        foreach(var state in _documents.Values) { state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
+        MotionTracking?.Stop();
+        _recoveryTimer.Stop();foreach(var id in _documents.Keys){CancelAttachmentWork(id);InvalidateRecovery(id);}
+        if (!_disposed) DisposeAutomation();
+        if (_disposed) return; CancelSubtitleOpen(); CancelVisualBounds();_boundsCancellation?.Dispose();_=Task.Run(_geometryProvider.Dispose); _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();CancelGesture(); _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;_spectrumCache.Clear(); _disposed=true; StopPlayback(); foreach(var state in _documents.Values){state.AudioExport?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();} _jobs.CancelAll(); Interlocked.Increment(ref _seekGeneration); _workspace.Changed-=OnWorkspaceChanged;
+        foreach(var state in _documents.Values) { state.FontLease.Invalidate();state.FontWork?.Cancel();state.FrameExtraction?.Cancel(); state.AudioAnalysis.Cancel();state.AudioAnalysis.Dispose(); state.Editing?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); if (state.Media is {} media) _=Task.Run(media.Dispose); }
         foreach(var tab in Tabs) tab.Dispose(); Tabs.Clear(); DisposeSubtitleRenderer(); VideoFrame=null;
     }
     private void SetField<T>(ref T field,T value,[CallerMemberName]string? name=null) { if(EqualityComparer<T>.Default.Equals(field,value))return; field=value; OnPropertyChanged(name); }

@@ -1,0 +1,10 @@
+{
+  "name": "yoake-automation-native",
+  "version-string": "1",
+  "builtin-baseline": "f3419f137f1a1e79b33b880ae6845f873d87820b",
+  "dependencies": [
+    { "name": "boost-regex", "features": ["icu"] },
+    { "name": "boost-locale", "features": ["icu"] },
+    "icu"
+  ]
+}

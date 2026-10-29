@@ -1,6 +1,7 @@
 param(
   [Parameter(Mandatory = $true)][string]$PublishRoot,
   [Parameter(Mandatory = $true)][string]$NativeRoot,
+  [Parameter(Mandatory = $true)][string]$AssDrawRoot,
   [Parameter(Mandatory = $true)][string]$OutputRoot
 )
 $ErrorActionPreference = 'Stop'
@@ -18,7 +19,9 @@ New-Item -ItemType Directory -Force -Path $runtimeRoot | Out-Null
 $searchDirectories = @(
   (Join-Path $NativeRoot 'ffms2\bin'),
   (Join-Path $NativeRoot 'ffmpeg\x64-windows\bin'),
-  (Join-Path $NativeRoot 'mangetsu\bin')
+  (Join-Path $NativeRoot 'mangetsu\bin'),
+  (Join-Path $NativeRoot 'automation\bin'),
+  (Join-Path $NativeRoot 'motion\bin')
 )
 foreach ($directory in @($searchDirectories)) {
   if (-not (Test-Path -LiteralPath $directory)) { throw "Missing native runtime source directory: $directory" }
@@ -114,7 +117,10 @@ function Get-ImportedDllNames([string]$BinaryPath) {
 
 $entryDlls = @(
   (Join-Path $NativeRoot 'ffms2\bin\ffms2.dll'),
-  (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll')
+  (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll'),
+  (Join-Path $NativeRoot 'automation\bin\yoake-automation.dll'),
+  (Join-Path $NativeRoot 'automation\bin\yoake-automation-modern.dll'),
+  (Join-Path $NativeRoot 'motion\bin\yoake-motion.dll')
 )
 foreach ($entryDll in $entryDlls) {
   if (-not (Test-Path -LiteralPath $entryDll)) { throw "Missing native runtime entry DLL: $entryDll" }
@@ -150,7 +156,7 @@ foreach ($key in ($selected.Keys | Sort-Object)) {
 
 $manifest = [ordered]@{
   architecture = 'win-x64'
-  entrypoints = @('ffms2.dll', 'mangetsu.dll')
+  entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll', 'yoake-automation-modern.dll', 'yoake-motion.dll')
   files = @(
     Get-ChildItem -LiteralPath $runtimeRoot -Filter '*.dll' -File | Sort-Object Name | ForEach-Object {
       [ordered]@{
@@ -172,8 +178,31 @@ if (Test-Path -LiteralPath (Join-Path $NativeRoot 'licenses')) {
 }
 Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Avalonia-MIT.txt') -Destination $licenseTarget -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\Aegisub-BSD-3-Clause.txt') -Destination $licenseTarget -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\licenses\DependencyControl-MIT.txt') -Destination $licenseTarget -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $portable 'LICENSE') -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destination (Join-Path $portable 'THIRD_PARTY_NOTICES.md') -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'automation') -Destination $portable -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'automation-3.5-above') -Destination $portable -Recurse -Force
+
+$AssDrawRoot = [IO.Path]::GetFullPath($AssDrawRoot)
+$assDrawManifest = Get-Content -LiteralPath (Join-Path $AssDrawRoot 'assdraw-manifest.json') -Raw | ConvertFrom-Json
+$assDrawPin = Get-Content -LiteralPath (Join-Path $repoRoot 'third_party/assdraw.json') -Raw | ConvertFrom-Json
+if ($assDrawManifest.commit -cne $assDrawPin.commit -or $assDrawManifest.repository -cne $assDrawPin.repository) { throw 'ASSDraw artifact source identity differs from the packaging pin.' }
+if ((Get-FileHash -LiteralPath (Join-Path $AssDrawRoot 'ASSDraw3.exe') -Algorithm SHA256).Hash.ToLowerInvariant() -cne $assDrawManifest.sha256) { throw 'ASSDraw artifact executable hash mismatch.' }
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'ASSDraw3.exe') -Destination $portable
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'assdraw-manifest.json') -Destination $portable
+Copy-Item -LiteralPath (Join-Path $AssDrawRoot 'licenses') -Destination (Join-Path $licenseTarget 'assdraw') -Recurse
+$sourceNotice = @'
+The corresponding source and build instructions for the bundled ASSDraw3.exe
+are published separately as the Yoake-ASSDraw-corresponding-source artifact
+alongside the portable application in the same GitHub Actions run. The exact
+source revisions and SHA-256 hashes are recorded in assdraw-manifest.json.
+If you redistribute this binary, also provide the matching source and licenses.
+'@
+if ($env:GITHUB_SERVER_URL -and $env:GITHUB_REPOSITORY -and $env:GITHUB_RUN_ID) {
+  $sourceNotice += "`nBuild artifacts: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID`n"
+}
+Set-Content -LiteralPath (Join-Path $portable 'ASSDraw-source-availability.txt') -Value $sourceNotice -Encoding utf8
 
 $zip = Join-Path $OutputRoot 'Yoake-Windows-x64-portable.zip'
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }

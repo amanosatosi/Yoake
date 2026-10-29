@@ -1,0 +1,15 @@
+# ASS attachments
+
+Attachments stay in the existing lossless source model, not a parallel persistence store. Source lines retain contextual section/payload flags. The active attachment parser recognizes six-bit encoded data before section-looking text, matching the supplied Aegisub 3.5 parser. Serialization, section lookup/insertion and snapshots use the same distinction. Raw strings, line endings and untouched wrapping remain unchanged.
+
+`AssAttachmentCodec` implements the ASS-specific six-bit +33 encoding, 80-character wrapping and partial final groups. It validates character range, wrapping, canonical partial groups and size before decoding. Malformed data remains opaque source and cannot be extracted; removing its recognized attachment does not remove unrecognized neighboring raw records. Listing runs against a captured document snapshot in the background and allocates no decoded payload.
+
+Prepared imports contain encoded immutable strings. The structured editor adds/removes raw spans with one rollback-by-default transaction. Existing source lines and strings are shared by structural undo arrays and recovery snapshots, including large payloads; undo does not clone every binary attachment. Snapshots clone only editable event/style fields. Opaque document identity and revision prevent foreign/stale attachment rows from mutating another editor.
+
+The manager captures its document/editor lifetime and pauses automatic draft finalization while open. Import/remove/history operations retain the current draft and selected event. Its undo/redo buttons and configured default undo/redo shortcuts operate on the same existing document history, restricted to attachment changes; ordinary editor draft undo remains unchanged. Document switch, replacement, close, dialog cancellation and source changes cancel obsolete work. The manager subscribes to command state only for its lifetime.
+
+Imports and extraction are cancellable background jobs. Each decoded payload is limited to 32 MiB and an import batch to 64 MiB/128 files. Font import appends the canonical SSA `_0` suffix to TTF names. Extraction strips only numeric encoding suffixes, keeping ordinary underscores. Font and graphics bytes are not executed, previewed or installed by the manager.
+
+Extraction requires a safe leaf filename, explicitly selected existing directory, unique case-insensitive output names and confirmation before replacement. Traversal, separators, drive/stream colons, control/forbidden characters, trailing dot/space and Windows device names (including console/superscript variants) are rejected. A unique same-directory temporary file is flushed before an ownership-fenced atomic rename. Cancellation/failure retains existing destinations and removes temporary files. Extraction creates no document edit/history entry.
+
+Autosave and recovery serialize the same source spans and encoding, so attachments and separate pending drafts remain in one checked atomic bundle. No attachment sidecar can become detached from its ASS version.

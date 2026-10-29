@@ -39,7 +39,9 @@ public sealed class RectangleClipTool : VisualTool
             }
             _translate=_corner<0&&(p.Shift||new Rect(c.Screen(mapping.Map(points[0])),c.Screen(mapping.Map(points[2]))).Contains(p.Screen));
         }
-        return Begin(c,p,"Edit rectangular clips");
+        if(!Begin(c,p,"Edit rectangular clips"))return false;
+        if(clip is null)Move(c,p); // Show the prospective rectangle from pointer down.
+        return true;
     }
     public override void Move(VisualToolContext c,VisualPointer p)
     {

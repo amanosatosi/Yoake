@@ -1,0 +1,318 @@
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Yoake.Core.Commands;
+using Yoake.Core.Hotkeys;
+using Yoake.Core.Logging;
+using Yoake.Core.Media;
+using Yoake.Core.Settings;
+using Yoake.Core.Subtitles;
+using Yoake.UI;
+using Yoake.UI.Controls;
+using Yoake.UI.ViewModels;
+using KeyModifiers = Avalonia.Input.KeyModifiers;
+
+namespace Yoake.App;
+
+// A separate packaged launch exercises actual routed key events and the
+// shipping settings controls. It supplements every existing startup probe.
+internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplicationLifetime desktop,
+    MainWindow window,MainWindowViewModel model,StartupOptions options)
+{
+    private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
+    private bool _opened,_loaded,_ticking;private int _layouts,_stage;
+    private OptionsWindow? _options;private LogWindow? _log;private FindWindow? _find;private Task<bool>? _media;
+    private Guid? _document;private AssEvent? _line;private SubtitleEditor? _editor;
+    private int _frame;private string _savedPath="";
+    private AssEvent[]? _sortRows;private string _sortSource="";private double _sortTime;
+    private string _splitSource="",_findSource="";private FrameTiming? _frameTiming;
+    private const string Source=@"{\future(opaque)\distort(0,0,1,1)}日本語 မြန်မာ é 👩‍👩‍👧‍👦";
+    private AssTextBox Text=>window.FindControl<AssTextBox>("SubtitleText")!;
+    private ListBox Grid=>window.FindControl<ListBox>("SubtitleRows")!;
+    private T InOptions<T>(string name) where T:Control=>_options!.FindControl<T>(name)??throw new InvalidOperationException("Missing settings control: "+name);
+
+    public void Start()
+    {
+        window.Opened+=(_,_)=>_opened=true;window.Loaded+=(_,_)=>_loaded=true;window.LayoutUpdated+=(_,_)=>_layouts++;
+        _timer.Tick+=Tick;_timer.Start();
+    }
+    private async void Tick(object? sender,EventArgs args)
+    {
+        if(!_opened||!_loaded||_layouts==0||_ticking)return;
+        _ticking=true;
+        options.MarkStartupVerified();
+        try
+        {
+            switch(_stage++)
+            {
+                case 0:
+                    Require(window.IsVisible&&window.TryGetPlatformHandle() is not null,"Acceptance must use a real native window.");
+                    var restored=model.HotkeyProfile.Overrides.Any(item=>item.Context==HotkeyContext.Default&&item.CommandId==CommandIds.SubtitleNew);
+                    Require(model.Actions[CommandIds.SubtitleNew].Shortcut==(restored?"Ctrl-Alt-K":"Ctrl-N"),"Profile must restore the effective shortcut on a subsequent launch.");
+                    Require(model.VideoAutoSeek==!restored,"The video autoseek preference must restore independently on the second launch.");
+                    Invoke(CommandIds.GridInsertAfter);
+                    model.SelectedEvent=model.Events[0];model.Draft!.Text=Source;Invoke(CommandIds.EditCommit);
+                    _document=model.ActiveDocumentId;_line=model.SelectedEvent;_editor=model.ActiveEditor;
+                    _savedPath=Path.Combine(options.ProfileDirectory!,"keyboard-fixture.ass");Require(model.SaveActiveSubtitle(_savedPath),"Prepare a saved Unicode fixture.");
+                    Require(model.IsDefaultView && !model.ShowVideo && !model.ShowAudio,
+                        "No-media keyboard acceptance must start in subtitles-only view.");
+                    Require(!model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Audio + Video must not be selectable until both tracks are loaded.");
+                    return;
+                case 1:
+                    Press(Grid,Key.O,KeyModifiers.Alt);return;
+                case 2:
+                    _options=window.OwnedWindows.OfType<OptionsWindow>().Single();
+                    Require(_options.IsVisible&&_options.ClientSize.Width>=650&&_options.ClientSize.Height>=460,"Keyboard settings must have usable real-window geometry.");
+                    Require(InOptions<ComboBox>("HotkeyContext").Items.Count==Enum.GetValues<HotkeyContext>().Length,"All reference and Yoake contexts must be selectable.");
+                    await Choose(CommandIds.SubtitleNew);Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");return;
+                case 3:
+                    Require(model.Actions[CommandIds.SubtitleNew].Shortcut=="Ctrl-Alt-K","Change must replace the command binding immediately.");
+                    Capture(Key.F10);Click("AddHotkey");return;
+                case 4:
+                    Require(model.HotkeyProfile.EffectiveGestures(CommandIds.SubtitleNew,HotkeyContext.Default).SequenceEqual(new[]{"Ctrl-Alt-K","F10"}),"Settings must retain multiple bindings.");
+                    await Choose(CommandIds.SubtitleOpen);Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");return;
+                case 5:
+                    Require(InOptions<TextBlock>("HotkeyStatus").Text!.Contains("already bound",StringComparison.OrdinalIgnoreCase),"A conflicting binding must identify its owner.");
+                    Require(model.Actions[CommandIds.SubtitleOpen].Shortcut=="Ctrl-O"&&model.Actions[CommandIds.SubtitleNew].Shortcut=="Ctrl-Alt-K","Conflict must leave both commands unchanged.");
+                    await Choose(CommandIds.SubtitleNew);InOptions<ListBox>("EffectiveHotkeys").SelectedItem="F10";Click("RemoveHotkey");return;
+                case 6:
+                    Require(model.HotkeyProfile.EffectiveGestures(CommandIds.SubtitleNew,HotkeyContext.Default).SequenceEqual(new[]{"Ctrl-Alt-K"}),"Remove must affect only the selected binding.");
+                    Click("ClearHotkeys");Require(model.Actions[CommandIds.SubtitleNew].InputGesture is null,"An explicitly cleared command must have no displayed shortcut.");
+                    Click("ResetCommandHotkeys");Require(model.Actions[CommandIds.SubtitleNew].Shortcut=="Ctrl-N","Reset command must restore defaults.");
+                    Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");Click("ResetContextHotkeys");
+                    Require(model.Actions[CommandIds.SubtitleNew].Shortcut=="Ctrl-N","Reset context must restore its defaults.");
+                    Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");Click("ResetAllHotkeys");
+                    Require(model.HotkeyProfile.Overrides.Length==0,"Reset all must remove all overrides.");
+                    Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");
+                    // Route the same physical Right key to a real different action
+                    // in Audio, using the shipping customization workflow.
+                    InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
+                    await Choose("time/next");Click("ClearHotkeys");await Choose(CommandIds.GridLineNext);Capture(Key.Right);Click("AddHotkey");return;
+                case 7:
+                    Require(model.Hotkeys.Resolve(new("Right"),[HotkeyContext.Audio])?.CommandId==CommandIds.GridLineNext,"Audio customization must remain context-local.");
+                    Require(ReferenceEquals(_editor,model.ActiveEditor)&&ReferenceEquals(_line,model.SelectedEvent)&&model.SelectedEvent!.Text==Source,"Settings must preserve the active editor and source.");
+                    var menu=window.FindControl<MenuItem>("NewMenu")!;
+                    Require(menu.InputGesture?.Key==Key.K&&menu.InputGesture.KeyModifiers==(KeyModifiers.Control|KeyModifiers.Alt),"Shipping menu must display the currently effective shortcut.");
+                    var settings=new SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();
+                    Require(new HotkeyProfile(AegisubHotkeyDefaults.ForYoake(),settings.HotkeyOverrides).EffectiveGestures(CommandIds.SubtitleNew,HotkeyContext.Default).SequenceEqual(new[]{"Ctrl-Alt-K"}),"Actual settings file must contain the customization.");
+                    _options!.Close();return;
+                case 8:
+                    var tabs=model.Tabs.Count;Press(Grid,Key.N,KeyModifiers.Control);Require(model.Tabs.Count==tabs,"Removed Ctrl-N must not run its old action.");
+                    Press(Grid,Key.K,KeyModifiers.Control|KeyModifiers.Alt);Require(model.Tabs.Count==tabs+1,"The remapped key must create a document through the shipping router.");
+                    Invoke(CommandIds.WorkspaceActivateTab,_document);return;
+                case 9:
+                    Text.Focus();Text.CaretIndex=Text.Text!.Length;var count=model.Events.Count;
+                    var selected=model.SelectedEvent;var before=model.SelectedEvent!.Text;
+                    Press(Text,Key.A);Require(model.ActiveVisualTool=="Crosshair"&&model.Events.Count==count,"Typing must not select a video tool or mutate lines.");
+                    Press(Text,Key.Delete,KeyModifiers.Control);Require(model.Events.Count==count&&ReferenceEquals(selected,model.SelectedEvent),"Native word deletion must not delete subtitle rows.");
+                    var presenter=Text.GetVisualDescendants().OfType<TextPresenter>().Single();presenter.PreeditText="仮";
+                    var draft=Text.Text;Press(Text,Key.Enter);Require(ReferenceEquals(selected,model.SelectedEvent)&&selected!.Text==before&&Text.Text==draft&&presenter.PreeditText=="仮","IME Enter must not commit or navigate.");
+                    presenter.PreeditText=null;Text.SetCurrentValue(TextBox.TextProperty,Source+" edited");
+                    Press(Text,Key.Enter,KeyModifiers.Control);Require(ReferenceEquals(_line,model.SelectedEvent)&&_line!.Text==Source+" edited","Edit-box Ctrl-Enter must commit and stay.");
+                    Press(Text,Key.Enter);Require(ReferenceEquals(model.Events[1],model.SelectedEvent),"Edit-box Enter must commit and advance.");
+                    Press(Grid,Key.F2);Require(File.ReadAllText(_savedPath).Contains(Source+" edited",StringComparison.Ordinal),"F2 must use the real Save action and preserve exact unknown/Unicode source.");
+                    _media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
+                case 10:
+                    if(!_media!.IsCompleted){_stage--;return;}
+                    Require(_media.Result&&model.FrameTimes.Count>2&&model.VideoFrame is not null&&model.WaveformSamples is not null,"Keyboard media acceptance needs loaded native providers.");
+                    Require(model.IsAudioVideoView && model.ShowVideo && model.ShowAudio &&
+                        model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
+                        "Loading real audio and video must automatically enable and select their combined view.");
+                    _frame=model.CurrentFrame;Press(Grid,Key.Right);return;
+                case 11:
+                    Require(model.CurrentFrame==_frame+1,"Grid Right must advance exactly one media frame.");
+                    _frame=model.CurrentFrame;Press(window.FindControl<VisualOverlayControl>("VisualOverlay")!,Key.Right);return;
+                case 12:
+                    Require(model.CurrentFrame==_frame+1,"Video Right must use the same central frame timeline.");
+                    Press(window.FindControl<VisualOverlayControl>("VisualOverlay")!,Key.D);Require(model.ActiveVisualTool=="RotateZ","Video D must select Rotate Z.");
+                    var original=model.ActiveEditor!.Document.Serialize();
+                    if(model.VideoAutoSeek)Invoke("video/autoseek");
+                    Require(!model.VideoAutoSeek&&!window.FindControl<MenuItem>("VideoAutoSeekMenu")!.IsChecked,"The semantic autoseek option must disable selection-driven video seeks.");
+                    _frame=model.CurrentFrame;model.SelectedEvent=model.Events[0];
+                    Press(window.FindControl<AudioWaveformControl>("AudioDisplay")!,Key.Right);
+                    Require(ReferenceEquals(model.SelectedEvent,model.Events[1])&&model.CurrentFrame==_frame&&model.ActiveEditor.Document.Serialize()==original,"Audio Right must obey its remapped local action without leaking Video Right or mutating the document.");
+                    Press(window.FindControl<VisualOverlayControl>("VisualOverlay")!,Key.S);Require(model.ActiveVisualTool=="Position","Video S must select the drag tool without starting Audio playback.");
+                    var waveform=model.WaveformSamples;var times=model.FrameTimes;
+                    Invoke(CommandIds.ViewDefault);Invoke(CommandIds.ViewAudioVideo);
+                    Require(ReferenceEquals(waveform,model.WaveformSamples)&&ReferenceEquals(times,model.FrameTimes)&&model.CurrentFrame==_frame,"View changes must retain the providers and keyboard playback position.");
+                    Press(Grid,Key.O,KeyModifiers.Alt);return;
+                case 13:
+                    _options=window.OwnedWindows.OfType<OptionsWindow>().Single();InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
+                    Click("ResetContextHotkeys");InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Default;
+                    await Choose(CommandIds.AppToggleToolbar);Capture(Key.F12);Click("AddHotkey");
+                    InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.SubtitleGrid;
+                    await Choose("grid/sort/start");Capture(Key.F10);Click("AddHotkey");
+                    await Choose("grid/tag/cycle_hiding");Capture(Key.F11);Click("AddHotkey");_options.Close();return;
+                case 14:
+                    Require(model.Hotkeys.Resolve(new("Right"),[HotkeyContext.Audio])?.CommandId=="time/next","Audio reset must restore its exact default action.");
+                    Press(Grid,Key.F12);return;
+                case 15:
+                    Require(!model.ToolbarVisible&&!window.FindControl<Grid>("MainToolbar")!.IsVisible&&!window.FindControl<MenuItem>("ToolbarMenu")!.IsChecked,"Toolbar hotkey must hide the actual region and clear its checked menu state.");
+                    Require(window.FindControl<ListBox>("SubtitleRows")!.Bounds.Height>=140&&ReferenceEquals(_editor,model.ActiveEditor),"Hiding the toolbar must retain editor identity and useful grid geometry.");
+                    Press(Grid,Key.F12);return;
+                case 16:
+                    Require(model.ToolbarVisible&&window.FindControl<Grid>("MainToolbar")!.Bounds.Height>=24&&window.FindControl<MenuItem>("ToolbarMenu")!.IsChecked,"Toolbar hotkey must restore usable geometry and checked state.");
+                    _=model.Registry.InvokeAsync(CommandIds.AppLog,new(model.ActiveDocumentId));return;
+                case 17:
+                    _log=window.OwnedWindows.OfType<LogWindow>().Single();
+                    if(_log.FindControl<TextBox>("ApplicationLog")?.Text is not {Length:>0}){_stage--;return;}
+                    Require(_log.IsVisible&&_log.FindControl<TextBox>("ApplicationLog")!.Text!.Contains("[INFO]",StringComparison.Ordinal),"Log action must show actual application records in the shipping window.");
+                    _log.Close();return;
+                case 18:
+                    _sortRows=model.Events.ToArray();_editor!.SetTiming(_sortRows[0],4000,6000);_editor.SetTiming(_sortRows[1],2000,3000);
+                    model.SelectedEvent=_sortRows[0];model.SetSelectedEvents(_sortRows);_sortSource=_editor.Document.Serialize();_sortTime=model.CurrentTimeSeconds;
+                    Invoke("grid/tags/show");Press(Grid,Key.F10);return;
+                case 19:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(model.Events.SequenceEqual(new[]{_sortRows![1],_sortRows[0]})&&ReferenceEquals(_sortRows[0],model.SelectedEvent),"The real Grid F10 gesture must sort without replacing the active line.");
+                    Require(Grid.SelectedItems!.Cast<AssEvent>().ToHashSet().SetEquals(_sortRows)&&model.SelectedEvents.Count==2,"A collection reset during sorting must retain the actual grid multi-selection.");
+                    Require(ReferenceEquals(_editor,model.ActiveEditor)&&model.CurrentTimeSeconds==_sortTime,"Sorting must retain the editor and central media position.");
+                    Press(Grid,Key.Z,KeyModifiers.Control);return;
+                case 20:
+                    Require(_editor!.Document.Serialize()==_sortSource&&Grid.SelectedItems!.Count==2,"Grid Ctrl-Z must restore exact source and multi-selection after a background sort.");
+                    Press(Grid,Key.Y,KeyModifiers.Control);return;
+                case 21:
+                    Require(ReferenceEquals(model.Events[0],_sortRows![1]),"Grid Ctrl-Y must redo the same stable sort.");
+                    Press(Grid,Key.F11);return;
+                case 22:
+                    Require(model.GridTagDisplay==GridTagDisplayMode.Simplified&&window.FindControl<MenuItem>("SimplifiedTagsMenu")!.IsChecked,"Cycle hotkey must update the radio menu.");
+                    Require(Grid.GetVisualDescendants().OfType<SubtitleGridText>().Any(row=>row.SourceText!.Contains("\\future",StringComparison.Ordinal)&&row.Text!.Contains('☀')),"The realized grid must simplify tags from the unchanged source.");
+                    Press(Grid,Key.F11);return;
+                case 23:
+                    Require(model.GridTagDisplay==GridTagDisplayMode.Hidden&&window.FindControl<MenuItem>("HideTagsMenu")!.IsChecked,"Cycle must select hidden tags.");
+                    Require(Grid.GetVisualDescendants().OfType<SubtitleGridText>().Where(row=>row.SourceText!.Contains("\\future",StringComparison.Ordinal)).All(row=>!row.Text!.Contains("\\future",StringComparison.Ordinal)),"The shipping grid must hide override blocks.");
+                    Require(_sortRows![0].Text.Contains("\\future(opaque)",StringComparison.Ordinal)&&_sortRows[0].Text.Contains("\\distort",StringComparison.Ordinal),"Grid display must preserve unknown and Mangetsu source.");
+                    Press(Grid,Key.F11);return;
+                case 24:
+                    Require(model.GridTagDisplay==GridTagDisplayMode.Full&&Grid.GetVisualDescendants().OfType<SubtitleGridText>().Any(row=>row.Text==row.SourceText&&row.Text!.Contains("\\future",StringComparison.Ordinal)),"Cycle must restore full exact source in the actual grid.");
+                    _editor!.SetTiming(_sortRows![0],0,5000);model.SelectedEvent=_sortRows[1];model.SelectedEvent=_sortRows[0];
+                    // SelectedEvent deliberately preserves an existing multi-
+                    // selection. This part verifies a single-line split after
+                    // the preceding multi-selection sorting workflow.
+                    model.SetSelectedEvents([_sortRows[0]]);
+                    _splitSource=_editor.Document.Serialize();_frameTiming=new(model.FrameTimes,25);_frame=model.CurrentFrame;
+                    Press(Grid,Key.D,KeyModifiers.Control);return;
+                case 25:
+                    Require(model.Events.Count==3&&model.SelectedEvents.Count==1&&!_sortRows!.Contains(model.SelectedEvent!),"Real Ctrl-D must split and select the copy through the migrated default command.");
+                    Require(_sortRows[0].EndMilliseconds==_frameTiming!.SubtitleBoundary(_frame,FrameTimeKind.Start)&&model.SelectedEvent!.StartMilliseconds==_sortRows[0].EndMilliseconds,"Ctrl-D must use the VFR boundary before the current frame.");
+                    Require(model.SelectedEvent!.Text==_sortRows[0].Text&&model.CurrentFrame==_frame&&ReferenceEquals(_editor,model.ActiveEditor),"Frame splits must preserve unknown source and media state.");
+                    Press(Grid,Key.Z,KeyModifiers.Control);return;
+                case 26:
+                    Require(_editor!.Document.Serialize()==_splitSource,"Ctrl-Z must undo the complete before-frame split in one operation.");
+                    model.SelectedEvent=_sortRows![0];Press(Grid,Key.D,KeyModifiers.Control|KeyModifiers.Shift);return;
+                case 27:
+                    Require(model.Events.Count==3&&_sortRows![0].EndMilliseconds==_frameTiming!.SubtitleBoundary(_frame,FrameTimeKind.End)&&model.SelectedEvent!.StartMilliseconds==_sortRows[0].EndMilliseconds,"Real Ctrl-Shift-D must split after the current frame using its VFR end boundary.");
+                    Press(Grid,Key.Z,KeyModifiers.Control);return;
+                case 28:
+                    Require(_editor!.Document.Serialize()==_splitSource&&model.CurrentFrame==_frame,"Undoing the after-frame split must retain exact source and current frame.");
+                    Press(Grid,Key.H,KeyModifiers.Control);return;
+                case 29:
+                    _find=window.OwnedWindows.OfType<FindWindow>().Single();
+                    Require(_find.IsVisible&&_find.DocumentId==_document&&_find.Bounds.Width>=640&&_find.FindControl<TextBox>("FindReplacement")!.IsKeyboardFocusWithin,"Real Ctrl-H must expose the document-local replacement workflow with focus in its replacement field.");
+                    _find.FindControl<TextBox>("FindQuery")!.Text="日本語";_find.FindControl<TextBox>("FindReplacement")!.Text="翻訳";
+                    _find.FindControl<CheckBox>("FindSelectedRows")!.IsChecked=true;_find.FindControl<CheckBox>("FindRawSource")!.IsChecked=false;
+                    Press(_find.FindControl<TextBox>("FindQuery")!,Key.F3);return;
+                case 30:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(ReferenceEquals(model.SelectedEvent,_sortRows![0])&&Text.Text![Text.SelectionStart..Text.SelectionEnd]=="日本語","F3 in the modeless find window must highlight the actual source match through the shared command.");
+                    Require(_find!.FindControl<TextBox>("FindQuery")!.IsKeyboardFocusWithin,"Highlighting source must retain search-window input focus.");
+                    _findSource=_editor!.Document.Serialize();Press(_find.FindControl<Button>("FindReplace")!,Key.Enter);return;
+                case 31:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(_sortRows![0].Text.Contains("翻訳",StringComparison.Ordinal)&&_sortRows[0].Text.Contains("\\future(opaque)\\distort",StringComparison.Ordinal),"Replacement must change visible text while preserving exact unknown/Mangetsu tags.");
+                    Press(Grid,Key.Z,KeyModifiers.Control);return;
+                case 32:
+                    Require(_editor!.Document.Serialize()==_findSource,"Real Ctrl-Z must restore the complete exact source after replacement.");
+                    Press(Grid,Key.F3);return;
+                case 33:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(Text.Text![Text.SelectionStart..Text.SelectionEnd]=="日本語"&&window.FindControl<MenuItem>("FindNextMenu")!.InputGesture?.Key==Key.F3,"Grid F3 must reuse the current document's search and display its effective menu gesture.");
+                    Press(_find!.FindControl<Button>("FindClose")!,Key.Enter);return;
+                case 34:
+                    Require(!window.OwnedWindows.OfType<FindWindow>().Any(),"The semantic Close action must close the actual search window.");
+                    Invoke(CommandIds.SubtitleNew);Invoke(CommandIds.GridInsertAfter);
+                    model.SelectedEvent=model.Events[0];Press(window.FindControl<ToggleButton>("FastActorToggle")!,Key.Enter);return;
+                case 35:
+                    Require(model.FastActorEnabled,"The real fast actor toggle must enable the document-owned mode.");
+                    Require(window.FindControl<Popup>("FastActorPopup")!.IsOpen,"Fast actor naming opens its recent-name popup when the actor field has focus.");
+                    var actor=window.FindControl<AutoCompleteBox>("LineActor")!;var entry=actor.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Name=="PART_TextBox");
+                    Require(entry.Focus(),"Actor input must accept focus.");actor.SetCurrentValue(AutoCompleteBox.TextProperty,"日本語 actor");
+                    var actorPresenter=entry.GetVisualDescendants().OfType<TextPresenter>().Single();actorPresenter.PreeditText="未確定";
+                    Press(entry,Key.Enter);Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"IME Enter must not advance fast actor naming.");
+                    actorPresenter.PreeditText=null;Press(entry,Key.Enter);return;
+                case 36:
+                    Require(ReferenceEquals(model.SelectedEvent,model.Events[1])&&model.Events[0].Actor=="日本語 actor"&&model.Events[1].Actor=="日本語 actor","Enter commits the actor, advances and fills an empty actor field.");
+                    Require(model.FastActorRecent.Contains("日本語 actor"),"The chosen actor appears in the real recent-name model.");
+                    Invoke(CommandIds.EditUndo);Require(model.Events[0].Actor==""&&model.Events[1].Actor=="","One undo restores the fast naming action.");
+                    Invoke(CommandIds.EditRedo);Require(model.Events[0].Actor=="日本語 actor"&&model.Events[1].Actor=="日本語 actor","Redo restores fast naming.");
+                    return;
+                case 37:
+                    Require(model.FastActorMode=="Nanashi","Nanashi must be the default fast naming mode.");
+                    model.SelectedEvent=model.Events[0];var nanashi=window.FindControl<AutoCompleteBox>("LineActor")!.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Name=="PART_TextBox");
+                    Require(nanashi.Focus(),"Nanashi requires actor input focus.");
+                    var preedit=nanashi.GetVisualDescendants().OfType<TextPresenter>().Single();preedit.PreeditText="未確定";
+                    TapModifier(nanashi,Key.LeftCtrl,KeyModifiers.Control);Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"Nanashi must leave IME composition in control.");
+                    preedit.PreeditText=null;
+                    nanashi.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=nanashi,Key=Key.LeftCtrl,KeyModifiers=KeyModifiers.Control});
+                    nanashi.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=nanashi,Key=Key.LeftShift,KeyModifiers=KeyModifiers.Control|KeyModifiers.Shift});
+                    nanashi.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyUpEvent,Source=nanashi,Key=Key.LeftCtrl,KeyModifiers=KeyModifiers.Shift});
+                    Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"Modifier chords must not advance Nanashi.");
+                    TapModifier(nanashi,Key.LeftCtrl,KeyModifiers.Control);Require(ReferenceEquals(model.SelectedEvent,model.Events[1]),"A standalone Ctrl tap must advance in Nanashi.");
+                    TapModifier(nanashi,Key.LeftAlt,KeyModifiers.Alt);Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"A standalone Alt tap must return to the previous line.");return;
+                case 38:
+                    Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source; exact migrated Ctrl-D/Ctrl-Shift-D real keyboard frame splits with VFR-derived boundaries and complete one-step undo; persisted autoseek; real Ctrl-H and F3 in the modeless search window and grid, actual source highlighting without focus theft, protected-text replacement and exact undo.\n");
+                    StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+            }
+        }
+        catch(Exception exception){_timer.Stop();Program.Fatal("Packaged contextual keyboard acceptance at stage "+(_stage-1),exception);desktop.Shutdown(1);}
+        finally{_ticking=false;}
+    }
+    private async Task Choose(string command)
+    {
+        InOptions<TextBox>("HotkeyFilter").Text=command;
+        // TextBox delivers TextChanged asynchronously; select only after the
+        // shipping filter handler has updated the actual command list.
+        await Dispatcher.UIThread.InvokeAsync(()=>
+        {
+            var list=InOptions<ListBox>("HotkeyCommands");
+            var choice=list.Items.Cast<object>().SingleOrDefault(item=>item.ToString()!.EndsWith(" · "+command,StringComparison.Ordinal)||item.ToString()!.EndsWith(" · "+command+"  (backend not available)",StringComparison.Ordinal));
+            Require(choice is not null,"Filtered command is missing: "+command+"; items: "+string.Join("; ",list.Items.Cast<object>()));
+            list.SelectedItem=choice;
+        },DispatcherPriority.Background);
+    }
+    private void Capture(Key key,KeyModifiers modifiers=KeyModifiers.None)
+    {
+        Press(InOptions<TextBox>("HotkeyCapture"),key,modifiers);
+        Require(!string.IsNullOrEmpty(InOptions<TextBox>("HotkeyGesture").Text),"The focused capture field must receive a real key gesture.");
+    }
+    private void Click(string name)=>Press(InOptions<Button>(name),Key.Enter);
+    private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
+    {
+        if(control is ListBox list)
+        {
+            var row=list.ContainerFromIndex(Math.Max(0,list.SelectedIndex)) as Control;
+            Require(row is {Bounds.Height:>0},"A realized grid row must exist before keyboard input.");control=row!;
+        }
+        (TopLevel.GetTopLevel(control) as Window)?.Activate();
+        Require(control.Focus()&&control.IsKeyboardFocusWithin,"Shipping control must own focus before keyboard input: "+control.Name);
+        control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});
+    }
+    private static void TapModifier(Control control,Key key,KeyModifiers modifiers)
+    {
+        control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});
+        control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyUpEvent,Source=control,Key=key,KeyModifiers=KeyModifiers.None});
+    }
+    private void Invoke(string command,object? parameter=null)
+    {
+        var result=model.Registry.InvokeAsync(command,new(model.ActiveDocumentId),parameter);
+        Require(result.IsCompletedSuccessfully&&result.Result,"Acceptance preparation command failed: "+command);
+    }
+    private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
+}

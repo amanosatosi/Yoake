@@ -18,8 +18,9 @@ public sealed class VisualToolContext(MainWindowViewModel model,Rect video,IRead
     public Rect Video {get;}=video;
     public IReadOnlyList<VisualLine> Lines {get;}=lines;
     public VisualLine? Active=>Lines.FirstOrDefault(l=>l.Active);
-    public Point Screen(AssPoint point)=>new(Video.X+point.X/Model.ScriptSize.Width*Video.Width,Video.Y+point.Y/Model.ScriptSize.Height*Video.Height);
-    public AssPoint Script(Point point)=>new((point.X-Video.X)/Video.Width*Model.ScriptSize.Width,(point.Y-Video.Y)/Video.Height*Model.ScriptSize.Height);
+    private Yoake.Core.Media.VideoPresentation Transform=>new(Video.X,Video.Y,Video.Width,Video.Height);
+    public Point Screen(AssPoint point){var mapped=Transform.FromScript(point,Model.ScriptSize.Width,Model.ScriptSize.Height);return new(mapped.X,mapped.Y);}
+    public AssPoint Script(Point point)=>Transform.ToScript(point.X,point.Y,Model.ScriptSize.Width,Model.ScriptSize.Height);
     public bool Near(AssPoint point,Point pointer,double radius=9)=>Distance(Screen(point),pointer)<=radius;
     public static double Distance(Point a,Point b)=>Math.Sqrt((a.X-b.X)*(a.X-b.X)+(a.Y-b.Y)*(a.Y-b.Y));
     public double ScriptDistance(double dip)=>dip*Model.ScriptSize.Width/Math.Max(1,Video.Width);

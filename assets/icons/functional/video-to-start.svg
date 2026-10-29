@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <path d="M 2.25,2.25 L 21.75,2.25 L 21.75,5.25 L 2.25,5.25 L 2.25,2.25 z" fill="none" stroke="currentColor" stroke-width="0.65" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 12.75,2.25 L 12.75,5.25" fill="none" stroke="currentColor" stroke-width="0.65" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 2.25,2.25 L 7.5,2.25 L 7.5,5.25 L 2.25,5.25 L 2.25,2.25 z" fill="currentColor" stroke="currentColor" stroke-width="0.65" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 4.875,10.5 L 7.5,7.875 L 5.625,7.875 L 5.625,5.25 L 4.125,5.25 L 4.125,7.875 L 2.25,7.875 L 4.875,10.5 z" fill="currentColor" stroke="currentColor" stroke-width="0.65" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 4.5,10.5 L 15,10.5 C 16.3125,10.5 17.25,11.4375 17.25,12.75 L 17.25,19.5 C 17.25,20.8125 16.3125,21.75 15,21.75 L 4.5,21.75 C 3.1875,21.75 2.25,20.8125 2.25,19.5 L 2.25,12.75 C 2.25,11.4375 3.1875,10.5 4.5,10.5 z" fill="none" stroke="currentColor" stroke-width="0.75" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 14.25,16.125 L 10.875,12.75 L 10.875,15 L 5.25,15 L 5.25,17.25 L 10.875,17.25 L 10.875,19.5 L 14.25,16.125 z" fill="currentColor" stroke="currentColor" stroke-width="0.65" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

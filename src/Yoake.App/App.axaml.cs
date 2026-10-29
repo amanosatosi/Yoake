@@ -87,7 +87,30 @@ public partial class App : Application
                     if (_startup.VerificationReport is null) StartupDiagnostics.Complete();
                 }, DispatcherPriority.Background);
             };
-            if (_startup.VerificationReport is not null) new UiStartupVerification(desktop, window, viewModel, _startup).Start();
+            if (_startup.VerificationReport is not null)
+            {
+                if (_startup.HotkeyAcceptance) new HotkeyUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.TimingAcceptance)new TimingUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.TimecodeAcceptance)new TimecodeUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AudioDisplayAcceptance)new AudioDisplayUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.SelectionAcceptance)new SelectionUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AudioClipAcceptance)new AudioClipUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AudioPlaybackAcceptance)new AudioPlaybackUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.VideoPresentationAcceptance)new VideoPresentationUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.OriginalAndPasteAcceptance)new OriginalAndPasteUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.RecoveryCapture||_startup.RecoveryAcceptance)new RecoveryUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AttachmentCapture||_startup.AttachmentRecovery)new AttachmentsUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.VideoUtilitiesAcceptance)new VideoUtilitiesUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.MediaOwnershipAcceptance)new MediaOwnershipUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.VideoNavigationAcceptance)new VideoNavigationUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.VideoAcceptance)new VideoUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.KaraokeAcceptance||_startup.KaraokeRecovery)new KaraokeUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.ResampleAcceptance)new ResampleUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.FontCollectorAcceptance)new FontCollectorUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AssDrawAcceptance)new AssDrawUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if(_startup.AudioTimingAcceptance)new AudioTimingUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else new UiStartupVerification(desktop, window, viewModel, _startup).Start();
+            }
             desktop.MainWindow = window;
             StartupDiagnostics.Checkpoint("MainWindow assigned");
             desktop.Exit += (_, _) => _backgroundJobs?.CancelAll();

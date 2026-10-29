@@ -3,6 +3,13 @@
   "vcpkg": {
     "commit": "f3419f137f1a1e79b33b880ae6845f873d87820b"
   },
+  "motionOpenCv": {
+    "vcpkgCommit": "19780d9cdf84d0944cf9a318666703b89ab6629c",
+    "port": "opencv4[core,calib3d]",
+    "triplet": "x64-windows-static-md",
+    "license": "Apache-2.0",
+    "linkage": "static in yoake-motion.dll"
+  },
   "ffmpeg": {
     "version": "7.1.1",
     "tagCommit": "a1328e68877e12ab5a6e5d92a84aefa566783ea5",
@@ -13,6 +20,22 @@
     "version": "5.0",
     "commit": "25cef14386fcaaa58ee547065deee8f6e82c56a2",
     "linkage": "dynamic"
+  },
+  "luajit": {
+    "version": "2.1",
+    "commit": "c6ffc141a8762b41703f9287d63d93622a13dd8f",
+    "repository": "https://github.com/LuaJIT/LuaJIT.git",
+    "license": "MIT",
+    "linkage": "dynamic; lua51.dll",
+    "mode": "interpreter with instruction cancellation hooks"
+  },
+  "automationModules": {
+    "reference": "Aegisub 3.2.2 revision 8635",
+    "lpeg": "0.10 (MIT)",
+    "luabins": "3.2.2 bundled sources (MIT)",
+    "moonscript": "0.2.5 (MIT)",
+    "boost": "1.91.0 (BSL-1.0), pinned vcpkg registry",
+    "icu": "78.3 port 1 (ICU license), pinned vcpkg registry"
   },
   "mangetsu": {
     "branch": "mangetsu",

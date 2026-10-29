@@ -1,0 +1,14 @@
+{
+  "repository": "https://github.com/amanosatosi/assdraw.git",
+  "commit": "dda58f913e16743d63ef13bef1beeea0323bd653",
+  "wxWidgets": {
+    "url": "https://github.com/wxWidgets/wxWidgets/releases/download/v3.2.11/wxWidgets-3.2.11.zip",
+    "sha1": "960fe81c101eaf336f965adb130a731f91b72d84"
+  },
+  "agg": {
+    "repository": "https://github.com/ghaerr/agg-2.6.git",
+    "commit": "c4f36b4432142f22c0bf82c6fbdb41567a236be2"
+  },
+  "license": "ASSDraw historical BSD notices plus GPL-2.0-or-later AGG-derived spline files; wxWindows Library Licence and constituent bundled dependency notices",
+  "sourceDistribution": "Complete corresponding source archives and build instructions are published as a separate artifact alongside the portable download in the same workflow run. Releases and redistributions must provide the matching source alongside the binary."
+}

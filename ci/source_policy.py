@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
-import json, re, subprocess, sys, xml.etree.ElementTree as ET
+import hashlib, json, re, subprocess, sys, xml.etree.ElementTree as ET
 ROOT=Path(__file__).resolve().parents[1]
 
 def fail(msg):
@@ -16,7 +16,31 @@ for pattern in ('*.csproj', '*.axaml'):
         except Exception as exc: fail(f"invalid XML {path.relative_to(ROOT)}: {exc}")
 
 versions=json.loads((ROOT/'third_party/versions.json').read_text())
-for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit']):
+assdraw=json.loads((ROOT/'third_party/assdraw.json').read_text())
+for pin in (assdraw['commit'], assdraw['agg']['commit']):
+    if not re.fullmatch(r'[0-9a-f]{40}', pin): fail('ASSDraw source must use immutable commit pins')
+if assdraw['repository'] != 'https://github.com/amanosatosi/assdraw.git': fail('ASSDraw must use the user fork')
+if not re.fullmatch(r'[0-9a-f]{40}', assdraw['wxWidgets']['sha1']): fail('Official wxWidgets source must be hash checked')
+provenance=json.loads((ROOT/'third_party/automation/provenance.json').read_text(encoding='utf-8'))
+for entry in provenance['files']:
+    path=ROOT/entry['yoakePath']
+    if hashlib.sha256(path.read_bytes()).hexdigest()!=entry['sha256']:
+        fail(f"Aegisub-derived source differs from recorded provenance: {entry['yoakePath']}")
+adapter=json.loads((ROOT/'third_party/automation/mangetsu-adapter.json').read_text(encoding='utf-8'))
+if hashlib.sha256((ROOT/adapter['yoakePath']).read_bytes()).hexdigest()!=adapter['sha256']:
+    fail('Mangetsu Karaskel adapter differs from recorded source')
+if hashlib.sha256((ROOT/'automation-3.5-above/include/mangetsu-karaskel.lua').read_bytes()).hexdigest()!=adapter['sha256']:
+    fail('Modern Mangetsu Karaskel adapter differs from recorded source')
+modern=json.loads((ROOT/'third_party/automation/aegisub-3.5.1-provenance.json').read_text(encoding='utf-8'))
+for entry in modern['files']:
+    if hashlib.sha256((ROOT/entry['yoakePath']).read_bytes()).hexdigest()!=entry['sha256']:
+        fail(f"Aegisub 3.5.1 source differs from recorded provenance: {entry['yoakePath']}")
+depctrl=json.loads((ROOT/'third_party/automation/dependencycontrol-provenance.json').read_text(encoding='utf-8'))
+if not re.fullmatch(r'[0-9a-f]{40}', depctrl['commit']): fail('DependencyControl must use an immutable commit')
+for entry in depctrl['files']:
+    if hashlib.sha256((ROOT/entry['yoakePath']).read_bytes()).hexdigest()!=entry['sha256']:
+        fail(f"DependencyControl source differs from recorded provenance: {entry['yoakePath']}")
+for pin in (versions['vcpkg']['commit'], versions['ffmpeg']['tagCommit'], versions['ffms2']['commit'], versions['luajit']['commit'], versions['motionOpenCv']['vcpkgCommit']):
     if not re.fullmatch(r'[0-9a-f]{40}', pin): fail(f"native dependency ref is not immutable: {pin}")
 if versions.get('mangetsu', {}).get('branch') != 'mangetsu':
     fail("Mangetsu must follow the live 'mangetsu' branch")
@@ -112,11 +136,15 @@ for marker in ('ass_render_frame_rgba', 'ass_composite_images_bgra', 'mangetsu.d
     if marker not in renderer: fail(f'Mangetsu preview marker missing: {marker}')
 for marker in ('waveOutOpen', 'waveOutWrite', 'waveOutGetPosition'):
     if marker not in audio_output: fail(f'audio output marker missing: {marker}')
-for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll')"):
+for marker in ("mangetsu\\bin", "entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll', 'yoake-automation-modern.dll', 'yoake-motion.dll')"):
     if marker not in package: fail(f'Mangetsu portable staging marker missing: {marker}')
 
 result=subprocess.run([sys.executable, str(ROOT/'tools/generate-icons.py'), '--check'])
 if result.returncode: fail('generated icon catalog is stale')
 result=subprocess.run([sys.executable, str(ROOT/'ci/test_icon_generator.py')])
 if result.returncode: fail('SVG semantic regression checks failed')
+result=subprocess.run([sys.executable, str(ROOT/'ci/test_aegisub_audit.py')])
+if result.returncode: fail('exact Aegisub command/hotkey evidence or parity ledger checks failed')
+result=subprocess.run([sys.executable, str(ROOT/'tools/generate_aegisub_hotkeys.py'), '--check'])
+if result.returncode: fail('generated Aegisub context defaults are stale')
 print('source-policy: OK')
