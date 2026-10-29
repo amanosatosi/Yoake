@@ -356,7 +356,8 @@ public partial class MainWindow : Window, IEditorDialogs
     private void SyncSelection()
     {
         if(_model is null||_selectionSync||SubtitleRows.SelectedItems is null||!ReferenceEquals(SubtitleRows.ItemsSource,_model.Events))return;
-        if(SubtitleRows.SelectedItems.OfType<AssEvent>().SequenceEqual(_model.SelectedEvents))return;
+        var current=SubtitleRows.SelectedItems.OfType<AssEvent>().ToArray();
+        if(current.Length==_model.SelectedEvents.Count&&current.ToHashSet().SetEquals(_model.SelectedEvents))return;
         _selectionSync=true;
         try{var owned=_model.Events.ToHashSet();SubtitleRows.SelectedItems=_model.SelectedEvents.Where(owned.Contains).ToList();}
         finally{_selectionSync=false;}
@@ -367,10 +368,14 @@ public partial class MainWindow : Window, IEditorDialogs
         _selectionSync=true;
         try
         {
-            var next=e.AddedItems.OfType<AssEvent>().LastOrDefault()??SubtitleRows.SelectedItems.OfType<AssEvent>().FirstOrDefault();
+            // Changing the active row can update the model selection and trigger
+            // binding/layout callbacks. Preserve the grid's complete selection
+            // before that transition rather than reading a potentially changed list.
+            var selected=SubtitleRows.SelectedItems.OfType<AssEvent>().ToArray();
+            var next=e.AddedItems.OfType<AssEvent>().LastOrDefault()??e.RemovedItems.OfType<AssEvent>().LastOrDefault()??selected.FirstOrDefault();
             _model.SelectedEvent=next;
             if(_model.SelectedEvent!=next){Dispatcher.UIThread.Post(SyncSelection);return;}
-            _model.SetSelectedEvents(SubtitleRows.SelectedItems.OfType<AssEvent>().ToArray());
+            _model.SetSelectedEvents(selected);
         }
         finally{_selectionSync=false;}
     }

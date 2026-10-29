@@ -27,6 +27,7 @@ public sealed class VisualOverlayControl : Control
     private Guid? _pointerDocument;
     private IPointer? _capture;
     private bool _inside;
+    private bool _pointerOver;
     private StandardCursorType? _cursorType;
     private Point? _panPointer;
     private (double X, double Y)? _panCheckpoint;
@@ -58,7 +59,7 @@ public sealed class VisualOverlayControl : Control
             Refresh();
         }
         if(change.Property==BoundsProperty){if(HasTransientInput)Cancel();Refresh();}
-        if(change.Property==IsVisibleProperty&&!IsVisible)Cancel();
+        if(change.Property==IsVisibleProperty&&!IsVisible){ClearPointer();Cancel();}
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e){Cancel();Refresh();}
     private void GestureEnded(object? sender,EventArgs e){ReleaseCapture();_tool?.Cancel();Refresh();}
@@ -76,12 +77,12 @@ public sealed class VisualOverlayControl : Control
     private void Refresh()
     {
         if(Model is not {} model||model.VideoFrame is not {} frame){_context=null;InvalidateVisual();return;}
-        if (_pointerDocument != model.ActiveDocumentId) { _pointerDocument=model.ActiveDocumentId; _lastPointerPosition=null; }
+        if (_pointerDocument != model.ActiveDocumentId) { _pointerDocument=model.ActiveDocumentId; ClearPointer(); }
         var area=VideoPresentationControl.Rect(model.VideoViewport(Bounds.Width,Bounds.Height,TopLevel.GetTopLevel(this)?.RenderScaling??1));
         if(!IsPanning&&HasTransientInput&&_context is {} previous&&previous.Video!=area){Cancel();}
         _context=new(model,area,model.VisibleVisualLines(model.ActiveVisualTool=="Position"));
         if (_lastPointerPosition is { } last && _context.Video.Width>0 && _context.Video.Height>0)
-        { _pointer=_pointer with { Script=_context.Script(last) }; _inside=_context.Video.Contains(last); model.ReportVideoPointer(_pointer.Script); }
+        { _pointer=_pointer with { Script=_context.Script(last) }; _inside=_pointerOver&&_context.Video.Contains(last); if(_inside)model.ReportVideoPointer(_pointer.Script); }
         _tools.TryGetValue(model.ActiveVisualTool,out _tool);model.RequestVisualBounds();InvalidateVisual();
     }
     public override void Render(DrawingContext context)
@@ -96,7 +97,7 @@ public sealed class VisualOverlayControl : Control
     private VisualPointer Pointer(PointerEventArgs e)=>new(e.GetPosition(this),_context?.Script(e.GetPosition(this))??default,e.KeyModifiers,e is PointerPressedEventArgs press?press.ClickCount:0);
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
-        base.OnPointerPressed(e);Focus();_pointer=Pointer(e);_inside=true;
+        base.OnPointerPressed(e);Focus();_pointer=Pointer(e);_pointerOver=new Rect(Bounds.Size).Contains(_pointer.Screen);_inside=_pointerOver&&_context?.Video.Contains(_pointer.Screen)==true;
         _lastPointerPosition=_pointer.Screen;
         Model?.ReportVideoPointer(_pointer.Script);
         if(e.GetCurrentPoint(this).Properties.IsMiddleButtonPressed&&Model?.VideoFrame is not null)
@@ -116,12 +117,14 @@ public sealed class VisualOverlayControl : Control
             if(!e.GetCurrentPoint(this).Properties.IsMiddleButtonPressed){FinishPan(false);return;}
             _panPointer=position;Model?.PanVideo(position.X-last.X,position.Y-last.Y);e.Handled=true;
         }
-        _pointer=Pointer(e);_inside=_context?.Video.Contains(_pointer.Screen)==true;
+        _pointer=Pointer(e);_pointerOver=new Rect(Bounds.Size).Contains(_pointer.Screen);_inside=_pointerOver&&_context?.Video.Contains(_pointer.Screen)==true;
         _lastPointerPosition=_pointer.Screen;
         if (_context is not null) Model?.ReportVideoPointer(_pointer.Script);
         try{if(!IsPanning&&_capture is not null&&_context is {} state)_tool?.Move(state,_pointer);var cursorType=_tool?.Cursor(_context,_pointer)??StandardCursorType.Cross;if(cursorType!=_cursorType){_cursorType=cursorType;Cursor=new Cursor(cursorType);}InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
-    protected override void OnPointerExited(PointerEventArgs e){base.OnPointerExited(e);if(_capture is null)_inside=false;InvalidateVisual();}
+    protected override void OnPointerEntered(PointerEventArgs e){base.OnPointerEntered(e);_pointer=Pointer(e);_pointerOver=true;_lastPointerPosition=_pointer.Screen;_inside=_context?.Video.Contains(_pointer.Screen)==true;InvalidateVisual();}
+    protected override void OnPointerExited(PointerEventArgs e){base.OnPointerExited(e);ClearPointer();InvalidateVisual();}
+    private void ClearPointer(){_pointerOver=false;_inside=false;_lastPointerPosition=null;}
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);if(IsPanning){if(e.InitialPressMouseButton==MouseButton.Middle)FinishPan(true);e.Handled=true;return;}if(_capture is null)return;
@@ -153,5 +156,5 @@ public sealed class VisualOverlayControl : Control
         e.Handled=true;
     }
     private void Fail(Exception exception){Model?.Registry.ReportFailure("video/visual-edit",exception);Cancel();}
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e){Cancel();base.OnDetachedFromVisualTree(e);}
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e){ClearPointer();Cancel();base.OnDetachedFromVisualTree(e);}
 }

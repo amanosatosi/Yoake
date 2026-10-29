@@ -63,6 +63,10 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                 case 7:
                     Require(model.VideoWindowZoom==2,"Menu Zoom Out subtracts exactly 12.5 points.");
                     Require(model.IsCrosshairTool,"New documents start with the coordinate tool.");
+                    Move(new(120,90),RawInputModifiers.None);var crosshair=RenderControl(Overlay);
+                    Overlay.RaiseEvent(new PointerEventArgs(InputElement.PointerExitedEvent,Overlay,_pointer,Host,Root(new(-10,-10)),0,new(RawInputModifiers.None,PointerUpdateKind.Other),Avalonia.Input.KeyModifiers.None));
+                    var exited=RenderControl(Overlay);model.NotifyVideoPresentation();var refreshed=RenderControl(Overlay);
+                    Require(!crosshair.SequenceEqual(exited)&&exited.SequenceEqual(refreshed),"Crosshair must disappear on pointer exit and remain hidden after a video refresh.");
                     var menu=Overlay.ContextMenu!.Items.OfType<MenuItem>().ToArray();
                     foreach(var id in new[]{"video/frame/save","video/frame/copy","video/frame/save/raw","video/frame/copy/raw","video/frame/save/subs","video/frame/copy/subs","video/copy_coordinates","video/reset_pan","video/detach"})
                         Require(menu.Any(item=>ReferenceEquals(item.Command,model.Actions[id])),"Video context menu exposes "+id);
@@ -160,9 +164,10 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
     private static readonly string[] ZoomIds=["video/zoom/50","video/zoom/100","video/zoom/200","video/zoom/in","video/zoom/out"];
     private static readonly string[] Seven=[..ZoomIds,"video/reset_pan","video/detach"];
     private VideoPresentation Area(){var r=Image.VideoArea;return new(r.X,r.Y,r.Width,r.Height);}
-    private byte[] RenderImage()
+    private byte[] RenderImage()=>RenderControl(Image);
+    private static byte[] RenderControl(Control control)
     {
-        using var bitmap=new RenderTargetBitmap(new PixelSize(Math.Max(1,(int)Image.Bounds.Width),Math.Max(1,(int)Image.Bounds.Height)),new Vector(96,96));bitmap.Render(Image);
+        using var bitmap=new RenderTargetBitmap(new PixelSize(Math.Max(1,(int)control.Bounds.Width),Math.Max(1,(int)control.Bounds.Height)),new Vector(96,96));bitmap.Render(control);
         var pixels=new byte[bitmap.PixelSize.Width*bitmap.PixelSize.Height*4];var pinned=GCHandle.Alloc(pixels,GCHandleType.Pinned);
         try{bitmap.CopyPixels(new PixelRect(bitmap.PixelSize),pinned.AddrOfPinnedObject(),pixels.Length,bitmap.PixelSize.Width*4);}finally{pinned.Free();}return pixels;
     }

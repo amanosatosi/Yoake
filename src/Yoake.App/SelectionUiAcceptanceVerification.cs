@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
+using Avalonia.Input.Raw;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Yoake.Core.Commands;
@@ -19,6 +20,7 @@ internal sealed class SelectionUiAcceptanceVerification(IClassicDesktopStyleAppl
 {
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
     private bool _ready,_ticking;private int _stage;private SelectLinesWindow? _select;private Task<bool>? _media;
+    private int _gridClickStage;private readonly Pointer _gridPointer=new(912,PointerType.Mouse,true);
     private SubtitleEditor? _editor;private AssEvent[] _rows=[];private string _source="";private EventEditDraft? _draft;
     private object? _samples,_times,_keys;private double _position;
     private string Marker=>Path.Combine(options.ProfileDirectory!,"selection-verified.txt");
@@ -43,7 +45,10 @@ internal sealed class SelectionUiAcceptanceVerification(IClassicDesktopStyleAppl
                     Require(model.OpenSubtitle(path),"Open selection fixture.");_editor=model.ActiveEditor;_rows=model.Events.ToArray();_source=_editor!.Document.Serialize();
                     Require(!model.Actions["subtitle/select/visible"].CanExecute(null),"Select visible must be disabled without video.");
                     window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen=true;return;
-                case 1:Press(window.FindControl<MenuItem>("SelectLinesMenu")!,Key.Enter);return;
+                case 1:
+                    if(!VerifyGridPointerSelection()){_stage--;return;}
+                    window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen=true;
+                    Press(window.FindControl<MenuItem>("SelectLinesMenu")!,Key.Enter);return;
                 case 2:
                     _select=window.OwnedWindows.OfType<SelectLinesWindow>().Single();Require(_select.IsVisible&&InSelect<TextBox>("SelectQuery").IsKeyboardFocusWithin,"Real Select Lines menu Enter must open and focus the actual tool.");
                     foreach(var name in new[]{"SelectQuery","SelectField","SelectMode","SelectAction","SelectRaw","SelectConfirm","SelectApply","SelectCancel"})Within(_select.FindControl<Control>(name)!,_select);
@@ -125,5 +130,32 @@ internal sealed class SelectionUiAcceptanceVerification(IClassicDesktopStyleAppl
     }
     private static void Within(Control control,Window owner)
     {var origin=control.TranslatePoint(new Point(0,0),owner);Require(origin is {} point&&control.Bounds.Width>0&&control.Bounds.Height>0&&point.X>=-1&&point.Y>=-1&&point.X+control.Bounds.Width<=owner.ClientSize.Width+1&&point.Y+control.Bounds.Height<=owner.ClientSize.Height+1,"Select Lines control must remain usable inside its native dialog: "+control.Name);}
+    private bool VerifyGridPointerSelection()
+    {
+        switch(_gridClickStage++)
+        {
+            case 0: ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
+            case 1:
+                Require(model.SelectedEvents.SequenceEqual(new[]{_rows[0]}),"A plain grid click selects one row.");
+                ClickRow(2,Avalonia.Input.KeyModifiers.Control);return false;
+            case 2:
+                Require(model.SelectedEvents.ToHashSet().SetEquals(new[]{_rows[0],_rows[2]})&&Grid.SelectedItems!.Cast<AssEvent>().ToHashSet().SetEquals(new[]{_rows[0],_rows[2]}),"Ctrl-click must retain both non-adjacent rows in the actual grid and document selection.");
+                ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
+            case 3: ClickRow(2,Avalonia.Input.KeyModifiers.Shift);return false;
+            case 4:
+                Require(model.SelectedEvents.ToHashSet().SetEquals(_rows)&&Grid.SelectedItems!.Cast<AssEvent>().ToHashSet().SetEquals(_rows),"Shift-click must select the full contiguous range in the actual grid and document selection.");
+                ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
+            default:
+                Require(model.SelectedEvents.SequenceEqual(new[]{_rows[0]}),"Plain click must restore single-row selection.");return true;
+        }
+    }
+    private void ClickRow(int index,Avalonia.Input.KeyModifiers modifiers)
+    {
+        var item=Grid.ContainerFromIndex(index) as ListBoxItem??throw new InvalidOperationException("Grid row is not realized: "+index);
+        var point=item.TranslatePoint(new Point(Math.Min(20,item.Bounds.Width/2),item.Bounds.Height/2),window)??throw new InvalidOperationException("Grid row is not attached.");
+        var raw=modifiers.HasFlag(Avalonia.Input.KeyModifiers.Control)?RawInputModifiers.Control:modifiers.HasFlag(Avalonia.Input.KeyModifiers.Shift)?RawInputModifiers.Shift:RawInputModifiers.None;
+        item.RaiseEvent(new PointerPressedEventArgs(item,_gridPointer,window,point,0,new(raw|RawInputModifiers.LeftMouseButton,PointerUpdateKind.LeftButtonPressed),modifiers));
+        item.RaiseEvent(new PointerReleasedEventArgs(item,_gridPointer,window,point,0,new(raw,PointerUpdateKind.LeftButtonReleased),modifiers,MouseButton.Left));
+    }
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
 }
