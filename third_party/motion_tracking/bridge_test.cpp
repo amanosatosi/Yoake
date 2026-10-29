@@ -11,7 +11,7 @@ __declspec(dllimport) int yoake_motion_track(const unsigned char*, int, const un
 
 int main() {
     constexpr int width = 128, height = 96, pitch = width * 4;
-    auto frame = [](int dx, int dy) {
+    auto frame = [=](int dx, int dy) {
         std::vector<unsigned char> result(pitch * height, 15);
         for (int y = 0; y < height; ++y) for (int x = 0; x < width; ++x) {
             int u = x - dx - 40, v = y - dy - 40;
