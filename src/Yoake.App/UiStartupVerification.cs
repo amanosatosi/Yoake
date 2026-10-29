@@ -125,6 +125,9 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
                 "Shipping redo menu must display the contextual command label after history changes.");
             if (!_emptyViewsCompleted)
             {
+                // Startup autoload runs asynchronously and adds scripts one by one.
+                // Capture a stable baseline only after that independent work ends.
+                if (!model.Actions[CommandIds.AutomationRescan].CanExecute(null)) return;
                 _emptyViews ??= new(window, model, options.VerificationReport!, false);
                 if (!_emptyViews.Tick()) return;
                 _emptyViewsCompleted = true;
@@ -149,7 +152,8 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             if (!_automation.Tick()) return;
             // Automation has just restored the original tab. Let its normal
             // asynchronous preview finish before comparing retained media.
-            if (_loadedViews is null && (model.VideoFrame is null || model.WaveformSamples is null || model.DisplayedPreviewRevision < model.PreviewRevision)) return;
+            if (_loadedViews is null && (model.VideoFrame is null || model.WaveformSamples is null || model.DisplayedPreviewRevision < model.PreviewRevision ||
+                !model.Actions[CommandIds.AutomationRescan].CanExecute(null))) return;
             _loadedViews ??= new(window, model, options.VerificationReport!, true);
             if (!_loadedViews.Tick()) return;
             Require(StartupDiagnostics.FrameworkErrorCount == 0, "Avalonia logged startup errors; inspect startup.log.");
