@@ -66,7 +66,7 @@ internal sealed class SelectionUiAcceptanceVerification(IClassicDesktopStyleAppl
                     Press(InSelect<Button>("SelectApply"),Key.Enter);return;
                 case 6:
                     if(model.HasEditOperation){_stage--;return;}
-                    Require(_select!.IsVisible&&model.SelectedEvents.SequenceEqual(new[]{_rows[0],_rows[1]})&&ReferenceEquals(_draft,model.Draft),"Actual Apply must select matching dialogue/comments without committing an unchanged active line's invalid draft.");SourceUnchanged();
+                    Require(_select!.IsVisible&&model.SelectedEvents.SequenceEqual(new[]{_rows[0],_rows[1]})&&ReferenceEquals(_draft,model.Draft),$"Actual Apply must select matching dialogue/comments without committing an unchanged active line's invalid draft (selection {string.Join(',',model.SelectedEvents.Select(row=>Array.IndexOf(_rows,row)))}, active {Array.IndexOf(_rows,model.SelectedEvent)}, same draft {ReferenceEquals(_draft,model.Draft)}, status {model.SelectionStatus}).");SourceUnchanged();
                     InSelect<ComboBox>("SelectMode").SelectedItem=SubtitleSelectionMode.Exact;Press(InSelect<Button>("SelectApply"),Key.Enter);return;
                 case 7:
                     if(model.HasEditOperation){_stage--;return;}
@@ -146,7 +146,7 @@ internal sealed class SelectionUiAcceptanceVerification(IClassicDesktopStyleAppl
                 Require(model.SelectedEvents.ToHashSet().SetEquals(_rows)&&Grid.SelectedItems!.Cast<AssEvent>().ToHashSet().SetEquals(_rows),"Shift-click must select the full contiguous range in the actual grid and document selection.");
                 ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
             default:
-                Require(model.SelectedEvents.SequenceEqual(new[]{_rows[0]}),"Plain click must restore single-row selection.");return true;
+                Require(model.SelectedEvents.SequenceEqual(new[]{_rows[0]})&&ReferenceEquals(model.SelectedEvent,_rows[0]),"Plain click must restore single-row selection and activate the clicked row.");return true;
         }
     }
     private void ClickRow(int index,Avalonia.Input.KeyModifiers modifiers)

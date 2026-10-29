@@ -372,7 +372,7 @@ public partial class MainWindow : Window, IEditorDialogs
             // binding/layout callbacks. Preserve the grid's complete selection
             // before that transition rather than reading a potentially changed list.
             var selected=SubtitleRows.SelectedItems.OfType<AssEvent>().ToArray();
-            var next=e.AddedItems.OfType<AssEvent>().LastOrDefault()??e.RemovedItems.OfType<AssEvent>().LastOrDefault()??selected.FirstOrDefault();
+            var next=e.AddedItems.OfType<AssEvent>().LastOrDefault()??selected.FirstOrDefault();
             _model.SelectedEvent=next;
             if(_model.SelectedEvent!=next){Dispatcher.UIThread.Post(SyncSelection);return;}
             _model.SetSelectedEvents(selected);
