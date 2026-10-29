@@ -20,7 +20,8 @@ $searchDirectories = @(
   (Join-Path $NativeRoot 'ffms2\bin'),
   (Join-Path $NativeRoot 'ffmpeg\x64-windows\bin'),
   (Join-Path $NativeRoot 'mangetsu\bin'),
-  (Join-Path $NativeRoot 'automation\bin')
+  (Join-Path $NativeRoot 'automation\bin'),
+  (Join-Path $NativeRoot 'motion\bin')
 )
 foreach ($directory in @($searchDirectories)) {
   if (-not (Test-Path -LiteralPath $directory)) { throw "Missing native runtime source directory: $directory" }
@@ -118,7 +119,8 @@ $entryDlls = @(
   (Join-Path $NativeRoot 'ffms2\bin\ffms2.dll'),
   (Join-Path $NativeRoot 'mangetsu\bin\mangetsu.dll'),
   (Join-Path $NativeRoot 'automation\bin\yoake-automation.dll'),
-  (Join-Path $NativeRoot 'automation\bin\yoake-automation-modern.dll')
+  (Join-Path $NativeRoot 'automation\bin\yoake-automation-modern.dll'),
+  (Join-Path $NativeRoot 'motion\bin\yoake-motion.dll')
 )
 foreach ($entryDll in $entryDlls) {
   if (-not (Test-Path -LiteralPath $entryDll)) { throw "Missing native runtime entry DLL: $entryDll" }
@@ -154,7 +156,7 @@ foreach ($key in ($selected.Keys | Sort-Object)) {
 
 $manifest = [ordered]@{
   architecture = 'win-x64'
-  entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll', 'yoake-automation-modern.dll')
+  entrypoints = @('ffms2.dll', 'mangetsu.dll', 'yoake-automation.dll', 'yoake-automation-modern.dll', 'yoake-motion.dll')
   files = @(
     Get-ChildItem -LiteralPath $runtimeRoot -Filter '*.dll' -File | Sort-Object Name | ForEach-Object {
       [ordered]@{

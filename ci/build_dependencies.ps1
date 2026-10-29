@@ -211,13 +211,13 @@ if ($Stage -in @('Mangetsu', 'All')) {
 }
 
 if ($Stage -in @('Finalize', 'All')) {
-  foreach ($component in @('ffmpeg','ffms2','mangetsu','automation')) {
+  foreach ($component in @('ffmpeg','ffms2','mangetsu','automation','motion')) {
     if (-not (Test-Path -LiteralPath (Join-Path $OutputRoot "$component\.complete"))) { throw "Native dependency stage is incomplete: $component" }
   }
   $licenseRoot = Join-Path $OutputRoot 'licenses'
   if (Test-Path $licenseRoot) { Remove-Item $licenseRoot -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $licenseRoot | Out-Null
-  foreach ($component in @($ffmpegInstall,$ffmsInstall,$mangetsuInstall,$automationInstall)) {
+  foreach ($component in @($ffmpegInstall,$ffmsInstall,$mangetsuInstall,$automationInstall,(Join-Path $OutputRoot 'motion'))) {
     Get-ChildItem (Join-Path $component 'licenses') -File | ForEach-Object { Copy-Item $_.FullName $licenseRoot }
   }
   Copy-Item (Join-Path $repoRoot 'third_party\versions.json') (Join-Path $OutputRoot 'versions.json')

@@ -1,5 +1,14 @@
 # Third-party notices
 
+The motion provider includes `motion_track_engine.cpp`, `motion_track_engine.h`,
+and `motion_track_types.h` from [Aegisub Toshi-ban](https://github.com/amanosatosi/Aegisub_Toshi-ban),
+commit `55d1ef059d2710be589aab3a24397f5644ac9125`, under `src/motion_tracking/`.
+These files are unmodified; Yoake adds a separate C ABI bridge. The Aegisub
+BSD 3-Clause license is included in `third_party/licenses/Aegisub-BSD-3-Clause.txt`.
+The provider statically links OpenCV from the vcpkg registry revision used by
+that fork; OpenCV is Apache-2.0 licensed, and dependency license texts are
+copied into the portable package by the native build.
+
 This source tree references or packages the following third-party components. Portable binary packages copy the applicable license texts into `licenses/`.
 
 ## Avalonia

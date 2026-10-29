@@ -245,6 +245,9 @@ jobs:
         with:
           name: Automation-tested-native-runtime
           path: .ci-cache/native/automation
+      - name: Build bundled OpenCV motion provider
+        shell: pwsh
+        run: .\ci\build_motion_tracking.ps1 -OutputRoot .ci-cache\native
       - name: Finalize dependency stack and license bundle
         shell: pwsh
         run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Finalize

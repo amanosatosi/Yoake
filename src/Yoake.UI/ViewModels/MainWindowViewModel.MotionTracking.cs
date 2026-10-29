@@ -5,6 +5,8 @@ using Yoake.UI.Commands;
 
 namespace Yoake.UI.ViewModels;
 
+public readonly record struct MotionApplyOptions(bool X, bool Y, bool Scale, bool Rotation, bool Optimize);
+
 public sealed partial class MainWindowViewModel
 {
     public MotionTrackingSession? MotionTracking { get; private set; }
@@ -68,17 +70,33 @@ public sealed partial class MainWindowViewModel
         Register("motion-track/forward-frame", "Track one frame forward", async (_, _) => await MotionTracking!.TrackAsync(1, singleFrame: true), Idle);
         Register("motion-track/stop", "Stop tracking", (_, _) => { MotionTracking!.Stop(); return ValueTask.CompletedTask; }, () => MotionTracking is { Busy: true });
         Register("motion-track/viewable", "Viewable preview", (invocation, _) => { MotionTracking!.Viewable = invocation.Parameter is true; return ValueTask.CompletedTask; }, Idle);
-        Register("motion-track/apply", "Apply position tracking", async (_, token) =>
+        Register("motion-track/model", "Tracking model", (invocation, _) => { if (invocation.Parameter is MotionModel model && MotionTracking!.Model != model) { MotionTracking.Model = model; MotionTracking.Reset(); } return ValueTask.CompletedTask; }, Idle);
+        Register("motion-track/channel", "Tracking channel", (invocation, _) => { if (invocation.Parameter is bool clip && MotionTracking!.TrackClip != clip) { MotionTracking.TrackClip = clip; MotionTracking.Reset(); } return ValueTask.CompletedTask; }, Idle);
+        Register("motion-track/options", "Advanced tracking apply options", (invocation, _) =>
+        {
+            if (invocation.Parameter is MotionApplyOptions options)
+            {
+                MotionTracking!.ApplyX = options.X; MotionTracking.ApplyY = options.Y; MotionTracking.ApplyScale = options.Scale;
+                MotionTracking.ApplyRotation = options.Rotation; MotionTracking.Optimize = options.Optimize;
+            }
+            return ValueTask.CompletedTask;
+        }, Idle);
+        Register("motion-track/apply", "Apply motion tracking", async (_, token) =>
         {
             if (ActiveEditor!.Document.Revision != _motionRevision || Draft?.IsChanged == true) throw new InvalidOperationException("The subtitle document changed during tracking. Reopen motion tracking before applying.");
             var session = MotionTracking!; var size = ScriptSize; var editor = ActiveEditor;
             var targets = _motionTargets; var points = session.Points; var reference = session.ReferenceFrame;
+            var model = session.Model; var clip = session.TrackClip;
+            var options = new MotionApplyOptions(session.ApplyX, session.ApplyY, session.ApplyScale, session.ApplyRotation, session.Optimize);
             await session.ApplyAsync(async lifetime =>
             {
                 using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(token, lifetime);
                 var plans = await Task.Run(() => targets.Select(target => new SubtitleEditor.MotionPlan(target.Line, target.Source,
                     MotionTrackApply.Plan(target.Source, points, session.FrameTimes, reference, target.Start, target.End,
-                        size.Width / session.Width, size.Height / session.Height, cancellation.Token))).ToArray(), cancellation.Token);
+                        size.Width / session.Width, size.Height / session.Height, cancellation.Token,
+                        applyScale: options.Scale && (model is MotionModel.PositionScale or MotionModel.PositionScaleRotation),
+                        applyRotation: options.Rotation && (model is MotionModel.PositionRotation or MotionModel.PositionScaleRotation),
+                        applyClip: clip, applyX: options.X, applyY: options.Y, optimize: options.Optimize))).ToArray(), cancellation.Token);
                 cancellation.Token.ThrowIfCancellationRequested();
                 if (!MotionOwnerCurrent || !ReferenceEquals(ActiveEditor, editor) || editor.Document.Revision != _motionRevision || Draft?.IsChanged == true ||
                     !SelectedEvents.Where(item => !item.IsComment).SequenceEqual(targets.Select(item => item.Line)))

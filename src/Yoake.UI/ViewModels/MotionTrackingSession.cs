@@ -28,6 +28,13 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
     public double AspectRatio => _provider.DisplayAspectRatio > 0 ? _provider.DisplayAspectRatio : Width / (double)Height;
     public TrackingRegion Region { get; private set; }
     public bool Viewable { get; set; }
+    public MotionModel Model { get; set; } = MotionModel.Position;
+    public bool TrackClip { get; set; }
+    public bool ApplyX { get; set; } = true;
+    public bool ApplyY { get; set; } = true;
+    public bool ApplyScale { get; set; } = true;
+    public bool ApplyRotation { get; set; } = true;
+    public bool Optimize { get; set; }
     public bool Busy { get; private set; }
     public string Status { get; private set; } = "Draw the pattern around a textured object. Orange is the search area.";
     public WriteableBitmap? Preview { get; private set; }
@@ -76,18 +83,20 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
         var viewable = Viewable;
         // Retain the opposite section; replace stale samples in this direction.
         foreach (var frame in _points.Keys.Where(f => direction > 0 ? f > first : f < first).ToArray()) _points.Remove(frame);
-        _points[first] = new(first, region.X, region.Y);
+        var initial = CurrentPoint ?? new TrackingPoint(first, region.X, region.Y);
+        _points[first] = initial;
         await Task.Run(async () =>
         {
             token.ThrowIfCancellationRequested();
             var image = _provider.GetFrame(first);
-            var tracker = new MotionPatternTracker(image.Pixels, image.Width, image.Height, image.Stride, region);
-            var previous = new TrackingPoint(first, region.X, region.Y);
+            var previous = initial;
+            var model = Model;
             var elapsed = Stopwatch.StartNew();
             for (var frame = first + direction; frame >= FirstFrame && frame <= LastFrame; frame += direction)
             {
-                token.ThrowIfCancellationRequested(); image = _provider.GetFrame(frame, image.Pixels); token.ThrowIfCancellationRequested();
-                var tracked = tracker.Track(image.Pixels, image.Width, image.Height, image.Stride, previous, frame, token);
+                token.ThrowIfCancellationRequested(); var nextImage = _provider.GetFrame(frame); token.ThrowIfCancellationRequested();
+                var tracked = OpenCvMotionTracker.Track(image, nextImage, region, previous, frame, model, .75, token);
+                image = nextImage;
                 var show = singleFrame || viewable || elapsed.ElapsedMilliseconds >= 120 || tracked.Confidence < .65 || frame == FirstFrame || frame == LastFrame;
                 var captured = image;
                 await Dispatcher.UIThread.InvokeAsync(() =>

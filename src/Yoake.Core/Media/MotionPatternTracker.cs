@@ -1,6 +1,6 @@
 namespace Yoake.Core.Media;
 
-public readonly record struct TrackingPoint(int Frame, double X, double Y, double Confidence = 1);
+public readonly record struct TrackingPoint(int Frame, double X, double Y, double Confidence = 1, double Scale = 1, double Rotation = 0);
 public readonly record struct TrackingRegion(double X, double Y, int Width, int Height, int SearchWidth, int SearchHeight)
 {
     public void Validate(int width, int height)

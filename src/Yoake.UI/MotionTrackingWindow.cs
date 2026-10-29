@@ -6,6 +6,7 @@ using Avalonia.Media;
 using Yoake.Core.Commands;
 using Yoake.Core.Media;
 using Yoake.UI.ViewModels;
+using Yoake.Native;
 
 namespace Yoake.UI;
 
@@ -17,11 +18,14 @@ public sealed class MotionTrackingWindow : Window
     private readonly TextBlock _status = new(), _frameLabel = new();
     private readonly NumericUpDown _patternWidth, _patternHeight, _searchWidth, _searchHeight;
     private readonly CheckBox _viewable = new() { Content = "Viewable (show each frame)", IsChecked = false };
+    private readonly ComboBox _mode;
+    private readonly ComboBox _channel;
+    private readonly CheckBox[] _applyOptions;
     private bool _updating;
     public MotionTrackingWindow(MainWindowViewModel model)
     {
         _session = model.MotionTracking ?? throw new InvalidOperationException("No tracking session.");
-        Name = "MotionTrackingWindow"; Title = "Motion tracking · Position"; Width = 900; Height = 650; MinWidth = 620; MinHeight = 460;
+        Name = "MotionTrackingWindow"; Title = "Motion tracking"; Width = 900; Height = 650; MinWidth = 620; MinHeight = 460;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var names = new NameScope();
         NameScope.SetNameScope(this, names);
@@ -44,6 +48,12 @@ public sealed class MotionTrackingWindow : Window
         Grid.SetColumn(next, 2); navigation.Children.Add(next); Grid.SetColumn(_frameLabel, 3); navigation.Children.Add(_frameLabel);
         Grid.SetRow(navigation, 2); root.Children.Add(navigation);
         var settings = new WrapPanel { Orientation = Orientation.Horizontal };
+        _channel = new ComboBox { Width = 115, ItemsSource = new[] { "Subtitle", "Clip" }, SelectedIndex = 0 };
+        _channel.SelectionChanged += (_, _) => { if (!_updating && _channel.SelectedIndex >= 0) model.Actions["motion-track/channel"].Execute(_channel.SelectedIndex == 1); };
+        settings.Children.Add(_channel);
+        _mode = new ComboBox { Width = 165, ItemsSource = new[] { "Movement", "Movement + rotation", "Movement + size", "Movement + size + rotation" }, SelectedIndex = 0 };
+        _mode.SelectionChanged += (_, _) => { if (!_updating && _mode.SelectedIndex >= 0) model.Actions["motion-track/model"].Execute((MotionModel)_mode.SelectedIndex); };
+        settings.Children.Add(_mode);
         _patternWidth = Number("Pattern W", _session.Region.Width, 8, 256, settings);
         _patternHeight = Number("H", _session.Region.Height, 8, 256, settings);
         _searchWidth = Number("Search W", _session.Region.SearchWidth, 12, 512, settings);
@@ -63,8 +73,20 @@ public sealed class MotionTrackingWindow : Window
         Grid.SetRow(settings, 3); root.Children.Add(settings);
         var footer = new StackPanel { Spacing = 6 };
         _status.TextWrapping = TextWrapping.Wrap; footer.Children.Add(_status);
+        _applyOptions = new[] { new CheckBox { Content = "X", IsChecked = true }, new CheckBox { Content = "Y", IsChecked = true },
+            new CheckBox { Content = "Size", IsChecked = true }, new CheckBox { Content = "Rotation", IsChecked = true },
+            new CheckBox { Content = "Optimize position", IsChecked = false } };
+        var advanced = new WrapPanel();
+        foreach (var option in _applyOptions)
+        {
+            option.Margin = new(0, 0, 12, 0); advanced.Children.Add(option);
+            option.IsCheckedChanged += (_, _) => { if (!_updating) model.Actions["motion-track/options"].Execute(new MotionApplyOptions(
+                _applyOptions[0].IsChecked == true, _applyOptions[1].IsChecked == true, _applyOptions[2].IsChecked == true,
+                _applyOptions[3].IsChecked == true, _applyOptions[4].IsChecked == true)); };
+        }
+        footer.Children.Add(new Expander { Header = "Advanced apply", Content = advanced });
         var actions = new WrapPanel();
-        foreach (var (label, id) in new[] { ("Set reference", "reference"), ("Track backward", "backward"), ("Back 1 frame", "backward-frame"), ("Forward 1 frame", "forward-frame"), ("Track forward", "forward"), ("Stop", "stop"), ("Reset", "reset"), ("Apply position", "apply") })
+        foreach (var (label, id) in new[] { ("Set reference", "reference"), ("Track backward", "backward"), ("Back 1 frame", "backward-frame"), ("Forward 1 frame", "forward-frame"), ("Track forward", "forward"), ("Stop", "stop"), ("Reset", "reset"), ("Apply tracking", "apply") })
         {
             var button = new Button { Name = "MotionTrack_" + id, Content = label, Command = model.Actions["motion-track/" + id], Margin = new(0, 0, 6, 0), Padding = new(8, 3) };
             names.Register(button.Name!, button);
@@ -99,7 +121,8 @@ public sealed class MotionTrackingWindow : Window
             _status.Text = _session.Status;
             _patternWidth.Value = _session.Region.Width; _patternHeight.Value = _session.Region.Height;
             _searchWidth.Value = _session.Region.SearchWidth; _searchHeight.Value = _session.Region.SearchHeight;
-            foreach (var control in new Control[] { _patternWidth, _patternHeight, _searchWidth, _searchHeight, _viewable }) control.IsEnabled = !_session.Busy;
+            foreach (var control in new Control[] { _patternWidth, _patternHeight, _searchWidth, _searchHeight, _viewable, _mode, _channel }) control.IsEnabled = !_session.Busy;
+            foreach (var option in _applyOptions) option.IsEnabled = !_session.Busy;
             _preview.InvalidateVisual();
         }
         finally { _updating = false; }

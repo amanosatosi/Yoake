@@ -6,6 +6,27 @@ namespace Yoake.Core.Tests;
 public sealed class MotionTrackingTests
 {
     [Fact]
+    public void ScaleAndRotationAreEncodedAndConflictingAuthoredStateIsRejected()
+    {
+        TrackingPoint[] points = [new(0, 40, 40, 1, 1, 0), new(1, 42, 41, 1, 1.1, 5), new(2, 44, 42, 1, 1.2, 10)];
+        var text = MotionTrackApply.Plan(@"{\future(x)}text", points, [0, .04, .08], 0, 0, 80, 1, 1,
+            applyScale: true, applyRotation: true);
+        Assert.Contains(@"\scale~+10", text); Assert.Contains(@"\frz~-5", text);
+        Assert.EndsWith("text", text);
+        Assert.Throws<ArgumentException>(() => MotionTrackApply.Plan(@"{\scale125}text", points, [0, .04, .08], 0, 0, 80, 1, 1, applyScale: true));
+    }
+    [Fact]
+    public void ClipTrackingKeepsGeometryAndRefusesCompetingTransforms()
+    {
+        TrackingPoint[] points = [new(0, 40, 40), new(1, 42, 41), new(2, 44, 42)];
+        var source = @"{\iclip(m 0 0 l 50 50)\future(x)}text";
+        var text = MotionTrackApply.Plan(source, points, [0, .04, .08], 0, 0, 80, 1, 1, applyClip: true);
+        Assert.Contains(@"\iclip(m 0 0 l 50 50)\future(x)", text);
+        Assert.Contains(@"\clippos(~+4,~-2)", text);
+        Assert.Throws<ArgumentException>(() => MotionTrackApply.Plan(@"{\clip(0,0,20,20)\clippos(2,3)}text", points, [0, .04, .08], 0, 0, 80, 1, 1, applyClip: true));
+        Assert.Throws<ArgumentException>(() => MotionTrackApply.Plan("text", points, [0, .04, .08], 0, 0, 80, 1, 1, applyClip: true));
+    }
+    [Fact]
     public void MultipleMotionPlansPublishAsOneUndoAndRejectStaleRows()
     {
         var document = AssDocument.Parse("[Events]\nFormat: Start, End, Text\nDialogue: 0:00:00.00,0:00:00.08,first\nDialogue: 0:00:00.00,0:00:00.08,second\n");
