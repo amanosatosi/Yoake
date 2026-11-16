@@ -96,7 +96,7 @@ public sealed partial class MainWindowViewModel
         FinishKaraokeGesture(false); if (SelectedEvent is {} line) KaraokeState?.Karaoke.Remove(line);
         EnsureKaraoke(); if (KaraokePlan is {} plan) { var saved = plan.Capture(0) with { Changed = false }; ReplaceKaraoke(ToshikiTimingPlan.Restore(saved)); }
         if (KaraokeState is {} state) { state.DraftRevision++; state.KaraokeStatus = "Timing edits canceled; the editor draft is retained."; }
-        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||KaraokeState?.RecoveredUnsaved==true||KaraokeState?.Karaoke.Values.Any(e=>e.Plan.Changed)==true;
+        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||KaraokeState?.UnsavedSource==true||KaraokeState?.Karaoke.Values.Any(e=>e.Plan.Changed)==true;
         NotifyKaraoke();
     }
     private void ReplaceKaraoke(ToshikiTimingPlan plan)
@@ -172,7 +172,7 @@ public sealed partial class MainWindowViewModel
         if (!commit&&_karaokeGestureOwner is {} owner&&_karaokeGestureLine is {} line&&_karaokeGestureEntry is {} entry&&_documents.TryGetValue(owner,out var state)&&state.Editor.Document.Events.Contains(line))
             state.Karaoke[line]=entry with{Plan=ToshikiTimingPlan.Restore(before)};
         _karaokeGestureOwner=null;_karaokeGestureLine=null;_karaokeGestureEntry=null;
-        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||KaraokeState?.RecoveredUnsaved==true||KaraokeState?.Karaoke.Values.Any(e=>e.Plan.Changed)==true;
+        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||KaraokeState?.UnsavedSource==true||KaraokeState?.Karaoke.Values.Any(e=>e.Plan.Changed)==true;
         NotifyKaraoke(); GestureEnded?.Invoke(this, EventArgs.Empty);
     }
     private void RegisterKaraokeCommands()
@@ -206,7 +206,7 @@ public sealed partial class MainWindowViewModel
             catch
             {
                 ReplaceKaraoke(ToshikiTimingPlan.Restore(before));
-                if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||KaraokeState?.RecoveredUnsaved==true||KaraokeState?.Karaoke.Values.Any(e=>e.Plan.Changed)==true;
+                if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||KaraokeState?.UnsavedSource==true||KaraokeState?.Karaoke.Values.Any(e=>e.Plan.Changed)==true;
                 NotifyKaraoke();throw;
             }
         },()=>Available()&&KaraokeMatchesDraft&&ValidAudioTimingDraft());

@@ -41,7 +41,7 @@ public sealed partial class MainWindowViewModel
             // Recovery opens another tab. It must not commit/discard the draft,
             // history or media of an already-open original (even an invalid draft).
             var session=_workspace.CreateUntitled();Attach(session,recovered.Document);
-            var state=_documents[session.Id];state.RecoveredUnsaved=true;state.RecoveryProvenance=recovered.Metadata.OriginalPath;
+            var state=_documents[session.Id];state.UnsavedSource=true;state.RecoveryProvenance=recovered.Metadata.OriginalPath;
             session.Title="Recovered - "+recovered.Metadata.Title;
             if(recovered.Metadata.Karaoke is {} karaoke)
             {
@@ -94,7 +94,7 @@ public sealed partial class MainWindowViewModel
         {
             if(!_documents.TryGetValue(session.Id,out var state)||state.RecoveryWriting is not null)continue;
             var draft=session.Id==_activeId?Draft:state.RetainedDraft;
-            if(!state.Editor.IsDirty&&!state.RecoveredUnsaved&&draft?.IsChanged!=true&&!state.Karaoke.Values.Any(e=>e.Plan.Changed))continue;
+            if(!state.Editor.IsDirty&&!state.UnsavedSource&&draft?.IsChanged!=true&&!state.Karaoke.Values.Any(e=>e.Plan.Changed))continue;
             if(state.Editor.Undo.IsTransactionActive||(session.Id==_activeId&&HasGesture))continue; // no partially applied edit transaction
             var stamp=$"{state.Editor.Document.Revision}/{state.DraftRevision}/{draft?.IsChanged}/{session.Path}/{session.Title}";
             if(stamp==state.LastRecoveryStamp)continue;

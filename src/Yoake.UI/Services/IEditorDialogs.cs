@@ -28,6 +28,7 @@ public interface IEditorDialogs
     Task<AutomationExportChoice?> ShowAutomationExportAsync(IReadOnlyList<AutomationExportOption> options, IReadOnlyList<string> selected, string encoding, CancellationToken token) => throw new NotSupportedException("Automation export is unavailable.");
     Task<FontChoice?> ChooseFontAsync(string family,string size)=>Task.FromResult<FontChoice?>(null);
     Task<AssColor?> ChooseColorAsync(AssColor color)=>Task.FromResult<AssColor?>(null);
+    Task<ulong?> ChooseSubtitleTrackAsync(IReadOnlyList<Yoake.Core.Media.MatroskaSubtitleTrack> tracks,CancellationToken token=default)=>Task.FromResult<ulong?>(null);
     Task<int?> ChooseSubtitleEncodingAsync()=>Task.FromResult<int?>(null);
     Task<string?> OpenSubtitleAsync();
     Task<string?> OpenMediaAsync();

@@ -54,6 +54,7 @@
 <MenuItem Name="FileMenu" Header="File">
 <MenuItem Header="Recent files" ItemsSource="{Binding RecentFiles}"><MenuItem.ItemTemplate><DataTemplate x:DataType="x:String"><Button Content="{Binding}" Click="RecentFileClick" /></DataTemplate></MenuItem.ItemTemplate></MenuItem>
 <MenuItem Name="NewMenu" Header="New" InputGesture="{Binding Actions[subtitle/new].InputGesture}" Command="{Binding Actions[subtitle/new]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.New}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="OpenEmbeddedSubtitlesMenu" Header="Open subtitles from video…" Command="{Binding Actions[subtitle/open/video]}" />
 <MenuItem Name="OpenCharsetMenu" Header="Open with character set…" Command="{Binding Actions[subtitle/open/charset]}" />
 <MenuItem Header="Open…" InputGesture="{Binding Actions[subtitle/open].InputGesture}" Command="{Binding Actions[subtitle/open]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Open}" /></MenuItem.Icon></MenuItem>
 <MenuItem Name="RecoveryMenu" Header="Recover Subtitles…" InputGesture="{Binding Actions[subtitle/open/autosave].InputGesture}" Command="{Binding Actions[subtitle/open/autosave]}" />

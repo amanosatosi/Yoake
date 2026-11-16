@@ -6,6 +6,12 @@ public partial class MainWindow
 {
     public Task ShowPostprocessAsync(MainWindowViewModel model,Guid owner,CancellationToken token)
     { token.ThrowIfCancellationRequested();if(model.ActiveDocumentId==owner)new PostprocessWindow(model,owner).Show(this);return Task.CompletedTask; }
+    public async Task<ulong?> ChooseSubtitleTrackAsync(IReadOnlyList<Yoake.Core.Media.MatroskaSubtitleTrack> tracks,CancellationToken token=default)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new SubtitleTrackWindow(tracks);
+        using var registration=token.Register(()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>dialog.Close((ulong?)null)));
+        return await dialog.ShowDialog<ulong?>(this);
+    }
     public Task<int?> ChooseSubtitleEncodingAsync()=>new SubtitleEncodingWindow().ShowDialog<int?>(this);
     public Task ShowMangetsuMetadataAsync(MainWindowViewModel model,Guid owner,CancellationToken token)
     { token.ThrowIfCancellationRequested();if(model.ActiveDocumentId==owner)new MangetsuMetadataWindow(model,owner).Show(this);return Task.CompletedTask; }

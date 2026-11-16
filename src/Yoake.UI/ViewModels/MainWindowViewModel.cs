@@ -58,7 +58,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public long RecoverySequence, DraftRevision;
         public string? LastRecoveryStamp;
         public EventEditDraft? RetainedDraft;
-        public bool RecoveredUnsaved;
+        public bool UnsavedSource;
         public string? RecoveryProvenance;
         public CancellationTokenSource? AttachmentWork;
         public RecoveryLease AttachmentLease=new();
@@ -164,7 +164,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
         if(_activeId is not {} draftOwner||!_documents.TryGetValue(draftOwner,out var draftState)||draftState.MediaDraftPauses==0&&!draftState.KaraokeEnabled)
         {var delay=new CancellationTokenSource();_editBurstDelay=delay;_=FinalizeBurstAsync(delay.Token);}
-        if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||(_documents.GetValueOrDefault(session.Id)?.Karaoke.Values.Any(e=>e.Plan.Changed)??false)||(_documents.GetValueOrDefault(session.Id)?.RecoveredUnsaved??false);
+        if (_workspace.ActiveDocument is {} session) session.IsDirty=(ActiveEditor?.IsDirty??false)||(Draft?.IsChanged??false)||(_documents.GetValueOrDefault(session.Id)?.Karaoke.Values.Any(e=>e.Plan.Changed)??false)||(_documents.GetValueOrDefault(session.Id)?.UnsavedSource??false);
         _registry.NotifyStateChanged();
         if(e.PropertyName is nameof(EventEditDraft.Text) or nameof(EventEditDraft.Style))RefreshFormatting();
         KaraokeDraftChanged();
@@ -251,6 +251,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterFastActorCommands();
         RegisterAssistantCommands();
         RegisterEncodingCommands();
+        RegisterEmbeddedSubtitleCommands();
         RegisterMangetsuMetadataCommands();
         RegisterGridCommands();
         RegisterLineCommands();
@@ -298,7 +299,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if(!_publishingKaraoke)EnsureKaraokeSafe();NotifyKaraoke(false);UpdateAudioPlaybackEnd();
         if(AssVisualTags.Clip(Draft?.Text??"") is {} clip)InverseClip=clip.Inverse;
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));OnPropertyChanged(nameof(SelectedIsComment));
-        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(_documents.GetValueOrDefault(session.Id)?.Karaoke.Values.Any(e=>e.Plan.Changed)??false)||(_documents.GetValueOrDefault(session.Id)?.RecoveredUnsaved??false);
+        if(_workspace.ActiveDocument is {} session)session.IsDirty=(ActiveEditor?.IsDirty??false)||(_documents.GetValueOrDefault(session.Id)?.Karaoke.Values.Any(e=>e.Plan.Changed)??false)||(_documents.GetValueOrDefault(session.Id)?.UnsavedSource??false);
     }
     private void CreateNewDocument()
     {
@@ -316,7 +317,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         document.Changed+=(_,_)=> { CancelFontWork(session.Id);if(!_publishingAttachments)CancelAttachmentWork(session.Id);state.AudioTiming.Reconcile();ReconcileKaraoke(state);state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
-            session.IsDirty=state.Editor.IsDirty||state.RecoveredUnsaved||state.Karaoke.Values.Any(e=>e.Plan.Changed)||(_activeId==session.Id&&Draft?.IsChanged==true);
+            session.IsDirty=state.Editor.IsDirty||state.UnsavedSource||state.Karaoke.Values.Any(e=>e.Plan.Changed)||(_activeId==session.Id&&Draft?.IsChanged==true);
             var names=document.Styles.Select(s=>s.Name).ToArray();var namesChanged=!names.SequenceEqual(state.StyleNames);
             if(namesChanged)state.StyleNames=names;
             if(_activeId==session.Id)
@@ -349,7 +350,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if(session is not null && session.Id==originatingTab && session.Path is null && !session.IsDirty &&
            _documents.TryGetValue(session.Id,out var state) && !state.Editor.IsDirty &&
            !state.Editor.Undo.CanUndo && !state.Editor.Undo.CanRedo && Draft?.IsChanged!=true &&
-           !state.RecoveredUnsaved && state.Media is null && state.ExternalTimecodes is null && state.ExternalKeyframes is null &&
+           !state.UnsavedSource && state.Media is null && state.ExternalTimecodes is null && state.ExternalKeyframes is null &&
            state.Loading is null && state.VideoLoading is null && state.AudioLoading is null &&
            state.TimecodeLoading is null && state.KeyframeLoading is null && state.Editing is null &&
            !state.Karaoke.Values.Any(k=>k.Plan.Changed) &&
@@ -433,7 +434,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                 session.Path = full; session.Title = Path.GetFileName(full);
                 transaction.Commit();
             }
-            InvalidateRecovery(session.Id);_documents[session.Id].RecoveredUnsaved=false;
+            InvalidateRecovery(session.Id);_documents[session.Id].UnsavedSource=false;
             ActiveEditor.MarkSaved(); Remember(full); SubtitleStatus = $"Saved {session.Title}";
             OnPropertyChanged(nameof(ActiveSubtitlePath)); return true;
         }
@@ -452,7 +453,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         CancelGesture();
         if (!CommitDraft()) return false;
         if (!_workspace.Activate(id)) return false;
-        if (state.Editor.IsDirty||state.RecoveredUnsaved||state.Karaoke.Values.Any(e=>e.Plan.Changed))
+        if (state.Editor.IsDirty||state.UnsavedSource||state.Karaoke.Values.Any(e=>e.Plan.Changed))
         {
             var choice=Dialogs is null ? UnsavedChoice.Cancel : await Dialogs.ConfirmUnsavedAsync(_workspace.ActiveDocument!.Title);
             if (choice==UnsavedChoice.Cancel) return false;

@@ -22,6 +22,10 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private MangetsuMetadataWindow? _metadata;
     private PostprocessWindow? _postprocess;
     private string _postprocessBefore="",_recombineBefore="";
+    private SubtitleTrackWindow? _track;
+    private Task? _extract;
+    private Guid _originalDocument;
+    private string _embeddedBefore="";
     private SubtitleEncodingWindow? _encoding;
     private Task<int?>? _encodingResult;
     private byte[] _legacyBytes=[];
@@ -150,7 +154,28 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                 case 23:
                     Require(model.Events.Count==2&&model.Events[0].Text=="日本語"&&model.Events[1].Text=="မြန်မာ","The native Recombine menu must remove the combined duplicate.");
                     await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor!.Document.Serialize()==_recombineBefore,"Recombine must restore exact source in one undo step.");
-                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor and Recombine with undo/redo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    _originalDocument=model.ActiveDocumentId!.Value;_embeddedBefore=model.ActiveEditor.Document.Serialize();
+                    model.Draft!.Start="unfinished";
+                    var embedded=Path.Combine(options.VerificationMedia??throw new InvalidOperationException("Embedded subtitle fixture directory is required."),"subtitles.mkv");
+                    _extract=model.Registry.InvokeAsync("subtitle/open/video",new(model.ActiveDocumentId),new OpenEmbeddedSubtitlesRequest(embedded)).AsTask();return;
+                case 24:
+                    _track=window.OwnedWindows.OfType<SubtitleTrackWindow>().SingleOrDefault();
+                    if(_track is null){Require(_extract is { IsCompleted:false },"Extraction must display a track chooser.");_stage--;return;}
+                    Require(_track.TryGetPlatformHandle() is { Handle:not 0 },"Track chooser must own a native window.");
+                    var tracks=_track.FindControl<ListBox>("SubtitleTracks")!;
+                    tracks.SelectedItem=tracks.Items.Cast<Yoake.Core.Media.MatroskaSubtitleTrack>().Single(t=>t.Codec=="S_TEXT/ASS");return;
+                case 25:
+                    Press(_track!.FindControl<Button>("ExtractSubtitleTrack")!);return;
+                case 26:
+                    if(_extract is { IsCompleted:false }){_stage--;return;}
+                    Require(_extract is { IsCompletedSuccessfully:true }&&model.ActiveDocumentId!=_originalDocument&&model.Events.Count==2,"Selected embedded track must open independently.");
+                    Require(model.Events[0].Text==@"{\k10\future(opaque)}日本語, မြန်မာ é","Embedded ASS source must preserve Unicode, commas and opaque tags.");
+                    var extractedPath=Path.Combine(options.ProfileDirectory!,"embedded.ass");Require(model.SaveActiveSubtitle(extractedPath),"Extracted track must save to an ASS destination.");
+                    await Invoke("subtitle/close");
+                    Require(model.ActiveDocumentId==_originalDocument&&model.Draft!.Start=="unfinished"&&model.ActiveEditor!.Document.Serialize()==_embeddedBefore,"Extraction must retain the original invalid draft and source.");
+                    model.Draft!.Start=model.SelectedEvent!.Start;
+                    Require(model.OpenSubtitle(extractedPath)&&model.Events.Count==2,"Saved extracted subtitles must reopen.");
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction and independent Save/reopen with undo/redo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }

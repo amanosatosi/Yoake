@@ -2648,12 +2648,20 @@
     },
     {
       "id": "subtitle/open/video",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "subtitle/open/video",
+      "status": "partially implemented",
       "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open the subtitles from the current video file",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "File menu",
+        "CommandRegistry",
+        "SubtitleTrackWindow"
+      ],
+      "tests": [
+        "MatroskaSubtitleTests",
+        "EmbeddedSubtitleWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Uncompressed Matroska ASS/UTF-8 track selection, bounded background extraction, script ReadOrder, independent unsaved tab, Save As/reopen, preserved header/opaque text. Managed and native Linux checks passed; Windows acceptance pending. SSA, compressed/laced tracks, codec changes and non-default track timestamps remain unsupported and fail explicitly.",
       "yoake_default_hotkeys": {}
     },
     {

@@ -6,4 +6,5 @@
     <PackageReference Include="xunit.runner.visualstudio"><PrivateAssets>all</PrivateAssets></PackageReference>
     <ProjectReference Include="../../src/Yoake.UI/Yoake.UI.csproj" />
   </ItemGroup>
+  <ItemGroup><None Include="../Yoake.Core.Tests/Fixtures/Matroska/episode.mkv" Link="Fixtures/Matroska/episode.mkv" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>

@@ -3,6 +3,7 @@
 No downloads, codecs, or external media tools are needed to make these fixtures.
 """
 import math
+import shutil
 from pathlib import Path
 import struct
 import sys
@@ -94,3 +95,6 @@ with (root / 'large.ass').open('w', encoding='utf-8', newline='') as ass:
     for i in range(20000):
         kind = 'Comment' if i % 13 == 0 else 'Dialogue'
         ass.write(f'{kind}: 0,0:00:00.00,0:00:02.00,Default,,0,0,0,,{scripts[i % len(scripts)]} {i}\n')
+
+# Real FFmpeg-muxed dual subtitle tracks, with self-authored media.
+shutil.copyfile(Path(__file__).resolve().parents[1] / "tests/Yoake.Core.Tests/Fixtures/Matroska/episode.mkv", root / "subtitles.mkv")
