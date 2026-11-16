@@ -71,6 +71,7 @@ public static class MatroskaSubtitles
             foreach(var packet in packets.OrderBy(p=>p.Order)) { token.ThrowIfCancellationRequested();added.Add(new("","\r\n",packet.Line)); }
             source.InsertRange(position,added);document.Restore(source,true);
         }
+        document.SetSectionValue("[Aegisub Project Garbage]","Video File",Path.GetFullPath(path));
         return document;
 
         void ReadBlock(Element block,ulong clusterTime,ulong? duration,bool codecState=false)

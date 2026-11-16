@@ -3,7 +3,7 @@ using Yoake.UI.Commands;
 
 namespace Yoake.UI.ViewModels;
 
-public sealed record OpenEmbeddedSubtitlesRequest(string Path,ulong? TrackNumber=null);
+public sealed record OpenEmbeddedSubtitlesRequest(string Path,ulong? TrackNumber=null,bool LoadMedia=true);
 public sealed partial class MainWindowViewModel
 {
     private void RegisterEmbeddedSubtitleCommands()
@@ -20,6 +20,7 @@ public sealed partial class MainWindowViewModel
             using var cancellation=CancellationTokenSource.CreateLinkedTokenSource(token);
             _subtitleOpenCancellation=cancellation;OpeningSubtitleText=$"Reading subtitle tracks in {Path.GetFileName(request.Path)}…";
             OnPropertyChanged(nameof(OpeningSubtitleText));OpeningSubtitle=true;
+            var published=false;var mediaWarning="";
             try
             {
                 var tracks=await Task.Run(()=>MatroskaSubtitles.ReadTracks(request.Path,cancellation.Token),cancellation.Token);
@@ -35,12 +36,20 @@ public sealed partial class MainWindowViewModel
                 var session=_workspace.CreateUntitled();Attach(session,document);
                 _documents[session.Id].UnsavedSource=true;
                 session.Title=Path.GetFileNameWithoutExtension(request.Path)+$" — track {number}.ass";
-                SynchronizeActiveDocument();session.IsDirty=true;
-                SubtitleStatus=$"Extracted {document.Events.Count} events. Save As to choose an ASS destination.";
+                SynchronizeActiveDocument();session.IsDirty=true;published=true;
+                if(request.LoadMedia)
+                {
+                    OpeningSubtitleText="Opening episode video and audio…";OnPropertyChanged(nameof(OpeningSubtitleText));
+                    _subtitleOpenMediaDocument=session.Id;
+                    if(!await OpenMediaAsync(request.Path))mediaWarning=" Video/audio could not be opened; see the media status.";
+                    cancellation.Token.ThrowIfCancellationRequested();
+                }
+                SubtitleStatus=$"Extracted {document.Events.Count} events. Save As to choose an ASS destination."+mediaWarning;
             }
-            catch(OperationCanceledException) when(cancellation.IsCancellationRequested){SubtitleStatus="Subtitle extraction canceled.";}
+            catch(OperationCanceledException) when(cancellation.IsCancellationRequested){SubtitleStatus=published?"Subtitles were extracted; media opening was canceled. Save As to retain the imported document.":"Subtitle extraction canceled.";}
             finally
             {
+                _subtitleOpenMediaDocument=null;
                 if(ReferenceEquals(_subtitleOpenCancellation,cancellation))_subtitleOpenCancellation=null;
                 OpeningSubtitle=false;
             }

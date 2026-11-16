@@ -157,7 +157,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     _originalDocument=model.ActiveDocumentId!.Value;_embeddedBefore=model.ActiveEditor.Document.Serialize();
                     model.Draft!.Start="unfinished";
                     var embedded=Path.Combine(options.VerificationMedia??throw new InvalidOperationException("Embedded subtitle fixture directory is required."),"subtitles.mkv");
-                    _extract=model.Registry.InvokeAsync("subtitle/open/video",new(model.ActiveDocumentId),new OpenEmbeddedSubtitlesRequest(embedded)).AsTask();return;
+                    _extract=model.Registry.InvokeAsync("subtitle/open/video",new(model.ActiveDocumentId),new OpenEmbeddedSubtitlesRequest(embedded,LoadMedia:OperatingSystem.IsWindows())).AsTask();return;
                 case 24:
                     _track=window.OwnedWindows.OfType<SubtitleTrackWindow>().SingleOrDefault();
                     if(_track is null){Require(_extract is { IsCompleted:false },"Extraction must display a track chooser.");_stage--;return;}
@@ -170,6 +170,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     if(_extract is { IsCompleted:false }){_stage--;return;}
                     Require(_extract is { IsCompletedSuccessfully:true }&&model.ActiveDocumentId!=_originalDocument&&model.Events.Count==2,"Selected embedded track must open independently.");
                     Require(model.Events[0].Text==@"{\k10\future(opaque)}日本語, မြန်မာ é","Embedded ASS source must preserve Unicode, commas and opaque tags.");
+                    if(OperatingSystem.IsWindows())Require(model.VideoSourcePath==Path.Combine(options.VerificationMedia!,"subtitles.mkv")&&model.FrameTimes.Count==3&&model.VideoFrame is not null,"Packaged Windows extraction must open the independent episode video provider and decoded preview.");
                     var extractedPath=Path.Combine(options.ProfileDirectory!,"embedded.ass");Require(model.SaveActiveSubtitle(extractedPath),"Extracted track must save to an ASS destination.");
                     await Invoke("subtitle/close");
                     Require(model.ActiveDocumentId==_originalDocument&&model.Draft!.Start=="unfinished"&&model.ActiveEditor!.Document.Serialize()==_embeddedBefore,"Extraction must retain the original invalid draft and source.");
