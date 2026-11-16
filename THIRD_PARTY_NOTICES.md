@@ -256,3 +256,7 @@ under the ISC license. The original notices are retained in the source and
 [third_party/licenses/Aegisub-Karaoke-Matcher-ISC.txt](third_party/licenses/Aegisub-Karaoke-Matcher-ISC.txt),
 which is included in the Windows portable license bundle. These editor helpers
 are independent of Automation compatibility.
+
+### MUA Office UI acceptance font
+
+`ci/create_myanmar_font_fixtures.py` downloads the unmodified MUA Office Regular 2.10 font from `KoKoZaw-Eng/MMFonts` commit `5c1d43a7723a199a90008c52392449c1ab9de010`, path `MUA_Office-Regular.ttf`, SHA-256 `e655f235d3390e90751a148469bb331364c028006f97a7398932d706e55b449b`. Copyright (c) 2014 MUA, www.mmunicode.org; designer Khon Soe Zaw Thu. The embedded license identifies OFL 1.1. The generated fixture directory retains the notice and full OFL text. A renamed derivative, `Yoake UI Legacy Trap`, removes GSUB/GPOS/GDEF tables to reproduce unsafe cmap-only fallback. Fonts are acceptance inputs and are not shipped in the application archive.

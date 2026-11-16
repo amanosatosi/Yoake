@@ -292,8 +292,9 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     Press(_audioTrackDialog.FindControl<Button>("SelectAudioTrack")!);return;
                 case 50:
                     Require(await _audioTrackResult! ==4&&!_audioTrackDialog!.IsVisible,"Native audio chooser Enter returns the chosen source stream index.");
+                    await TypographyUiAcceptanceVerification.VerifyAsync(window,options);
                     await EmbeddedVideoWorkspaceVerification.VerifyAsync(window,model);
-                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply, metadata-safe sorting and absolute karaoke splitting with undo/redo; real subtitle-font selection/apply/undo and canceled font/color dialogs; native audio stream chooser keyboard focus/Down/Enter; embedded zoom workspace and splitter geometry.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply, metadata-safe sorting and absolute karaoke splitting with undo/redo; real subtitle-font selection/apply/undo and canceled font/color dialogs; native audio stream chooser keyboard focus/Down/Enter; MUA Office UI glyph shaping; embedded zoom workspace and splitter geometry.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }

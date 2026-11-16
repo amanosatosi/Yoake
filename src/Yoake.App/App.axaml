@@ -4,11 +4,7 @@
              RequestedThemeVariant="Default">
   <Application.Styles>
     <FluentTheme />
-    <Style Selector=":is(TemplatedControl)">
-      <Setter Property="FontFamily" Value="{DynamicResource YoakeUiFontFamily}" />
-      <Setter Property="FontSize" Value="{DynamicResource YoakeUiFontSize}" />
-    </Style>
-    <Style Selector="TextBlock">
+    <Style Selector=":is(TopLevel)">
       <Setter Property="FontFamily" Value="{DynamicResource YoakeUiFontFamily}" />
       <Setter Property="FontSize" Value="{DynamicResource YoakeUiFontSize}" />
     </Style>

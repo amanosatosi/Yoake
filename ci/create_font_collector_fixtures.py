@@ -33,7 +33,7 @@ def checksum(data):
     return sum(struct.unpack(">" + "I" * (len(padded) // 4), padded)) & 0xFFFFFFFF
 
 
-def rename(data, style):
+def rename(data, style, family=FAMILY):
     result = bytearray(data)
     entries = {bytes(result[12 + i * 16:16 + i * 16]): 12 + i * 16 for i in range(u16(result, 4))}
     entry = entries[b"name"]
@@ -41,7 +41,8 @@ def rename(data, style):
     names = result[offset:offset + length]
     count, strings = u16(names, 2), u16(names, 4)
     records, values = [], bytearray()
-    replacements = {1: FAMILY, 2: style, 3: "Yoake-CI-" + style, 4: FAMILY + " " + style, 6: "YoakeCI-" + style, 16: FAMILY, 17: style}
+    postscript = "YoakeCI" if family == FAMILY else "".join(c for c in family if c.isascii() and c.isalnum())
+    replacements = {1: family, 2: style, 3: ("Yoake-CI" if family == FAMILY else postscript) + "-" + style, 4: family + " " + style, 6: postscript + "-" + style, 16: family, 17: style}
     for i in range(count):
         platform, encoding, language, name_id, size, start = struct.unpack_from(">6H", names, 6 + i * 12)
         text = bytes(names[strings + start:strings + start + size])
@@ -101,6 +102,7 @@ def main():
     (root / "日本語 collection.ttc").write_bytes(collection([regular, bold]))
     (root / "Italic fixture.ttf").write_bytes(italic)
     (root / "OFL.txt").write_bytes(files["OFL.txt"])
+    (root / "UI Latin.ttf").write_bytes(rename(files["Cousine-Regular.ttf"], "Regular", "Yoake UI Latin"))
     (root / "SOURCE.txt").write_text("Cousine source commit c0fbdb438443968c884a5c13f5f9bee916a7f89b; OFL 1.1. Family names replaced for isolated process-private native tests; glyphs unchanged; Regular/Bold packed into TTC with unused zero padding.\n", encoding="utf-8")
     print("Pinned OFL native font fixtures prepared")
 

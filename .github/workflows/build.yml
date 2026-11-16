@@ -307,6 +307,8 @@ jobs:
         run: python ci/create_editor_media_fixtures.py artifacts/editor-fixtures
       - name: Generate pinned redistributable font acceptance fixtures
         run: python ci/create_font_collector_fixtures.py artifacts/editor-fixtures
+      - name: Generate pinned Myanmar UI shaping fixtures
+        run: python ci/create_myanmar_font_fixtures.py artifacts/editor-fixtures
       - name: Configure desktop for default workspace verification
         run: .\ci\set_ui_verification_display.ps1
       - name: Verify real MainWindow startup with clean, legacy and damaged profiles

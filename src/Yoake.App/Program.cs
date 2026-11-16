@@ -42,8 +42,9 @@ internal static class Program
 
     public static AppBuilder BuildAvaloniaApp() => BuildAvaloniaApp(new StartupOptions());
     private static AppBuilder BuildAvaloniaApp(StartupOptions options) => AppBuilder.Configure(() => new App(options))
+        .With(TypographyUiAcceptanceVerification.Options(options))
         .UsePlatformDetect().LogToTrace()
-        .AfterPlatformServicesSetup(_ => Logger.Sink = new StartupLogSink(Logger.Sink))
+        .AfterPlatformServicesSetup(_ => { Logger.Sink = new StartupLogSink(Logger.Sink); TypographyUiAcceptanceVerification.Install(options); })
         .AfterSetup(_ =>
         {
             StartupDiagnostics.Checkpoint("Avalonia framework initialized");
