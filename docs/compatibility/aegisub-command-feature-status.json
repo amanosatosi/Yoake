@@ -2643,7 +2643,7 @@
         "EncodingWorkflowTests",
         "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Explicit strict decoding, retained legacy encoding, UTF-8 Save As, legacy recovery with Unicode translation. Managed/native Linux passed; Windows NativeAOT acceptance pending.",
+      "notes": "Explicit strict decoding, retained legacy encoding, UTF-8 Save As, legacy recovery with Unicode translation. Shift-JIS to Burmese UTF-8 and Save/close/reopen passed packaged Windows NativeAOT through f505872.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2661,7 +2661,7 @@
         "EmbeddedSubtitleWorkflowTests",
         "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Uncompressed Matroska ASS/UTF-8 track selection, bounded background extraction, script ReadOrder, independent unsaved tab, Save As/reopen, preserved header/opaque text. Managed and native Linux checks passed; Windows acceptance pending. SSA, compressed/laced tracks, codec changes and non-default track timestamps remain unsupported and fail explicitly.",
+      "notes": "Uncompressed Matroska ASS/UTF-8 track selection, bounded background extraction, script ReadOrder, independent unsaved tab and native episode video preview, container association, Save As/reopen and preserved header/opaque text. Packaged Windows NativeAOT passed through f505872. SSA, compressed/laced tracks, codec changes and non-default track timestamps remain unsupported and fail explicitly.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3378,7 +3378,7 @@
         "AssistantWorkflowTests",
         "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
+      "notes": "Document-owned native style selection/completion, commit/stay/advance, source and owner fences, undo/redo. Packaged Windows NativeAOT acceptance passed through f505872; no full parity claim.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3458,7 +3458,7 @@
         "KanjiTimingWorkflowTests",
         "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Many-to-many style-paired matching, grapheme/escape boundaries, empty groups, unlink/back/independent skips, staged accepted lines, one Apply/undo, preserved opaque destination overrides. Aegisub 3.2.2 romaji/kana/kanji lookahead suggestions with source-derived reference vectors, optional per-session automatic suggestions and retained keyboard focus through empty matching lists. Managed and native Linux passed; Windows pending. Separate ruby/drawing destinations and absolute kt remain gaps; unsupported input is preserved.",
+      "notes": "Many-to-many style-paired matching, Unicode/escape boundaries, unlink/back/independent skips, staged accepted lines and one Apply/undo. Aegisub 3.2.2 source-duration normalization, romaji/kana/kanji lookahead suggestions and continuous keyboard focus passed packaged Windows NativeAOT at f505872. Separate ruby/drawing destinations and absolute kt remain gaps; unsupported input is preserved.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3494,7 +3494,7 @@
         "AssistantWorkflowTests",
         "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
+      "notes": "Document-owned native block translation, grapheme-safe original insertion, staged-draft fences, one-step undo and next/previous workflows. Packaged Windows NativeAOT acceptance passed through f505872; physical IME remains manual QA.",
       "yoake_default_hotkeys": {}
     },
     {

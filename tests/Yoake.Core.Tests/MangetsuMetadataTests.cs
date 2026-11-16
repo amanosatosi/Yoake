@@ -141,6 +141,51 @@ public sealed class MangetsuMetadataTests
         metadata.Effect="mangetsu-style ";Assert.Equal(MangetsuMetadataKind.None,MangetsuMetadata.Kind(metadata));
     }
     [Fact]
+    public void UnresolvableDefaultCaseMetadataCannotBeSilentlyDroppedDuringImport()
+    {
+        var source=AssDocument.CreateEmpty();source.Styles[0].Name="default";
+        source=AssDocument.Parse(source.Serialize()+Event("Comment","default","","mangetsu-style",@"{\future(opaque)}"));
+        var sourceBefore=source.Serialize();Assert.Throws<ArgumentException>(()=>new SubtitleEditor(source).SetMangetsuMetadata(MangetsuMetadataKind.Style,"default",@"{\vert1}"));Assert.Equal(sourceBefore,source.Serialize());
+        var destination=AssDocument.CreateEmpty();var before=destination.Serialize();var editor=new SubtitleEditor(destination);
+        Assert.Throws<InvalidOperationException>(()=>editor.CopyStyles(source.Styles,source));Assert.Equal(before,destination.Serialize());Assert.False(editor.Undo.CanUndo);
+    }
+    [Theory]
+    [InlineData("import")]
+    [InlineData("clipboard")]
+    [InlineData("library")]
+    public void StarredStyleAliasesCannotOverwriteDestinationOrLoseRendererAssets(string route)
+    {
+        var source=AssDocument.CreateEmpty();var sourceEditor=new SubtitleEditor(source);var fancy=source.Styles[0].Clone();fancy.Name="*Fancy";sourceEditor.AddStyle(fancy);
+        source=AssDocument.Parse(source.Serialize()+
+            Event("Comment","Fancy","","mangetsu-style",@"{\future(opaque)\rFancy}")+
+            Event("Comment","Fancy","mangetsu-colorcode-applied-styles","mangetsu-colorcoding","{Fancy}")+
+            Event("Comment","Fancy","Nene","mangetsu-colorcoding",@"{\1c&H112233&}")+
+            Event("Comment","Fancy","","",@"{uketsugu}{\rFancy}日本語"));
+        var original=source.Serialize();var destination=AssDocument.CreateEmpty();var editor=new SubtitleEditor(destination);
+        var existing=destination.Styles[0].Clone();existing.Name="Fancy";editor.AddStyle(existing);
+        editor.SetMangetsuMetadata(MangetsuMetadataKind.Style,"Fancy",@"{\future(destination)}");var before=destination.Serialize();
+        var root=Path.Combine(Path.GetTempPath(),"Yoake-starred-"+Guid.NewGuid());Directory.CreateDirectory(root);
+        try
+        {
+            IReadOnlyList<AssStyle> copies;
+            if(route=="clipboard")copies=editor.PasteStyles(new SubtitleEditor(source).CopyStyleText(source.Styles.Where(s=>s.Name=="*Fancy")));
+            else if(route=="library")
+            {
+                var path=Path.Combine(root,"library.json");var library=new StyleLibraryStore(path);var collection=library.Create("Assets");library.Import(source,library.Editor(collection));library.Save();
+                var restored=new StyleLibraryStore(path);var stored=restored.Editor(restored.Collections.Single()).Document;
+                copies=editor.CopyStyles(stored.Styles.Where(s=>s.Name=="*Fancy"),stored);
+            }
+            else copies=editor.CopyStyles(source.Styles.Where(s=>s.Name=="*Fancy"),source);
+            Assert.Equal("*Fancy 1",Assert.Single(copies).Name);
+            Assert.Equal(@"{\future(destination)}",destination.Events[0].Text);
+            var metadata=destination.Events.Single(e=>e.Text.Contains(@"\future(opaque)",StringComparison.Ordinal));Assert.Equal("*Fancy 1",metadata.Style);Assert.Equal(@"{\future(opaque)\rFancy 1}",metadata.Text);
+            Assert.Equal("{Fancy 1}",destination.Events.Single(e=>MangetsuMetadata.IsAppliedStylesTarget(e.Actor)).Text);
+            var inherited=Assert.Single(destination.Events,MangetsuMetadata.IsInherited);Assert.Equal("*Fancy 1",inherited.Style);Assert.Equal(@"{uketsugu}{\rFancy 1}日本語",inherited.Text);
+            Assert.Equal(original,source.Serialize());var after=destination.Serialize();Assert.Equal(after,AssDocument.Parse(after).Serialize());editor.Undo.Undo();Assert.Equal(before,destination.Serialize());editor.Undo.Redo();Assert.Equal(after,destination.Serialize());
+        }
+        finally { Directory.Delete(root,true); }
+    }
+    [Fact]
     public void ReservedActorAliasesEditTheSameRendererSettingAndRemoveTogether()
     {
         var document=AssDocument.Parse(AssDocument.CreateEmpty().Serialize()+

@@ -12,12 +12,19 @@ public static class MangetsuMetadata
     internal static string FieldStart(string value)=>value.TrimStart(FieldSpaces);
     // Mangetsu accepts exactly one optional brace pair for this reserved key.
     public static bool IsAppliedStylesTarget(string actor)=>FieldStart(actor) is "mangetsu-colorcode-applied-styles" or "{mangetsu-colorcode-applied-styles}";
+    internal static string DefinitionName(string name)
+    {
+        var value=FieldStart(name).TrimStart('*');return value.Length==0?"Default":value;
+    }
+    internal static string ReferenceName(string name)
+    {
+        var value=FieldStart(name).TrimStart('*');return value.Equals("Default",StringComparison.OrdinalIgnoreCase)?"Default":value;
+    }
     public static bool MatchesTarget(AssEvent line,MangetsuMetadataKind kind,string target)
     {
-        var value=FieldStart(kind==MangetsuMetadataKind.Style?line.Style:line.Actor);
-        var expected=FieldStart(target);
-        if(kind==MangetsuMetadataKind.Style) { value=value.TrimStart('*');expected=expected.TrimStart('*'); }
-        return value==expected||kind==MangetsuMetadataKind.Actor&&IsAppliedStylesTarget(value)&&IsAppliedStylesTarget(expected)||kind==MangetsuMetadataKind.Style&&value.Equals("Default",StringComparison.OrdinalIgnoreCase)&&expected.Equals("Default",StringComparison.OrdinalIgnoreCase);
+        if(kind==MangetsuMetadataKind.Style)return ReferenceName(line.Style)==DefinitionName(target);
+        var value=FieldStart(line.Actor);var expected=FieldStart(target);
+        return value==expected||IsAppliedStylesTarget(value)&&IsAppliedStylesTarget(expected);
     }
     public static MangetsuMetadataKind Kind(AssEvent line)
     {
@@ -59,12 +66,16 @@ public sealed partial class SubtitleEditor
 {
     private AssEvent[] PrepareStyleMetadata(AssDocument source,IReadOnlyDictionary<string,string> names)
     {
-        string? Resolve(string name)
+        var targets=new Dictionary<string,string>(StringComparer.Ordinal);
+        var aliases=new Dictionary<string,string>(names,StringComparer.Ordinal);
+        foreach(var (original,copy) in names)
         {
-            var plain=MangetsuMetadata.FieldStart(name).TrimStart('*');
-            if(names.TryGetValue(plain,out var mapped))return mapped;
-            return plain.Equals("Default",StringComparison.OrdinalIgnoreCase)&&names.TryGetValue("Default",out mapped)?mapped:null;
+            targets[MangetsuMetadata.DefinitionName(original)]=copy;
+            // Resets and actor whitelists address the renderer's style name,
+            // which omits header stars. Keep raw aliases for opaque references.
+            aliases[MangetsuMetadata.DefinitionName(original)]=MangetsuMetadata.DefinitionName(copy);
         }
+        string? Resolve(string name)=>targets.GetValueOrDefault(MangetsuMetadata.ReferenceName(name));
         var metadata=MangetsuMetadata.Initial(source);
         var records=new List<AssEvent>();
         foreach(var line in metadata.Concat(source.Events.Where(MangetsuMetadata.IsInherited)).Distinct())
@@ -79,8 +90,8 @@ public sealed partial class SubtitleEditor
                     throw new InvalidOperationException("Unresolved imported metadata would modify an existing destination style: "+line.Style);
             }
             var copy=line.Clone();if(target is not null)copy.Style=target;
-            copy.Text=MangetsuMetadata.RenameResets(copy.Text,names);
-            if(kind==MangetsuMetadataKind.Actor&&MangetsuMetadata.IsAppliedStylesTarget(copy.Actor))copy.Text=MangetsuMetadata.RenameWhitelist(copy.Text,names);
+            copy.Text=MangetsuMetadata.RenameResets(copy.Text,aliases);
+            if(kind==MangetsuMetadataKind.Actor&&MangetsuMetadata.IsAppliedStylesTarget(copy.Actor))copy.Text=MangetsuMetadata.RenameWhitelist(copy.Text,aliases);
             records.Add(copy);
         }
         return records.OrderBy(e=>MangetsuMetadata.Kind(e) switch { MangetsuMetadataKind.Style=>0,MangetsuMetadataKind.Actor=>1,_=>2 }).ToArray();
@@ -110,6 +121,8 @@ public sealed partial class SubtitleEditor
         if(kind is not (MangetsuMetadataKind.Style or MangetsuMetadataKind.Actor))throw new ArgumentException("Choose style or actor metadata.");
         if(string.IsNullOrWhiteSpace(target))throw new ArgumentException("Choose a style or enter an actor name.");
         if(kind==MangetsuMetadataKind.Style&&!Document.Styles.Any(s=>s.Name==target))throw new ArgumentException("Choose an existing style.");
+        if(kind==MangetsuMetadataKind.Style&&MangetsuMetadata.ReferenceName(target)!=MangetsuMetadata.DefinitionName(target))
+            throw new ArgumentException("This style name cannot target its renderer definition. Rename the style before editing its metadata.");
         var existing=MangetsuMetadata.Initial(Document).LastOrDefault(e=>MangetsuMetadata.Kind(e)==kind&&MangetsuMetadata.MatchesTarget(e,kind,target));
         if(existing is not null&&existing.Text==text)return;
         // Clone and validate before opening the structural transaction.

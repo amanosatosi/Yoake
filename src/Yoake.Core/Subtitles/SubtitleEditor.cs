@@ -241,12 +241,12 @@ public sealed partial class SubtitleEditor(AssDocument document)
     {
         var originals=source.ToArray();
         var copies = originals.Select(s => s.Clone()).ToArray();
-        var names = Document.Styles.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
+        var names = Document.Styles.Select(s => MangetsuMetadata.DefinitionName(s.Name)).ToHashSet(StringComparer.Ordinal);
         foreach (var copy in copies)
         {
             var stem = copy.Name; var n = 1;
             if (string.IsNullOrWhiteSpace(stem)) throw new ArgumentException("Style names must be nonempty.");
-            while (!names.Add(copy.Name)) copy.Name = stem + " " + n++;
+            while (!names.Add(MangetsuMetadata.DefinitionName(copy.Name))) copy.Name = stem + " " + n++;
         }
         var mapping=new Dictionary<string,string>(StringComparer.Ordinal);
         for(var i=0;i<copies.Length;i++)mapping[originals[i].Name]=copies[i].Name;
