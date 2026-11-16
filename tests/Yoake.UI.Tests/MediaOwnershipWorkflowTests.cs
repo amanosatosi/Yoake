@@ -6,6 +6,45 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public async Task FailedSaveRollsBackMediaPropertiesAndRetainsProviderForRetry()
+    {
+        Assert.True(await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=12}));
+        var editor=_model.ActiveEditor!;var before=editor.Document.Serialize();var undo=editor.Undo.NextUndoName;
+        Assert.False(_model.SaveActiveSubtitle(Path.Combine(_root,"missing-directory","project.ass")));
+        Assert.Equal(before,editor.Document.Serialize());Assert.Equal(undo,editor.Undo.NextUndoName);
+        Assert.Equal(12,_model.FrameTimes.Count);
+        var path=Path.Combine(_root,"retry.ass");Assert.True(_model.SaveActiveSubtitle(path));
+        Assert.StartsWith("?dummy:",editor.Document.GetSectionValue("[Aegisub Project Garbage]","Video File"));
+        Assert.Equal(editor.Document.Serialize(),Yoake.Core.Subtitles.AssDocument.Load(path).Serialize());
+    }
+
+    [Fact] public async Task SavedMediaAssociationsRestoreDummyVideoAndRespectExplicitClosure()
+    {
+        Assert.True(await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=12}));
+        await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="日本語 မြန်မာ";await Command(CommandIds.EditCommit);
+        var timecodes=Path.Combine(_root,"日本語 timecodes.txt");
+        File.WriteAllText(timecodes,"# timecode format v2\n"+string.Join('\n',Enumerable.Range(0,12).Select(i=>i*150))+"\n");
+        var keyframes=Path.Combine(_root,"မြန်မာ keyframes.txt");File.WriteAllText(keyframes,"# keyframe format v1\nfps 0\n0\n2\n");
+        await Command("timecode/open",timecodes);await Command("keyframe/open",keyframes);
+        var originalTimecodes=File.ReadAllBytes(timecodes);var originalKeyframes=File.ReadAllBytes(keyframes);
+        Assert.False(_model.SaveActiveSubtitle(timecodes));Assert.False(_model.SaveActiveSubtitle(keyframes));
+        Assert.Equal(originalTimecodes,File.ReadAllBytes(timecodes));Assert.Equal(originalKeyframes,File.ReadAllBytes(keyframes));
+        var path=Path.Combine(_root,"associated.ass");Assert.True(_model.SaveActiveSubtitle(path));
+        var source=_model.ActiveEditor!.Document.Serialize();var id=_model.ActiveDocumentId!.Value;
+        Assert.StartsWith("?dummy:",_model.ActiveEditor.Document.GetSectionValue("[Aegisub Project Garbage]","Video File"));
+        Assert.True(await _model.CloseDocumentAsync(id));
+        await Command(CommandIds.SubtitleOpen,path);
+        Assert.Equal(12,_model.FrameTimes.Count);Assert.True(_model.IsVideoView);Assert.False(_model.HasAudio);
+        Assert.Equal(source,_model.ActiveEditor!.Document.Serialize());
+        Assert.Equal(timecodes,_model.ExternalTimecodePath);Assert.Equal(keyframes,_model.ExternalKeyframePath);
+        Assert.Equal(.15,_model.FrameTimes[1],8);Assert.Equal(new[]{0,2},_model.Keyframes);
+        await Command("video/close");await Command("timecode/close");await Command("keyframe/close");Assert.True(_model.SaveActiveSubtitle(path));
+        Assert.Equal("",_model.ActiveEditor.Document.GetSectionValue("[Aegisub Project Garbage]","Video File"));
+        Assert.True(await _model.CloseDocumentAsync(_model.ActiveDocumentId!.Value));
+        await Command(CommandIds.SubtitleOpen,path);Assert.Null(_model.VideoSourcePath);Assert.False(_model.HasAudio);
+        Assert.Null(_model.ExternalTimecodePath);Assert.Null(_model.ExternalKeyframePath);
+    }
+
     [Fact] public async Task AudioStreamSelectionWithoutAudioPreservesIndependentVideoAndDraft()
     {
         Assert.True(await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=12}));

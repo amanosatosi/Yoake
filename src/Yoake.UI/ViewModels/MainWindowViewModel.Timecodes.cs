@@ -34,7 +34,7 @@ public sealed partial class MainWindowViewModel
                 await job.Completion;cancellation.Token.ThrowIfCancellationRequested();
                 if(_disposed||!_documents.TryGetValue(id,out live)||!ReferenceEquals(live,state)||!ReferenceEquals(media,state.Media?.VideoProvider))return;
                 state.Editing?.Cancel();if(media?.HasVideo==true)media.SetExternalTimecodes(prepared);
-                state.ExternalTimecodes=loaded;state.FrameTiming=loaded!.Timing;state.TimecodePath=full;RememberTimecodes(full);
+                state.ExternalTimecodes=loaded;state.FrameTiming=loaded!.Timing;state.TimecodePath=full;state.TimecodeLinkChanged=true;RememberTimecodes(full);
                 if(_activeId==id){NotifyTimecodes();MediaStatus=$"Timecodes: {Path.GetFileName(full)} ({loaded.Milliseconds.Count} timestamps)";ScheduleAutomationValidation();await RefreshVideoFrameAsync(CurrentTimeSeconds);}
             }
             catch(OperationCanceledException)when(cancellation.IsCancellationRequested){if(token.IsCancellationRequested)throw;}
@@ -45,7 +45,7 @@ public sealed partial class MainWindowViewModel
         Register("timecode/close","Close external timecodes",async(_,_)=>
         {
             var state=_documents[_activeId!.Value];state.TimecodeLoading?.Cancel();state.TimecodeLoading=null;state.Editing?.Cancel();
-            state.Media?.SetExternalTimecodes(null);state.ExternalTimecodes=null;state.TimecodePath=null;state.FrameTiming=state.ProviderFrameTiming;
+            state.Media?.SetExternalTimecodes(null);state.ExternalTimecodes=null;state.TimecodePath=null;state.TimecodeLinkChanged=true;state.FrameTiming=state.ProviderFrameTiming;
             NotifyTimecodes();MediaStatus="Using video timecodes.";ScheduleAutomationValidation();await RefreshVideoFrameAsync(CurrentTimeSeconds);
         },()=>ExternalTimecodePath is not null||HasTimecodeOperation);
         Register("timecode/save","Save timecodes…",async(invocation,token)=>

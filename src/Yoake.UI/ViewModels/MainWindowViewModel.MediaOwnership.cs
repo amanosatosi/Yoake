@@ -75,7 +75,7 @@ public sealed partial class MainWindowViewModel
     public Task<bool> OpenDummyVideoAsync(DummyVideoOptions options, CancellationToken token = default) => OpenMediaTrackAsync("", true, token, options);
     public Task<bool> SelectAudioTrackAsync(int index, CancellationToken token = default) =>
         AudioSourcePath is { } path ? OpenMediaTrackAsync(path, false, token, audioTrackIndex: index) : Task.FromResult(false);
-    private async Task<bool> OpenMediaTrackAsync(string path, bool video, CancellationToken parent, DummyVideoOptions? dummy = null, int? audioTrackIndex = null)
+    private async Task<bool> OpenMediaTrackAsync(string path, bool video, CancellationToken parent, DummyVideoOptions? dummy = null, int? audioTrackIndex = null, bool openEmbeddedAudio = true)
     {
         if (_disposed || _activeId is not { } id || !_documents.TryGetValue(id, out var state)) return false;
         parent.ThrowIfCancellationRequested();
@@ -96,7 +96,7 @@ public sealed partial class MainWindowViewModel
         // never inspect state.Media from the worker.
         var audioAlreadyOwned = state.Media?.HasAudio == true;
         var tracks = video
-            ? audioAlreadyOwned ? MediaTracks.Video : MediaTracks.Both
+            ? audioAlreadyOwned || !openEmbeddedAudio ? MediaTracks.Video : MediaTracks.Both
             : MediaTracks.Audio;
         DocumentMedia? candidate = null, prepared = null; FrameTiming? nativeTiming = null; WaveformData? peaks = null;
         MediaStatus = dummy is null ? "FFMS2 indexing " + Path.GetFileName(path) : "Preparing dummy video";
@@ -155,7 +155,7 @@ public sealed partial class MainWindowViewModel
             if (!video) { state.AudioExport?.Cancel(); ResetAudioAnalysis(state); }
             state.Editing?.Cancel();
             token.ThrowIfCancellationRequested();
-            state.Media = replacement;
+            state.Media = replacement; state.MediaLinksChanged = true;
             prepared = null;
             if (ReferenceEquals(replacement, candidate)) candidate = null;
             if (video) { state.FrameExtraction?.Cancel(); state.VideoProviderRevision++; state.VideoView.ResetContent(); state.VideoAspect = InitialVideoAspect(replacement.VideoProvider);
@@ -212,7 +212,7 @@ public sealed partial class MainWindowViewModel
         if (ActiveAudioPlayback is null) StopPlayback();
         Interlocked.Increment(ref _seekGeneration);
         var replacement = old.WithVideo(null);
-        state.Media = replacement.HasAudio ? replacement : null;
+        state.Media = replacement.HasAudio ? replacement : null; state.MediaLinksChanged = true;
         if (state.Media is null) replacement.Dispose();
         state.VideoProviderRevision++; state.VideoView.ResetContent(); state.ProviderFrameTiming = null; state.FrameTiming = state.ExternalTimecodes?.Timing;
         state.Editing?.Cancel();
@@ -230,7 +230,7 @@ public sealed partial class MainWindowViewModel
         var old = state.Media;
         if (old?.HasAudio != true) { _registry.NotifyStateChanged(); return; }
         var replacement = old.WithAudio(null);
-        state.Media = replacement.HasVideo ? replacement : null;
+        state.Media = replacement.HasVideo ? replacement : null; state.MediaLinksChanged = true;
         if (state.Media is null) replacement.Dispose();
         state.Waveform = null;
         PublishMediaPresentation(state, false, state.Media is null);

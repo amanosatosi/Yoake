@@ -197,26 +197,11 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.ViewThemeCycle,"Cycle theme",()=>{_settings=_settings with{Theme=_theme.Next()};_settingsStore.Save(_settings);});
 
     }
-    private string? FindAssociatedMedia(string subtitlePath)
+    private static string? FindSiblingMedia(string subtitlePath)
     {
         var directory=Path.GetDirectoryName(subtitlePath)??"";
-        if(ProjectMediaReferences(_activeSubtitleDocument,subtitlePath).FirstOrDefault(File.Exists) is {} associated)return associated;
         var stem=Path.Combine(directory,Path.GetFileNameWithoutExtension(subtitlePath));
         return new[]{".mkv",".mp4",".webm",".m2ts",".ts",".avi",".mov"}.Select(ext=>stem+ext).FirstOrDefault(File.Exists);
-    }
-    private static IEnumerable<string> ProjectMediaReferences(AssDocument? document,string? subtitlePath)
-    {
-        var directory=Path.GetDirectoryName(Path.GetFullPath(subtitlePath??"Untitled.ass"))!;
-        foreach(var key in new[] { "Video File","Audio File" })
-        {
-            var reference=document?.GetSectionValue("[Aegisub Project Garbage]",key).Trim().Trim('"');
-            if(string.IsNullOrWhiteSpace(reference)||reference.StartsWith("?dummy:",StringComparison.OrdinalIgnoreCase)||reference=="?video")continue;
-            if(reference.StartsWith("?script",StringComparison.OrdinalIgnoreCase))reference=reference[7..].TrimStart('/', '\\');
-            string? candidate=null;
-            try { candidate=Path.GetFullPath(reference,directory); }
-            catch(Exception error) when(error is ArgumentException or NotSupportedException or PathTooLongException) { }
-            if(candidate is not null)yield return candidate;
-        }
     }
     private Task StepFrameAsync(int delta)
     {

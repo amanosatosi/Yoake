@@ -33,7 +33,7 @@ public sealed partial class MainWindowViewModel
                 var job=_jobs.Run("Open keyframes",ct=>{loaded=KeyframeFile.Load(full,ct);return Task.CompletedTask;},cancellation.Token);
                 await job.Completion;cancellation.Token.ThrowIfCancellationRequested();
                 if(_disposed||!_documents.TryGetValue(id,out live)||!ReferenceEquals(live,state))return;
-                state.Editing?.Cancel();state.Media?.SetExternalKeyframes(loaded);state.ExternalKeyframes=loaded;state.KeyframePath=full;
+                state.Editing?.Cancel();state.Media?.SetExternalKeyframes(loaded);state.ExternalKeyframes=loaded;state.KeyframePath=full;state.KeyframeLinkChanged=true;
                 RememberKeyframes(full);
                 if(_activeId==id){NotifyKeyframes();MediaStatus=$"Keyframes: {Path.GetFileName(full)} ({loaded!.Count} cuts)";ScheduleAutomationValidation();}
             }
@@ -52,7 +52,7 @@ public sealed partial class MainWindowViewModel
         });
         Register("keyframe/close","Close external keyframes",(_,_)=>
         {
-            var state=_documents[_activeId!.Value];state.KeyframeLoading?.Cancel();state.KeyframeLoading=null;state.Editing?.Cancel();state.ExternalKeyframes=null;state.KeyframePath=null;state.Media?.SetExternalKeyframes(null);
+            var state=_documents[_activeId!.Value];state.KeyframeLoading?.Cancel();state.KeyframeLoading=null;state.Editing?.Cancel();state.ExternalKeyframes=null;state.KeyframePath=null;state.KeyframeLinkChanged=true;state.Media?.SetExternalKeyframes(null);
             NotifyKeyframes();MediaStatus="Using video keyframes.";ScheduleAutomationValidation();return ValueTask.CompletedTask;
         },()=>ExternalKeyframePath is not null||HasKeyframeOperation);
         Register("keyframe/save","Save keyframes…",async(invocation,token)=>

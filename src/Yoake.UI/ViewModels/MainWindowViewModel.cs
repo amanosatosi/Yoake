@@ -40,6 +40,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public CancellationTokenSource? FrameExtraction;
         public string[] StyleNames=editor.Document.Styles.Select(s=>s.Name).ToArray();
         public DocumentMedia? Media;
+        public bool MediaLinksChanged, TimecodeLinkChanged, KeyframeLinkChanged;
         public FrameTiming? FrameTiming;
         public FrameTiming? ProviderFrameTiming;
         public ExternalTimecodes? ExternalTimecodes;
@@ -394,12 +395,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (existing is not null) { _workspace.Activate(existing.Id); return; }
             var session = OpenLoadedSubtitle(full, doc, originatingTab);
             Remember(full); SubtitleStatus = $"Loaded {doc.Events.Count} events";
-            if (_media is null && FindAssociatedMedia(full) is { } mediaPath)
+            if (_media is null)
             {
-                OpeningSubtitleText = $"Opening video and audio for {Path.GetFileName(full)}…";
-                OnPropertyChanged(nameof(OpeningSubtitleText));
                 _subtitleOpenMediaDocument = session.Id;
-                await OpenMediaAsync(mediaPath);
+                await OpenAssociatedMediaAsync(full,session.Id,cancellation.Token);
                 cancellation.Token.ThrowIfCancellationRequested();
             }
         }
@@ -428,19 +427,27 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if (_workspace.Documents.Any(s => s.Id != session.Id && string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException("This path is already open in another tab.");
             if(_workspace.Documents.Any(owner=>_documents.TryGetValue(owner.Id,out var state)&&
-                (new[] { state.ImportedContainerPath,state.Media?.VideoSourcePath,state.Media?.AudioSourcePath }.Any(media=>media is not null&&SameMediaPath(full,media))||
-                 ProjectMediaReferences(state.Editor.Document,owner.Path).Any(media=>(owner.Path is null||!SameMediaPath(media,owner.Path))&&SameMediaPath(full,media)&&File.Exists(media)))))
-                throw new InvalidOperationException("Choose an ASS destination other than an opened media file or imported subtitle container.");
+                (new[] { state.ImportedContainerPath,state.Media?.VideoSourcePath,state.Media?.AudioSourcePath,state.TimecodePath,state.KeyframePath }.Any(media=>media is not null&&SameMediaPath(full,media))||
+                 ProjectAssetReferences(state.Editor.Document,owner.Path).Any(media=>(owner.Path is null||!SameMediaPath(media,owner.Path))&&SameMediaPath(full,media)&&File.Exists(media)))))
+                throw new InvalidOperationException("Choose an ASS destination other than an opened media file, subtitle container or linked project asset.");
             var references = RebaseLocalAutomationReferences(session.Id, full);
-            using (var transaction = ActiveEditor.Undo.BeginTransaction("Update Automation references for Save As"))
+            using (var transaction = ActiveEditor.Undo.BeginTransaction("Update project references for Save As"))
             {
                 if (references != LocalAutomationReferences(ActiveEditor.Document))
                     ActiveEditor.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = references });
+                var mediaState = _documents[session.Id];
+                var mediaProperties = new Dictionary<string,string>();
+                if (mediaState.MediaLinksChanged || mediaState.Media is not null)
+                    foreach (var pair in SubtitleMediaLinks.Capture(mediaState.Media?.VideoSourcePath,
+                        mediaState.Media?.AudioSourcePath,mediaState.Media?.AudioProvider?.AudioTrackIndex)) mediaProperties[pair.Key] = pair.Value;
+                if (mediaState.TimecodeLinkChanged || mediaState.TimecodePath is not null) mediaProperties["Timecodes File"] = mediaState.TimecodePath ?? "";
+                if (mediaState.KeyframeLinkChanged || mediaState.KeyframePath is not null) mediaProperties["Keyframes File"] = mediaState.KeyframePath ?? "";
+                ActiveEditor.SetProjectProperties(mediaProperties);
                 if(utf8)ActiveEditor.Document.SaveUtf8(full);else ActiveEditor.Document.Save(full);
                 session.Path = full; session.Title = Path.GetFileName(full);
                 transaction.Commit();
             }
-            InvalidateRecovery(session.Id);_documents[session.Id].UnsavedSource=false;
+            InvalidateRecovery(session.Id);_documents[session.Id].UnsavedSource=false;_documents[session.Id].MediaLinksChanged=false;_documents[session.Id].TimecodeLinkChanged=false;_documents[session.Id].KeyframeLinkChanged=false;
             ActiveEditor.MarkSaved(); Remember(full); SubtitleStatus = $"Saved {session.Title}";
             OnPropertyChanged(nameof(ActiveSubtitlePath)); return true;
         }
@@ -506,7 +513,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         }
         finally{IsSynchronizingSelection=false;}
     }
-    public async Task<bool> OpenMediaAsync(string path)
+    public async Task<bool> OpenMediaAsync(string path,int? audioTrackIndex=null)
     {
         if (_activeId is not { } id || !_documents.TryGetValue(id,out var state)) return false;
         CancelGesture(); StopPlayback(); state.FrameExtraction?.Cancel(); ResetAudioAnalysis(state); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose(); var cts=new CancellationTokenSource(); state.Loading=cts; var token=cts.Token;
@@ -515,13 +522,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         try
         {
             var external=state.ExternalTimecodes;
-            var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>DocumentMedia.Open(path,ct),ct);if(opened.HasVideo){try{frameTiming=new(opened.FrameTimes,opened.Info.FramesPerSecond,ct);}catch(Exception exception)when(exception is ArgumentException or OverflowException){boundaryError=exception;}if(external is not null)opened.SetExternalTimecodes(external.ForVideoMap(opened.Info.FrameCount,ct));} },token); await job.Completion;
+            var job=_jobs.Run("Open media",async ct=> { opened=await Task.Run(()=>DocumentMedia.Open(path,ct,audioTrackIndex:audioTrackIndex),ct);if(opened.HasVideo){try{frameTiming=new(opened.FrameTimes,opened.Info.FramesPerSecond,ct);}catch(Exception exception)when(exception is ArgumentException or OverflowException){boundaryError=exception;}if(external is not null)opened.SetExternalTimecodes(external.ForVideoMap(opened.Info.FrameCount,ct));} },token); await job.Completion;
             token.ThrowIfCancellationRequested();
             if(boundaryError is not null)_registry.ReportFailure("media/frame-boundaries",boundaryError);
             if (_disposed || !_documents.TryGetValue(id,out var owner) || !ReferenceEquals(owner,state)) { opened?.Dispose(); return false; }
             if(_activeId==id){CancelGesture();CancelVisualBounds();}
             opened!.SetExternalKeyframes(state.ExternalKeyframes);
-            var old=state.Media; state.Media=opened;state.ProviderFrameTiming=frameTiming;state.FrameTiming=state.ExternalTimecodes?.Timing??frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
+            var old=state.Media; state.Media=opened;state.MediaLinksChanged=true;state.ProviderFrameTiming=frameTiming;state.FrameTiming=state.ExternalTimecodes?.Timing??frameTiming; opened=null; state.Time=0; state.Waveform=null; if (old is not null) _=Task.Run(old.Dispose);
             state.VideoProviderRevision++;state.VideoView.ResetContent();state.VideoAspect=InitialVideoAspect(state.Media.VideoProvider); _videoPointer=null;
             var media=state.Media.AudioProvider;
             // Native indexing is complete. Audio analysis now belongs to the

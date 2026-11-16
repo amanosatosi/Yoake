@@ -269,12 +269,27 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                 case 18:
                     Require(!window.OwnedWindows.OfType<AudioTrackWindow>().Any() && model.AudioTrackIndex == 4 && ReferenceEquals(_samples, model.WaveformSamples), "Escape cancels stream selection without provider or waveform changes.");
                     DocumentUnchanged();
+                    model.Draft!.Layer=model.SelectedEvent!.Layer;await Invoke(CommandIds.EditCommit);
+                    var projectPath=Path.Combine(options.ProfileDirectory!,"episode-project.ass");
+                    var eventText=string.Join("\n",model.Events.Select(line=>string.Join("\0",line.FieldNames.Select(line.Get))));
+                    Require(model.SaveActiveSubtitle(projectPath),"Save independent video/audio and selected stream with the project.");
+                    var projectSource=model.ActiveEditor!.Document.Serialize();
+                    Require(eventText==string.Join("\n",model.Events.Select(line=>string.Join("\0",line.FieldNames.Select(line.Get)))),"Saving media associations preserves every subtitle event field.");
+                    Require(await model.CloseDocumentAsync(model.ActiveDocumentId!.Value),"Close saved episode project.");
+                    await Invoke(CommandIds.SubtitleOpen,projectPath);
+                    Require(model.VideoSourcePath==_video&&model.AudioSourcePath==Path.Combine(options.VerificationMedia!,"subtitles.mkv")&&model.AudioTrackIndex==4&&model.VideoFrame is not null&&model.WaveformSamples is not null,"User Open restores independent video, second audio stream, decoded preview and waveform.");
+                    Require(model.ActiveEditor!.Document.Serialize()==projectSource,"Restoring project media does not mutate saved ASS.");
+                    Require(model.ExternalTimecodePath is not null&&model.ExternalKeyframePath is not null&&model.FrameTimes.SequenceEqual((IReadOnlyList<double>)_retainedTimes!)&&model.Keyframes.SequenceEqual(new[]{0,2}),"Reopening restores external VFR timestamps and keyframes before preparing media.");
+                    var reopenedTimes=model.FrameTimes;var reopenedFrame=model.VideoFrame;
                     await Invoke("audio/open/video");
                     Require(model.AudioSourcePath == _video && model.AudioTracks.Count == 1 &&
-                        ReferenceEquals(_retainedTimes, model.FrameTimes) && ReferenceEquals(_retainedFrame, model.VideoFrame), "Open audio from current video replaces only the independent audio slot.");
-                    Require(!model.Actions["audio/stream"].CanExecute(null), "Single-track source disables unnecessary track selection.");
-                    DocumentUnchanged();
-                    _timer.Stop(); options.FinishVerification("PASS: separate real-window independent media ownership; native track transfer and release; Unicode Video Open; transactional failed and superseded replacement; real Close menu Enter; focused Audio S/H after Video Close; real Recent Video menu Enter through shared backend; Audio replacement retains Video; independent persisted MRUs; deterministic post-publication supersession; auto-audio on Video Open; actual two-track PCM decoding; keyboard-operated audio track chooser and cancellation; failed and canceled stream replacement retains providers; external timecodes/keyframes and document/draft/pending/selection/undo retention. Existing Video playback/EOF and visual acceptance run separately. Audible output remains manual QA.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;
+                        ReferenceEquals(reopenedTimes,model.FrameTimes)&&ReferenceEquals(reopenedFrame,model.VideoFrame),"Open audio from current video replaces only the independent audio slot.");
+                    Require(!model.Actions["audio/stream"].CanExecute(null)&&model.ActiveEditor.Document.Serialize()==projectSource,"Single-track source disables unnecessary selection without changing ASS.");
+                    await Invoke("audio/close");Require(model.SaveActiveSubtitle(projectPath),"Save an explicit closed audio association.");
+                    Require(await model.CloseDocumentAsync(model.ActiveDocumentId!.Value),"Close video-only project.");
+                    await Invoke(CommandIds.SubtitleOpen,projectPath);
+                    Require(model.VideoSourcePath==_video&&model.VideoFrame is not null&&!model.HasAudio&&model.AudioSourcePath is null,"Reopening an explicitly video-only project does not silently reopen embedded audio.");
+                    _timer.Stop(); options.FinishVerification("PASS: separate real-window independent media ownership; native track transfer and release; Unicode Video Open; transactional failed and superseded replacement; real Close menu Enter; focused Audio S/H after Video Close; real Recent Video menu Enter through shared backend; Audio replacement retains Video; independent persisted MRUs; deterministic post-publication supersession; auto-audio on Video Open; actual two-track PCM decoding; keyboard-operated audio track chooser and cancellation; failed and canceled stream replacement retains providers; saved independent media/selected-stream restoration and explicit closure; external timecodes/keyframes and document/draft/pending/selection/undo retention. Existing Video playback/EOF and visual acceptance run separately. Audible output remains manual QA.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;
             }
         }
         catch (Exception exception) { _timer.Stop(); Program.Fatal("Packaged media ownership at stage " + (_stage - 1), exception); desktop.Shutdown(1); }
