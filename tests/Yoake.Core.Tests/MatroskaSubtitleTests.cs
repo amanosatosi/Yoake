@@ -63,8 +63,8 @@ public sealed class MatroskaSubtitleTests
         var header=AssDocument.CreateEmpty().Serialize()+
             "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,mangetsu-style,{\\future(opaque)}\r\n"+
             "Comment: 0,0:00:00.00,0:00:01.00,Default,Nene,0,0,0,mangetsu-colorcoding,{\\1c&HFF0000&}\r\n"+
-            "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,{uketsugu}first 日本語\r\n"+
-            "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,{uketsugu}second မြန်မာ\r\n"+
+            "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,{uketsugu},first 日本語\r\n"+
+            "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,{uketsugu},second မြန်မာ\r\n"+
             "[Future Section]\r\nopaque: a,b,c\r\n";
         var payload=Encoding.UTF8.GetBytes("0,0,Default,Nene,0,0,0,,{\\unknown(opaque)}日本語, မြန်မာ");
         var group=Element(0xA0,Element(0xA1,[0x81,0,0,0,..payload]),UInt(0x9B,100));
@@ -72,7 +72,7 @@ public sealed class MatroskaSubtitleTests
         {
             var document=MatroskaSubtitles.Extract(path,1);Assert.Equal(5,document.Events.Count);
             Assert.Equal(MangetsuMetadataKind.Style,MangetsuMetadata.Kind(document.Events[0]));Assert.Equal(MangetsuMetadataKind.Actor,MangetsuMetadata.Kind(document.Events[1]));
-            Assert.Equal("{uketsugu}first 日本語",document.Events[2].Text);Assert.Equal("{uketsugu}second မြန်မာ",document.Events[3].Text);
+            Assert.Equal("first 日本語",document.Events[2].Text);Assert.Equal("second မြန်မာ",document.Events[3].Text);Assert.Equal("{uketsugu}",document.Events[2].Effect);Assert.Equal("{uketsugu}",document.Events[3].Effect);
             var output=path+".ass";
             try { document.Save(output);Assert.Equal(document.Serialize(),AssDocument.Load(output).Serialize());Assert.Contains("[Future Section]\r\nopaque: a,b,c",File.ReadAllText(output)); }
             finally { File.Delete(output); }

@@ -44,10 +44,23 @@ public sealed class SubtitlePostprocessTests
     public void CommentsInheritedAndUnselectedRowsRemainUntouched()
     {
         var editor=new SubtitleEditor(AssDocument.CreateEmpty());var selected=Add(editor,1000,2000);var other=Add(editor,3000,4000);
-        var inherited=Add(editor,5000,6000);inherited.Text="{uketsugu}source";
+        var inherited=Add(editor,5000,6000);inherited.Text="source";inherited.Effect="{uketsugu}";
         editor.SetMangetsuMetadata(MangetsuMetadataKind.Style,"Default",@"{\vert1}");var metadata=editor.Document.Events[0];var original=metadata.Start;
         editor.ApplyTiming(editor.CaptureTiming([selected,inherited,metadata]).Postprocess(new() { AddLeadIn=true,MakeAdjacent=false }));
         Assert.Equal(900,selected.StartMilliseconds);Assert.Equal(3000,other.StartMilliseconds);Assert.Equal(5000,inherited.StartMilliseconds);Assert.Equal(original,metadata.Start);
+    }
+    [Fact]
+    public void TextMarkersRemainOrdinaryAndDraftEffectControlsPostprocessingScope()
+    {
+        var editor=new SubtitleEditor(AssDocument.CreateEmpty());var line=Add(editor,1000,2000);line.Text="ordinary {uketsugu} 日本語 မြန်မာ";
+        var options=new SubtitlePostprocessOptions { SelectedOnly=true,AddLeadIn=true,LeadIn=100,MakeAdjacent=false };
+        var before=editor.Document.Serialize();
+        var protectedDraft=editor.CaptureTiming([line],line,new Dictionary<string,string> { ["Effect"]="{uketsugu}" }).Postprocess(options);
+        Assert.False(protectedDraft.IncludesDraft);Assert.Equal(0,editor.ApplyTiming(protectedDraft));Assert.Equal(before,editor.Document.Serialize());
+        line.Effect="{uketsugu}";var inherited=editor.Document.Serialize();
+        var ordinaryDraft=editor.CaptureTiming([line],line,new Dictionary<string,string> { ["Effect"]="" }).Postprocess(options);
+        Assert.True(ordinaryDraft.IncludesDraft);Assert.Equal(1,editor.ApplyTiming(ordinaryDraft));Assert.Equal(900,line.StartMilliseconds);Assert.Equal("",line.Effect);Assert.Equal("ordinary {uketsugu} 日本語 မြန်မာ",line.Text);
+        editor.Undo.Undo();Assert.Equal(inherited,editor.Document.Serialize());
     }
     [Fact]
     public void InvalidResultCancellationAndStalePlanCannotPartiallyApply()

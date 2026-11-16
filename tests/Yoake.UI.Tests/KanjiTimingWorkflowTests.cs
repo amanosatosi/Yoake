@@ -54,6 +54,18 @@ public sealed partial class EditorWorkflowTests
         await Command("tool/time/kanji/link",new KanjiTimingGroup(session,1,1));await Command("tool/time/kanji/accept",session);await Command("tool/time/kanji/apply",session);Assert.Equal(@"{\k30}僕{\k30}は",target.Text);
     }
     [Fact]
+    public async Task KanjiPairingSkipsEffectInheritanceAndKeepsTextTokensOrdinary()
+    {
+        PrepareKanjiPair();var editor=_model.ActiveEditor!;
+        var inheritedSource=editor.Insert(null,true);inheritedSource.Style="Romaji";inheritedSource.Effect="{uketsugu}";inheritedSource.Text=@"{\k10}inherited source";
+        var inheritedTarget=editor.Insert(null,true);inheritedTarget.Style="Kanji";inheritedTarget.Effect="{uketsugu}";inheritedTarget.Text="inherited target";
+        var ordinarySource=editor.Insert(null,true);ordinarySource.Style="Romaji";ordinarySource.Text=@"{uketsugu}{\k10}ordinary source";
+        var ordinaryTarget=editor.Insert(null,true);ordinaryTarget.Style="Kanji";ordinaryTarget.Text="ordinary {uketsugu} target";
+        var before=editor.Document.Serialize();using var session=_model.BeginKanjiTiming();await Command("tool/time/kanji/start",new KanjiTimingStart(session,"Romaji","Kanji"));
+        await Command("tool/time/kanji/link",new KanjiTimingGroup(session,4,2));await Command("tool/time/kanji/accept",session);
+        Assert.Equal(ordinarySource.Text,session.SourceLine);Assert.Equal(ordinaryTarget.Text,session.DestinationLine);Assert.Equal(before,editor.Document.Serialize());
+    }
+    [Fact]
     public async Task KanjiTimingStagesLinksAndAcceptsThenAppliesOneExactUndoableTextEdit()
     {
         var (source,target)=PrepareKanjiPair();var editor=_model.ActiveEditor!;var before=editor.Document.Serialize();var sourceText=source.Text;

@@ -13,17 +13,35 @@ public sealed class MangetsuMetadataTests
             Event("Comment","Default","mangetsu-colorcode-applied-styles","mangetsu-colorcoding","{Default}")+
             Event("Comment","Default","日本語 မြန်မာ","mangetsu-colorcoding",@"{\c&HFF0000&\future(opaque)}")+
             Event("Comment","Default","","mangetsu-style",@"{\vert1\boxp(1,2,3,4)\future(unknown)}")+
-            Event("Comment","Default","","",@"{uketsugu}{\rDefault}first 日本語")+
-            Event("Dialogue","Default","","",@"{uketsugu}second မြန်မာ")+
-            Event("Dialogue","Default","","","ordinary source dialogue");
-        return AssDocument.Parse(source);
+            "Format: Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect,Extra,Text\n"+
+            @"Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,{uketsugu},future-α,{\rDefault}first 日本語"+"\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,{uketsugu},raw🙂,second မြန်မာ, untouched\n"+
+            "Format: "+string.Join(",",AssDocument.EventFormat)+"\n"+
+            Event("Dialogue","Default","","","ordinary {uketsugu} source dialogue");
+        var result=AssDocument.Parse(source);
+        var first=result.Events[3];first.Layer="7";first.Actor="継承 日本語";first.Start="0:00:05.12";first.End="0:00:07.34";first.MarginL="101";first.MarginR="202";first.MarginV="303";
+        var second=result.Events[4];second.Layer="2";second.Actor="မြန်မာ";second.Start="0:00:01.23";second.End="0:00:03.45";second.MarginL="404";second.MarginR="505";second.MarginV="606";
+        return result;
+    }
+    [Theory]
+    [InlineData("{uketsugu}","",true)]
+    [InlineData("{uketsugu}","plain inherited content",true)]
+    [InlineData("","{uketsugu}",false)]
+    [InlineData("","ordinary {uketsugu} subtitle text",false)]
+    [InlineData("other effect","{uketsugu}",false)]
+    [InlineData("prefix{uketsugu}","ordinary",false)]
+    [InlineData("{uketsugu}suffix","ordinary",false)]
+    public void InheritanceUsesOnlyTheEffectMarker(string effect,string text,bool expected)
+    {
+        var document=AssDocument.Parse(AssDocument.CreateEmpty().Serialize()+Event("Dialogue","Default","Actor",effect,text));
+        Assert.Equal(expected,MangetsuMetadata.IsInherited(Assert.Single(document.Events)));
     }
     [Fact]
     public void StyleImportPreservesMetadataOrderingInheritedEventsAndRemapsCollisions()
     {
         var destination=AssDocument.CreateEmpty();var editor=new SubtitleEditor(destination);
         editor.SetMangetsuMetadata(MangetsuMetadataKind.Actor,"Existing",@"{\c&H00FF00&}");
-        var ordinary=editor.Insert(null,true);ordinary.Text="destination dialogue";
+        var ordinary=editor.Insert(null,true);ordinary.Text="destination {uketsugu} dialogue";
         var before=destination.Serialize();var source=ImportSource();var sourceBefore=source.Serialize();
         var styles=editor.CopyStyles(source.Styles,source);
         Assert.Equal("Default 1",styles.Single().Name);
@@ -34,8 +52,8 @@ public sealed class MangetsuMetadataTests
         Assert.Equal(4,metadata.Length);Assert.All(metadata.Skip(1),r=>Assert.Equal(MangetsuMetadataKind.Actor,MangetsuMetadata.Kind(r)));
         Assert.Equal("{Default 1}",metadata.Single(e=>e.Actor=="mangetsu-colorcode-applied-styles").Text);
         var inherited=records.Where(MangetsuMetadata.IsInherited).ToArray();
-        Assert.Equal(2,inherited.Length);Assert.Contains(@"{\rDefault 1}first 日本語",inherited[0].Text);Assert.Contains("second မြန်မာ",inherited[1].Text);
-        Assert.Same(ordinary,records[^1]);Assert.DoesNotContain(records,e=>e.Text=="ordinary source dialogue");
+        Assert.Equal(2,inherited.Length);Assert.All(inherited,line=>Assert.Equal("{uketsugu}",line.Effect));Assert.Equal(new[] { "0:00:05.12","0:00:01.23" },inherited.Select(line=>line.Start));Assert.Contains(@"{\rDefault 1}first 日本語",inherited[0].Text);Assert.Contains("second မြန်မာ",inherited[1].Text);Assert.Equal("future-α",inherited[0].Get("Extra"));Assert.Equal("raw🙂",inherited[1].Get("Extra"));
+        Assert.Same(ordinary,records[^1]);Assert.DoesNotContain(records,e=>e.Text=="ordinary {uketsugu} source dialogue");
         Assert.Equal(sourceBefore,source.Serialize());
         var after=destination.Serialize();editor.Undo.Undo();Assert.Equal(before,destination.Serialize());
         editor.Undo.Redo();Assert.Equal(after,destination.Serialize());
@@ -73,7 +91,9 @@ public sealed class MangetsuMetadataTests
             var destination=AssDocument.CreateEmpty();var editor=new SubtitleEditor(destination);
             editor.SetMangetsuMetadata(MangetsuMetadataKind.Style,"Default",@"{\future(destination)}");
             editor.SetMangetsuMetadata(MangetsuMetadataKind.Actor,"Existing",@"{\1c&H112233&}");
-            var dialogue=editor.Insert(null,true);dialogue.Text="destination dialogue";
+            var existingInheritance=editor.Insert(null,true);existingInheritance.Effect="{uketsugu}";existingInheritance.Actor="Existing inheritance";existingInheritance.Text="destination inherited template";
+            var inheritanceFields=existingInheritance.FieldNames.Select(existingInheritance.Get).ToArray();
+            var dialogue=editor.Insert(null,true);dialogue.Text="destination {uketsugu} dialogue";
             var before=destination.Serialize();
             IReadOnlyList<AssStyle> copied;
             if(route=="clipboard")copied=editor.PasteStyles(new SubtitleEditor(source).CopyStyleText(source.Styles));
@@ -101,7 +121,8 @@ public sealed class MangetsuMetadataTests
                 Assert.Equal(expected[i].FieldNames.Select(expected[i].Get),imported[i].FieldNames.Select(imported[i].Get));
             }
             Assert.Equal(new[] { MangetsuMetadataKind.Style,MangetsuMetadataKind.Style,MangetsuMetadataKind.Actor,MangetsuMetadataKind.Actor,MangetsuMetadataKind.Actor },MangetsuMetadata.Initial(destination).Select(MangetsuMetadata.Kind));
-            Assert.Same(dialogue,destination.Events[^1]);Assert.Equal(original,source.Serialize());
+            Assert.Same(existingInheritance,destination.Events[5]);Assert.Equal(inheritanceFields,existingInheritance.FieldNames.Select(existingInheritance.Get));
+            Assert.False(MangetsuMetadata.IsInherited(dialogue));Assert.Same(dialogue,destination.Events[^1]);Assert.Equal(original,source.Serialize());
             var after=destination.Serialize();var path=Path.Combine(root,"roundtrip.ass");destination.Save(path);Assert.Equal(after,AssDocument.Load(path).Serialize());
             editor.Undo.Undo();Assert.Equal(before,destination.Serialize());editor.Undo.Redo();Assert.Equal(after,destination.Serialize());
         }
@@ -160,7 +181,7 @@ public sealed class MangetsuMetadataTests
             Event("Comment","Fancy","","mangetsu-style",@"{\future(opaque)\rFancy}")+
             Event("Comment","Fancy","mangetsu-colorcode-applied-styles","mangetsu-colorcoding","{Fancy}")+
             Event("Comment","Fancy","Nene","mangetsu-colorcoding",@"{\1c&H112233&}")+
-            Event("Comment","Fancy","","",@"{uketsugu}{\rFancy}日本語"));
+            Event("Comment","Fancy","","{uketsugu}",@"{\rFancy}日本語"));
         var original=source.Serialize();var destination=AssDocument.CreateEmpty();var editor=new SubtitleEditor(destination);
         var existing=destination.Styles[0].Clone();existing.Name="Fancy";editor.AddStyle(existing);
         editor.SetMangetsuMetadata(MangetsuMetadataKind.Style,"Fancy",@"{\future(destination)}");var before=destination.Serialize();
@@ -180,7 +201,7 @@ public sealed class MangetsuMetadataTests
             Assert.Equal(@"{\future(destination)}",destination.Events[0].Text);
             var metadata=destination.Events.Single(e=>e.Text.Contains(@"\future(opaque)",StringComparison.Ordinal));Assert.Equal("*Fancy 1",metadata.Style);Assert.Equal(@"{\future(opaque)\rFancy 1}",metadata.Text);
             Assert.Equal("{Fancy 1}",destination.Events.Single(e=>MangetsuMetadata.IsAppliedStylesTarget(e.Actor)).Text);
-            var inherited=Assert.Single(destination.Events,MangetsuMetadata.IsInherited);Assert.Equal("*Fancy 1",inherited.Style);Assert.Equal(@"{uketsugu}{\rFancy 1}日本語",inherited.Text);
+            var inherited=Assert.Single(destination.Events,MangetsuMetadata.IsInherited);Assert.Equal("*Fancy 1",inherited.Style);Assert.Equal(@"{\rFancy 1}日本語",inherited.Text);Assert.Equal("{uketsugu}",inherited.Effect);
             Assert.Equal(original,source.Serialize());var after=destination.Serialize();Assert.Equal(after,AssDocument.Parse(after).Serialize());editor.Undo.Undo();Assert.Equal(before,destination.Serialize());editor.Undo.Redo();Assert.Equal(after,destination.Serialize());
         }
         finally { Directory.Delete(root,true); }

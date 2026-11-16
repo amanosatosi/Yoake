@@ -32,12 +32,19 @@ public sealed class RecombineTests
         var result=editor.Recombine([first,second]);Assert.Same(second,Assert.Single(result));Assert.Equal("Survivor",second.Actor);Assert.Equal(0,second.StartMilliseconds);Assert.Equal(2000,second.EndMilliseconds);Assert.Equal(@"{\future(x)}same",second.Text);
     }
     [Fact]
+    public void OrdinaryTextContainingTheTokenCanStillBeRecombined()
+    {
+        var editor=new SubtitleEditor(AssDocument.CreateEmpty());var first=Add(editor,"ordinary {uketsugu} text",0,1000);var second=Add(editor,"ordinary {uketsugu} text",1000,2000);var before=editor.Document.Serialize();
+        editor.Recombine([first,second]);var result=Assert.Single(editor.Document.Events);Assert.False(MangetsuMetadata.IsInherited(result));Assert.Equal("ordinary {uketsugu} text",result.Text);Assert.Equal(2000,result.EndMilliseconds);
+        editor.Undo.Undo();Assert.Equal(before,editor.Document.Serialize());
+    }
+    [Fact]
     public void InvalidBoundaryForeignSelectionAndMetadataNeverGetPartiallyRecombined()
     {
         var editor=new SubtitleEditor(AssDocument.CreateEmpty());var a=Add(editor,"a",0,1000);var b=Add(editor,"áb",1000,2000);var before=editor.Document.Serialize();
         Assert.Throws<ArgumentException>(()=>editor.Recombine([a,b]));Assert.Equal(before,editor.Document.Serialize());
         var foreign=new SubtitleEditor(AssDocument.CreateEmpty()).Insert(null,true);Assert.Throws<InvalidOperationException>(()=>editor.Recombine([a,foreign]));Assert.Equal(before,editor.Document.Serialize());
         b.Text="a";editor.SetMangetsuMetadata(MangetsuMetadataKind.Actor,"Actor",@"{\c&HFFFFFF&}");var metadata=editor.Document.Events[0];var text=metadata.Text;
-        var inherited=Add(editor,"{uketsugu}a",2000,3000);editor.Recombine(editor.Document.Events.ToArray());Assert.Contains(metadata,editor.Document.Events);Assert.Equal(text,metadata.Text);Assert.Contains(inherited,editor.Document.Events);
+        var inherited=Add(editor,"a",2000,3000);inherited.Effect="{uketsugu}";editor.Recombine(editor.Document.Events.ToArray());Assert.Contains(metadata,editor.Document.Events);Assert.Equal(text,metadata.Text);Assert.Contains(inherited,editor.Document.Events);
     }
 }

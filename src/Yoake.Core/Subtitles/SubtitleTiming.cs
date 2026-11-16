@@ -137,7 +137,7 @@ public sealed partial class SubtitleEditor
         {if(draftLine is null)throw new ArgumentException("Draft line is required.");Require(draftLine);draft=ValidateEventValues(draftLine,draftValues);}
         return new(this,Document.Events.Select(line=>new SubtitleTimingSnapshot.Row(line,
             ReferenceEquals(line,draftLine)&&draft is not null?draft.Start:line.Start,
-            ReferenceEquals(line,draftLine)&&draft is not null?draft.End:line.End,selected.Contains(line),ReferenceEquals(line,draftLine)&&draft is not null?draft.Style:line.Style,line.IsComment,MangetsuMetadata.IsInherited(line))).ToArray(),draft is null?null:draftLine,draft?.Fields);
+            ReferenceEquals(line,draftLine)&&draft is not null?draft.End:line.End,selected.Contains(line),ReferenceEquals(line,draftLine)&&draft is not null?draft.Style:line.Style,line.IsComment,MangetsuMetadata.IsInherited(ReferenceEquals(line,draftLine)&&draft is not null?draft:line))).ToArray(),draft is null?null:draftLine,draft?.Fields);
     }
     public int ApplyTiming(SubtitleTimingPlan plan)
     {

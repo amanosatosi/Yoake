@@ -34,7 +34,7 @@ public static class MangetsuMetadata
         if((effect=="mangetsu-colorcoding"||effect=="{mangetsu-colorcoding}")&&FieldStart(line.Actor).Length>0)return MangetsuMetadataKind.Actor;
         return MangetsuMetadataKind.None;
     }
-    public static bool IsInherited(AssEvent line)=>line.Text.Contains("{uketsugu}",StringComparison.Ordinal);
+    public static bool IsInherited(AssEvent line)=>string.Equals(line.Effect,"{uketsugu}",StringComparison.Ordinal);
     public static AssEvent[] Initial(AssDocument document)=>document.Events.TakeWhile(e=>Kind(e)!=MangetsuMetadataKind.None).ToArray();
     internal static string RenameResets(string text,IReadOnlyDictionary<string,string> names)
     {
