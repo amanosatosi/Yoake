@@ -14,8 +14,10 @@ public static class UiFontResources
         catch(Exception error) when(error is ArgumentException or FormatException) { app.Resources["YoakeUiFontFamily"] = FontFamily.Default; }
         var actualSize = size is {} value && double.IsFinite(value) ? Math.Clamp(value, 9, 24) : 12d;
         app.Resources["YoakeUiFontSize"] = actualSize;
+        app.Resources["YoakeUiEditorFontSize"] = actualSize*14/12;
         app.Resources["YoakeUiFontSizeSmall"] = actualSize * 11 / 12;
         app.Resources["YoakeUiFontSizeTiny"] = actualSize * 10 / 12;
+        app.Resources["YoakeUiCompactButtonHeight"] = Math.Max(24,Math.Ceiling(actualSize*1.6));
         app.Resources["YoakeUiRowHeight"] = Math.Max(26, Math.Ceiling(actualSize * 1.8));
         app.Resources["YoakeUiTabContentHeight"] = Math.Max(30, Math.Ceiling(actualSize * 1.8));
         app.Resources["YoakeUiGridHeaderHeight"] = new GridLength(Math.Max(24, Math.Ceiling(actualSize * 1.8)));

@@ -16,22 +16,24 @@ public sealed class AssColorButton : UserControl
     public static readonly StyledProperty<string> LabelProperty = AvaloniaProperty.Register<AssColorButton,string>(nameof(Label), "");
     public static readonly StyledProperty<ICommand?> CommandProperty = AvaloniaProperty.Register<AssColorButton,ICommand?>(nameof(Command));
     private readonly Border _swatch = new();
-    private readonly TextBlock _unknown = new(){Text="?",Foreground=Brushes.Black,FontWeight=FontWeight.SemiBold,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
-    private readonly PathIcon _iconAccent = new(){Width=16,Height=16};
-    private readonly PathIcon _iconForeground = new(){Width=16,Height=16};
-    private readonly Button _button = new(){Padding=new Thickness(4,2),MinHeight=26};
+    private readonly TextBlock _unknown = new(){Text="?",FontSize=11,Foreground=Brushes.Black,FontWeight=FontWeight.SemiBold,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
+    private readonly PathIcon _iconAccent = new(){Width=24,Height=24};
+    private readonly PathIcon _iconForeground = new(){Width=24,Height=24};
+    private readonly Button _button = new(){Padding=new Thickness(2,0)};
     public AssColor? Value { get=>GetValue(ValueProperty); set=>SetValue(ValueProperty,value); }
     public string Label { get=>GetValue(LabelProperty); set=>SetValue(LabelProperty,value); }
     public ICommand? Command { get=>GetValue(CommandProperty); set=>SetValue(CommandProperty,value); }
     public AssColorButton()
     {
-        var swatch = new Grid{Width=12,Height=12};
+        var swatch = new Grid{Width=10,Height=18};
         swatch.Children.Add(new CheckerboardControl());swatch.Children.Add(_swatch);swatch.Children.Add(_unknown);
         _iconAccent.Bind(PathIcon.ForegroundProperty,this.GetResourceObservable("IconAccentBrush"));
         _iconForeground.Bind(PathIcon.ForegroundProperty,this.GetResourceObservable("IconForegroundBrush"));
-        var icon = new Grid{Width=16,Height=16};icon.Children.Add(_iconForeground);icon.Children.Add(_iconAccent);
-        var panel = new StackPanel{Orientation=Orientation.Horizontal,Spacing=3};
-        panel.Children.Add(icon);panel.Children.Add(swatch);_button.Content=panel;Content=_button;Refresh();
+        var icon = new Grid{Width=24,Height=24};icon.Children.Add(_iconForeground);icon.Children.Add(_iconAccent);
+        var panel = new StackPanel{Orientation=Orientation.Horizontal,Spacing=2};
+        var swatchFrame=new Border { BorderThickness=new Thickness(1),Child=swatch,VerticalAlignment=VerticalAlignment.Center };
+        swatchFrame.Bind(Border.BorderBrushProperty,this.GetResourceObservable("IconForegroundBrush"));
+        panel.Children.Add(icon);panel.Children.Add(swatchFrame);_button.Classes.Add("editorCompact");_button.Content=panel;Content=_button;Refresh();
     }
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {

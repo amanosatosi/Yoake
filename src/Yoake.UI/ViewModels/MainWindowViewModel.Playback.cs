@@ -258,20 +258,41 @@ public sealed partial class MainWindowViewModel
     }
 
     private CancellationTokenSource? _previewDelay;
+    private Guid? _previewOwner;
     private void InvalidateSubtitlePreview(bool refreshCurrentFrame)
     {
         if (_activeId is { } id && _documents.TryGetValue(id, out var state)) state.FrameExtraction?.Cancel();
         Interlocked.Increment(ref _subtitleRevision);
+        var refresh=refreshCurrentFrame&&!IsPlaying&&_media?.HasVideo==true;
+        // Coalesce updates into the running pump. Restarting a delay on every
+        // pointer event starves rendering throughout a continuous drag.
+        if(refresh&&_previewDelay is { IsCancellationRequested:false }&&_previewOwner==_activeId)return;
         _previewDelay?.Cancel();_previewDelay?.Dispose();_previewDelay=null;
-        if(refreshCurrentFrame&&!IsPlaying&&_media?.HasVideo==true)
+        if(refresh)
         {
-            var cancellation=new CancellationTokenSource();_previewDelay=cancellation;
-            _=RefreshPreviewAfterDelayAsync(cancellation.Token);
+            var cancellation=new CancellationTokenSource();_previewDelay=cancellation;_previewOwner=_activeId;
+            _=RefreshPreviewAfterDelayAsync(cancellation,_activeId);
         }
     }
-    private async Task RefreshPreviewAfterDelayAsync(CancellationToken token)
+    private async Task RefreshPreviewAfterDelayAsync(CancellationTokenSource cancellation,Guid? owner)
     {
-        try{await Task.Delay(30,token);await RefreshVideoFrameAsync(CurrentTimeSeconds);}catch(OperationCanceledException){}
+        var token=cancellation.Token;
+        try
+        {
+            while(!token.IsCancellationRequested&&!_disposed&&_activeId==owner&&!IsPlaying&&_media?.HasVideo==true)
+            {
+                await Task.Delay(16,token);
+                var requested=Volatile.Read(ref _subtitleRevision);
+                await RefreshVideoFrameAsync(CurrentTimeSeconds,token,true);
+                if(requested==Volatile.Read(ref _subtitleRevision))return;
+            }
+        }
+        catch(OperationCanceledException)when(token.IsCancellationRequested){}
+        finally
+        {
+            if(ReferenceEquals(_previewDelay,cancellation))_previewDelay=null;
+            cancellation.Dispose();
+        }
     }
 
     private void DisposeSubtitleRenderer()

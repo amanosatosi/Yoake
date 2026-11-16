@@ -60,9 +60,14 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="ToggleButton.authoring">
-    <Setter Property="MinHeight" Value="26" />
-    <Setter Property="MinWidth" Value="26" />
-    <Setter Property="Padding" Value="5,0" />
+    <Setter Property="MinHeight" Value="{DynamicResource YoakeUiCompactButtonHeight}" />
+    <Setter Property="MinWidth" Value="24" />
+    <Setter Property="Padding" Value="3,0" />
+  </Style>
+  <Style Selector="WrapPanel#FormattingToolbar Button, WrapPanel#OriginalActions Button, Button.editorCompact">
+    <Setter Property="MinHeight" Value="{DynamicResource YoakeUiCompactButtonHeight}" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="4,0" />
   </Style>
   <Style Selector="ToggleButton.authoring:checked">
     <Setter Property="Background" Value="{DynamicResource IconAccentBrush}" />

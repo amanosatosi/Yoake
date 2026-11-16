@@ -530,10 +530,10 @@
           <CheckBox Name="BetterViewToggle" Content="Better View" IsChecked="{Binding Actions[edit/better-view].IsChecked, Mode=OneWay}" Command="{Binding Actions[edit/better-view]}" Height="24" MinHeight="24" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="8,0,0,4" ToolTip.Tip="Show hard line breaks and compact motion data" />
         </WrapPanel>
 
-        <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto">
-          <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="36" MaxHeight="76" Margin="0,0,0,3" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
-          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="14" SourceText="{Binding EditorDraft.Text, Mode=TwoWay}" BetterView="{Binding BetterView}" ShowMotionData="{Binding ShowMotionData}" MotionToggleCommand="{Binding Actions[edit/motion-block/toggle]}" MotionCopyCommand="{Binding Actions[edit/motion-block/copy]}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
-          <WrapPanel Grid.Row="2" IsVisible="{Binding ShowOriginal}" Margin="0,3,0,0">
+        <Grid Grid.Row="3" Name="SubtitleTextEditors" RowDefinitions="0,*,0">
+          <TextBox Name="OriginalText" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" FontSize="{DynamicResource YoakeUiEditorFontSize}" VerticalContentAlignment="Top" ToolTip.Tip="Original text captured when this line became active" />
+          <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="{DynamicResource YoakeUiEditorFontSize}" SourceText="{Binding EditorDraft.Text, Mode=TwoWay}" BetterView="{Binding BetterView}" ShowMotionData="{Binding ShowMotionData}" MotionToggleCommand="{Binding Actions[edit/motion-block/toggle]}" MotionCopyCommand="{Binding Actions[edit/motion-block/copy]}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+          <WrapPanel Name="OriginalActions" Grid.Row="2" IsVisible="{Binding ShowOriginal}">
             <StackPanel IsVisible="{Binding ShowOriginal}" Orientation="Horizontal" Spacing="3">
               <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" />
               <Button Name="OriginalClear" Content="Clear" Command="{Binding Actions[edit/clear]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" />

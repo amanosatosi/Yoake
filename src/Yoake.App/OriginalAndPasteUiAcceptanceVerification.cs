@@ -54,6 +54,7 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
                 case 2:
                     var original=window.FindControl<TextBox>("OriginalText")!;
                     Require(model.ShowOriginal&&original.IsReadOnly&&original.IsVisible&&original.Text==_original,"Visible read-only Original snapshot.");
+                    Require(original.Bounds.Height>=64&&Math.Abs(original.Bounds.Height-Text.Bounds.Height)<1&&Math.Abs(original.Bounds.Width-Text.Bounds.Width)<1,"Original and edit inputs must share the available editor area equally.");
                     Within(original,window);Within(Text,window);Within(window.FindControl<Button>("OriginalInsert")!,window);
                     Require(window.FindControl<MenuItem>("ShowOriginalMenu")!.IsChecked,"Show Original menu reflects toggle.");
                     model.Draft!.Text="translated";await Invoke(CommandIds.EditCommit);await Invoke(CommandIds.EditUndo);await Invoke(CommandIds.EditRedo);

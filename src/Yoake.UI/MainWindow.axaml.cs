@@ -53,7 +53,7 @@ public partial class MainWindow : Window, IEditorDialogs
         Opened+=(_,_)=>{UpdateChrome();UpdateEmbeddedVideoHost();};
         Loaded+=(_,_)=>SyncSelection();
         Opened+=StartAutomation;
-        LayoutUpdated+=(_,_)=>{UpdateUiFontLayout();UpdateChrome();};
+        LayoutUpdated+=(_,_)=>{UpdateUiFontLayout();UpdateEditorMinimumHeight();UpdateChrome();};
         ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(()=>{UpdateChrome();RefreshVideoScaling();});
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
         TemporalTextColumn.SizeChanged+=(_,_)=>ClampAudioBounds();
@@ -153,6 +153,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(_model is not null){MoveVideoHost(false);_model.MotionBlockToggleRequested-=SubtitleText.ToggleMotionBlock;_model.VideoWindowZoomRequested-=ResizeDetachedVideo;_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
+        UpdateOriginalTextLayout();
         _automationMenuInitialized=false;
         RefreshRecentKeyframes();
         RefreshRecentMedia();
@@ -361,6 +362,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();
         if(e.PropertyName==nameof(MainWindowViewModel.RecentKeyframeItems))Dispatcher.UIThread.Post(RefreshRecentKeyframes);
         if(e.PropertyName==nameof(MainWindowViewModel.RecentTimecodeItems))Dispatcher.UIThread.Post(RefreshRecentTimecodes);
+        if(e.PropertyName==nameof(MainWindowViewModel.ShowOriginal))UpdateOriginalTextLayout();
         if(e.PropertyName==nameof(MainWindowViewModel.AudioDisplayHeight))UpdateAudioBounds();
         if(e.PropertyName==nameof(MainWindowViewModel.ViewMode)){VisualOverlay.CancelInput();_model?.NotifyVideoPresentation();UpdateWorkspaceView();}
         if(e.PropertyName is nameof(MainWindowViewModel.IsVideoDetached) or nameof(MainWindowViewModel.VideoSourcePath))SynchronizeVideoHost();

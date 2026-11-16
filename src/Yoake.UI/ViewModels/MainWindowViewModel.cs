@@ -548,18 +548,25 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         catch(Exception e) { opened?.Dispose(); if (_activeId==id) MediaStatus=e.Message; return false; }
         finally {if(ReferenceEquals(state.Loading,cts))state.Loading=null;if(ReferenceEquals(state.AudioLoading,cts))state.AudioLoading=null;cts.Dispose();OnPropertyChanged(nameof(CanShiftByFrames));_registry.NotifyStateChanged();}
     }
-    private async Task RefreshVideoFrameAsync(double seconds)
+    private async Task RefreshVideoFrameAsync(double seconds,CancellationToken cancellationToken=default,bool allowGestureProgress=false)
     {
         var session=_media; if (session?.HasVideo!=true || _disposed) return;
         var generation=Interlocked.Increment(ref _seekGeneration); var subtitleText=PreviewSource(); var revision=Volatile.Read(ref _subtitleRevision);
+        var progressiveGesture=allowGestureProgress?_gesture:null;
         try
         {
-            await _videoRequestGate.WaitAsync();
+            await _videoRequestGate.WaitAsync(cancellationToken);
             try
             {
-                if (_disposed || generation!=Volatile.Read(ref _seekGeneration) || revision!=Volatile.Read(ref _subtitleRevision) || !ReferenceEquals(session,_media)) return;
+                if (cancellationToken.IsCancellationRequested || _disposed || generation!=Volatile.Read(ref _seekGeneration) || revision!=Volatile.Read(ref _subtitleRevision) || !ReferenceEquals(session,_media)) return;
                 var result=await Task.Run(()=> { var index=FrameNavigation.AtTime(session.FrameTimes,seconds);var frame=session.VideoProvider!.GetFrame(index,_decodedPixels);_decodedPixels=frame.Pixels; return (Frame:frame,Error:CompositeSubtitles(frame,session.FrameTimes[index],subtitleText,revision)); });
-                if (_disposed || generation!=Volatile.Read(ref _seekGeneration) || revision!=Volatile.Read(ref _subtitleRevision) || !ReferenceEquals(session,_media)) return;
+                // During one ongoing gesture, display completed frames even if a
+                // newer pointer sample arrived while rendering. The serial pump
+                // follows with the latest state. Seeks, document/media changes,
+                // cancellation and a different/finished gesture remain fenced.
+                if (cancellationToken.IsCancellationRequested || _disposed || generation!=Volatile.Read(ref _seekGeneration) ||
+                    !ReferenceEquals(session,_media) || revision!=Volatile.Read(ref _subtitleRevision)&&
+                    (progressiveGesture is null||!ReferenceEquals(progressiveGesture,_gesture))) return;
                 var frame=result.Frame;
                 if(VideoFrame is not {} bitmap||bitmap.PixelSize.Width!=frame.Width||bitmap.PixelSize.Height!=frame.Height)VideoFrame=CreateBitmap(frame);
                 else { using var buffer=bitmap.Lock();for(var y=0;y<frame.Height;y++)Marshal.Copy(frame.Pixels,y*frame.Stride,buffer.Address+y*buffer.RowBytes,frame.Width*4); }
@@ -568,6 +575,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             }
             finally { _videoRequestGate.Release(); }
         }
+        catch(OperationCanceledException)when(cancellationToken.IsCancellationRequested){}
         catch(Exception e) { if (!_disposed && generation==Volatile.Read(ref _seekGeneration)) MediaStatus=e.Message; }
     }
     internal static WriteableBitmap CreateBitmap(DecodedVideoFrame frame)
