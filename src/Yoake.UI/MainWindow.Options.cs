@@ -1,9 +1,22 @@
+using Avalonia.Controls;
 using Yoake.UI.ViewModels;
 
 namespace Yoake.UI;
 
 public partial class MainWindow
 {
+    private void RefreshJapaneseBrackets()
+    {
+        var flyout=new Avalonia.Controls.MenuFlyout();
+        foreach(var pair in Yoake.Core.Subtitles.AssInlineInsertion.Brackets)
+        {
+            var command=_model?.Actions["text/insert/brackets/"+pair.Id];
+            var item=new MenuItem { Name="JapaneseBracket_"+pair.Id.Replace('-','_'),Header=pair.Left+" "+pair.Right,Command=command,InputGesture=command?.InputGesture };
+            if(command is not null)command.PropertyChanged+=(_,args)=>{if(args.PropertyName==nameof(command.InputGesture))item.InputGesture=command.InputGesture;};
+            flyout.Items.Add(item);
+        }
+        this.FindControl<Avalonia.Controls.Button>("JapaneseBracketsButton")!.Flyout=flyout;
+    }
     public Task ShowKanjiTimingAsync(MainWindowViewModel model,Guid owner,CancellationToken token)
     {
         token.ThrowIfCancellationRequested();if(model.ActiveDocumentId!=owner)return Task.CompletedTask;
@@ -16,6 +29,12 @@ public partial class MainWindow
         token.ThrowIfCancellationRequested();var dialog=new SubtitleTrackWindow(tracks);
         using var registration=token.Register(()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>dialog.Close((ulong?)null)));
         return await dialog.ShowDialog<ulong?>(this);
+    }
+    public async Task<Yoake.Core.Subtitles.FuriganaReading?> ChooseFuriganaAsync(string source,int start,int end,CancellationToken token=default)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new FuriganaWindow(source,start,end);
+        using var registration=token.Register(()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>dialog.Close((Yoake.Core.Subtitles.FuriganaReading?)null)));
+        return await dialog.ShowDialog<Yoake.Core.Subtitles.FuriganaReading?>(this);
     }
     public async Task<int?> ChooseAudioTrackAsync(IReadOnlyList<Yoake.Core.Media.AudioTrackInfo> tracks,int? current,CancellationToken token=default)
     {

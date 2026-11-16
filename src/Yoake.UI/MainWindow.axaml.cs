@@ -154,6 +154,7 @@ public partial class MainWindow : Window, IEditorDialogs
         if(_model is not null){MoveVideoHost(false);_model.MotionBlockToggleRequested-=SubtitleText.ToggleMotionBlock;_model.VideoWindowZoomRequested-=ResizeDetachedVideo;_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
         UpdateOriginalTextLayout();
+        RefreshJapaneseBrackets();
         _automationMenuInitialized=false;
         RefreshRecentKeyframes();
         RefreshRecentMedia();

@@ -260,3 +260,14 @@ are independent of Automation compatibility.
 ### MUA Office UI acceptance font
 
 `ci/create_myanmar_font_fixtures.py` downloads the unmodified MUA Office Regular 2.10 font from `KoKoZaw-Eng/MMFonts` commit `5c1d43a7723a199a90008c52392449c1ab9de010`, path `MUA_Office-Regular.ttf`, SHA-256 `e655f235d3390e90751a148469bb331364c028006f97a7398932d706e55b449b`. Copyright (c) 2014 MUA, www.mmunicode.org; designer Khon Soe Zaw Thu. The embedded license identifies OFL 1.1. The generated fixture directory retains the notice and full OFL text. A renamed derivative, `Yoake UI Legacy Trap`, removes GSUB/GPOS/GDEF tables to reproduce unsafe cmap-only fallback. Fonts are acceptance inputs and are not shipped in the application archive.
+
+
+### Toshi-ban Japanese bracket inventory
+
+`AssInlineInsertion` adapts the fourteen `kBracketPairs` and selection-wrapping behavior
+from `src/subs_edit_box.cpp` in https://github.com/amanosatosi/Aegisub_Toshi-ban
+at `c7c51a6edf9589f15fd2580141111ee75e8f76e4` (Aegisub BSD-3-Clause,
+copyright 2004–2012 Aegisub Project). Yoake adds grapheme/ASS-token boundaries,
+semantic command IDs and transactional undo. The full license is included in
+`licenses/Aegisub-BSD-3-Clause.txt`. Furigana authoring uses Yoake's existing
+Mangetsu syntax parser and native dialog controls.

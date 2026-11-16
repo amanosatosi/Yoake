@@ -26,6 +26,7 @@ public interface IEditorDialogs
     IAutomationProgressSession? BeginAutomationProgress(string title) => null;
     Task<IReadOnlyList<string>?> ShowAutomationFileDialogAsync(Yoake.Core.Automation.AutomationFileDialogRequest request, CancellationToken token) => throw new NotSupportedException("Automation file dialogs are unavailable.");
     Task<AutomationExportChoice?> ShowAutomationExportAsync(IReadOnlyList<AutomationExportOption> options, IReadOnlyList<string> selected, string encoding, CancellationToken token) => throw new NotSupportedException("Automation export is unavailable.");
+    Task<FuriganaReading?> ChooseFuriganaAsync(string source,int start,int end,CancellationToken token=default)=>Task.FromResult<FuriganaReading?>(null);
     Task<FontChoice?> ChooseFontAsync(string family,string size,CancellationToken token=default)=>Task.FromResult<FontChoice?>(null);
     Task<AssColor?> ChooseColorAsync(AssColor color,CancellationToken token=default)=>Task.FromResult<AssColor?>(null);
     Task<ulong?> ChooseSubtitleTrackAsync(IReadOnlyList<Yoake.Core.Media.MatroskaSubtitleTrack> tracks,CancellationToken token=default)=>Task.FromResult<ulong?>(null);

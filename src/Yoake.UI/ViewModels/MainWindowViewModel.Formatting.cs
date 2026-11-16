@@ -24,8 +24,8 @@ public sealed partial class MainWindowViewModel
         SearchSelectionApplied?.Invoke(this, EventArgs.Empty);
     }
     private int _textSelectionStart, _textSelectionEnd;
-    public int TextSelectionStart {get=>_textSelectionStart;set{if(_textSelectionStart==value)return;_textSelectionStart=value;RefreshFormatting();}}
-    public int TextSelectionEnd {get=>_textSelectionEnd;set{if(_textSelectionEnd==value)return;_textSelectionEnd=value;RefreshFormatting();}}
+    public int TextSelectionStart {get=>_textSelectionStart;set{if(_textSelectionStart==value)return;var selected=_textSelectionStart!=_textSelectionEnd;_textSelectionStart=value;RefreshFormatting();RefreshInlineSelection(selected);}}
+    public int TextSelectionEnd {get=>_textSelectionEnd;set{if(_textSelectionEnd==value)return;var selected=_textSelectionStart!=_textSelectionEnd;_textSelectionEnd=value;RefreshFormatting();RefreshInlineSelection(selected);}}
     public AssFormattingState Formatting {get;private set;} = AssFormattingState.Empty;
     private void RefreshFormatting()
     {

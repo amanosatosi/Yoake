@@ -523,7 +523,9 @@
             <controls:AssColorButton Value="{Binding Formatting.Outline}" Label="3" Command="{Binding Actions[text/format/outline]}" ToolTip.Tip="Outline color and alpha at caret (static state)" />
             <controls:AssColorButton Value="{Binding Formatting.Shadow}" Label="4" Command="{Binding Actions[text/format/shadow]}" ToolTip.Tip="Shadow color and alpha at caret (static state)" />
           </StackPanel>
-          <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+          <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,0,8,4">
+            <Button Name="JapaneseBracketsButton" IsEnabled="{Binding HasSelectedEvent}" Content="『』" Padding="5,0" ToolTip.Tip="Insert paired Japanese brackets around the selection or at the caret" />
+            <Button Name="FuriganaButton" Content="Furigana…" Padding="5,0" Command="{Binding Actions[text/insert/furigana]}" ToolTip.Tip="Add reading and opposite-side reading to selected base text (Mangetsu)" />
             <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" ToolTip.Tip="Reset to line style at caret / selection" />
           </StackPanel>
           <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" Height="24" MinHeight="24" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="8,0,0,4" />

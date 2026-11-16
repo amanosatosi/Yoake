@@ -753,6 +753,8 @@ public sealed partial class EditorWorkflowTests : IDisposable
         public string? ClipboardText;
         public VideoDetails? VideoDetails;
         public bool FailFrameClipboard;
+        public Func<CancellationToken,Task<FuriganaReading?>>? FuriganaDialog;
+        public Task<FuriganaReading?> ChooseFuriganaAsync(string source,int start,int end,CancellationToken token=default)=>FuriganaDialog?.Invoke(token)??Task.FromResult<FuriganaReading?>(null);
         public Func<CancellationToken,Task<FontChoice?>>? FontDialog;
         public Func<CancellationToken,Task<AssColor?>>? ColorDialog;
         public Task<FontChoice?> ChooseFontAsync(string family,string size,CancellationToken token=default)=>FontDialog?.Invoke(token)??Task.FromResult<FontChoice?>(null);
