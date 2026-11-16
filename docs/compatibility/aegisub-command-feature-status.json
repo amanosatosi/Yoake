@@ -3444,12 +3444,20 @@
     },
     {
       "id": "tool/time/kanji",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/time/kanji",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open the Kanji timer copier",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "Tools menu",
+        "KanjiTimingWindow",
+        "CommandRegistry"
+      ],
+      "tests": [
+        "KaraokeAlignmentTests",
+        "KanjiTimingWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Manual many-to-many style-paired matching, grapheme/escape boundaries, empty groups, unlink/back/independent skips, staged accepted lines, one Apply/undo, preserved opaque destination overrides. Managed and native Linux passed; Windows pending. Automatic romaji/kana interpolation, ruby/drawing destinations and absolute kt remain gaps; unsupported input is preserved.",
       "yoake_default_hotkeys": {}
     },
     {

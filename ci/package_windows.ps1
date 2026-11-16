@@ -207,5 +207,11 @@ Set-Content -LiteralPath (Join-Path $portable 'ASSDraw-source-availability.txt')
 $zip = Join-Path $OutputRoot 'Yoake-Windows-x64-portable.zip'
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Compress-Archive -Path (Join-Path $portable '*') -DestinationPath $zip -CompressionLevel Optimal
+# Run subsequent loader and GUI acceptance against bytes extracted from the
+# exact distributable ZIP, rather than only its pre-compression staging tree.
+Remove-Item -LiteralPath $portable -Recurse -Force
+Expand-Archive -LiteralPath $zip -DestinationPath $portable
+if (-not (Test-Path -LiteralPath (Join-Path $portable 'Yoake.exe'))) { throw 'Portable archive is missing Yoake.exe.' }
+Write-Host 'Portable archive extracted for native closure, hash and GUI acceptance.'
 Write-Host "Staged $($selected.Count) native runtime DLL(s) in native/win-x64."
 Write-Host "Created $zip"

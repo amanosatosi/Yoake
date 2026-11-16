@@ -4,6 +4,11 @@ namespace Yoake.UI;
 
 public partial class MainWindow
 {
+    public Task ShowKanjiTimingAsync(MainWindowViewModel model,Guid owner,CancellationToken token)
+    {
+        token.ThrowIfCancellationRequested();if(model.ActiveDocumentId!=owner)return Task.CompletedTask;
+        var existing=OwnedWindows.OfType<KanjiTimingWindow>().FirstOrDefault();if(existing is not null)existing.Activate();else new KanjiTimingWindow(model).Show(this);return Task.CompletedTask;
+    }
     public Task ShowPostprocessAsync(MainWindowViewModel model,Guid owner,CancellationToken token)
     { token.ThrowIfCancellationRequested();if(model.ActiveDocumentId==owner)new PostprocessWindow(model,owner).Show(this);return Task.CompletedTask; }
     public async Task<ulong?> ChooseSubtitleTrackAsync(IReadOnlyList<Yoake.Core.Media.MatroskaSubtitleTrack> tracks,CancellationToken token=default)

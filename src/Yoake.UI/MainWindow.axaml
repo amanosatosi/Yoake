@@ -326,6 +326,7 @@
 <MenuItem Name="ToolsMenu" Header="Tools">
 <MenuItem Name="PostprocessMenu" Header="Timing Postprocessor…" Command="{Binding Actions[tool/time/postprocess]}" InputGesture="{Binding Actions[tool/time/postprocess].InputGesture}" />
 <MenuItem Name="MangetsuMetadataMenu" Header="Mangetsu Metadata…" Command="{Binding Actions[mangetsu/metadata]}" />
+<MenuItem Name="KanjiTimingMenu" Header="Kanji Timing Copier…" Command="{Binding Actions[tool/time/kanji]}" />
 <MenuItem Name="TranslationAssistantMenu" Header="Translation Assistant…" Command="{Binding Actions[tool/translation_assistant]}" InputGesture="{Binding Actions[tool/translation_assistant].InputGesture}" />
 <MenuItem Name="StylingAssistantMenu" Header="Styling Assistant…" Command="{Binding Actions[tool/style/assistant]}" InputGesture="{Binding Actions[tool/style/assistant].InputGesture}" />
 <MenuItem Name="ResampleMenu" Header="Resample Resolution…" InputGesture="{Binding Actions[tool/resampleres].InputGesture}" Command="{Binding Actions[tool/resampleres]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Resample}" /></MenuItem.Icon></MenuItem>

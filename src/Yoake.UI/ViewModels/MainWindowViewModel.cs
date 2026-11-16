@@ -250,6 +250,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterEditorCommands();
         RegisterFastActorCommands();
         RegisterAssistantCommands();
+        RegisterKanjiTimingCommands();
         RegisterEncodingCommands();
         RegisterEmbeddedSubtitleCommands();
         RegisterMangetsuMetadataCommands();
