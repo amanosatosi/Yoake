@@ -20,7 +20,8 @@ internal static class InlineInsertionUiVerification
         async Task Layout()=>await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
         async Task Invoke(string id)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId)),"Inline command: "+id);
         var path=Path.Combine(options.ProfileDirectory!,"inline-authoring.ass");
-        File.WriteAllText(path,"[Script Info]\nPlayResX: 640\nPlayResY: 360\n[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\nDialogue: 0,0:00:01.00,0:00:04.00,Default,HARU,0,0,0,,{\\k30\\future(preserve)}日本語 မြန်မာ é\n");
+        var fixture=AssDocument.CreateEmpty();new SubtitleEditor(fixture).SetScriptInfo(new Dictionary<string,string> { ["PlayResX"]="640",["PlayResY"]="360" });
+        File.WriteAllText(path,fixture.Serialize()+"Dialogue: 0,0:00:01.00,0:00:04.00,Default,HARU,0,0,0,,{\\k30\\future(preserve)}日本語 မြန်မာ é\n");
         Require(model.OpenSubtitle(path),"Open independent inline-authoring document.");await Layout();
         var input=window.FindControl<AssTextBox>("SubtitleText")!;
         var before=model.ActiveEditor!.Document.Serialize();var text=model.SelectedEvent!.Text;

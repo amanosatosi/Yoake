@@ -8,6 +8,7 @@ using Avalonia.Threading;
 using Yoake.Core.Commands;
 using Yoake.Core.Media;
 using Yoake.Core.Subtitles;
+using Yoake.Native;
 using Yoake.UI;
 using Yoake.UI.Controls;
 using Yoake.UI.ViewModels;
@@ -20,10 +21,18 @@ internal static class LiveVisualPreviewVerification
     {
         async Task Invoke(string id,object? parameter=null)=>Require(await model.Registry.InvokeAsync(id,new(model.ActiveDocumentId),parameter),"Live preview command: "+id);
         var path=Path.Combine(options.ProfileDirectory!,"live-drag.ass");
-        File.WriteAllText(path,"[Script Info]\nPlayResX: 384\nPlayResY: 288\n[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\nDialogue: 0,0:00:00.00,0:00:05.00,Default,A,0,0,0,,{\\pos(100,140)\\bord2\\future(preserve)}Live 日本 မြန်မာ\n");
+        var fixture=AssDocument.CreateEmpty();new SubtitleEditor(fixture).SetScriptInfo(new Dictionary<string,string> { ["PlayResX"]="384",["PlayResY"]="288" });
+        File.WriteAllText(path,fixture.Serialize()+"Dialogue: 0,0:00:00.00,0:00:05.00,Default,A,0,0,0,,{\\pos(100,140)\\bord2\\future(preserve)}Live 日本 မြန်မာ\n");
         Require(model.OpenSubtitle(path),"Open an independent live-drag fixture.");
-        await Invoke("video/open/dummy",new DummyVideoOptions { Width=640,Height=360,FrameCount=150,FramesPerSecond=25,Checkerboard=true });
+        var dummyOptions=new DummyVideoOptions { Width=640,Height=360,FrameCount=150,FramesPerSecond=25,Checkerboard=true };
+        await Invoke("video/open/dummy",dummyOptions);
         await Invoke("video/tool/position");await Invoke("video/presentation/zoom","100%");
+        if(OperatingSystem.IsWindows())
+        {
+            using var raw=new DummyVideoProvider(dummyOptions);
+            using var frame=model.VideoFrame!.Lock();var bytes=new byte[frame.RowBytes*frame.Size.Height];Marshal.Copy(frame.Address,bytes,0,bytes.Length);
+            Require(!bytes.SequenceEqual(raw.GetFrame(0).Pixels),"The initial composed frame must visibly contain subtitles before testing drag movement: "+model.MediaStatus);
+        }
         await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
         await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
         var overlay=window.FindControl<VisualOverlayControl>("VisualOverlay")!;
@@ -53,7 +62,7 @@ internal static class LiveVisualPreviewVerification
                 await Task.Delay(8);
             }
             Require(model.HasGesture&&revisions.Count>=2,"Continuous pointer motion must display multiple updated subtitle frames before release; revisions="+revisions.Count);
-            if(OperatingSystem.IsWindows())Require(pixels.Count>=2,"Actual Mangetsu subtitle pixels must move during the drag, not only after release.");
+            if(OperatingSystem.IsWindows())Require(pixels.Count>=2,"Actual Mangetsu subtitle pixels must move during the drag, not only after release; revisions="+revisions.Count+", pixel states="+pixels.Count+", status="+model.MediaStatus);
             overlay.RaiseEvent(new PointerReleasedEventArgs(overlay,pointer,window,Root(PointAt(160)),0,new(RawInputModifiers.None,PointerUpdateKind.LeftButtonReleased),KeyModifiers.None,MouseButton.Left));
             Require(!model.HasGesture&&pointer.Captured is null,"Release finishes the one gesture and pointer capture.");
             for(var i=0;i<600&&model.DisplayedPreviewRevision!=model.PreviewRevision;i++)await Task.Delay(16);
