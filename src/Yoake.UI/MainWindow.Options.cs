@@ -17,6 +17,12 @@ public partial class MainWindow
         using var registration=token.Register(()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>dialog.Close((ulong?)null)));
         return await dialog.ShowDialog<ulong?>(this);
     }
+    public async Task<int?> ChooseAudioTrackAsync(IReadOnlyList<Yoake.Core.Media.AudioTrackInfo> tracks,int? current,CancellationToken token=default)
+    {
+        token.ThrowIfCancellationRequested();var dialog=new AudioTrackWindow(tracks,current);
+        using var registration=token.Register(()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>dialog.Close((int?)null)));
+        return await dialog.ShowDialog<int?>(this);
+    }
     public Task<int?> ChooseSubtitleEncodingAsync()=>new SubtitleEncodingWindow().ShowDialog<int?>(this);
     public Task ShowMangetsuMetadataAsync(MainWindowViewModel model,Guid owner,CancellationToken token)
     { token.ThrowIfCancellationRequested();if(model.ActiveDocumentId==owner)new MangetsuMetadataWindow(model,owner).Show(this);return Task.CompletedTask; }

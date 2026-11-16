@@ -47,6 +47,7 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                     _video = Path.Combine(root, "日本語 မြန်မာ video.avi"); _audio = Path.Combine(root, "独立 audio.avi");
                     var fixture = Path.Combine(options.VerificationMedia!, "av.avi"); File.Copy(fixture, _video); File.Copy(fixture, _audio);
                     VerifyNativeOwnership(fixture);
+                    VerifyNativeAudioTracks(Path.Combine(options.VerificationMedia!, "subtitles.mkv"));
                     var subtitles = Path.Combine(root, "media-ownership.ass");
                     File.WriteAllText(subtitles, "[Script Info]\nPlayResX: 384\nPlayResY: 288\n[Events]\nFormat: " + string.Join(',', AssDocument.EventFormat) + "\nDialogue: 0,0:00:00.30,0:00:01.40,Default,A,0001,0002,0003,fx,{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語 é\n");
                     Require(model.OpenSubtitle(subtitles), "Open lossless ownership fixture.");
@@ -231,7 +232,49 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                         $"Video Open must auto-attach embedded audio and select Audio + Video; video={model.VideoSourcePath}, audio={model.AudioSourcePath}, view={model.ViewMode}.");
                     DocumentUnchanged();
                     Require(StartupDiagnostics.BindingWarningCount == 0 && StartupDiagnostics.FrameworkErrorCount == 0, "Ownership menus/layout must have no binding errors.");
-                    _timer.Stop(); options.FinishVerification("PASS: separate real-window independent media ownership; native track transfer and release; Unicode Video Open; transactional failed and superseded replacement; real Close menu Enter; focused Audio S/H after Video Close; real Recent Video menu Enter through shared backend; Audio replacement retains Video; independent persisted MRUs; deterministic post-publication supersession; auto-audio on Video Open; external timecodes/keyframes and document/draft/pending/selection/undo retention. Existing Video playback/EOF and visual acceptance run separately. Audible output remains manual QA.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;
+                    return;
+                case 11:
+                    await Invoke("audio/close");
+                    Require(await model.OpenAudioAsync(Path.Combine(options.VerificationMedia!, "subtitles.mkv")), "Open episode audio without replacing the existing video.");
+                    Require(model.AudioTracks.Count == 2 && model.AudioTrackIndex == 3 && model.Actions["audio/stream"].CanExecute(null), "Audio source exposes two real FFMS stream indices and defaults to the first.");
+                    _retainedFrame = model.VideoFrame; _retainedTimes = model.FrameTimes; _samples = model.WaveformSamples;
+                    DocumentUnchanged();
+                    window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen = true; return;
+                case 12:
+                    Press(window.FindControl<MenuItem>("AudioStreamMenu")!, Key.Enter); return;
+                case 13:
+                    var chooser = window.OwnedWindows.OfType<AudioTrackWindow>().Single();
+                    Require(chooser.IsVisible && chooser.FindControl<ListBox>("AudioTracks")!.SelectedItem is Yoake.Core.Media.AudioTrackInfo { Index: 3 }, "Chooser highlights the actual current stream.");
+                    Press(chooser.FindControl<ListBox>("AudioTracks")!, Key.Down); return;
+                case 14:
+                    var selecting = window.OwnedWindows.OfType<AudioTrackWindow>().Single();
+                    Require(selecting.FindControl<ListBox>("AudioTracks")!.SelectedItem is Yoake.Core.Media.AudioTrackInfo { Index: 4 }, "Keyboard Down selects the second stream.");
+                    Press(selecting.FindControl<Button>("SelectAudioTrack")!, Key.Enter); return;
+                case 15:
+                    if (!model.Actions["audio/stream"].CanExecute(null))
+                    { Require(++_waiting < 200, "Stream replacement finishes."); _stage--; return; }
+                    Require(model.AudioTrackIndex == 4 && !ReferenceEquals(_samples, model.WaveformSamples) && model.WaveformSamples is not null, "Chooser publishes the second stream and fresh waveform.");
+                    Require(model.VideoSourcePath == _video && ReferenceEquals(_retainedFrame, model.VideoFrame) && ReferenceEquals(_retainedTimes, model.FrameTimes), "Audio switching retains the exact independent Video frame and timing map.");
+                    DocumentUnchanged(); _samples = model.WaveformSamples;
+                    Require(!await model.SelectAudioTrackAsync(0) && model.AudioTrackIndex == 4 && ReferenceEquals(_samples, model.WaveformSamples), "Selecting a video stream fails atomically and retains current audio.");
+                    using (var canceledStream = new CancellationTokenSource())
+                    { canceledStream.Cancel(); Require(!await model.Registry.InvokeAsync("audio/stream", new(model.ActiveDocumentId), 3, canceledStream.Token) && model.AudioTrackIndex == 4, "Canceled stream command retains current audio."); }
+                    window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen = true; return;
+                case 16:
+                    Press(window.FindControl<MenuItem>("AudioStreamMenu")!, Key.Enter); return;
+                case 17:
+                    var canceling = window.OwnedWindows.OfType<AudioTrackWindow>().Single();
+                    Require(canceling.FindControl<ListBox>("AudioTracks")!.SelectedItem is Yoake.Core.Media.AudioTrackInfo { Index: 4 }, "Reopened chooser retains current stream.");
+                    Press(canceling.FindControl<ListBox>("AudioTracks")!, Key.Escape); return;
+                case 18:
+                    Require(!window.OwnedWindows.OfType<AudioTrackWindow>().Any() && model.AudioTrackIndex == 4 && ReferenceEquals(_samples, model.WaveformSamples), "Escape cancels stream selection without provider or waveform changes.");
+                    DocumentUnchanged();
+                    await Invoke("audio/open/video");
+                    Require(model.AudioSourcePath == _video && model.AudioTracks.Count == 1 &&
+                        ReferenceEquals(_retainedTimes, model.FrameTimes) && ReferenceEquals(_retainedFrame, model.VideoFrame), "Open audio from current video replaces only the independent audio slot.");
+                    Require(!model.Actions["audio/stream"].CanExecute(null), "Single-track source disables unnecessary track selection.");
+                    DocumentUnchanged();
+                    _timer.Stop(); options.FinishVerification("PASS: separate real-window independent media ownership; native track transfer and release; Unicode Video Open; transactional failed and superseded replacement; real Close menu Enter; focused Audio S/H after Video Close; real Recent Video menu Enter through shared backend; Audio replacement retains Video; independent persisted MRUs; deterministic post-publication supersession; auto-audio on Video Open; actual two-track PCM decoding; keyboard-operated audio track chooser and cancellation; failed and canceled stream replacement retains providers; external timecodes/keyframes and document/draft/pending/selection/undo retention. Existing Video playback/EOF and visual acceptance run separately. Audible output remains manual QA.\n"); StartupDiagnostics.Complete(); desktop.Shutdown(0); return;
             }
         }
         catch (Exception exception) { _timer.Stop(); Program.Fatal("Packaged media ownership at stage " + (_stage - 1), exception); desktop.Shutdown(1); }
@@ -261,6 +304,21 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
         var retainedVideo = both.VideoProvider!; var releasedAudio = both.AudioProvider!;
         using var audioClosed = both.WithAudio(null); both.Dispose(); both.Dispose();
         Require(!releasedAudio.HasAudio && retainedVideo.GetFrameAtTime(0).Width > 0 && ReferenceEquals(retainedVideo, audioClosed.VideoProvider), "Closing Audio retains a decoding native Video provider.");
+    }
+    private static void VerifyNativeAudioTracks(string path)
+    {
+        using var first = DocumentMedia.Open(path, tracks: MediaTracks.Audio);
+        using var second = DocumentMedia.Open(path, tracks: MediaTracks.Audio, audioTrackIndex: 4);
+        Require(first.AudioProvider!.AudioTracks.Select(track => track.Index).SequenceEqual(new[] { 3, 4 }) &&
+            first.AudioProvider.AudioTrackIndex == 3 && second.AudioProvider!.AudioTrackIndex == 4, "Actual native sources retain stream identity after resource transfer.");
+        static int Crossings(FfmsMediaSession source)
+        {
+            var samples = source.ReadAudioFrames(source.TimeToAudioFrame(.5), 2000).Samples;
+            var count = 0; for (var i = 1; i < samples.Length; i++) if (samples[i - 1] <= 0 && samples[i] > 0) count++;
+            return count;
+        }
+        Require(Math.Abs(Crossings(first.AudioProvider) - 110) <= 2 && Math.Abs(Crossings(second.AudioProvider!) - 165) <= 2,
+            "Selecting stream 4 decodes the distinct 660Hz audio rather than the default 440Hz audio.");
     }
     private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
 }

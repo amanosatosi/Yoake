@@ -532,11 +532,12 @@
       "id": "audio/open",
       "yoake_command": "audio/open",
       "status": "partially implemented",
-      "backend": "Independent document-owned video/audio provider snapshots; one FFMS index for legacy combined open, separate decoder ownership; transactional candidate preparation, cancellation/staleness, retained companion resources, typed independent persisted MRU. No additional clock or editor/session.",
+      "backend": "Independent document-owned video/audio provider snapshots; one FFMS index for legacy combined open, separate decoder ownership; transactional candidate preparation, cancellation/staleness, retained companion resources, typed independent persisted MRU. No additional clock or editor/session. Audio source stream indices/codecs are captured at index creation and retained by the audio resource; explicit switching indexes the requested track and atomically replaces only audio.",
       "exposure": [
         "CommandRegistry",
         "MainWindow Video/Audio menu and real file picker",
-        "Typed fixed-path recent menu through shared Open backend"
+        "Typed fixed-path recent menu through shared Open backend",
+        "Audio > Select audio stream…; keyboard-operated native chooser; audio/stream semantic command"
       ],
       "tests": [
         "MediaProviderOwnershipTests",
@@ -544,7 +545,7 @@
         "MediaOwnershipUiAcceptanceVerification",
         "VideoNavigationUiAcceptanceVerification (existing playback/EOF regression)"
       ],
-      "notes": "The minimal companion ownership backend/menu is implemented and verified in the Video ownership process. Both complete runs 38259585437 and 38259590849 at eb160b93ed87ded860b218fa293fb79662271065 passed managed tests (431 Core, 101 UI), source policy, Automation providers and Windows NativeAOT/package/all acceptance. The separate ownership process verifies native transfer/release, Unicode paths, failed/superseded replacement, in-flight peaks, real Close/Recent menu Enter, focused Audio S/H after close, companion retention, external maps and source/draft/pending/selection/undo retention, and a real locked-profile write failure. Existing Video playback/EOF/visual paths passed unchanged. Kept partial pending the separate Audio workflow audit, track-choice/picker behavior and representative Recent Audio menu input coverage. This Video job does not claim broader Audio parity.",
+      "notes": "The minimal companion ownership backend/menu is implemented and verified in the Video ownership process. Both complete runs 38259585437 and 38259590849 at eb160b93ed87ded860b218fa293fb79662271065 passed managed tests (431 Core, 101 UI), source policy, Automation providers and Windows NativeAOT/package/all acceptance. The separate ownership process verifies native transfer/release, Unicode paths, failed/superseded replacement, in-flight peaks, real Close/Recent menu Enter, focused Audio S/H after close, companion retention, external maps and source/draft/pending/selection/undo retention, and a real locked-profile write failure. Existing Video playback/EOF/visual paths passed unchanged. Kept partial pending the separate Audio workflow audit, track-choice/picker behavior and representative Recent Audio menu input coverage. This Video job does not claim broader Audio parity. Multi-track selection is now implemented with native two-tone PCM identity checks and real chooser keyboard/cancellation tests prepared for Windows CI. Stream display uses FFMS index and codec (matching the 3.2.2 provider model); it does not expose language tags. Per-project chosen-stream persistence remains unimplemented. New verification is pending; existing historical CI evidence does not cover this addition.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -569,19 +570,18 @@
     },
     {
       "id": "audio/open/video",
-      "yoake_command": "media/open",
+      "yoake_command": "audio/open/video",
       "status": "partially implemented",
-      "backend": "Independent audio provider ownership, timing controller and central playback timeline. Required action: Open the audio from the current video file",
+      "backend": "Uses the current real video source path through the existing transactional OpenMediaTrackAsync audio replacement; retains video provider/frame maps, subtitle drafts, timing selection and undo.",
       "exposure": [
         "CommandRegistry",
-        "MainWindow menu/control (see implementation evidence)"
+        "Audio > Open audio from video"
       ],
       "tests": [
-        "SubtitleEditorTests",
-        "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "MediaOwnershipWorkflowTests",
+        "MediaOwnershipUiAcceptanceVerification"
       ],
-      "notes": "Bundled media open exists; explicit reuse of already loaded video audio is missing.",
+      "notes": "Implemented explicit current-video audio reuse. Dummy video disables this action; current-video source has the same stream-selection menu after opening. Windows native/provider acceptance is pending for this addition.",
       "yoake_default_hotkeys": {}
     },
     {

@@ -28,9 +28,9 @@ public sealed class DocumentMedia : IDisposable
     }
     public IReadOnlyList<double> FrameTimes => VideoProvider?.FrameTimes ?? Array.Empty<double>();
     public IReadOnlyList<int> Keyframes => VideoProvider?.Keyframes ?? Array.Empty<int>();
-    public static DocumentMedia Open(string path, CancellationToken token = default, MediaTracks tracks = MediaTracks.Both)
+    public static DocumentMedia Open(string path, CancellationToken token = default, MediaTracks tracks = MediaTracks.Both, int? audioTrackIndex = null)
     {
-        using var opened = FfmsMediaSession.Open(path, token, tracks);
+        using var opened = FfmsMediaSession.Open(path, token, tracks, audioTrackIndex);
         var (video, audio) = opened.SeparateResources();
         try { return new(MediaProviderOwnership<IDisposable>.Own(video, audio)); }
         catch { try { video?.Dispose(); } finally { audio?.Dispose(); } throw; }

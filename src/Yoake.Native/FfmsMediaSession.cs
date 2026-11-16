@@ -95,9 +95,13 @@ public sealed unsafe partial class FfmsMediaSession : IVideoProvider
     public bool HasVideo => _videoSource != 0;
     public bool HasAudio => _audioSource != 0;
 
-    public static FfmsMediaSession Open(string path, CancellationToken cancellationToken = default, MediaTracks tracks = MediaTracks.Both)
+    public IReadOnlyList<AudioTrackInfo> AudioTracks { get; private set; } = Array.Empty<AudioTrackInfo>();
+    public int? AudioTrackIndex { get; private set; }
+
+    public static FfmsMediaSession Open(string path, CancellationToken cancellationToken = default, MediaTracks tracks = MediaTracks.Both, int? audioTrackIndex = null)
     {
         if (tracks is not (MediaTracks.Video or MediaTracks.Audio or MediaTracks.Both)) throw new ArgumentOutOfRangeException(nameof(tracks));
+        if (audioTrackIndex is < 0 || (audioTrackIndex is not null && !tracks.HasFlag(MediaTracks.Audio))) throw new ArgumentOutOfRangeException(nameof(audioTrackIndex));
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         path = System.IO.Path.GetFullPath(path);
         if (!File.Exists(path))
@@ -112,8 +116,21 @@ public sealed unsafe partial class FfmsMediaSession : IVideoProvider
         if (indexer == 0)
             throw CreateException("FFMS_CreateIndexer", errorBuffer);
 
-        Native.FFMS_TrackTypeIndexSettings(indexer, VideoTrackType, IndexTrack, 0);
-        Native.FFMS_TrackTypeIndexSettings(indexer, AudioTrackType, tracks.HasFlag(MediaTracks.Audio) ? IndexTrack : 0, 0);
+        IReadOnlyList<AudioTrackInfo> audioTracks;
+        try
+        {
+            var discovered = new List<AudioTrackInfo>();
+            for (var i = 0; i < Native.FFMS_GetNumTracksI(indexer); i++)
+                if (Native.FFMS_GetTrackTypeI(indexer, i) == AudioTrackType)
+                    discovered.Add(new(i, Marshal.PtrToStringUTF8(Native.FFMS_GetCodecNameI(indexer, i)) ?? "unknown"));
+            audioTracks = discovered.AsReadOnly();
+            if (audioTrackIndex is { } requested && !audioTracks.Any(track => track.Index == requested))
+                throw new ArgumentException("The selected stream is not an audio track in this file.", nameof(audioTrackIndex));
+            Native.FFMS_TrackTypeIndexSettings(indexer, VideoTrackType, IndexTrack, 0);
+            Native.FFMS_TrackTypeIndexSettings(indexer, AudioTrackType, tracks.HasFlag(MediaTracks.Audio) && audioTrackIndex is null ? IndexTrack : 0, 0);
+            if (audioTrackIndex is { } selected) Native.FFMS_TrackIndexSettings(indexer, selected, IndexTrack, 0);
+        }
+        catch { Native.FFMS_CancelIndexing(indexer); throw; }
         ResetError(ref error, errorBuffer);
         var cancellationHandle = GCHandle.Alloc(cancellationToken);
         nint index;
@@ -132,7 +149,7 @@ public sealed unsafe partial class FfmsMediaSession : IVideoProvider
             ResetError(ref error, errorBuffer);
             var videoTrack = Native.FFMS_GetFirstIndexedTrackOfType(index, VideoTrackType, &error);
             ResetError(ref error, errorBuffer);
-            var audioTrack = Native.FFMS_GetFirstIndexedTrackOfType(index, AudioTrackType, &error);
+            var audioTrack = audioTrackIndex ?? Native.FFMS_GetFirstIndexedTrackOfType(index, AudioTrackType, &error);
 
             if (videoTrack >= 0 && tracks.HasFlag(MediaTracks.Video))
             {
@@ -254,6 +271,8 @@ public sealed unsafe partial class FfmsMediaSession : IVideoProvider
                 session._videoDurationSeconds=last+Math.Max(0,frameDuration);
                 session._providerInfo=info with{DurationSeconds=Math.Max(audioDuration,session._videoDurationSeconds)};
             }
+            session.AudioTracks = audioTracks;
+            session.AudioTrackIndex = audioSource != 0 ? audioTrack : null;
             return session;
         }
         catch
@@ -283,7 +302,8 @@ public sealed unsafe partial class FfmsMediaSession : IVideoProvider
             { _frameTimes = _frameTimes, _keyframes = _keyframes, _videoDurationSeconds = _videoDurationSeconds, DisplayAspectRatio = DisplayAspectRatio };
             FfmsMediaSession? audio = _audioSource == 0 ? null : new(SourcePath, 0, _audioSource,
                 _providerInfo with { Width = 0, Height = 0, FrameCount = 0, FramesPerSecond = 0,
-                    DurationSeconds = _providerInfo.SampleRate > 0 ? _providerInfo.AudioSamples / (double)_providerInfo.SampleRate : 0 });
+                    DurationSeconds = _providerInfo.SampleRate > 0 ? _providerInfo.AudioSamples / (double)_providerInfo.SampleRate : 0 })
+            { AudioTracks = AudioTracks, AudioTrackIndex = AudioTrackIndex };
             _videoSource = _audioSource = 0;
             return (video, audio);
         }
@@ -531,6 +551,12 @@ public sealed unsafe partial class FfmsMediaSession : IVideoProvider
 
         [LibraryImport(Library, EntryPoint = "FFMS_CreateIndexer", StringMarshalling = StringMarshalling.Utf8)]
         internal static partial nint FFMS_CreateIndexer(string sourceFile, FfmsErrorInfo* errorInfo);
+
+        [LibraryImport(Library)] internal static partial int FFMS_GetNumTracksI(nint indexer);
+        [LibraryImport(Library)] internal static partial int FFMS_GetTrackTypeI(nint indexer, int track);
+        [LibraryImport(Library)] internal static partial nint FFMS_GetCodecNameI(nint indexer, int track);
+        [LibraryImport(Library)] internal static partial void FFMS_TrackIndexSettings(nint indexer, int track, int index, int unused);
+        [LibraryImport(Library)] internal static partial void FFMS_CancelIndexing(nint indexer);
 
         [LibraryImport(Library, EntryPoint = "FFMS_TrackTypeIndexSettings")]
         internal static partial void FFMS_TrackTypeIndexSettings(nint indexer, int trackType, int index, int unused);

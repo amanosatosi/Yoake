@@ -241,6 +241,8 @@
 </MenuItem>
 <MenuItem Name="AudioMenu" Header="Audio">
 <MenuItem Name="OpenAudioMenu" Header="Open audio…" InputGesture="{Binding Actions[audio/open].InputGesture}" Command="{Binding Actions[audio/open]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioOpen}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="AudioFromVideoMenu" Header="Open audio from video" Command="{Binding Actions[audio/open/video]}" InputGesture="{Binding Actions[audio/open/video].InputGesture}" />
+<MenuItem Name="AudioStreamMenu" Header="Select audio stream…" Command="{Binding Actions[audio/stream]}" InputGesture="{Binding Actions[audio/stream].InputGesture}" />
 <MenuItem Name="CloseAudioMenu" Header="Close audio" InputGesture="{Binding Actions[audio/close].InputGesture}" Command="{Binding Actions[audio/close]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioClose}" /></MenuItem.Icon></MenuItem>
 <MenuItem Name="RecentAudioMenu" Header="Recent audio" />
 <MenuItem Name="KaraokeMenu" Header="Toshiki K-Timing" ToggleType="CheckBox" IsChecked="{Binding Actions[audio/karaoke].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/karaoke]}" InputGesture="{Binding Actions[audio/karaoke].InputGesture}" />

@@ -12,6 +12,8 @@ public sealed partial class MainWindowViewModel
 {
     public string? VideoSourcePath => _media?.VideoSourcePath;
     public string? AudioSourcePath => _media?.AudioSourcePath;
+    public IReadOnlyList<AudioTrackInfo> AudioTracks => _media?.AudioProvider?.AudioTracks ?? Array.Empty<AudioTrackInfo>();
+    public int? AudioTrackIndex => _media?.AudioProvider?.AudioTrackIndex;
     public IReadOnlyList<RecentMediaItem> RecentVideoItems => RecentMedia(true);
     public IReadOnlyList<RecentMediaItem> RecentAudioItems => RecentMedia(false);
     private IReadOnlyList<RecentMediaItem> RecentMedia(bool video) =>
@@ -43,6 +45,21 @@ public sealed partial class MainWindowViewModel
                 }, Applies));
             foreach (var command in new[] { name + "/open", "recent/" + name }) Actions[command] = new RegistryCommand(_registry, command, CurrentContext, hotkeys: () => HotkeyProfile);
         }
+        _registry.Register(new(new("audio/open/video", "Open audio from video", "Use audio from this document's current video, retaining its video provider", "Audio"),
+            async (_, token) => { if (_media?.VideoProvider is { IsDummy: false } video) await OpenMediaTrackAsync(video.SourcePath, false, token); },
+            context => Applies(context) && _media?.VideoProvider is { IsDummy: false }));
+        Actions["audio/open/video"] = new RegistryCommand(_registry, "audio/open/video", CurrentContext, hotkeys: () => HotkeyProfile);
+        _registry.Register(new(new("audio/stream", "Select audio stream…", "Replace the audio track while retaining video and subtitle edits", "Audio"),
+            async (invocation, token) =>
+            {
+                var id = _activeId!.Value; var media = _media;
+                var selected = invocation.Parameter is int index ? index : Dialogs is null ? null :
+                    await Dialogs.ChooseAudioTrackAsync(AudioTracks, AudioTrackIndex, token);
+                token.ThrowIfCancellationRequested();
+                if (selected is null || _activeId != id || !ReferenceEquals(_media, media) || selected == AudioTrackIndex) return;
+                await SelectAudioTrackAsync(selected.Value, token);
+            }, context => Applies(context) && AudioTracks.Count > 1 && _documents[_activeId!.Value].AudioLoading is null));
+        Actions["audio/stream"] = new RegistryCommand(_registry, "audio/stream", CurrentContext, hotkeys: () => HotkeyProfile);
         _registry.Register(new(new("video/close", "Close video", "Release video while retaining audio", "Video"),
             (_, _) => { CloseVideo(); return ValueTask.CompletedTask; }, context => Applies(context) &&
                 (_media?.HasVideo == true || _documents[_activeId!.Value].VideoLoading is not null)));
@@ -56,7 +73,9 @@ public sealed partial class MainWindowViewModel
     public Task<bool> OpenVideoAsync(string path, CancellationToken token = default) => OpenMediaTrackAsync(path, true, token);
     public Task<bool> OpenAudioAsync(string path, CancellationToken token = default) => OpenMediaTrackAsync(path, false, token);
     public Task<bool> OpenDummyVideoAsync(DummyVideoOptions options, CancellationToken token = default) => OpenMediaTrackAsync("", true, token, options);
-    private async Task<bool> OpenMediaTrackAsync(string path, bool video, CancellationToken parent, DummyVideoOptions? dummy = null)
+    public Task<bool> SelectAudioTrackAsync(int index, CancellationToken token = default) =>
+        AudioSourcePath is { } path ? OpenMediaTrackAsync(path, false, token, audioTrackIndex: index) : Task.FromResult(false);
+    private async Task<bool> OpenMediaTrackAsync(string path, bool video, CancellationToken parent, DummyVideoOptions? dummy = null, int? audioTrackIndex = null)
     {
         if (_disposed || _activeId is not { } id || !_documents.TryGetValue(id, out var state)) return false;
         parent.ThrowIfCancellationRequested();
@@ -90,7 +109,7 @@ public sealed partial class MainWindowViewModel
             var full = dummy is null ? Path.GetFullPath(path) : "";
             var job = _jobs.Run(video ? "Open video" : "Open audio", ct =>
             {
-                candidate = dummy is null ? DocumentMedia.Open(full, ct, tracks)
+                candidate = dummy is null ? DocumentMedia.Open(full, ct, tracks, audioTrackIndex)
                     : DocumentMedia.FromVideo(new DummyVideoProvider(dummy, ct));
                 if (video && !candidate.HasVideo)
                     throw new InvalidOperationException("The selected file contains no video stream.");
@@ -233,7 +252,7 @@ public sealed partial class MainWindowViewModel
         OnPropertyChanged(nameof(HasAudio));
         EnsureKaraokeSafe(); NotifyKaraoke();
         ReconcileWorkspaceView();
-        foreach (var name in new[] { nameof(VideoSourcePath), nameof(AudioSourcePath), nameof(FrameTimes), nameof(Keyframes),
+        foreach (var name in new[] { nameof(VideoSourcePath), nameof(AudioSourcePath), nameof(AudioTracks), nameof(AudioTrackIndex), nameof(FrameTimes), nameof(Keyframes),
             nameof(FramePositionDisplay), nameof(RelativeTimingDisplay), nameof(CanShiftByFrames) }) OnPropertyChanged(name);
         if (playableChanged) OnPropertyChanged(nameof(CanPlayMedia));
         MediaStatus = _media?.SourcePath ?? "Open video/audio";

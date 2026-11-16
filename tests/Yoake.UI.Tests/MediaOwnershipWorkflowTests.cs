@@ -6,6 +6,26 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact] public async Task AudioStreamSelectionWithoutAudioPreservesIndependentVideoAndDraft()
+    {
+        Assert.True(await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=12}));
+        await Command(CommandIds.GridInsertAfter);
+        _model.Draft!.Text = "日本語 မြန်မာ retained";
+        _model.Draft.Start = "unfinished";
+        var editor = _model.ActiveEditor!; var source = editor.Document.Serialize();
+        var draft = _model.Draft; var undo = editor.Undo.NextUndoName; var video = _model.VideoSourcePath;
+        Assert.Empty(_model.AudioTracks); Assert.Null(_model.AudioTrackIndex);
+        Assert.False(_model.Actions["audio/stream"].CanExecute(null));
+        Assert.False(_model.Actions["audio/open/video"].CanExecute(null));
+        Assert.False(await _model.Registry.InvokeAsync("audio/open/video", new()));
+        Assert.False(await _model.Registry.InvokeAsync("audio/stream", new(), 1));
+        Assert.False(await _model.Registry.InvokeAsync("audio/stream", new(Guid.NewGuid()), 1));
+        Assert.False(await _model.SelectAudioTrackAsync(1));
+        Assert.Same(draft, _model.Draft); Assert.Equal(source, editor.Document.Serialize());
+        Assert.Equal(undo, editor.Undo.NextUndoName); Assert.Equal(video, _model.VideoSourcePath);
+        Assert.True(_model.IsVideoView);
+    }
+
     [Fact] public async Task ReopeningVideoAfterCommittedPublicationReportsSuccess()
     {
         var first = new Yoake.Core.Media.DummyVideoOptions { Width=320, Height=180, FrameCount=12 };
