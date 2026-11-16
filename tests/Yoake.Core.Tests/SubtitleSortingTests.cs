@@ -21,6 +21,45 @@ public sealed class SubtitleSortingTests
         var reopened=AssDocument.Parse(editor.Document.Serialize());Assert.Equal("{\\future(opaque)}日本語",reopened.Events[^1].Text);
         editor.Undo.Undo();Assert.Equal(Source,editor.Document.Serialize());editor.Undo.Redo();Assert.Same(records[3],editor.Document.Events[0]);
     }
+    private static string MetadataDocument()=>AssDocument.CreateEmpty().Serialize()+
+        "Comment: 9,0:00:09.00,0:00:09.50,Default,,0,0,0,mangetsu-style,{\\future(style)}\n"+
+        "Comment: 8,0:00:08.00,0:00:08.50,Default,Nene,0,0,0,mangetsu-colorcoding,{\\1c&H123456&}\n"+
+        "Comment: 7,0:00:07.00,0:00:07.50,Default,,0,0,0,{uketsugu},first 日本語\n"+
+        "Dialogue: 6,0:00:06.00,0:00:06.50,Default,,0,0,0,{uketsugu},second မြန်မာ\n"+
+        "Dialogue: 3,0:00:03.00,0:00:06.00,C,C,0,0,0,C,{\\i1}C\n"+
+        "Comment: 5,0:00:05.00,0:00:05.50,Default,,0,0,0,mangetsu-style,{\\future(inactive)}\n"+
+        "Dialogue: 1,0:00:01.00,0:00:04.00,A,A,0,0,0,A,{\\i1}A\n"+
+        "Dialogue: 2,0:00:02.00,0:00:05.00,B,B,0,0,0,B,{\\i1}B\n";
+    [Theory]
+    [InlineData(SubtitleSortKey.Start)][InlineData(SubtitleSortKey.End)][InlineData(SubtitleSortKey.Style)]
+    [InlineData(SubtitleSortKey.Actor)][InlineData(SubtitleSortKey.Effect)][InlineData(SubtitleSortKey.Layer)]
+    [InlineData(SubtitleSortKey.Text)][InlineData(SubtitleSortKey.TextStripped)]
+    public void SortAllRetainsMetadataAndInheritedRecordsInExactSlots(SubtitleSortKey key)
+    {
+        var source=MetadataDocument();var document=AssDocument.Parse(source);var editor=new SubtitleEditor(document);var rows=document.Events.ToArray();
+        editor.ApplySort(editor.CaptureSort(key).Calculate());
+        Assert.Equal(new[] { rows[0],rows[1],rows[2],rows[3],rows[6],rows[5],rows[7],rows[4] },document.Events);
+        Assert.Equal(new[] { "first 日本語","second မြန်မာ" },document.Events.Where(MangetsuMetadata.IsInherited).Select(e=>e.Text));
+        Assert.Equal(2,MangetsuMetadata.Initial(document).Length);Assert.Equal(@"{\future(inactive)}",document.Events[5].Text);
+        var after=document.Serialize();Assert.Equal(after,AssDocument.Parse(after).Serialize());editor.Undo.Undo();Assert.Equal(source,document.Serialize());editor.Undo.Redo();Assert.Equal(after,document.Serialize());
+    }
+    [Fact]
+    public void ATextTokenDoesNotFreezeAnOrdinaryDialogueSortSlot()
+    {
+        var document=AssDocument.Parse(AssDocument.CreateEmpty().Serialize()+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,{uketsugu}Z\n"+
+            "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,A\n");
+        var editor=new SubtitleEditor(document);var ordinary=document.Events[0];editor.ApplySort(editor.CaptureSort(SubtitleSortKey.Text).Calculate());
+        Assert.Same(ordinary,document.Events[1]);Assert.False(MangetsuMetadata.IsInherited(ordinary));Assert.Equal("",ordinary.Effect);
+    }
+    [Fact]
+    public void SelectedMetadataDoesNotBecomeSortableOrBridgeUnselectedGaps()
+    {
+        var document=AssDocument.Parse(MetadataDocument());var editor=new SubtitleEditor(document);var rows=document.Events.ToArray();var before=document.Serialize();
+        editor.ApplySort(editor.CaptureSort(SubtitleSortKey.Text,rows.Take(4)).Calculate());Assert.Equal(before,document.Serialize());Assert.False(editor.Undo.CanUndo);
+        editor.ApplySort(editor.CaptureSort(SubtitleSortKey.Text,[rows[4],rows[6],rows[7]]).Calculate());Assert.Equal(before,document.Serialize());
+        editor.ApplySort(editor.CaptureSort(SubtitleSortKey.Text,[rows[4],rows[5],rows[6],rows[7]]).Calculate());Assert.Same(rows[6],document.Events[4]);Assert.Same(rows[5],document.Events[5]);Assert.Same(rows[4],document.Events[7]);
+    }
     [Fact] public void SelectedSortingDoesNotMoveRecordsAcrossUnselectedGaps()
     {
         var editor=new SubtitleEditor(AssDocument.Parse(Source));var rows=editor.Document.Events.ToArray();

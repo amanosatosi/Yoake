@@ -23,10 +23,11 @@ public sealed record ToshikiRecovery(int Row, string Source, long Start, long En
 public sealed record KaraokeSource(string Raw, string Text, int[] Offsets, int[] Cuts, string[] Tags, long[] Durations, int[] Insertions)
 {
     public bool Existing => Tags.Length > 0;
+    public long[] Starts { get; init; }=[];
 
     // The Automation parser's balanced top-level scanner is shared. Its frozen
     // Lua view still drops empty zero-duration groups; authoring retains them.
-    public static KaraokeSource Parse(string source)
+    public static KaraokeSource Parse(string source,bool allowAbsoluteStarts=false)
     {
         var protectedBase = new bool[source.Length];
         var sourceFuri = new bool[source.Length];
@@ -38,31 +39,50 @@ public sealed record KaraokeSource(string Raw, string Text, int[] Offsets, int[]
             for(var q=p;q<pipe;q++)protectedBase[q]=true;
             p=pipe;
         }
-        var raw = new StringBuilder(); var anchors = new List<(int Offset, string Tag, long Duration)>();
+        var raw = new StringBuilder(); var anchors = new List<(int Offset, string Tag, long Duration,long Start)>();
+        long timeline=0;string? effect=null;(string Tag,long Start)? reset=null;
+        void FlushReset()
+        {
+            if(reset is {} pending){anchors.Add((raw.Length,pending.Tag,0,pending.Start));reset=null;}
+        }
         for (var cursor = 0; cursor < source.Length;)
         {
             if (source[cursor] == '\\' && cursor + 1 < source.Length && source[cursor + 1] is '{' or '}')
-            { raw.Append(source.AsSpan(cursor, 2)); cursor += 2; continue; }
+            { if(!protectedBase[cursor])FlushReset();raw.Append(source.AsSpan(cursor, 2)); cursor += 2; continue; }
             var close = source[cursor] == '{' ? source.IndexOf('}', cursor + 1) : -1;
-            if (close < 0) { raw.Append(source[cursor++]); continue; }
+            if (close < 0) { if(!protectedBase[cursor])FlushReset();raw.Append(source[cursor++]); continue; }
             var content = source.AsSpan(cursor + 1, close - cursor - 1);
             if (!content.Contains('\\')) { raw.Append(source.AsSpan(cursor, close - cursor + 1)); cursor = close + 1; continue; }
-            var kept = new StringBuilder(); var local = new List<(string Tag, long Duration)>();
+            var kept = new StringBuilder(); var local = new List<(string Tag, long Duration,long Start)>();
             foreach (var span in AutomationKaraokeParser.Segments(source, cursor + 1, close))
             {
                 var value = source.AsSpan(span.Start, span.Length); var match = AssTagCatalog.Match(value.Length > 0 && value[0] == '\\' ? value[1..] : value);
                 var name = value.Length > 0 && value[0] == '\\' ? value.Slice(1, match.Length).ToString() : "";
-                if (name == "kt" && !protectedBase[span.Start]) throw new ArgumentException("Absolute \\kt timing must be converted before Toshiki K-Timing. The source is preserved.");
+                if(name=="kt")
+                {
+                    if(protectedBase[span.Start])
+                    {
+                        if(allowAbsoluteStarts)throw new ArgumentException("Absolute timing inside a ruby base cannot yet be split safely; the source is preserved.");
+                    }
+                    else
+                    {
+                        if(!allowAbsoluteStarts)throw new ArgumentException("Absolute \\kt timing must be converted before Toshiki K-Timing. The source is preserved.");
+                        var argument=value[(name.Length+1)..].Trim();long absoluteCs=0;
+                        if(!argument.IsEmpty&&(!long.TryParse(argument,NumberStyles.Integer,CultureInfo.InvariantCulture,out absoluteCs)||absoluteCs<0||absoluteCs>8640000))
+                            throw new ArgumentException("Use a nonnegative integer absolute karaoke start before splitting; the source is preserved.");
+                        timeline=checked(absoluteCs*10);reset=effect is null?null:(effect,timeline);continue;
+                    }
+                }
                 if (!protectedBase[span.Start] && name is ("k" or "K" or "kf" or "ko" or "kO"))
                 {
                     if (!long.TryParse(value[(name.Length + 1)..].Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var cs) || cs < 0 || cs > 8640000)
                         throw new ArgumentException("Invalid karaoke duration. Correct it before timing; the source is preserved.");
-                    local.Add((name, checked(cs * 10)));
+                    reset=null;var duration=checked(cs*10);local.Add((name,duration,timeline));timeline=checked(timeline+duration);effect=name;
                 }
                 else kept.Append(value);
             }
             if (kept.Length > 0) raw.Append('{').Append(kept).Append('}');
-            foreach (var tag in local) anchors.Add((raw.Length, tag.Tag, tag.Duration));
+            foreach (var tag in local) anchors.Add((raw.Length, tag.Tag, tag.Duration,tag.Start));
             cursor = close + 1;
         }
         var cleaned = raw.ToString(); var tokens = AssSyntax.Tokenize(cleaned);
@@ -97,15 +117,15 @@ public sealed record KaraokeSource(string Raw, string Text, int[] Offsets, int[]
         offsets.Add(text.Length==0?0:cleaned.Length);
         actual.Add(cleaned.Length);
         int Logical(int offset) { var found = actual.BinarySearch(offset); return found >= 0 ? Math.Min(found, text.Length) : Math.Min(~found, text.Length); }
-        var cuts = new List<int>(); var tags = new List<string>(); var durations = new List<long>(); var insertions=new List<int>();
+        var cuts = new List<int>(); var tags = new List<string>(); var durations = new List<long>(); var insertions=new List<int>();var starts=new List<long>();
         foreach (var anchor in anchors)
         {
             var logical = Logical(anchor.Offset);
-            if (cuts.Count == 0 && logical > 0) { cuts.Add(0); tags.Add("k"); durations.Add(0); insertions.Add(offsets[0]); }
-            cuts.Add(logical); tags.Add(anchor.Tag); durations.Add(anchor.Duration);
+            if (cuts.Count == 0 && logical > 0) { cuts.Add(0); tags.Add("k"); durations.Add(0); insertions.Add(offsets[0]);starts.Add(0); }
+            cuts.Add(logical); tags.Add(anchor.Tag); durations.Add(anchor.Duration);starts.Add(anchor.Start);
             insertions.Add(Math.Max(offsets[logical],anchor.Offset));
         }
-        return new(cleaned, text.ToString(), offsets.ToArray(), cuts.ToArray(), tags.ToArray(), durations.ToArray(),insertions.ToArray());
+        return new(cleaned, text.ToString(), offsets.ToArray(), cuts.ToArray(), tags.ToArray(), durations.ToArray(),insertions.ToArray()) { Starts=starts.ToArray() };
     }
     public string Render(IReadOnlyList<int> cuts, IReadOnlyList<string> tags, IReadOnlyList<long> durations, IReadOnlyList<int>? insertions=null)
     {

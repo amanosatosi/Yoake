@@ -1539,9 +1539,10 @@
       ],
       "tests": [
         "KaraokeSplitTests",
-        "KaraokeSplitWorkflowTests"
+        "KaraokeSplitWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Undoable multi-selection split with static formatting inheritance, whole ruby groups, grapheme guards and Aegisub line-end normalization. Absolute kt, internal ruby splits and time-relative/unknown override retiming remain unsupported and preserve source on rejection.",
+      "notes": "Undoable multi-selection split with static formatting, whole ruby groups, grapheme guards, line-end normalization and nonnegative integer absolute kt starts, gaps/backwards resets and standalone reset handling. Renderer metadata and Effect={uketsugu} inheritance are protected; Text tokens remain ordinary. Negative/fractional/base-ruby absolute timing, internal ruby cuts and time-relative/unknown retiming still reject atomically. Toshiki and Automation 3.2.2 parsing remain unchanged.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1884,7 +1885,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1904,7 +1905,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1924,7 +1925,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1944,7 +1945,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1964,7 +1965,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1984,7 +1985,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2004,7 +2005,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2024,7 +2025,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2044,7 +2045,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2064,7 +2065,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2084,7 +2085,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2104,7 +2105,7 @@
         "EditorWorkflowTests.SwapAndCanceledSortRespectAvailabilityAndPreserveHistory",
         "HotkeyUiAcceptanceVerification real Grid F10, Ctrl-Z/Ctrl-Y and actual multi-selection"
       ],
-      "notes": "Unicode text keys compare scalar values, matching valid upstream UTF-8 ordering. Equal keys retain source order; unknown numeric values sort last. Obsolete jobs are canceled on draft/document changes or close, and stale results cannot overwrite edits.  Verified managed tests, source policy, native Automation and NativeAOT packaged startup plus separate real-input keyboard/timing acceptance at 4deb4d42877789bf012c5070c33c37cad8914572: https://github.com/amanosatosi/Yoake/actions/runs/38152244505.",
+      "notes": "Stable cancellable sorting with document/revision fences and exact undo. Ordinary rows sort around fixed style/Actor Colorcoding metadata and Effect={uketsugu} inheritance; Text tokens are ordinary. Selected blocks remain contiguous, and late inactive metadata is never promoted. Managed and native Linux menu/save/reopen passed; corrected Windows checks pending.",
       "yoake_default_hotkeys": {}
     },
     {

@@ -10,7 +10,7 @@ public enum SubtitleSortKey { Start,End,Style,Actor,Effect,Layer,Text,TextStripp
 // Capture on the caller thread, calculate in a cancellable job, apply on UI.
 public sealed class SubtitleSortSnapshot
 {
-    internal sealed record Entry(AssEvent Line,int Position,bool Selected,long Start,long End,int Layer,string Style,string Actor,string Effect,string Text);
+    internal sealed record Entry(AssEvent Line,int Position,bool Selected,bool Protected,long Start,long End,int Layer,string Style,string Actor,string Effect,string Text);
     internal SubtitleEditor Editor {get;}
     internal long Revision {get;}
     private readonly Entry[] _entries;private readonly SubtitleSortKey _key;
@@ -43,10 +43,16 @@ public sealed class SubtitleSortSnapshot
         {
             cancellationToken.ThrowIfCancellationRequested();if(!sorted[start].Selected){start++;continue;}
             var end=start+1;while(end<sorted.Length&&sorted[end].Selected)end++;
-            // Upstream selected sorting works on contiguous blocks separately.
-            try{Array.Sort(sorted,start,end-start,Comparer<Entry>.Create(Compare));}
+            // Selected blocks retain their upstream semantics. Renderer records
+            // stay in their exact slots while dialogue sorts around them.
+            var count=0;for(var i=start;i<end;i++){cancellationToken.ThrowIfCancellationRequested();if(!sorted[i].Protected)count++;}
+            if(count<2){start=end;continue;}
+            var eligible=new Entry[count];var next=0;
+            for(var i=start;i<end;i++)if(!sorted[i].Protected)eligible[next++]=sorted[i];
+            try{Array.Sort(eligible,Comparer<Entry>.Create(Compare));}
             catch(InvalidOperationException exception)when(exception.InnerException is OperationCanceledException&&cancellationToken.IsCancellationRequested)
             {throw new OperationCanceledException(cancellationToken);}
+            next=0;for(var i=start;i<end;i++)if(!sorted[i].Protected)sorted[i]=eligible[next++];
             start=end;
         }
         cancellationToken.ThrowIfCancellationRequested();return new(this,sorted.Select(entry=>entry.Line).ToArray());
@@ -77,7 +83,7 @@ public sealed partial class SubtitleEditor
     {
         if(!Enum.IsDefined(key))throw new ArgumentException("Unknown sort key.");
         var selected=selection is null?null:Ordered(selection).ToHashSet();
-        return new(this,Document.Events.Select((line,index)=>new SubtitleSortSnapshot.Entry(line,index,selected is null||selected.Contains(line),
+        return new(this,Document.Events.Select((line,index)=>new SubtitleSortSnapshot.Entry(line,index,selected is null||selected.Contains(line),MangetsuMetadata.Kind(line)!=MangetsuMetadataKind.None||MangetsuMetadata.IsInherited(line),
             line.StartMilliseconds??long.MaxValue,line.EndMilliseconds??long.MaxValue,
             int.TryParse(line.Layer,NumberStyles.Integer,CultureInfo.InvariantCulture,out var layer)?layer:int.MaxValue,line.Style,line.Actor,line.Effect,line.Text)).ToArray(),key);
     }

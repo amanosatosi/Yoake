@@ -11,13 +11,14 @@ public sealed partial class SubtitleEditor
         var replacements = new List<(AssEvent Original, AssEvent[] Lines)>();
         foreach (var line in Ordered(selection))
         {
-            var karaoke = KaraokeSource.Parse(line.Text);
+            if(MangetsuMetadata.Kind(line)!=MangetsuMetadataKind.None||MangetsuMetadata.IsInherited(line))continue;
+            var karaoke = KaraokeSource.Parse(line.Text,allowAbsoluteStarts:true);
             if (karaoke.Tags.Length < 2) continue;
             // Static appearance state can be inherited. Time-relative effects,
             // drawings and unknown tag semantics still require explicit retiming.
             const string staticTags="an a pos org fn fs fscx fscy fsp fr frx fry frz fax fay fe b i u s c 1c 2c 3c 4c alpha 1a 2a 3a 4a bord xbord ybord shad xshad yshad blur be q r clip iclip furi furis furisx furisy furifsp furistyle furipos furiap furiplaceauto furichangepos vert vtype vdir vsp vcolsp";
             var allowed=staticTags.Split(' ').ToHashSet(StringComparer.Ordinal);
-            if (AssSyntax.Tags(line.Text).Any(tag => tag.Name is not ("k" or "K" or "kf" or "ko" or "kO")&&!allowed.Contains(tag.Name)))
+            if (AssSyntax.Tags(line.Text).Any(tag => tag.Name is not ("k" or "K" or "kf" or "ko" or "kO" or "kt")&&!allowed.Contains(tag.Name)))
                 throw new ArgumentException("Time-relative, drawing or unknown overrides cannot yet be split safely; the source was preserved.");
             var safe = StringInfo.ParseCombiningCharacters(karaoke.Text).Append(karaoke.Text.Length).ToHashSet();
             if (karaoke.Cuts.Any(cut => !safe.Contains(cut)))
@@ -40,9 +41,9 @@ public sealed partial class SubtitleEditor
                         groupStart=-1;
                     }
                 }
-            var time = line.StartMilliseconds ?? throw new ArgumentException("Use valid start times before splitting karaoke.");
+            var origin = line.StartMilliseconds ?? throw new ArgumentException("Use valid start times before splitting karaoke.");
             var lineEnd=line.EndMilliseconds??throw new ArgumentException("Use valid end times before splitting karaoke.");
-            if(lineEnd<time)throw new ArgumentException("End time must not precede start time.");
+            if(lineEnd<origin)throw new ArgumentException("End time must not precede start time.");
             var parts = new List<AssEvent>();
             for (var i = 0; i < karaoke.Tags.Length; i++)
             {
@@ -52,12 +53,14 @@ public sealed partial class SubtitleEditor
                 if (start > insertion || insertion > end || end > karaoke.Raw.Length)
                     throw new ArgumentException("Karaoke boundaries cannot be split safely; the source was preserved.");
                 var duration = karaoke.Durations[i];
-                var next = i+1==karaoke.Tags.Length?lineEnd:Math.Min(checked(time + duration),lineEnd);
+                var intended=checked(origin+karaoke.Starts[i]);
+                var time=Math.Clamp(intended,origin,lineEnd);
+                var next=i+1==karaoke.Tags.Length?lineEnd:Math.Clamp(checked(intended+duration),origin,lineEnd);
                 var copy = line.Clone();
                 copy.Start = AssTime.Format(time); copy.End = AssTime.Format(next);
                 copy.Text = AssTextOperations.OverridesBefore(karaoke.Raw,start) + karaoke.Raw[start..insertion] + "{\\" + karaoke.Tags[i] +
                     (duration / 10).ToString(CultureInfo.InvariantCulture) + "}" + karaoke.Raw[insertion..end];
-                parts.Add(copy); time = next;
+                parts.Add(copy);
             }
             replacements.Add((line, parts.ToArray()));
         }

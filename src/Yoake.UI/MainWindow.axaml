@@ -103,7 +103,7 @@
 <MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
 </MenuItem>
 <MenuItem Name="RecombineMenu" Header="Recombine lines" Command="{Binding Actions[edit/line/recombine]}" InputGesture="{Binding Actions[edit/line/recombine].InputGesture}" />
-<MenuItem Header="Split by karaoke" InputGesture="{Binding Actions[edit/line/split/by_karaoke].InputGesture}" Command="{Binding Actions[edit/line/split/by_karaoke]}" />
+<MenuItem Name="SplitByKaraokeMenu" Header="Split by karaoke" InputGesture="{Binding Actions[edit/line/split/by_karaoke].InputGesture}" Command="{Binding Actions[edit/line/split/by_karaoke]}" />
 <MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
 <MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />
 <MenuItem Header="Join selected">
@@ -113,14 +113,14 @@
 <MenuItem Header="With line breaks" InputGesture="{Binding Actions[grid/join].InputGesture}" Command="{Binding Actions[grid/join]}" />
 </MenuItem>
 <MenuItem Header="Swap selected lines" InputGesture="{Binding Actions[grid/swap].InputGesture}" Command="{Binding Actions[grid/swap]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.StyleSort}" /></MenuItem.Icon></MenuItem>
-<MenuItem Header="Sort all lines">
+<MenuItem Name="SortAllLinesMenu" Header="Sort all lines">
 <MenuItem Header="By start" InputGesture="{Binding Actions[grid/sort/start].InputGesture}" Command="{Binding Actions[grid/sort/start]}" />
 <MenuItem Header="By end" InputGesture="{Binding Actions[grid/sort/end].InputGesture}" Command="{Binding Actions[grid/sort/end]}" />
 <MenuItem Header="By style" InputGesture="{Binding Actions[grid/sort/style].InputGesture}" Command="{Binding Actions[grid/sort/style]}" />
 <MenuItem Header="By actor" InputGesture="{Binding Actions[grid/sort/actor].InputGesture}" Command="{Binding Actions[grid/sort/actor]}" />
 <MenuItem Header="By effect" InputGesture="{Binding Actions[grid/sort/effect].InputGesture}" Command="{Binding Actions[grid/sort/effect]}" />
 <MenuItem Header="By layer" InputGesture="{Binding Actions[grid/sort/layer].InputGesture}" Command="{Binding Actions[grid/sort/layer]}" />
-<MenuItem Header="By text including tags" Command="{Binding Actions[grid/sort/text]}" InputGesture="{Binding Actions[grid/sort/text].InputGesture}" />
+<MenuItem Name="SortAllTextMenu" Header="By text including tags" Command="{Binding Actions[grid/sort/text]}" InputGesture="{Binding Actions[grid/sort/text].InputGesture}" />
 <MenuItem Header="By text without tags" Command="{Binding Actions[grid/sort/text_stripped]}" InputGesture="{Binding Actions[grid/sort/text_stripped].InputGesture}" />
 </MenuItem>
 <MenuItem Header="Sort selected blocks">

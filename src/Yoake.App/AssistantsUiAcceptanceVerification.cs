@@ -23,7 +23,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private PostprocessWindow? _postprocess;
     private string _postprocessBefore="",_recombineBefore="";
     private KanjiTimingWindow? _kanji;
-    private string _kanjiBefore="";
+    private string _kanjiBefore="",_sortMetadataBefore="",_karaokeAbsoluteBefore="";
     private SubtitleTrackWindow? _track;
     private Task? _extract;
     private Guid _originalDocument;
@@ -207,7 +207,45 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     Require(model.Events[0].Text==@"{\k10}Bo{\k20}ku{\k30}wa"&&model.Events[1].Text==@"{\k30}{\future(opaque)\bord2}僕{\k30}は","Apply matches timing without changing source syllables or destination overrides.");
                     _kanji!.Close();var matched=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_kanjiBefore,"All accepted timing copies undo in one step.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==matched,"Karaoke matching redo restores exact source.");
                     var matchedPath=Path.Combine(options.ProfileDirectory!,"matched.ass");Require(model.SaveActiveSubtitle(matchedPath),"Save matched karaoke.");await Invoke("subtitle/close");Require(model.OpenSubtitle(matchedPath)&&model.ActiveEditor.Document.Serialize()==matched,"Matched karaoke round-trips on disk.");
-                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply with undo/redo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    var sortPath=Path.Combine(options.ProfileDirectory!,"sort-metadata.ass");
+                    File.WriteAllText(sortPath,AssDocument.CreateEmpty().Serialize()+
+                        "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,mangetsu-style,{\\bord2}\r\n"+
+                        "Comment: 0,0:00:00.00,0:00:01.00,Default,Nene,0,0,0,mangetsu-colorcoding,{\\1c&H112233&}\r\n"+
+                        "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,{uketsugu},日本語 မြန်မာ\r\n"+
+                        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,Z {uketsugu}\r\n"+
+                        "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,mangetsu-style,{\\future(inactive)}\r\n"+
+                        "Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,A\r\n");
+                    Require(model.OpenSubtitle(sortPath),"Open renderer-metadata sorting fixture.");_sortMetadataBefore=model.ActiveEditor!.Document.Serialize();return;
+                case 33:
+                    window.FindControl<MenuItem>("SubtitleMenu")!.IsSubMenuOpen=true;return;
+                case 34:
+                    window.FindControl<MenuItem>("SortAllLinesMenu")!.IsSubMenuOpen=true;return;
+                case 35:
+                    Press(window.FindControl<MenuItem>("SortAllTextMenu")!);return;
+                case 36:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(MangetsuMetadata.Kind(model.Events[0])==MangetsuMetadataKind.Style&&MangetsuMetadata.Kind(model.Events[1])==MangetsuMetadataKind.Actor&&MangetsuMetadata.IsInherited(model.Events[2]),"Sorting must preserve active metadata and imported inheritance order.");
+                    Require(model.Events[3].Text=="A"&&model.Events[4].Text==@"{\future(inactive)}"&&model.Events[5].Text=="Z {uketsugu}"&&MangetsuMetadata.Initial(model.ActiveEditor!.Document).Length==2,"Sort dialogue around protected renderer rows without activating late metadata.");
+                    var sortedMetadata=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_sortMetadataBefore,"Metadata-aware sort must undo exactly.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==sortedMetadata,"Metadata-aware sort redo must be exact.");
+                    var sortedPath=Path.Combine(options.ProfileDirectory!,"sorted-metadata.ass");Require(model.SaveActiveSubtitle(sortedPath),"Save sorted metadata.");await Invoke("subtitle/close");Require(model.OpenSubtitle(sortedPath)&&model.ActiveEditor.Document.Serialize()==sortedMetadata,"Sorting metadata must round-trip through save/reopen.");
+                    var absolutePath=Path.Combine(options.ProfileDirectory!,"absolute-karaoke.ass");
+                    File.WriteAllText(absolutePath,AssDocument.CreateEmpty().Serialize()+
+                        "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,mangetsu-style,{\\bord2}\r\n"+
+                        "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,{uketsugu},base\r\n"+
+                        "Dialogue: 0,0:00:01.00,0:00:04.00,Default,,0,0,0,,{uketsugu}{\\an8\\kt20\\k30}日本{\\kt100\\kf20}မြန်မာ{\\kt50\\ko10}é\r\n");
+                    Require(model.OpenSubtitle(absolutePath),"Open absolute karaoke fixture.");_karaokeAbsoluteBefore=model.ActiveEditor!.Document.Serialize();return;
+                case 37:
+                    var karaokeGrid=window.FindControl<ListBox>("SubtitleRows")!;var karaokeRow=karaokeGrid.ContainerFromIndex(0) as Control;Require(karaokeRow is { Bounds.Height:>0 }&&karaokeRow.Focus(),"Focus an actual grid row for selection-wide karaoke splitting.");
+                    karaokeRow!.RaiseEvent(new KeyEventArgs { RoutedEvent=InputElement.KeyDownEvent,Key=Avalonia.Input.Key.A,KeyModifiers=KeyModifiers.Control,Source=karaokeRow });return;
+                case 38:
+                    Require(model.SelectedEvents.Count==3,"Select metadata and dialogue through the real grid keyboard router.");window.FindControl<MenuItem>("SubtitleMenu")!.IsSubMenuOpen=true;Press(window.FindControl<MenuItem>("SplitByKaraokeMenu")!);return;
+                case 39:
+                    Require(model.Events.Count==5&&MangetsuMetadata.Kind(model.Events[0])==MangetsuMetadataKind.Style&&MangetsuMetadata.IsInherited(model.Events[1]),"Karaoke splitting must retain renderer records and produce three dialogue syllables.");
+                    var absoluteLines=model.Events.Skip(2).ToArray();Require(absoluteLines.Select(e=>e.Start).SequenceEqual(new[] { "0:00:01.20","0:00:02.00","0:00:01.50" })&&absoluteLines.Select(e=>e.End).SequenceEqual(new[] { "0:00:01.50","0:00:02.20","0:00:04.00" }),"Absolute karaoke starts must retain gaps and backwards resets.");
+                    Require(absoluteLines.All(e=>!e.Text.Contains(@"\kt",StringComparison.Ordinal))&&absoluteLines[1].Text.Contains("မြန်မာ",StringComparison.Ordinal)&&absoluteLines[2].Text.Contains("é",StringComparison.Ordinal),"Split timing is relative while Unicode and karaoke tag modes survive.");
+                    var absoluteAfter=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_karaokeAbsoluteBefore,"Absolute splitting undoes in one step.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==absoluteAfter,"Absolute split redo restores exact records.");
+                    var absoluteSaved=Path.Combine(options.ProfileDirectory!,"absolute-split.ass");Require(model.SaveActiveSubtitle(absoluteSaved),"Save split karaoke.");await Invoke("subtitle/close");Require(model.OpenSubtitle(absoluteSaved)&&model.ActiveEditor.Document.Serialize()==absoluteAfter,"Absolute karaoke splitting must round-trip through save/reopen.");
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply, metadata-safe sorting and absolute karaoke splitting with undo/redo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }
