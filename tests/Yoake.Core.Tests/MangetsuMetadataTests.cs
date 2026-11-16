@@ -60,6 +60,53 @@ public sealed class MangetsuMetadataTests
         }
         finally { if(Directory.Exists(root))Directory.Delete(root,true); }
     }
+    [Theory]
+    [InlineData("import")]
+    [InlineData("clipboard")]
+    [InlineData("library")]
+    public void EveryTransferRetainsOpaqueFieldsAndInheritedOrderThroughDiskAndUndo(string route)
+    {
+        var source=ImportSource();var original=source.Serialize();
+        var root=Path.Combine(Path.GetTempPath(),"Yoake-transfer-"+Guid.NewGuid());Directory.CreateDirectory(root);
+        try
+        {
+            var destination=AssDocument.CreateEmpty();var editor=new SubtitleEditor(destination);
+            editor.SetMangetsuMetadata(MangetsuMetadataKind.Style,"Default",@"{\future(destination)}");
+            editor.SetMangetsuMetadata(MangetsuMetadataKind.Actor,"Existing",@"{\1c&H112233&}");
+            var dialogue=editor.Insert(null,true);dialogue.Text="destination dialogue";
+            var before=destination.Serialize();
+            IReadOnlyList<AssStyle> copied;
+            if(route=="clipboard")copied=editor.PasteStyles(new SubtitleEditor(source).CopyStyleText(source.Styles));
+            else if(route=="library")
+            {
+                var libraryPath=Path.Combine(root,"library.json");var library=new StyleLibraryStore(libraryPath);var collection=library.Create("Mangetsu");
+                library.Import(source,library.Editor(collection));library.Save();
+                var restored=new StyleLibraryStore(libraryPath);var libraryDocument=restored.Editor(restored.Collections.Single()).Document;
+                copied=editor.CopyStyles(libraryDocument.Styles,libraryDocument);
+            }
+            else copied=editor.CopyStyles(source.Styles,source);
+            var mapped=Assert.Single(copied).Name;
+            var expected=source.Events.Take(5).Select(line=>
+            {
+                var copy=line.Clone();copy.Style=mapped;
+                if(copy.Actor=="mangetsu-colorcode-applied-styles")copy.Text="{"+mapped+"}";
+                if(copy.Text.Contains(@"\rDefault",StringComparison.Ordinal))copy.Text=copy.Text.Replace(@"\rDefault",@"\r"+mapped,StringComparison.Ordinal);
+                return copy;
+            }).OrderBy(line=>MangetsuMetadata.Kind(line) switch { MangetsuMetadataKind.Style=>0,MangetsuMetadataKind.Actor=>1,_=>2 }).ToArray();
+            var imported=destination.Events.Where(line=>!ReferenceEquals(line,dialogue)&&!line.Text.Contains("destination",StringComparison.Ordinal)&&line.Actor!="Existing").ToArray();
+            Assert.Equal(expected.Length,imported.Length);
+            for(var i=0;i<expected.Length;i++)
+            {
+                Assert.Equal(expected[i].Kind,imported[i].Kind);Assert.Equal(expected[i].FieldNames,imported[i].FieldNames);
+                Assert.Equal(expected[i].FieldNames.Select(expected[i].Get),imported[i].FieldNames.Select(imported[i].Get));
+            }
+            Assert.Equal(new[] { MangetsuMetadataKind.Style,MangetsuMetadataKind.Style,MangetsuMetadataKind.Actor,MangetsuMetadataKind.Actor,MangetsuMetadataKind.Actor },MangetsuMetadata.Initial(destination).Select(MangetsuMetadata.Kind));
+            Assert.Same(dialogue,destination.Events[^1]);Assert.Equal(original,source.Serialize());
+            var after=destination.Serialize();var path=Path.Combine(root,"roundtrip.ass");destination.Save(path);Assert.Equal(after,AssDocument.Load(path).Serialize());
+            editor.Undo.Undo();Assert.Equal(before,destination.Serialize());editor.Undo.Redo();Assert.Equal(after,destination.Serialize());
+        }
+        finally { Directory.Delete(root,true); }
+    }
     [Fact]
     public void AuthoringUpdatesAndRemovalAreUndoableAndPreserveUnrelatedSource()
     {
