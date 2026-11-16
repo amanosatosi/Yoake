@@ -4,6 +4,8 @@ namespace Yoake.UI;
 
 public partial class MainWindow
 {
+    public Task ShowPostprocessAsync(MainWindowViewModel model,Guid owner,CancellationToken token)
+    { token.ThrowIfCancellationRequested();if(model.ActiveDocumentId==owner)new PostprocessWindow(model,owner).Show(this);return Task.CompletedTask; }
     public Task<int?> ChooseSubtitleEncodingAsync()=>new SubtitleEncodingWindow().ShowDialog<int?>(this);
     public Task ShowMangetsuMetadataAsync(MainWindowViewModel model,Guid owner,CancellationToken token)
     { token.ThrowIfCancellationRequested();if(model.ActiveDocumentId==owner)new MangetsuMetadataWindow(model,owner).Show(this);return Task.CompletedTask; }

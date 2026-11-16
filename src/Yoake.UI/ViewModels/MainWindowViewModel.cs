@@ -257,6 +257,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterVideoOptions();
         RegisterSearchCommands();
         RegisterTimingCommands();
+        RegisterPostprocessCommands();
         RegisterKeyframeCommands();
         RegisterTimecodeCommands();
         RegisterAudioPresentationCommands();

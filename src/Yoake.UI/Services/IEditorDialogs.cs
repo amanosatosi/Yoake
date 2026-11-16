@@ -53,6 +53,7 @@ public interface IEditorDialogs
     Task ShowScriptInfoAsync(Yoake.Core.Subtitles.SubtitleEditor editor);
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model);
     Task ShowFindAsync(Yoake.UI.ViewModels.MainWindowViewModel model,bool focusReplacement)=>ShowFindAsync(model);
+    Task ShowPostprocessAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid owner,CancellationToken token)=>throw new NotSupportedException("Timing Postprocessor is unavailable.");
     Task ShowShiftTimesAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>throw new NotSupportedException("Shift Times is unavailable.");
     Task ShowAudioTimingOptionsAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>throw new NotSupportedException("Audio timing options are unavailable.");
     Task ShowSelectLinesAsync(Yoake.UI.ViewModels.MainWindowViewModel model)=>throw new NotSupportedException("Select Lines is unavailable.");

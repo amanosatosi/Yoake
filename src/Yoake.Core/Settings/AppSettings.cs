@@ -22,6 +22,7 @@ public enum WorkspaceViewMode
 
 public sealed record AppSettings
 {
+    public SubtitlePostprocessOptions? PostprocessPreferences { get; init; }
     public string? UiFontFamily { get; init; }
     public double? UiFontSize { get; init; }
     public string? AssDrawExecutable {get;init;}
@@ -100,7 +101,7 @@ public sealed record AppSettings
         var height = double.IsFinite(GridHeight) && GridHeight > 0 ? Math.Clamp(GridHeight, 100, 2000) : defaults.GridHeight;
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
-        return this with { UiFontFamily=string.IsNullOrWhiteSpace(UiFontFamily)?null:UiFontFamily.Trim(), UiFontSize=UiFontSize is {} fontSize && double.IsFinite(fontSize) && fontSize >= 9 && fontSize <= 24 ? fontSize : null, GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), RecentTimecodes=(NormalizePaths(RecentTimecodes)??[]).Take(12).ToArray(), RecentVideo=(NormalizePaths(RecentVideo)??[]).Take(12).ToArray(), RecentAudio=(NormalizePaths(RecentAudio)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
+        return this with { PostprocessPreferences=PostprocessPreferences?.Normalize(), UiFontFamily=string.IsNullOrWhiteSpace(UiFontFamily)?null:UiFontFamily.Trim(), UiFontSize=UiFontSize is {} fontSize && double.IsFinite(fontSize) && fontSize >= 9 && fontSize <= 24 ? fontSize : null, GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), RecentTimecodes=(NormalizePaths(RecentTimecodes)??[]).Take(12).ToArray(), RecentVideo=(NormalizePaths(RecentVideo)??[]).Take(12).ToArray(), RecentAudio=(NormalizePaths(RecentAudio)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
             HotkeyOverrides=HotkeyProfile.Normalize(AudioStopHotkeysMigrated?HotkeyOverrides:AegisubHotkeyDefaults.MigrateAudioStopOverrides(HotkeyOverrides), report),
             AudioStopHotkeysMigrated=true,
             ToolbarVisible=ToolbarVisible??true,
@@ -140,6 +141,7 @@ public sealed record AppSettings
 [JsonSourceGenerationOptions(WriteIndented = true, PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals)]
 [JsonSerializable(typeof(AppSettings))]
+[JsonSerializable(typeof(SubtitlePostprocessOptions))]
 [JsonSerializable(typeof(Yoake.Core.Media.DummyVideoOptions))]
 [JsonSerializable(typeof(HotkeyOverride))]
 [JsonSerializable(typeof(SubtitleSearchPreferences))]

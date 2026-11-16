@@ -72,7 +72,7 @@ public sealed partial class MainWindowViewModel
         var rows=Selection();if(rows.Length==0)return false;if(rows.Length==1||rows.Length==Events.Count)return true;
         var positions=rows.Select(line=>line.Number).Order().ToArray();return positions.Zip(positions.Skip(1)).All(pair=>pair.Second==pair.First+1);
     }
-    private async Task<int> CalculateTimingAsync(Func<SubtitleTimingSnapshot,CancellationToken,SubtitleTimingPlan> calculate,IReadOnlyList<AssEvent> selection,CancellationToken parent)
+    private async Task<int> CalculateTimingAsync(Func<SubtitleTimingSnapshot,CancellationToken,SubtitleTimingPlan> calculate,IReadOnlyList<AssEvent> selection,CancellationToken parent,bool previewOnly=false)
     {
         if(_activeId is not {} document||!_documents.TryGetValue(document,out var state))return -1;
         var resumeBurst=Draft?.IsChanged==true&&_editBurstDelay is not null;
@@ -88,9 +88,10 @@ public sealed partial class MainWindowViewModel
             var job=_jobs.Run("Subtitle timing",token=>{plan=calculate(snapshot,token);return Task.CompletedTask;},cancellation.Token);
             await job.Completion;cancellation.Token.ThrowIfCancellationRequested();
             if(_disposed||_activeId!=document||!_documents.TryGetValue(document,out var live)||!ReferenceEquals(live,state))return -1;
+            if(previewOnly) { SubtitleStatus=$"Preview: timing of {plan!.Count} subtitle rows would change. No edits applied.";return plan.Count; }
             int count;IsSynchronizingSelection=true;
             try{count=state.Editor.ApplyTiming(plan!);}finally{IsSynchronizingSelection=false;}
-            ReloadDraft();OnPropertyChanged(nameof(SelectedEvent));OnPropertyChanged(nameof(ActorNames));
+            if(plan!.IncludesDraft||Draft?.IsChanged!=true)ReloadDraft();OnPropertyChanged(nameof(SelectedEvent));OnPropertyChanged(nameof(ActorNames));
             SubtitleStatus=$"Changed timing of {count} subtitle rows.";return count;
         }
         catch(OperationCanceledException)when(cancellation.IsCancellationRequested)

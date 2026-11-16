@@ -10,9 +10,9 @@ public sealed record SubtitleShiftRequest(long Amount,SubtitleShiftUnit Unit=Sub
     SubtitleTimingFields Fields=SubtitleTimingFields.Both,SubtitleTimingScope Scope=SubtitleTimingScope.Selected);
 
 // A snapshot of the existing editor's fields. No second document or clock.
-public sealed class SubtitleTimingSnapshot
+public sealed partial class SubtitleTimingSnapshot
 {
-    internal sealed record Row(AssEvent Line,string Start,string End,bool Selected);
+    internal sealed record Row(AssEvent Line,string Start,string End,bool Selected,string Style,bool IsComment,bool IsInherited);
     internal SubtitleEditor Editor {get;}
     internal long Revision {get;}
     internal AssEvent? DraftLine {get;}
@@ -123,6 +123,7 @@ public sealed class SubtitleTimingPlan
     internal Change[] Changes {get;}
     public string Label {get;}
     public int Count=>Changes.Length;
+    public bool IncludesDraft {get;internal set;}=true;
     internal SubtitleTimingPlan(SubtitleTimingSnapshot snapshot,string label,Change[] changes){Snapshot=snapshot;Label=label;Changes=changes;}
 }
 
@@ -136,7 +137,7 @@ public sealed partial class SubtitleEditor
         {if(draftLine is null)throw new ArgumentException("Draft line is required.");Require(draftLine);draft=ValidateEventValues(draftLine,draftValues);}
         return new(this,Document.Events.Select(line=>new SubtitleTimingSnapshot.Row(line,
             ReferenceEquals(line,draftLine)&&draft is not null?draft.Start:line.Start,
-            ReferenceEquals(line,draftLine)&&draft is not null?draft.End:line.End,selected.Contains(line))).ToArray(),draft is null?null:draftLine,draft?.Fields);
+            ReferenceEquals(line,draftLine)&&draft is not null?draft.End:line.End,selected.Contains(line),ReferenceEquals(line,draftLine)&&draft is not null?draft.Style:line.Style,line.IsComment,MangetsuMetadata.IsInherited(line))).ToArray(),draft is null?null:draftLine,draft?.Fields);
     }
     public int ApplyTiming(SubtitleTimingPlan plan)
     {
@@ -145,7 +146,7 @@ public sealed partial class SubtitleEditor
             throw new InvalidOperationException("Subtitles changed during timing calculation. Try again.");
         // Validate every field before publishing any mutation. Ownership was
         // checked by the snapshot/revision, avoiding a source scan per field.
-        var draftLine=plan.Snapshot.DraftLine;
+        var draftLine=plan.IncludesDraft?plan.Snapshot.DraftLine:null;
         var changes=plan.Changes.ToDictionary(change=>change.Line);
         var lines=plan.Changes.Select(change=>change.Line).ToHashSet();if(draftLine is not null)lines.Add(draftLine);
         var fields=lines.Select(line=>

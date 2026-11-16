@@ -322,6 +322,7 @@
 <MenuItem Header="Cycle theme" InputGesture="{Binding Actions[view/theme/cycle].InputGesture}" Command="{Binding Actions[view/theme/cycle]}" />
 </MenuItem>
 <MenuItem Name="ToolsMenu" Header="Tools">
+<MenuItem Name="PostprocessMenu" Header="Timing Postprocessor…" Command="{Binding Actions[tool/time/postprocess]}" InputGesture="{Binding Actions[tool/time/postprocess].InputGesture}" />
 <MenuItem Name="MangetsuMetadataMenu" Header="Mangetsu Metadata…" Command="{Binding Actions[mangetsu/metadata]}" />
 <MenuItem Name="TranslationAssistantMenu" Header="Translation Assistant…" Command="{Binding Actions[tool/translation_assistant]}" InputGesture="{Binding Actions[tool/translation_assistant].InputGesture}" />
 <MenuItem Name="StylingAssistantMenu" Header="Styling Assistant…" Command="{Binding Actions[tool/style/assistant]}" InputGesture="{Binding Actions[tool/style/assistant].InputGesture}" />

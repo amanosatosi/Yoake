@@ -20,6 +20,8 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private int _stage;private bool _ticking;
     private EditorAssistantWindow? _assistant;
     private MangetsuMetadataWindow? _metadata;
+    private PostprocessWindow? _postprocess;
+    private string _postprocessBefore="";
     private SubtitleEncodingWindow? _encoding;
     private Task<int?>? _encodingResult;
     private byte[] _legacyBytes=[];
@@ -111,7 +113,28 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     Require(await model.Registry.InvokeAsync("subtitle/save/utf8",new(),utf8Path),"Save UTF-8 command.");
                     Require(AssDocument.Load(utf8Path).Events.Single().Text=="မြန်မာစာ","Burmese translation must survive UTF-8 save.");
                     Require(File.ReadAllBytes(Path.Combine(options.ProfileDirectory!,"legacy.ass")).AsSpan().SequenceEqual(_legacyBytes),"Encoding conversion must preserve the original Japanese source file.");
-                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, undo/redo, Mangetsu metadata, Shift-JIS chooser/open, UTF-8 conversion and Save/close/reopen.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    var timingPath=Path.Combine(options.ProfileDirectory!,"postprocess-input.ass");
+                    File.WriteAllText(timingPath,AssDocument.CreateEmpty().Serialize()+"Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,{\\future(opaque)}日本語 မြန်မာ\r\n");
+                    Require(model.OpenSubtitle(timingPath),"Open timing fixture.");_postprocessBefore=model.ActiveEditor!.Document.Serialize();await Invoke("tool/time/postprocess");return;
+                case 18:
+                    _postprocess=window.OwnedWindows.OfType<PostprocessWindow>().Single();
+                    _postprocess.FindControl<CheckBox>("PostprocessAdjacent")!.IsChecked=false;
+                    _postprocess.FindControl<CheckBox>("PostprocessLeadInEnabled")!.IsChecked=true;
+                    _postprocess.FindControl<CheckBox>("PostprocessLeadOutEnabled")!.IsChecked=true;
+                    _postprocess.FindControl<NumericUpDown>("PostprocessLeadIn")!.Value=90;
+                    _postprocess.FindControl<NumericUpDown>("PostprocessLeadOut")!.Value=110;
+                    Press(_postprocess.FindControl<Button>("PostprocessPreview")!);return;
+                case 19:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(model.ActiveEditor!.Document.Serialize()==_postprocessBefore,"Timing Preview must preserve the original source.");
+                    Press(_postprocess!.FindControl<Button>("PostprocessApply")!);return;
+                case 20:
+                    if(model.HasEditOperation){_stage--;return;}
+                    Require(model.SelectedEvent!.StartMilliseconds==910&&model.SelectedEvent.EndMilliseconds==2110,"Native postprocessor must apply configured leads.");
+                    Require(model.SelectedEvent.Text==@"{\future(opaque)}日本語 မြန်မာ","Postprocessing must preserve exact text and override tags.");
+                    await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor!.Document.Serialize()==_postprocessBefore,"Timing postprocessing must undo in one step.");
+                    await Invoke(CommandIds.EditRedo);
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, undo/redo, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen and Timing Postprocessor preview/apply/undo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }

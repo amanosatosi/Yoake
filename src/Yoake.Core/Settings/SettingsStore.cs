@@ -53,6 +53,7 @@ public sealed class SettingsStore(string path)
     private static AppSettings RecoverMembers(JsonElement root)
     {
         var defaults = new AppSettings();
+        SubtitlePostprocessOptions? postprocess=null;
         var theme = defaults.Theme; var schema = defaults.SchemaVersion;
         var viewMode = WorkspaceViewMode.Default;
         GridTagDisplayMode? tagDisplay=null;
@@ -80,6 +81,7 @@ public sealed class SettingsStore(string path)
             {
                 case "karaokeAutoCut":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)karaokeAutoCut=member.Value.GetBoolean();break;
                 case "videoFastJumpStep":if(TryReadInt(member.Value,out var fastStep))videoFastJumpStep=fastStep;break;
+                case "postprocessPreferences":try{postprocess=JsonSerializer.Deserialize(member.Value,SettingsJsonContext.Default.SubtitlePostprocessOptions);}catch(JsonException){}break;
                 case "uiFontFamily":if(member.Value.ValueKind==JsonValueKind.String)uiFontFamily=member.Value.GetString();break;
                 case "uiFontSize":uiFontSize=ReadNumber(member.Value);break;
                 case "assDrawExecutable":if(member.Value.ValueKind==JsonValueKind.String)assDrawExecutable=member.Value.GetString();break;
@@ -141,7 +143,7 @@ public sealed class SettingsStore(string path)
                 default: future[member.Name] = member.Value.Clone(); break;
             }
         }
-        return new AppSettings { KaraokeAutoCut=karaokeAutoCut,VideoFastJumpStep=videoFastJumpStep,UiFontFamily=uiFontFamily,UiFontSize=uiFontSize,AssDrawExecutable=assDrawExecutable,Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
+        return new AppSettings { PostprocessPreferences=postprocess,KaraokeAutoCut=karaokeAutoCut,VideoFastJumpStep=videoFastJumpStep,UiFontFamily=uiFontFamily,UiFontSize=uiFontSize,AssDrawExecutable=assDrawExecutable,Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
             AutosaveEnabled=autosaveEnabled,AutosaveIntervalSeconds=autosaveInterval,RecoveryDirectory=recoveryDirectory,
             HotkeyOverrides=hotkeys.ToArray(),AudioStopHotkeysMigrated=audioStopMigrated,GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,SelectionPreferences=selection,VideoAutoSeek=videoAutoSeek,VideoOverscan=videoOverscan,LastDummyVideo=lastDummy,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
             GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, RecentVideo=recentVideo, RecentAudio=recentAudio, FutureSettings = future,ShowOriginal=showOriginal,BetterView=betterView,PasteOverFields=pasteOverFields,
