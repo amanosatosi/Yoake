@@ -49,6 +49,7 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Require((double)Application.Current!.Resources["YoakeUiFontSize"]! == 24,"Font preview must update application resources.");
                     Require(model.UiFontSize==_initialSize,"Preview must not publish settings.");
                     Require(window.FindControl<MenuItem>("EditMenu")!.FontSize==24,"Menus must receive live typography.");
+                    Require(window.FindControl<MenuItem>("EditMenu")!.Bounds.Height>=26,"The menu row must reflow with enlarged fonts.");
                     _dialog!.Width=780;_dialog.Height=540;return;
                 case 3:
                     Require(Get<Button>("OptionsApply").IsEffectivelyVisible&&Get<Button>("OptionsApply").Bounds.Width>0,"Footer must remain usable at compact size and large type.");

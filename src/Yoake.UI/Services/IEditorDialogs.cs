@@ -15,6 +15,7 @@ public interface IEditorDialogs
     Task ShowRecoveryAsync(Yoake.UI.ViewModels.MainWindowViewModel model,CancellationToken token)=>throw new NotSupportedException("Recovery manager is unavailable.");
     Task<bool> ConfirmRecoveryDiscardAsync(string name,CancellationToken token)=>Task.FromResult(false);
     Task SetVideoDetachedAsync(bool detached, CancellationToken token) => throw new NotSupportedException("Detached Video is unavailable.");
+    Task ShowMangetsuMetadataAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid owner,CancellationToken token)=>throw new NotSupportedException("Mangetsu metadata is unavailable.");
     Task ShowAssistantAsync(Yoake.UI.ViewModels.MainWindowViewModel model,Guid owner,Yoake.UI.ViewModels.EditorAssistantMode mode,CancellationToken token)=>throw new NotSupportedException("Assistants are unavailable.");
     Task ShowOptionsAsync(Yoake.UI.ViewModels.MainWindowViewModel model) => throw new NotSupportedException("Options are unavailable.");
     Task ShowLogAsync(string path)=>throw new NotSupportedException("Log window is unavailable.");
@@ -27,6 +28,7 @@ public interface IEditorDialogs
     Task<AutomationExportChoice?> ShowAutomationExportAsync(IReadOnlyList<AutomationExportOption> options, IReadOnlyList<string> selected, string encoding, CancellationToken token) => throw new NotSupportedException("Automation export is unavailable.");
     Task<FontChoice?> ChooseFontAsync(string family,string size)=>Task.FromResult<FontChoice?>(null);
     Task<AssColor?> ChooseColorAsync(AssColor color)=>Task.FromResult<AssColor?>(null);
+    Task<int?> ChooseSubtitleEncodingAsync()=>Task.FromResult<int?>(null);
     Task<string?> OpenSubtitleAsync();
     Task<string?> OpenMediaAsync();
     Task<string?> OpenVideoAsync()=>Task.FromResult<string?>(null);

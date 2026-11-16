@@ -489,6 +489,8 @@ public partial class MainWindow : Window, IEditorDialogs
     private void UpdateChrome()
     {
         if(!OperatingSystem.IsWindows())return;
+        var titleHeight=Math.Max(36,TitleTabStrip.Bounds.Height);
+        if(Math.Abs(ExtendClientAreaTitleBarHeightHint-titleHeight)>0.5)ExtendClientAreaTitleBarHeightHint=titleHeight;
         // Avalonia 12's extended client area uses a decoration overlay. Its
         // title text paints ABOVE our tabs; hiding Win32 NC text alone cannot
         // fix that. Keep the framework caption buttons and their platform roles.

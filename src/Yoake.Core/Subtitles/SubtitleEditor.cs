@@ -237,9 +237,10 @@ public sealed partial class SubtitleEditor(AssDocument document)
             if (text != line.Text) SetField(line, "Text", text, "Replace style reset references");
         }
     }
-    public IReadOnlyList<AssStyle> CopyStyles(IEnumerable<AssStyle> source)
+    public IReadOnlyList<AssStyle> CopyStyles(IEnumerable<AssStyle> source,AssDocument? sourceDocument=null)
     {
-        var copies = source.Select(s => s.Clone()).ToArray();
+        var originals=source.ToArray();
+        var copies = originals.Select(s => s.Clone()).ToArray();
         var names = Document.Styles.Select(s => s.Name).ToHashSet(StringComparer.Ordinal);
         foreach (var copy in copies)
         {
@@ -247,13 +248,17 @@ public sealed partial class SubtitleEditor(AssDocument document)
             if (string.IsNullOrWhiteSpace(stem)) throw new ArgumentException("Style names must be nonempty.");
             while (!names.Add(copy.Name)) copy.Name = stem + " " + n++;
         }
-        if (copies.Length > 0) Structure("Copy styles", () => { foreach (var copy in copies) Document.Insert(copy); });
+        var mapping=new Dictionary<string,string>(StringComparer.Ordinal);
+        for(var i=0;i<copies.Length;i++)mapping[originals[i].Name]=copies[i].Name;
+        var metadata=sourceDocument is null||copies.Length==0?[]:PrepareStyleMetadata(sourceDocument,mapping);
+        if (copies.Length > 0||metadata.Length>0) Structure("Copy styles", () => { foreach (var copy in copies) Document.Insert(copy);InsertStyleMetadata(metadata); });
         return copies;
     }
     public string CopyStyleText(IEnumerable<AssStyle> source)
     {
         var document = AssDocument.Parse("[V4+ Styles]\n");
-        foreach (var style in source) { Require(style); document.Insert(style.Clone()); }
+        var styles=source.ToArray();foreach(var style in styles)Require(style);
+        new SubtitleEditor(document).CopyStyles(styles,Document);
         return document.Serialize();
     }
     public IReadOnlyList<AssStyle> PasteStyles(string text)
@@ -261,7 +266,7 @@ public sealed partial class SubtitleEditor(AssDocument document)
         var parsed = AssDocument.Parse(text.TrimStart().StartsWith('[') ? text : "[V4+ Styles]\nFormat: " + string.Join(",", AssDocument.StyleFormat) + "\n" + text);
         if (parsed.Styles.Count == 0 || parsed.Styles.Any(s => s.Fields.Length != s.Format.Length || !s.FieldNames.Contains("Name", StringComparer.OrdinalIgnoreCase) || string.IsNullOrWhiteSpace(s.Name)))
             throw new ArgumentException("Clipboard contains no complete ASS styles. Nothing was pasted.");
-        return CopyStyles(parsed.Styles);
+        return CopyStyles(parsed.Styles,parsed);
     }
     public void ReorderStyles(IEnumerable<AssStyle> selection, StyleOrder action)
     {

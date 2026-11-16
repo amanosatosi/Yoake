@@ -116,7 +116,7 @@ public sealed partial class AssDocument
         else if (bytes.AsSpan().StartsWith(new byte[] { 0xFE, 0xFF })) { encoding = new UnicodeEncoding(true, true, true); skip = 2; }
         else encoding = new UTF8Encoding(false, true);
         try { var doc = Parse(encoding.GetString(bytes, skip, bytes.Length - skip)); doc._encoding = encoding; doc._bom = skip > 0; return doc; }
-        catch (DecoderFallbackException e) { throw new InvalidDataException("Unsupported legacy encoding. Convert the file to UTF-8 before opening; the original file has not been changed.", e); }
+        catch (DecoderFallbackException e) { throw new InvalidDataException("Unsupported or invalid UTF-8 encoding. Use Open with character set to select a legacy encoding; the original file has not been changed.", e); }
     }
     // Capture on the document's owner thread. Immutable source strings are
     // shared; only editable field arrays are copied. Serialization and encoding

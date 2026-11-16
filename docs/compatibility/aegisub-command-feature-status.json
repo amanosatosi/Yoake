@@ -1521,12 +1521,19 @@
     },
     {
       "id": "edit/line/split/by_karaoke",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "edit/line/split/by_karaoke",
+      "status": "partially implemented",
       "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Use karaoke timing to split line into multiple smaller lines",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Grid context menu"
+      ],
+      "tests": [
+        "KaraokeSplitTests",
+        "KaraokeSplitWorkflowTests"
+      ],
+      "notes": "Undoable multi-selection split with static formatting inheritance, whole ruby groups, grapheme guards and Aegisub line-end normalization. Absolute kt, internal ruby splits and time-relative/unknown override retiming remain unsupported and preserve source on rejection.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2513,12 +2520,12 @@
     },
     {
       "id": "subtitle/insert/after/videotime",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "subtitle/insert/after/videotime",
+      "status": "partially implemented",
       "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Insert a new line after the current one, starting at video time",
       "exposure": [],
       "tests": [],
-      "notes": "",
+      "notes": "Implementation already exists; the former missing state was stale. See daily-driver-checkpoint and continuation documents for verification limits.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2544,12 +2551,12 @@
     },
     {
       "id": "subtitle/insert/before/videotime",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "subtitle/insert/before/videotime",
+      "status": "partially implemented",
       "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Insert a new line before the current one, starting at video time",
       "exposure": [],
       "tests": [],
-      "notes": "",
+      "notes": "Implementation already exists; the former missing state was stale. See daily-driver-checkpoint and continuation documents for verification limits.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -2615,12 +2622,20 @@
     },
     {
       "id": "subtitle/open/charset",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "subtitle/open/charset",
+      "status": "partially implemented",
       "backend": "Lossless document/session I/O, recovery, charset/container import, or scoped search/tool. Required action: Open a subtitles file with a specific file encoding",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "File menu",
+        "SubtitleEncodingWindow"
+      ],
+      "tests": [
+        "SubtitleEncodingTests",
+        "EncodingWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Explicit strict decoding, retained legacy encoding, UTF-8 Save As, legacy recovery with Unicode translation. Managed/native Linux passed; Windows NativeAOT acceptance pending.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3246,12 +3261,12 @@
     },
     {
       "id": "tool/assdraw",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/assdraw",
+      "status": "partially implemented",
       "backend": "Deferred external ASSDraw3.exe launcher; no bundling, compilation or CI build of ASSDraw.",
       "exposure": [],
       "tests": [],
-      "notes": "Not superseded by current vector-clip tools. Implement near the end of parity: launch external ASSDraw3.exe; when absent show exactly \"ASSDraw3.exe doesn't exist.\" Future integrated ASS shape drawing may supersede the launcher. No ASSDraw implementation in the timing cluster.",
+      "notes": "Implementation already exists; the former missing state was stale. See daily-driver-checkpoint and continuation documents for verification limits.",
       "yoake_default_hotkeys": {
         "Video": [
           "J"

@@ -23,6 +23,7 @@ public sealed record RecoveryMetadata
     public DateTimeOffset Timestamp { get; init; }
     public string Title { get; init; } = "";
     public string? OriginalPath { get; init; }
+    public int? OriginalCodePage { get; init; }
     public string SourceHash { get; init; } = "";
     public RecoveryDraft? Draft { get; init; }
     public ToshikiRecovery[]? Karaoke { get; init; }
@@ -69,9 +70,9 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
         return await Task.Run(async () =>
         {
             token.ThrowIfCancellationRequested();
-            var source = snapshot.SerializeBytes();
+            var source = snapshot.SerializeRecoveryBytes();
             if (source.LongLength > MaximumSourceBytes) throw new InvalidDataException("Subtitle exceeds the recovery size limit.");
-            metadata = metadata with { Revision = snapshot.Revision, SourceHash = Convert.ToHexString(SHA256.HashData(source)) };
+            metadata = metadata with { OriginalCodePage=snapshot.OriginalCodePage, Revision = snapshot.Revision, SourceHash = Convert.ToHexString(SHA256.HashData(source)) };
             var manifest = JsonSerializer.SerializeToUtf8Bytes(metadata, RecoveryJsonContext.Default.RecoveryMetadata);
             if (manifest.Length > MaximumMetadataBytes) throw new InvalidDataException("Draft exceeds the recovery size limit.");
             await _gate.WaitAsync(token).ConfigureAwait(false);
@@ -158,8 +159,19 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
     {
         RequireStoredPath(path);
         var bundle = ReadBundle(path, token);
-        return new RecoveredSubtitle(AssDocument.LoadBytes(bundle.Source), bundle.Metadata);
+        return new RecoveredSubtitle(DecodeRecovery(bundle.Source,bundle.Metadata), bundle.Metadata);
     }, token);
+
+    private static AssDocument DecodeRecovery(byte[] source,RecoveryMetadata metadata)
+    {
+        var document=AssDocument.LoadBytes(source);
+        if(metadata.OriginalCodePage is {} codePage)
+        {
+            if(SubtitleEncodings.IsUnicode(codePage))throw new InvalidDataException("Invalid legacy recovery encoding.");
+            document.RestoreSaveEncoding(codePage);
+        }
+        return document;
+    }
 
     private static (byte[] Source, RecoveryMetadata Metadata) ReadBundle(string path, CancellationToken token)
     {
@@ -173,7 +185,7 @@ public sealed class SubtitleRecoveryStore(string directory, int versionsPerDocum
         var m = JsonSerializer.Deserialize(json, RecoveryJsonContext.Default.RecoveryMetadata) ?? throw new InvalidDataException("Missing recovery metadata.");
         if (m.Schema != 1 || m.DocumentId == Guid.Empty || m.Sequence < 1 || m.Title is null || m.Title.Length > 4096 ||
             m.SourceHash != Convert.ToHexString(SHA256.HashData(source))) throw new InvalidDataException("Invalid recovery identity or checksum.");
-        var document = AssDocument.LoadBytes(source);
+        var document = DecodeRecovery(source,m);
         if (m.SelectedRow < -1 || m.SelectedRow >= document.Events.Count) throw new InvalidDataException("Invalid recovery selection.");
         if(m.Karaoke is {} karaoke)
         {

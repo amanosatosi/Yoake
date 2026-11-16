@@ -80,8 +80,8 @@ public sealed class StylesWindow : Window
             if(_collection is null||!Commit()||!await ConfirmDeleteCollection())return;
             _library.Delete(_collection);_collection=_library.Collections.FirstOrDefault();ResetLibrarySelection();RefreshCollections();
         });
-        Register("styles/to-script","Library → Script",copyBar,()=>{if(!Commit())return;var styles=_script.CopyStyles(SelectedStyles(true));RefreshLists();SelectNames(_scriptList,styles);});
-        Register("styles/to-library","Script → Library",copyBar,()=>{if(!Commit()||_collection is null)return;var styles=_library.Editor(_collection).CopyStyles(SelectedStyles(false));_library.Save();RefreshLists();SelectNames(_libraryList,styles);});
+        Register("styles/to-script","Library → Script",copyBar,()=>{if(!Commit())return;var styles=_script.CopyStyles(SelectedStyles(true),_collection is null?null:_library.Editor(_collection).Document);RefreshLists();SelectNames(_scriptList,styles);});
+        Register("styles/to-library","Script → Library",copyBar,()=>{if(!Commit()||_collection is null)return;var styles=_library.Editor(_collection).CopyStyles(SelectedStyles(false),_script.Document);_library.Save();RefreshLists();SelectNames(_libraryList,styles);});
         AddOperations(scriptBar,false);AddOperations(libraryBar,true);
         _collections.SelectionChanged+=(_,_)=>
         {

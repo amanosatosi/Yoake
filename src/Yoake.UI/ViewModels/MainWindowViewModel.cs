@@ -250,6 +250,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterEditorCommands();
         RegisterFastActorCommands();
         RegisterAssistantCommands();
+        RegisterEncodingCommands();
+        RegisterMangetsuMetadataCommands();
         RegisterGridCommands();
         RegisterLineCommands();
         RegisterVideoOptions();
@@ -328,7 +330,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         state.Editor.MarkSaved();
         ScheduleDocumentAutomationSync(session.Id);
     }
-    public bool OpenSubtitle(string path)
+    public bool OpenSubtitle(string path,System.Text.Encoding? encoding=null)
     {
         CancelGesture();
         if (!CommitDraft()) return false;
@@ -336,7 +338,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         {
             var full=Path.GetFullPath(path); var existing=_workspace.Documents.FirstOrDefault(s=>string.Equals(s.Path,full,StringComparison.OrdinalIgnoreCase));
             if (existing is not null) { _workspace.Activate(existing.Id); return true; }
-            var doc=AssDocument.Load(full); OpenLoadedSubtitle(full,doc,_activeId); Remember(full); SubtitleStatus=$"Loaded {doc.Events.Count} events"; return true;
+            var doc=encoding is null?AssDocument.Load(full):AssDocument.Load(full,encoding); OpenLoadedSubtitle(full,doc,_activeId); Remember(full); SubtitleStatus=$"Loaded {doc.Events.Count} events"; return true;
         }
         catch(Exception e) { SubtitleStatus=$"Open failed: {e.Message}"; return false; }
     }
@@ -366,7 +368,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private Guid? _subtitleOpenMediaDocument;
     public bool OpeningSubtitle { get => _openingSubtitle; private set { SetField(ref _openingSubtitle, value); _registry.NotifyStateChanged(); } }
     public string OpeningSubtitleText { get; private set; } = "Opening subtitle…";
-    private async Task OpenSubtitleForUserAsync(string path)
+    private async Task OpenSubtitleForUserAsync(string path,System.Text.Encoding? encoding=null)
     {
         if (OpeningSubtitle) return;
         CancelGesture();
@@ -380,7 +382,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             var full = Path.GetFullPath(path);
             var existing = _workspace.Documents.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase));
             if (existing is not null) { _workspace.Activate(existing.Id); return; }
-            var doc = await Task.Run(() => AssDocument.Load(full), cancellation.Token);
+            var doc = await Task.Run(() => encoding is null?AssDocument.Load(full):AssDocument.Load(full,encoding), cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
             if (_disposed) return;
             // A second route may have opened the same file while parsing.
@@ -411,7 +413,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         _settings=_settings with { RecentFiles=new[] {path}.Concat(_settings.RecentFiles.Where(p=>!p.Equals(path,StringComparison.OrdinalIgnoreCase))).Take(12).ToArray() };
         _settingsStore.Save(_settings); OnPropertyChanged(nameof(RecentFiles));
     }
-    public bool SaveActiveSubtitle(string path)
+    public bool SaveActiveSubtitle(string path,bool utf8=false)
     {
         CancelGesture();
         if (!CommitDraft() || ActiveEditor is null || _workspace.ActiveDocument is not { } session) return false;
@@ -426,7 +428,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             {
                 if (references != LocalAutomationReferences(ActiveEditor.Document))
                     ActiveEditor.SetProjectProperties(new Dictionary<string, string> { ["Automation Scripts"] = references });
-                ActiveEditor.Document.Save(full);
+                if(utf8)ActiveEditor.Document.SaveUtf8(full);else ActiveEditor.Document.Save(full);
                 session.Path = full; session.Title = Path.GetFileName(full);
                 transaction.Commit();
             }

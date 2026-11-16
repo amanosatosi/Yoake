@@ -6,8 +6,10 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Yoake.Core.Commands;
 using Yoake.Core.Logging;
+using Yoake.Core.Subtitles;
 using Yoake.UI;
 using Yoake.UI.ViewModels;
+using System.Text;
 
 namespace Yoake.App;
 
@@ -17,6 +19,10 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private readonly DispatcherTimer _timer=new() { Interval=TimeSpan.FromMilliseconds(200) };
     private int _stage;private bool _ticking;
     private EditorAssistantWindow? _assistant;
+    private MangetsuMetadataWindow? _metadata;
+    private SubtitleEncodingWindow? _encoding;
+    private Task<int?>? _encodingResult;
+    private byte[] _legacyBytes=[];
     private string _before="",_translated="";
     private T Get<T>(string name) where T:Control=>_assistant!.FindControl<T>(name)??throw new InvalidOperationException("Missing Assistant control: "+name);
     public void Start() { _timer.Tick+=Tick;window.Opened+=(_,_)=>_timer.Start(); }
@@ -63,9 +69,49 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                 case 8:
                     Require(model.SelectedEvent!.Style=="Burmese","Styling Assistant must apply the selected existing style.");
                     _assistant!.Close();var path=Path.Combine(options.ProfileDirectory!,"assistant.ass");Require(model.SaveActiveSubtitle(path),"Save assistant output.");
-                    var exact=model.ActiveEditor!.Document.Serialize();Require(model.OpenSubtitle(path),"Reopen assistant output.");
+                    var exact=model.ActiveEditor!.Document.Serialize();await Invoke("subtitle/close");Require(model.OpenSubtitle(path),"Reopen assistant output from disk after closing the document.");
                     Require(model.ActiveEditor!.Document.Serialize()==exact,"Translated ASS and styles must survive reopen.");
-                    _timer.Stop();options.FinishVerification("PASS: native Translation and Styling Assistants, Japanese/Burmese source preservation, IME preedit, commit/navigation, independent undo/redo, styles, Save/reopen.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    await Invoke("mangetsu/metadata");return;
+                case 9:
+                    _metadata=window.OwnedWindows.OfType<MangetsuMetadataWindow>().Single();
+                    _metadata.FindControl<TextBox>("MangetsuMetadataText")!.Text=@"{\vert1\boxp(10,20,5,15)\future(opaque)}";return;
+                case 10:
+                    Press(_metadata!.FindControl<Button>("MangetsuMetadataApply")!);return;
+                case 11:
+                    Require(MangetsuMetadata.Kind(model.Events[0])==MangetsuMetadataKind.Style&&model.Events[0].Text.Contains(@"\future(opaque)",StringComparison.Ordinal),"Metadata editor must preserve future tags in the initial style comment.");
+                    _metadata!.FindControl<ComboBox>("MangetsuMetadataKind")!.SelectedItem=MangetsuMetadataKind.Actor;
+                    _metadata.FindControl<AutoCompleteBox>("MangetsuMetadataTarget")!.Text="Nene";
+                    _metadata.FindControl<TextBox>("MangetsuMetadataText")!.Text=@"{\1c&HFF0000&}";return;
+                case 12:
+                    Press(_metadata!.FindControl<Button>("MangetsuMetadataApply")!);return;
+                case 13:
+                    Require(MangetsuMetadata.Kind(model.Events[0])==MangetsuMetadataKind.Style&&MangetsuMetadata.Kind(model.Events[1])==MangetsuMetadataKind.Actor,"Style extensions must precede Actor Colorcoding and dialogue.");
+                    _metadata!.Close();var metadataSource=model.ActiveEditor!.Document.Serialize();
+                    await Invoke(CommandIds.EditUndo);Require(MangetsuMetadata.Initial(model.ActiveEditor.Document).Length==1,"Actor metadata must undo independently.");
+                    await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==metadataSource,"Metadata redo restores exact source.");
+                    var metadataPath=Path.Combine(options.ProfileDirectory!,"metadata.ass");Require(model.SaveActiveSubtitle(metadataPath),"Save metadata.");await Invoke("subtitle/close");Require(model.OpenSubtitle(metadataPath),"Reopen metadata from disk.");
+                    Require(model.ActiveEditor!.Document.Serialize()==metadataSource,"Metadata order and payload survive file round-trip.");
+                    _encoding=new SubtitleEncodingWindow();_encodingResult=_encoding.ShowDialog<int?>(window);return;
+                case 14:
+                    var choice=_encoding!.FindControl<AutoCompleteBox>("SubtitleEncoding")!;
+                    choice.SelectedItem=choice.ItemsSource!.Cast<SubtitleEncodingChoice>().Single(c=>c.CodePage==932);
+                    Press(_encoding.FindControl<Button>("OpenWithEncoding")!);return;
+                case 15:
+                    Require(_encodingResult!.IsCompleted&&_encodingResult.Result==932,"The native encoding chooser must return Shift-JIS.");
+                    var legacySource=AssDocument.CreateEmpty().Serialize()+"Dialogue: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,,日本語\r\n";
+                    _legacyBytes=SubtitleEncodings.Get(932).GetBytes(legacySource);
+                    var legacyPath=Path.Combine(options.ProfileDirectory!,"legacy.ass");File.WriteAllBytes(legacyPath,_legacyBytes);
+                    Require(await model.Registry.InvokeAsync("subtitle/open/charset",new(),new OpenSubtitleEncodingRequest(legacyPath,932)),"Open legacy charset command.");return;
+                case 16:
+                    Require(model.SelectedEvent!.Text=="日本語"&&model.ActiveEditor!.Document.EncodingCodePage==932,"Open the Japanese source without replacement characters.");
+                    window.FindControl<TextBox>("SubtitleText")!.Text="မြန်မာစာ";return;
+                case 17:
+                    await Invoke(CommandIds.EditCommit);
+                    var utf8Path=Path.Combine(options.ProfileDirectory!,"burmese.ass");
+                    Require(await model.Registry.InvokeAsync("subtitle/save/utf8",new(),utf8Path),"Save UTF-8 command.");
+                    Require(AssDocument.Load(utf8Path).Events.Single().Text=="မြန်မာစာ","Burmese translation must survive UTF-8 save.");
+                    Require(File.ReadAllBytes(Path.Combine(options.ProfileDirectory!,"legacy.ass")).AsSpan().SequenceEqual(_legacyBytes),"Encoding conversion must preserve the original Japanese source file.");
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, undo/redo, Mangetsu metadata, Shift-JIS chooser/open, UTF-8 conversion and Save/close/reopen.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }

@@ -18,7 +18,7 @@
   </Window.Styles>
   <Grid>
     <!-- Reserve 140 DIP for actual rows, plus the 24-DIP header, borders and margins. -->
-    <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="{Binding ToolbarRowHeight}" /><RowDefinition Height="3*" MinHeight="444" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="178" /></Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto" MinHeight="36" /><RowDefinition Height="Auto" MinHeight="24" /><RowDefinition Height="3*" MinHeight="444" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="178" /></Grid.RowDefinitions>
     <Border Grid.Row="0" Name="TitleTabStrip" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
       <Grid ColumnDefinitions="Auto,*,Auto">
         <ScrollViewer Name="TabScroll" Grid.Column="0" MaxWidth="980" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
@@ -29,7 +29,7 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:DocumentTabViewModel">
                 <Border Margin="2,3,0,2" CornerRadius="4" Background="{DynamicResource TabBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-                  <Grid ColumnDefinitions="Auto,*,Auto" Width="230" Height="30">
+                  <Grid ColumnDefinitions="Auto,*,Auto" Width="230" Height="{DynamicResource YoakeUiTabContentHeight}">
                     <TextBlock Grid.Column="0" Margin="7,0,4,0" VerticalAlignment="Center" Text="●" FontSize="7" IsVisible="{Binding IsActive}" />
                     <Button Grid.Column="1" Padding="4,2" HorizontalContentAlignment="Left" Command="{Binding ActivateCommand}">
                       <TextBlock Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
@@ -50,14 +50,16 @@
       </Grid>
     </Border>
 
-    <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}"><Grid RowDefinitions="24,*"><Menu>
+    <Border Grid.Row="1" Background="{DynamicResource CommandBarBrush}"><Grid RowDefinitions="Auto,Auto"><Menu MinHeight="24">
 <MenuItem Name="FileMenu" Header="File">
 <MenuItem Header="Recent files" ItemsSource="{Binding RecentFiles}"><MenuItem.ItemTemplate><DataTemplate x:DataType="x:String"><Button Content="{Binding}" Click="RecentFileClick" /></DataTemplate></MenuItem.ItemTemplate></MenuItem>
 <MenuItem Name="NewMenu" Header="New" InputGesture="{Binding Actions[subtitle/new].InputGesture}" Command="{Binding Actions[subtitle/new]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.New}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="OpenCharsetMenu" Header="Open with character set…" Command="{Binding Actions[subtitle/open/charset]}" />
 <MenuItem Header="Open…" InputGesture="{Binding Actions[subtitle/open].InputGesture}" Command="{Binding Actions[subtitle/open]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Open}" /></MenuItem.Icon></MenuItem>
 <MenuItem Name="RecoveryMenu" Header="Recover Subtitles…" InputGesture="{Binding Actions[subtitle/open/autosave].InputGesture}" Command="{Binding Actions[subtitle/open/autosave]}" />
 <MenuItem Name="AttachmentsMenu" Header="Attachments…" InputGesture="{Binding Actions[subtitle/attachment].InputGesture}" Command="{Binding Actions[subtitle/attachment]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Attachments}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Save" InputGesture="{Binding Actions[subtitle/save].InputGesture}" Command="{Binding Actions[subtitle/save]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Save}" /></MenuItem.Icon></MenuItem>
+<MenuItem Name="SaveUtf8Menu" Header="Save As UTF-8…" Command="{Binding Actions[subtitle/save/utf8]}" />
 <MenuItem Header="Save As…" InputGesture="{Binding Actions[subtitle/save-as].InputGesture}" Command="{Binding Actions[subtitle/save-as]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SaveAs}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Export subtitles…" InputGesture="{Binding Actions[automation/export].InputGesture}" Command="{Binding Actions[automation/export]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Export}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Reload from disk…" InputGesture="{Binding Actions[subtitle/revert].InputGesture}" Command="{Binding Actions[subtitle/revert]}" />
@@ -320,13 +322,14 @@
 <MenuItem Header="Cycle theme" InputGesture="{Binding Actions[view/theme/cycle].InputGesture}" Command="{Binding Actions[view/theme/cycle]}" />
 </MenuItem>
 <MenuItem Name="ToolsMenu" Header="Tools">
+<MenuItem Name="MangetsuMetadataMenu" Header="Mangetsu Metadata…" Command="{Binding Actions[mangetsu/metadata]}" />
 <MenuItem Name="TranslationAssistantMenu" Header="Translation Assistant…" Command="{Binding Actions[tool/translation_assistant]}" InputGesture="{Binding Actions[tool/translation_assistant].InputGesture}" />
 <MenuItem Name="StylingAssistantMenu" Header="Styling Assistant…" Command="{Binding Actions[tool/style/assistant]}" InputGesture="{Binding Actions[tool/style/assistant].InputGesture}" />
 <MenuItem Name="ResampleMenu" Header="Resample Resolution…" InputGesture="{Binding Actions[tool/resampleres].InputGesture}" Command="{Binding Actions[tool/resampleres]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Resample}" /></MenuItem.Icon></MenuItem>
 <MenuItem Name="FontCollectorMenu" Header="Fonts Collector…" InputGesture="{Binding Actions[tool/font_collector].InputGesture}" Command="{Binding Actions[tool/font_collector]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FontCollector}" /></MenuItem.Icon></MenuItem>
 <MenuItem Name="AssDrawMenu" Header="ASSDraw3…" InputGesture="{Binding Actions[tool/assdraw].InputGesture}" Command="{Binding Actions[tool/assdraw]}" />
 </MenuItem>
-</Menu><Grid Name="MainToolbar" IsVisible="{Binding ToolbarVisible}" Grid.Row="1" Margin="6,2" ColumnDefinitions="*,Auto" ColumnSpacing="6">
+</Menu><Grid Name="MainToolbar" MinHeight="42" IsVisible="{Binding ToolbarVisible}" Grid.Row="1" Margin="6,2" ColumnDefinitions="*,Auto" ColumnSpacing="6">
 <ScrollViewer Name="MainActionScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
 <StackPanel Orientation="Horizontal" Spacing="2">
 <Button Command="{Binding Actions[subtitle/new]}" Padding="4,2" ToolTip.Tip="New subtitle"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.New}" /></Button>
