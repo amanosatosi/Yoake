@@ -546,7 +546,7 @@
     </Border>
   </Grid>
 </Grid>
-<GridSplitter Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
+<GridSplitter Name="WorkspaceSplitter" Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
 <Border Grid.Row="4" Margin="6" Name="SubtitleGridRegion" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
 <Grid ToolTip.Tip="SUBTITLE GRID"><Grid.RowDefinitions><RowDefinition Height="{DynamicResource YoakeUiGridHeaderHeight}" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 <Border Padding="10,2" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1"><Grid Name="ColumnHeader" PointerPressed="HeaderPressed" PointerMoved="HeaderMoved" PointerReleased="HeaderReleased" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4" ToolTip.Tip="Drag a column boundary to resize"><TextBlock Text="#" /><TextBlock Grid.Column="1" Text="L" ToolTip.Tip="Layer" /><TextBlock Grid.Column="2" Text="Start" /><TextBlock Grid.Column="3" Text="End" /><TextBlock Grid.Column="4" Text="Style" /><TextBlock Grid.Column="5" Text="Actor" /><TextBlock Grid.Column="6" Text="Effect" /><TextBlock Grid.Column="7" Text="Text" /></Grid></Border>

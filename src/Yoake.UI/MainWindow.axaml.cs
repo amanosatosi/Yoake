@@ -58,9 +58,13 @@ public partial class MainWindow : Window, IEditorDialogs
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
         TemporalTextColumn.SizeChanged+=(_,_)=>ClampAudioBounds();
         UpperWorkspace.SizeChanged+=(_,_)=>UpdateEmbeddedVideoHost();
+        SizeChanged+=(_,_)=>UpdateEmbeddedVideoHost();
+        WorkspaceSplitter.AddHandler(PointerPressedEvent,(_,_)=>_embeddedZoomRequest++,RoutingStrategies.Tunnel);
+        WorkspaceSplitter.KeyDown+=(_,_)=>_embeddedZoomRequest++;
         VideoRegion.SizeChanged+=(_,_)=>UpdateEmbeddedVideoHost();
-        VideoSplitter.AddHandler(PointerPressedEvent,(_,_)=>_videoSplitterOverride=true,RoutingStrategies.Tunnel);
+        VideoSplitter.AddHandler(PointerPressedEvent,(_,_)=>{_videoSplitterOverride=true;_embeddedZoomRequest++;},RoutingStrategies.Tunnel);
         VideoSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();},RoutingStrategies.Bubble);
+        VideoSplitter.KeyDown+=(_,_)=>_embeddedZoomRequest++;
         VideoSplitter.KeyUp+=(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();};
         FastActorToggle.Click+=(_,_)=>Dispatcher.UIThread.Post(()=>{if(_model?.FastActorEnabled==true)LineActor.Focus();UpdateFastActorPopup();});
         FastActorPlayback.ItemsSource=new[]{"Video","Audio","Off"};

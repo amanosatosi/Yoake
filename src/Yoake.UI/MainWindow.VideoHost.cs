@@ -14,6 +14,7 @@ public partial class MainWindow
 {
     public Window? DetachedVideoWindow { get; private set; }
     private bool _movingVideo;
+    private long _embeddedZoomRequest;
     private Guid? _hostDocument;
     private readonly Dictionary<Guid, (PixelPoint Position, double Width, double Height, WindowState State)> _videoWindows = [];
     public Task SetVideoDetachedAsync(bool detached, CancellationToken token)
@@ -119,11 +120,12 @@ public partial class MainWindow
             DetachedVideoWindow is not null)
             return;
 
+        ConstrainEmbeddedWorkspace();
         var workspaceWidth = UpperWorkspace.Bounds.Width;
         // In the embedded host the video row is Auto, so timeline controls
         // follow immediately after the canvas instead of staying at the
         // bottom of a permanently tall star-sized video cell.
-        var rowHeight = VisualColumn.Bounds.Height
+        var rowHeight = VideoDock.Bounds.Height
             - VideoRegion.Margin.Top - VideoRegion.Margin.Bottom
             - VideoRegion.RowDefinitions[1].ActualHeight
             - VideoRegion.RowDefinitions[2].ActualHeight
@@ -165,14 +167,70 @@ public partial class MainWindow
             VideoCanvasHost.Height = size.Height;
     }
 
+    private double MaximumEmbeddedWorkspaceHeight(Grid workspace)
+    {
+        var fixedHeight=workspace.RowDefinitions.Select((row,index)=>index is 2 or 4 ? 0 : row.ActualHeight).Sum();
+        return Math.Max(workspace.RowDefinitions[2].MinHeight,
+            workspace.Bounds.Height-fixedHeight-workspace.RowDefinitions[4].MinHeight);
+    }
+    private void ConstrainEmbeddedWorkspace()
+    {
+        if(UpperWorkspace.Parent is not Grid workspace||workspace.Bounds.Height<=0)return;
+        var upper=workspace.RowDefinitions[2];var maximum=MaximumEmbeddedWorkspaceHeight(workspace);
+        // A smaller main window may no longer fit a previous absolute splitter
+        // position. Clamp only the excess; ordinary edits keep valid user sizes.
+        if(upper.Height.IsAbsolute&&upper.Height.Value>maximum+.5)
+        {
+            upper.Height=new GridLength(maximum);workspace.RowDefinitions[4].Height=new GridLength(1,GridUnitType.Star);
+            ClampAudioBounds();
+        }
+    }
+    private void RequestEmbeddedWorkspaceResize()
+    {
+        var request=++_embeddedZoomRequest;var owner=_model?.ActiveDocumentId;var state=_model?.VideoView;
+        _videoSplitterOverride=false;
+        // Zoom notification precedes the resulting bindings/layout. Measure the
+        // actual toolbar rows after that work, instead of sizing from old cells.
+        Dispatcher.UIThread.Post(()=>
+        {
+            if(request!=_embeddedZoomRequest||_movingVideo||DetachedVideoWindow is not null||
+                _model is not { ShowEmbeddedVideo:true,CurrentVideoDetails:{} video } model||
+                model.ActiveDocumentId!=owner||!ReferenceEquals(model.VideoView,state)||
+                UpperWorkspace.Parent is not Grid workspace||workspace.Bounds.Height<=0||UpperWorkspace.Bounds.Width<=0)return;
+            var columns=UpperWorkspace.ColumnDefinitions;
+            var toolWidth=Math.Max(44,VisualPrimaryTools.Bounds.Width+VisualPrimaryTools.Margin.Right);
+            var chromeWidth=toolWidth+VideoRegion.Margin.Left+VideoRegion.Margin.Right;
+            var chromeHeight=VideoRegion.Margin.Top+VideoRegion.Margin.Bottom+
+                VideoRegion.RowDefinitions.Skip(1).Sum(row=>row.ActualHeight)+VideoRegion.RowSpacing*3+
+                Math.Max(0,VisualColumn.Bounds.Height-VideoDock.Bounds.Height);
+            var scale=TopLevel.GetTopLevel(VideoCanvasHost)?.RenderScaling??1;
+            var requestedHeight=video.Height*model.VideoWindowZoom/scale;
+            var maximumWidth=Math.Max(columns[0].MinWidth,UpperWorkspace.Bounds.Width-columns[2].MinWidth-columns[1].ActualWidth);
+            var width=Math.Clamp(requestedHeight*model.VideoAspectRatio+chromeWidth,columns[0].MinWidth,maximumWidth);
+            var upper=workspace.RowDefinitions[2];
+            var height=Math.Clamp(Math.Max(requestedHeight,VisualPrimaryTools.DesiredSize.Height)+chromeHeight,
+                upper.MinHeight,MaximumEmbeddedWorkspaceHeight(workspace));
+            // Both dividers belong to an explicit window-zoom request. The
+            // remaining editor/grid tracks must stretch even after a manual
+            // splitter gesture converted their previous sizes to pixels.
+            columns[0].Width=new GridLength(width);columns[2].Width=new GridLength(1,GridUnitType.Star);
+            upper.Height=new GridLength(height);workspace.RowDefinitions[4].Height=new GridLength(1,GridUnitType.Star);
+            _mediaWorkspaceHeight=upper.Height;
+            UpdateEmbeddedVideoHost();
+            Dispatcher.UIThread.Post(()=>
+            {
+                if(request==_embeddedZoomRequest&&ReferenceEquals(_model,model)&&model.ActiveDocumentId==owner&&DetachedVideoWindow is null)ClampAudioBounds();
+            },DispatcherPriority.Background);
+        },DispatcherPriority.Background);
+    }
+
     private void ResizeDetachedVideo(object? sender, EventArgs e)
     {
         if (DetachedVideoWindow is not { } host || _model?.CurrentVideoDetails is not { } details)
         {
             // The same zoom command must resize the *embedded* canvas and its
             // layout column, not only repaint a larger image in the old cell.
-            _videoSplitterOverride = false;
-            UpdateEmbeddedVideoHost();
+            RequestEmbeddedWorkspaceResize();
             return;
         }
         var height = details.Height * _model.VideoWindowZoom / host.RenderScaling;
