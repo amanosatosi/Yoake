@@ -126,7 +126,7 @@ public sealed partial class MainWindowViewModel
             if(!_disposed&&state.RecoveryLease.IsCurrent(generation))state.LastRecoveryStamp=stamp;
         }
         catch(OperationCanceledException) { }
-        catch(Exception error) { if(!_disposed)_registry.ReportFailure("subtitle/autosave",error); }
+        catch(Exception error) { if(!_disposed)_registry.ReportFailure("subtitle/autosave",File.Exists(RecoveryDirectory) ? new IOException("The recovery directory is a file: " + RecoveryDirectory, error) : error); }
         finally {if(ReferenceEquals(state.RecoveryWriting,cancellation))state.RecoveryWriting=null;cancellation.Dispose();}
     }
     private void InvalidateRecovery(Guid id)
