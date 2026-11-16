@@ -33,6 +33,8 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private byte[] _legacyBytes=[];
     private string _formattingBefore="";
     private Task<bool>? _formattingTask;
+    private AudioTrackWindow? _audioTrackDialog;
+    private Task<int?>? _audioTrackResult;
     private CancellationTokenSource? _formattingCancellation;
     private string _before="",_translated="";
     private T Get<T>(string name) where T:Control=>_assistant!.FindControl<T>(name)??throw new InvalidOperationException("Missing Assistant control: "+name);
@@ -279,7 +281,18 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                 case 47:
                     Require(!await _formattingTask!&&!window.OwnedWindows.OfType<Yoake.UI.Controls.AssColorDialog>().Any()&&model.ActiveEditor!.Document.Serialize()==_formattingBefore,"Cancellation closes the native color dialog without changing ASS.");
                     _formattingCancellation!.Dispose();
-                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply, metadata-safe sorting and absolute karaoke splitting with undo/redo; real subtitle-font selection/apply/undo and canceled font/color dialogs.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    _audioTrackDialog=new AudioTrackWindow(new Yoake.Core.Media.AudioTrackInfo[] { new(3,"pcm_s16le"),new(4,"pcm_s16le") },3);
+                    _audioTrackResult=_audioTrackDialog.ShowDialog<int?>(window);return;
+                case 48:
+                    var audioChoices=_audioTrackDialog!.FindControl<ListBox>("AudioTracks")!;
+                    Require(audioChoices.Bounds is { Width:>0,Height:>0 }&&audioChoices.Focus()&&audioChoices.IsKeyboardFocusWithin,"Realized audio track list must accept keyboard focus.");
+                    Key(audioChoices,Avalonia.Input.Key.Down);return;
+                case 49:
+                    Require(_audioTrackDialog!.FindControl<ListBox>("AudioTracks")!.SelectedItem is Yoake.Core.Media.AudioTrackInfo { Index:4 },"Native audio chooser Down must move to the second stream.");
+                    Press(_audioTrackDialog.FindControl<Button>("SelectAudioTrack")!);return;
+                case 50:
+                    Require(await _audioTrackResult! ==4&&!_audioTrackDialog!.IsVisible,"Native audio chooser Enter returns the chosen source stream index.");
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply, metadata-safe sorting and absolute karaoke splitting with undo/redo; real subtitle-font selection/apply/undo and canceled font/color dialogs; native audio stream chooser keyboard focus/Down/Enter.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }

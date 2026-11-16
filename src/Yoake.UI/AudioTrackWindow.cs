@@ -17,7 +17,9 @@ public sealed class AudioTrackWindow : Window
         var names = new NameScope(); NameScope.SetNameScope(this, names);
         var root = new Grid { Margin = new Thickness(16), RowDefinitions = new("Auto,*,Auto"), RowSpacing = 10 };
         root.Children.Add(new TextBlock { Text = "Choose audio from the current source. Video and subtitle edits are retained.", TextWrapping = TextWrapping.Wrap });
-        var list = new ListBox { Name = "AudioTracks", ItemsSource = tracks,
+        // ListBox defaults to item-only focus. This chooser also routes arrows
+        // from the list itself, including its initial focus after opening.
+        var list = new ListBox { Name = "AudioTracks", ItemsSource = tracks, Focusable = true,
             SelectedItem = tracks.FirstOrDefault(track => track.Index == current) ?? tracks.FirstOrDefault() };
         Grid.SetRow(list, 1); root.Children.Add(list);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Right };
