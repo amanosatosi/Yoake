@@ -37,7 +37,7 @@ public sealed class OptionsWindow : Window
     private readonly TextBox _gesture = new() { Name = "HotkeyGesture", IsVisible = false };
     private readonly TextBox _capture = new() { Name = "HotkeyCapture", PlaceholderText = "Press a shortcut here", IsReadOnly = true };
     private readonly TextBlock _hotkeyStatus = new() { Name = "HotkeyStatus", TextWrapping = TextWrapping.Wrap };
-    private bool _loading, _applying;
+    private bool _loading, _applying,_closed;
     private CheckBox? _globalHotkeys;
     private HotkeyContext Context => (HotkeyContext)(_context.SelectedItem ?? HotkeyContext.Default);
     private CommandChoice? Choice => _commands.SelectedItem as CommandChoice;
@@ -46,7 +46,7 @@ public sealed class OptionsWindow : Window
     {
         _model = model; _baseline = _draft = model.CaptureOptions();
         _hotkeys = new(model.HotkeyProfile.Defaults, _draft.HotkeyOverrides);
-        Name = "OptionsDialog"; Title = "Options"; Width = 900; Height = 650; MinWidth = 640; MinHeight = 420;
+        Name = "OptionsDialog"; Title = "Options"; Width = 900; Height = 650; MinWidth = 620; MinHeight = 360;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         NameScope.SetNameScope(this, _names);
         Register(_navigation); Register(_search); Register(_status);
@@ -91,6 +91,12 @@ public sealed class OptionsWindow : Window
         };
         Add("External tools", "Choose ASSDraw", "Select an external drawing tool.",browse,()=>{},()=>{});
 
+        var shortcutSearch=new Button { Name="OptionsShortcutSearch",HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Left };
+        ToolTip.SetTip(shortcutSearch,"Open matching commands in the keyboard shortcut editor. Pending settings stay in this draft.");Register(shortcutSearch);_form.Children.Add(shortcutSearch);
+        shortcutSearch.Click+=(_,_)=>
+        {
+            var query=_search.Text??"";_navigation.SelectedItem="Keyboard shortcuts";_search.Text="";_filter.Text=query;
+        };
         var shortcuts=BuildShortcuts();
         var scroll=new ScrollViewer { Name="OptionsContent", Content=_form, HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
         Register(scroll);
@@ -105,10 +111,12 @@ public sealed class OptionsWindow : Window
                 row.View.IsVisible=query.Length==0 ? row.Category==category : terms.All(term=>row.Search.Contains(term,StringComparison.CurrentCultureIgnoreCase));
                 if(row.View.IsVisible)matches++;
             }
+            var matchingShortcuts=query.Length==0?0:ShortcutChoices().Count(choice=>ShortcutMatches(choice,terms));
+            shortcutSearch.IsVisible=matchingShortcuts>0;shortcutSearch.Content=new TextBlock { Text=$"Keyboard shortcuts · {matchingShortcuts} matching commands",TextWrapping=TextWrapping.Wrap };
             shortcuts.IsVisible=query.Length==0&&category=="Keyboard shortcuts";
             // The shortcut workspace owns its bounded list scrolling.
             scroll.IsVisible=!shortcuts.IsVisible;
-            _status.Text=matches==0&&!shortcuts.IsVisible?"No matching settings.":query.Length>0?$"{matches} matching settings":"Changes take effect only after Apply or OK.";
+            _status.Text=matches==0&&matchingShortcuts==0&&!shortcuts.IsVisible?"No matching settings.":query.Length>0?$"{matches} matching settings · {matchingShortcuts} matching shortcut commands":"Changes take effect only after Apply or OK.";
             scroll.Offset=default;
         }
         _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Timing", "Video", "Automation", "Keyboard shortcuts", "Recovery", "External tools" };
@@ -116,7 +124,7 @@ public sealed class OptionsWindow : Window
         _search.TextChanged+=(_,_)=>Filter();
         var body=new Grid { ColumnDefinitions=new("Auto,*"), ColumnSpacing=1 }; body.Children.Add(_navigation); Grid.SetColumn(content,1); body.Children.Add(content);
         var footer=new Grid { ColumnDefinitions=new("*,Auto"), Margin=new Thickness(12,8), ColumnSpacing=12 };
-        var restore=new Button { Name="RestoreOptionsDefaults", Content="Restore category defaults", HorizontalAlignment=HorizontalAlignment.Left };
+        var restore=new Button { Name="RestoreOptionsDefaults", Content="Restore section defaults", HorizontalAlignment=HorizontalAlignment.Left };
         ToolTip.SetTip(restore,"Reset only the selected category. Apply or OK saves the result; Cancel discards it."); Register(restore);
         restore.Click+=(_,_)=>
         {
@@ -138,10 +146,25 @@ public sealed class OptionsWindow : Window
             if(e.Key is Key.Enter or Key.Escape && this.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))e.Handled=true;
             if(e.Key==Key.F&&e.KeyModifiers==Avalonia.Input.KeyModifiers.Control) { _search.Focus();e.Handled=true; }
         },RoutingStrategies.Tunnel);
+        Opened+=(_,_)=>ScheduleWorkingAreaFit();ScalingChanged+=(_,_)=>ScheduleWorkingAreaFit();
         Closing+=(_,e)=> { if(_applying)e.Cancel=true; };
-        Closed+=(_,_)=>UiFontResources.Apply(_model.UiFontFamily,_model.UiFontSize);
+        Closed+=(_,_)=>{_closed=true;UiFontResources.Apply(_model.UiFontFamily,_model.UiFontSize);};
         Reload();_navigation.SelectedItem=externalTools?"External tools":"General";Filter();_names.Complete();
     }
+
+    private void ScheduleWorkingAreaFit()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>
+    {
+        if(!IsVisible)return;
+        var screen=Screens.ScreenFromWindow(this)??Screens.Primary;if(screen is null)return;
+        var area=screen.WorkingArea;var scale=RenderScaling;
+        var frame=FrameSize??ClientSize;
+        var chromeWidth=Math.Max(0,frame.Width-ClientSize.Width);var chromeHeight=Math.Max(0,frame.Height-ClientSize.Height);
+        var availableWidth=Math.Max(1,area.Width/scale-chromeWidth-16);var availableHeight=Math.Max(1,area.Height/scale-chromeHeight-16);
+        MinWidth=Math.Min(620,availableWidth);MinHeight=Math.Min(360,availableHeight);
+        Width=Math.Clamp(Width,MinWidth,availableWidth);Height=Math.Clamp(Height,MinHeight,availableHeight);
+        Position=new PixelPoint(Math.Clamp(Position.X,area.X,Math.Max(area.X,area.Right-(int)Math.Ceiling((Width+chromeWidth)*scale))),
+            Math.Clamp(Position.Y,area.Y,Math.Max(area.Y,area.Bottom-(int)Math.Ceiling((Height+chromeHeight)*scale))));
+    },Avalonia.Threading.DispatcherPriority.Background);
 
     private void Register(Control control) { if(control.Name is {} name)_names.Register(name,control); }
     private void Add(string category,string label,string description,Control control,Action reload,Action reset)
@@ -183,7 +206,7 @@ public sealed class OptionsWindow : Window
         control.SelectionChanged+=(_,_)=>{if(!_loading&&control.SelectedItem is T value)_draft=set(_draft,value);};
     }
     private void Reload() { _loading=true;try { foreach(var row in _rows)row.Reload(); if(_globalHotkeys is not null)_globalHotkeys.IsChecked=_draft.GlobalTimingHotkeys; }finally { _loading=false; } PreviewFont(); }
-    private void PreviewFont()=>UiFontResources.Apply(_draft.UiFontFamily,_draft.UiFontSize);
+    private void PreviewFont(){if(!_closed)UiFontResources.Apply(_draft.UiFontFamily,_draft.UiFontSize);}
     private async Task<bool> SaveAsync()
     {
         if(_applying)return false;
@@ -227,12 +250,13 @@ public sealed class OptionsWindow : Window
         },RoutingStrategies.Tunnel);
         RefreshCommands();return root;
     }
+    private IEnumerable<CommandChoice> ShortcutChoices()=>_model.Registry.Commands.Select(c=>new CommandChoice(c.Metadata.Id,c.Metadata.Label))
+        .Concat(_hotkeys.Resolver.Bindings.Select(b=>new CommandChoice(b.CommandId,b.CommandId))).DistinctBy(c=>c.Id);
+    private static bool ShortcutMatches(CommandChoice choice,string[] terms)=>terms.All(term=>choice.Id.Contains(term,StringComparison.OrdinalIgnoreCase)||choice.Label.Contains(term,StringComparison.OrdinalIgnoreCase));
     private void RefreshCommands()
     {
-        var selected=Choice?.Id;var filter=_filter.Text??"";
-        var choices=_model.Registry.Commands.Select(c=>new CommandChoice(c.Metadata.Id,c.Metadata.Label))
-            .Concat(_hotkeys.Resolver.Bindings.Select(b=>new CommandChoice(b.CommandId,b.CommandId))).DistinctBy(c=>c.Id)
-            .Where(c=>c.Id.Contains(filter,StringComparison.OrdinalIgnoreCase)||c.Label.Contains(filter,StringComparison.OrdinalIgnoreCase)).OrderBy(c=>c.Label).ToArray();
+        var selected=Choice?.Id;var terms=(_filter.Text??"").Split(' ',StringSplitOptions.RemoveEmptyEntries);
+        var choices=ShortcutChoices().Where(choice=>ShortcutMatches(choice,terms)).OrderBy(c=>c.Label).ToArray();
         _commands.ItemsSource=choices;_commands.SelectedItem=choices.FirstOrDefault(c=>c.Id==selected)??choices.FirstOrDefault();RefreshBindings();
     }
     private void RefreshBindings()

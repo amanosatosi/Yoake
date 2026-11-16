@@ -19,6 +19,7 @@ namespace Yoake.App;
 internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplicationLifetime desktop,
     MainWindow window, MainWindowViewModel model, StartupOptions options)
 {
+    private bool _shortcutSearchChecked;
     private readonly DispatcherTimer _timer=new() { Interval=TimeSpan.FromMilliseconds(180) };
     private OptionsWindow? _dialog;
     private int _stage;private bool _ticking;
@@ -39,6 +40,7 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     _source=model.ActiveEditor!.Document.Serialize();
                     Open();return;
                 case 1:
+                    if(!_shortcutSearchChecked){Get<TextBox>("OptionsSearch").Text="assistant translation";_stage=11;return;}
                     Require(_dialog!.TryGetPlatformHandle() is { Handle:not 0 },"Options needs a real native window.");
                     Get<ListBox>("OptionsCategories").SelectedItem="Appearance";
                     Get<NumericUpDown>("UiFontSize").Value=24;Get<FontPicker>("UiFontFamily").OpenBrowser();return;
@@ -53,11 +55,20 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     var gridRow=window.FindControl<ListBox>("SubtitleRows")!.ContainerFromIndex(0) as Control;
                     Require(gridRow is { Bounds.Height:>=40 },"Subtitle grid containers must reflow with enlarged fonts.");
                     Require(window.FindControl<TextBox>("LineStart")!.Bounds.Width>=180,"Timing fields must expand with UI typography.");
-                    _dialog!.Width=780;_dialog.Height=540;return;
+                    _dialog!.Width=700;_dialog.Height=400;return;
                 case 3:
-                    Require(Get<Button>("OptionsApply").IsEffectivelyVisible&&Get<Button>("OptionsApply").Bounds.Width>0,"Footer must remain usable at compact size and large type.");
+                    foreach(var name in new[] { "RestoreOptionsDefaults","OptionsApply","OptionsOk","OptionsCancel" })
+                    {
+                        var button=Get<Button>(name);var origin=button.TranslatePoint(default,_dialog!);
+                        Require(button.IsEffectivelyVisible&&button.Bounds.Width>0&&origin is {} point&&point.X>=0&&point.Y>=0&&point.X+button.Bounds.Width<=_dialog!.ClientSize.Width+.5&&point.Y+button.Bounds.Height<=_dialog.ClientSize.Height+.5,
+                            "Every footer action must fit inside the compact client area at 24pt: "+name+" · "+origin+" · "+button.Bounds+" · "+_dialog!.ClientSize+" · root "+(_dialog.Content as Control)?.Bounds+" · children "+string.Join(";",(_dialog.Content as Grid)!.Children.Select(c=>c.GetType().Name+" "+c.Bounds+" desired "+c.DesiredSize))+" · default font "+Avalonia.Media.FontManager.Current.DefaultFontFamily.Name);
+                    }
+                    Require(_dialog!.ClientSize.Height<=400&&Get<ScrollViewer>("OptionsContent").Viewport.Height>=80,"Compact Options must leave a usable scrolling preference viewport.");
                     Press(Get<Button>("OptionsCancel"));return;
                 case 4:
+                    var appliedFamily=Application.Current!.Resources["YoakeUiFontFamily"];
+                    Get<FontPicker>("UiFontFamily").FontName="Yoake discarded late preview 日本語";Get<NumericUpDown>("UiFontSize").Value=24;
+                    Require(ReferenceEquals(appliedFamily,Application.Current.Resources["YoakeUiFontFamily"]),"Closed Options controls must not overwrite the restored family through a late update.");
                     Require((double)Application.Current!.Resources["YoakeUiFontSize"]! == (_initialSize??12),"Cancel restores the applied font.");
                     Require(model.UiFontSize==_initialSize,"Cancel must not save the font.");
                     Open();return;
@@ -99,8 +110,14 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Require(model.UiFontSize==15&&model.AutosaveIntervalSeconds==90,"Cancel after Apply keeps the applied values and discards later resets.");
                     Require(_source==model.ActiveEditor!.Document.Serialize(),"Settings must preserve exact subtitle source.");
                     File.WriteAllText(Path.Combine(options.ProfileDirectory!,"options-tested"),"passed");
-                    _timer.Stop();options.FinishVerification("PASS: native Options draft, cross-setting search, resize, Unicode font preview, fallback, Apply/Cancel, scoped defaults, IME preedit and restart persistence.\n");
+                    _timer.Stop();options.FinishVerification("PASS: native Options draft, cross-setting and shortcut-command search, compact 700×400/24pt layout, monitor working-area sizing, Unicode font preview, fallback, Apply/Cancel, scoped defaults, IME preedit and restart persistence.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                case 11:
+                    Require(Get<Button>("OptionsShortcutSearch").IsEffectivelyVisible,"Global search must discover individual shortcut commands by their words.");Press(Get<Button>("OptionsShortcutSearch"));return;
+                case 12:
+                    Require(Get<ListBox>("OptionsCategories").SelectedItem as string=="Keyboard shortcuts"&&Get<TextBox>("HotkeyFilter").Text=="assistant translation","Shortcut search must navigate without losing the query.");
+                    Require(Get<ListBox>("HotkeyCommands").Items.Cast<object>().Any(item=>item.ToString()!.EndsWith(" · tool/translation_assistant",StringComparison.Ordinal)),"Multi-word shortcut filtering must find the actual Translation Assistant command.");
+                    _shortcutSearchChecked=true;_stage=1;return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Options acceptance stage "+_stage,error);desktop.Shutdown(1); }
