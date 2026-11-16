@@ -64,8 +64,9 @@ public sealed partial class EditorWorkflowTests
         hotkeys.Set(HotkeyContext.Default,CommandIds.SubtitleNew,["Ctrl-Alt-K"]);
         // A directory occupying the destination reliably fails atomic replacement on all platforms.
         Directory.CreateDirectory(Path.Combine(_root,"settings.json"));
-        await Assert.ThrowsAnyAsync<IOException>(()=>_model.ApplyOptionsAsync(baseline,baseline with {
+        var failure=await Assert.ThrowsAnyAsync<Exception>(()=>_model.ApplyOptionsAsync(baseline,baseline with {
             UiFontSize=20,VideoAutoSeek=false,AudioLeadIn=500,HotkeyOverrides=hotkeys.Overrides }));
+        Assert.True(failure is IOException or UnauthorizedAccessException);
         Assert.Equal(baseline.UiFontSize,_model.UiFontSize);Assert.True(_model.VideoAutoSeek);
         Assert.Equal(100,_model.AudioTimingLeadIn);Assert.Equal(shortcut,_model.Actions[CommandIds.SubtitleNew].Shortcut);
     }

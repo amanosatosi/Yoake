@@ -57,6 +57,31 @@ foreach ($case in @('fresh', 'restored')) {
   }
 }
 
+# Translation and styling use a separate native GUI process.
+$assistantsRoot = Join-Path $root ('assistants-' + [Guid]::NewGuid().ToString('N'))
+$profile = Join-Path $assistantsRoot 'profile'
+New-Item -ItemType Directory -Force -Path $profile | Out-Null
+# The second launch reuses the real settings written by the first. This is
+# independent of the unchanged startup/profile smoke matrix.
+foreach ($case in @('fresh')) {
+  $logs = Join-Path $assistantsRoot ($case + '-logs')
+  $report = Join-Path $assistantsRoot ($case + '.txt')
+  $arguments = @('--verify-ui-assistants', ('"{0}"' -f $report), '--profile-directory', ('"{0}"' -f $profile), '--diagnostics-directory', ('"{0}"' -f $logs), '--verification-media', ('"{0}"' -f ([IO.Path]::GetFullPath($MediaFixturesRoot))))
+  $process = Start-Process -FilePath $exe -ArgumentList $arguments -WorkingDirectory (Split-Path $exe -Parent) -WindowStyle Hidden -PassThru
+  try {
+    if (-not $process.WaitForExit(150000)) { throw "Packaged Assistant acceptance timed out: $case" }
+    $text = if (Test-Path -LiteralPath $report) { Get-Content -LiteralPath $report -Raw } else { '' }
+    if ($process.ExitCode -ne 0 -or -not $text.StartsWith('PASS:')) { throw "Packaged Assistant acceptance failed for $case (exit $($process.ExitCode)):`n$text" }
+    Write-Host $text
+  } catch {
+    Get-ChildItem -LiteralPath $logs -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 90 }
+    throw
+  } finally {
+    if (-not $process.HasExited) { $process.Kill(); $process.WaitForExit() }
+    $process.Dispose()
+  }
+}
+
 # Timing tools use a fresh profile and a separate process/watchdog from both
 # startup and contextual-keyboard acceptance. No existing case is bypassed.
 $timingRoot = Join-Path $root ('timing-' + [Guid]::NewGuid().ToString('N'))

@@ -3334,12 +3334,20 @@
     },
     {
       "id": "tool/style/assistant",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/style/assistant",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open styling assistant",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3360,12 +3368,20 @@
     },
     {
       "id": "tool/styling_assistant/commit",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/styling_assistant/commit",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Commit changes and move to the next line",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {
         "Styling Assistant": [
           "Enter",
@@ -3375,12 +3391,20 @@
     },
     {
       "id": "tool/styling_assistant/preview",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/styling_assistant/preview",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Commit changes and stay on the current line",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {
         "Styling Assistant": [
           "F8"
@@ -3409,22 +3433,38 @@
     },
     {
       "id": "tool/translation_assistant",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/translation_assistant",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Open translation assistant",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {}
     },
     {
       "id": "tool/translation_assistant/commit",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/translation_assistant/commit",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Commit changes and move to the next line",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {
         "Translation Assistant": [
           "Enter",
@@ -3434,12 +3474,20 @@
     },
     {
       "id": "tool/translation_assistant/insert_original",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/translation_assistant/insert_original",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Insert the untranslated text",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {
         "Translation Assistant": [
           "Insert"
@@ -3448,12 +3496,20 @@
     },
     {
       "id": "tool/translation_assistant/next",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/translation_assistant/next",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Move to the next line without committing changes",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {
         "Translation Assistant": [
           "PageDown"
@@ -3462,12 +3518,20 @@
     },
     {
       "id": "tool/translation_assistant/prev",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/translation_assistant/prev",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Move to the previous line without committing changes",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {
         "Translation Assistant": [
           "PageUp"
@@ -3476,12 +3540,20 @@
     },
     {
       "id": "tool/translation_assistant/preview",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "tool/translation_assistant/preview",
+      "status": "partially implemented",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Commit changes and stay on the current line",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "EditorAssistantWindow",
+        "Tools menu"
+      ],
+      "tests": [
+        "SubtitleTranslationTests",
+        "AssistantWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented document-owned native assistant workflows; Linux managed/native GUI passed. Exact-revision Windows NativeAOT and packaged acceptance pending; no full parity claim.",
       "yoake_default_hotkeys": {
         "Translation Assistant": [
           "F8"

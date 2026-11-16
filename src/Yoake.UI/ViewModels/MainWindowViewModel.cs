@@ -249,6 +249,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterUiFontCommands();
         RegisterEditorCommands();
         RegisterFastActorCommands();
+        RegisterAssistantCommands();
         RegisterGridCommands();
         RegisterLineCommands();
         RegisterVideoOptions();

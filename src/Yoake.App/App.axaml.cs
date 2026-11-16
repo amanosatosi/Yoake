@@ -90,7 +90,8 @@ public partial class App : Application
             };
             if (_startup.VerificationReport is not null)
             {
-                if (_startup.OptionsAcceptance) new OptionsUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                if (_startup.AssistantsAcceptance) new AssistantsUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
+                else if (_startup.OptionsAcceptance) new OptionsUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if (_startup.HotkeyAcceptance) new HotkeyUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.TimingAcceptance)new TimingUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
                 else if(_startup.TimecodeAcceptance)new TimecodeUiAcceptanceVerification(desktop,window,viewModel,_startup).Start();
