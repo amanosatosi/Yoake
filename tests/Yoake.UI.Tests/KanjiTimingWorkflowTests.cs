@@ -21,9 +21,37 @@ public sealed partial class EditorWorkflowTests
     {
         var editor=_model.ActiveEditor!;
         foreach(var name in new[] { "Romaji","Kanji" }) { var style=editor.Document.Styles[0].Clone();style.Name=name;editor.AddStyle(style); }
-        var source=editor.Insert(null,true);source.Style="Romaji";source.Text=@"{\k10}to{\k20}u{\k30}kyo{\k40}u";
+        var source=editor.Insert(null,true);source.Style="Romaji";source.End="0:00:01.00";source.Text=@"{\k10}to{\k20}u{\k30}kyo{\k40}u";
         var target=editor.Insert(null,true);target.Style="Kanji";target.Text=@"{\future(opaque)\bord2}東京";
         _model.SelectedEvent=target;return(source,target);
+    }
+    [Theory]
+    [InlineData(@"{\k10}to{\k20}u",@"{\k10}東{\k90}京")]
+    [InlineData(@"{\k80}to{\k80}u",@"{\k80}東{\k20}京")]
+    public async Task CopierNormalizesSourceTimingLikeAegisubWithoutRewritingItsTags(string input,string expected)
+    {
+        var (source,target)=PrepareKanjiPair();_model.ActiveEditor!.SetField(source,"Text",input,"Prepare source");_model.Draft!.Text="東京";Assert.True(_model.CommitDraft());
+        using var session=_model.BeginKanjiTiming();await Command("tool/time/kanji/start",new KanjiTimingStart(session,"Romaji","Kanji"));
+        await Command("tool/time/kanji/link",new KanjiTimingGroup(session,1,1));await Command("tool/time/kanji/link",new KanjiTimingGroup(session,1,1));await Command("tool/time/kanji/accept",session);await Command("tool/time/kanji/apply",session);
+        Assert.Equal(expected,target.Text);Assert.Equal(input,source.Text);Assert.Equal("0:00:02.00",target.End);
+    }
+    [Fact]
+    public async Task PlainTimedSourceCanTransferOneWholeLineSyllable()
+    {
+        var (source,target)=PrepareKanjiPair();_model.ActiveEditor!.SetField(source,"Text","とうきょう","Prepare source");_model.Draft!.Text="東京";Assert.True(_model.CommitDraft());
+        using var session=_model.BeginKanjiTiming();await Command("tool/time/kanji/start",new KanjiTimingStart(session,"Romaji","Kanji"));
+        await Command("tool/time/kanji/link",new KanjiTimingGroup(session,1,2));await Command("tool/time/kanji/accept",session);await Command("tool/time/kanji/apply",session);
+        Assert.Equal(@"{\k100}東京",target.Text);Assert.Equal("とうきょう",source.Text);
+    }
+    [Fact]
+    public async Task KanjiSuggestionsAreReviewableAndDoNotConsumeAnySyllables()
+    {
+        var (source,target)=PrepareKanjiPair();_model.ActiveEditor!.SetField(source,"Text",@"{\k10}Bo{\k20}ku{\k30}wa","Prepare source");_model.ActiveEditor.SetField(source,"End","0:00:00.60","Prepare source");_model.Draft!.Text="僕は";Assert.True(_model.CommitDraft());
+        var before=_model.ActiveEditor!.Document.Serialize();using var session=_model.BeginKanjiTiming();
+        await Command("tool/time/kanji/start",new KanjiTimingStart(session,"Romaji","Kanji"));await Command("tool/time/kanji/suggest",session);
+        Assert.Equal(new KaraokeMatchSuggestion(2,1),session.Suggestion);Assert.Equal(3,session.Alignment!.SourceRemaining);Assert.Empty(session.Alignment.Groups);Assert.Equal(before,_model.ActiveEditor.Document.Serialize());
+        await Command("tool/time/kanji/link",new KanjiTimingGroup(session,2,1));await Command("tool/time/kanji/suggest",session);Assert.Equal(new KaraokeMatchSuggestion(1,1),session.Suggestion);
+        await Command("tool/time/kanji/link",new KanjiTimingGroup(session,1,1));await Command("tool/time/kanji/accept",session);await Command("tool/time/kanji/apply",session);Assert.Equal(@"{\k30}僕{\k30}は",target.Text);
     }
     [Fact]
     public async Task KanjiTimingStagesLinksAndAcceptsThenAppliesOneExactUndoableTextEdit()
@@ -44,7 +72,7 @@ public sealed partial class EditorWorkflowTests
     public async Task MultipleAcceptedKanjiLinesCanBeCancelledOrAppliedAsOneUndoTransaction()
     {
         PrepareKanjiPair();var editor=_model.ActiveEditor!;
-        var source=editor.Insert(null,true);source.Style="Romaji";source.Text=@"{\k5}o{\k7}sa{\k9}ka";
+        var source=editor.Insert(null,true);source.Style="Romaji";source.End="0:00:00.21";source.Text=@"{\k5}o{\k7}sa{\k9}ka";
         var target=editor.Insert(null,true);target.Style="Kanji";target.Text="大阪 မြန်မာ";
         var before=editor.Document.Serialize();
         async Task Match(KanjiTimingSession session)

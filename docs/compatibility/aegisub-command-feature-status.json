@@ -3454,10 +3454,11 @@
       ],
       "tests": [
         "KaraokeAlignmentTests",
+        "KaraokeJapaneseMatcherTests",
         "KanjiTimingWorkflowTests",
         "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Manual many-to-many style-paired matching, grapheme/escape boundaries, empty groups, unlink/back/independent skips, staged accepted lines, one Apply/undo, preserved opaque destination overrides. Managed and native Linux passed; Windows pending. Automatic romaji/kana interpolation, ruby/drawing destinations and absolute kt remain gaps; unsupported input is preserved.",
+      "notes": "Many-to-many style-paired matching, grapheme/escape boundaries, empty groups, unlink/back/independent skips, staged accepted lines, one Apply/undo, preserved opaque destination overrides. Aegisub 3.2.2 romaji/kana/kanji lookahead suggestions with source-derived reference vectors, optional per-session automatic suggestions and retained keyboard focus through empty matching lists. Managed and native Linux passed; Windows pending. Separate ruby/drawing destinations and absolute kt remain gaps; unsupported input is preserved.",
       "yoake_default_hotkeys": {}
     },
     {

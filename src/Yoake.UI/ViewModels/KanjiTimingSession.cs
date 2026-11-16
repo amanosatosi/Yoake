@@ -19,6 +19,7 @@ public sealed class KanjiTimingSession : INotifyPropertyChanged,IDisposable
     public event EventHandler? Invalidated;
     public string[] Styles=>Editor.Document.Styles.Select(s=>s.Name).ToArray();
     public KaraokeAlignment? Alignment { get; private set; }
+    public KaraokeMatchSuggestion? Suggestion { get; private set; }
     public string SourceLine=>_source<_sources.Length?_sources[_source].Text:"No more source lines";
     public string DestinationLine=>_target<_targets.Length?_targets[_target].Text:"No more destination lines";
     public string[] SourceSyllables=>Alignment?.RemainingSource.Select(s=>$"{s.Duration/10} cs · {(s.Text.Length==0?"(empty)":s.Text)}").ToArray()??[];
@@ -42,9 +43,13 @@ public sealed class KanjiTimingSession : INotifyPropertyChanged,IDisposable
         if(_disposed||Model.ActiveDocumentId!=DocumentId||Model.Draft?.IsChanged==true||Model.HasGesture)throw new InvalidOperationException("Finish the main editor draft before starting.");
         if(sourceStyle==destinationStyle||!Styles.Contains(sourceStyle)||!Styles.Contains(destinationStyle))throw new ArgumentException("Choose two different existing styles.");
         _revision=Editor.Document.Revision;
-        bool Eligible(AssEvent line)=>!line.IsComment&&!MangetsuMetadata.IsInherited(line);
+        bool Eligible(AssEvent line)=>line.Text.Length>0&&!line.IsComment&&!MangetsuMetadata.IsInherited(line);
         _sources=Editor.Document.Events.Where(e=>Eligible(e)&&e.Style==sourceStyle).ToArray();_targets=Editor.Document.Events.Where(e=>Eligible(e)&&e.Style==destinationStyle).ToArray();
         _accepted.Clear();_history.Clear();_source=_target=0;LoadPair();
+    }
+    internal void Suggest()
+    {
+        EnsureCurrent();Suggestion=(Alignment??throw new InvalidOperationException("Start a line pair first.")).Suggest();Changed(nameof(Suggestion));
     }
     internal void Link(int sourceCount,int destinationCount)
     { EnsureCurrent();(Alignment??throw new InvalidOperationException("Start a line pair first.")).Link(sourceCount,destinationCount);Refresh("Group linked. Enter links the next group; accept the line when complete."); }
@@ -80,7 +85,12 @@ public sealed class KanjiTimingSession : INotifyPropertyChanged,IDisposable
         Alignment=null;var status=$"Source {_source+1}/{_sources.Length} · Destination {_target+1}/{_targets.Length} · {_accepted.Count} accepted, unapplied";
         if(_source<_sources.Length&&_target<_targets.Length)
         {
-            try { Alignment=new(SourceLine,DestinationLine); }
+            try
+            {
+                var source=_sources[_source];
+                if(source.StartMilliseconds is not {} start||source.EndMilliseconds is not {} end)throw new ArgumentException("Correct the source line start/end times before matching.");
+                Alignment=new(SourceLine,DestinationLine,checked(end-start));
+            }
             catch(Exception error) when(error is ArgumentException or NotSupportedException){status=error.Message+" Use Skip or choose another pair; no source was changed.";}
         }
         else status=$"End of matching lines · {_accepted.Count} accepted, unapplied. Apply saves accepted lines; Cancel discards them.";

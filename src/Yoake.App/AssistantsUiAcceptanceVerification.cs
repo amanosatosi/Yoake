@@ -181,8 +181,8 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     Require(model.OpenSubtitle(extractedPath)&&model.Events.Count==2,"Saved extracted subtitles must reopen.");
                     var kanjiDocument=AssDocument.CreateEmpty();var kanjiEditor=new SubtitleEditor(kanjiDocument);
                     foreach(var name in new[] { "Romaji","Kanji" }){var named=kanjiDocument.Styles[0].Clone();named.Name=name;kanjiEditor.AddStyle(named);}
-                    var reading=kanjiEditor.Insert(null,true);reading.Style="Romaji";reading.Text=@"{\k10}to{\k20}u{\k30}kyo{\k40}u";
-                    var writing=kanjiEditor.Insert(null,true);writing.Style="Kanji";writing.Text=@"{\future(opaque)\bord2}東京";
+                    var reading=kanjiEditor.Insert(null,true);reading.Style="Romaji";reading.End="0:00:00.60";reading.Text=@"{\k10}Bo{\k20}ku{\k30}wa";
+                    var writing=kanjiEditor.Insert(null,true);writing.Style="Kanji";writing.Text=@"{\future(opaque)\bord2}僕は";
                     var kanjiPath=Path.Combine(options.ProfileDirectory!,"kanji.ass");kanjiDocument.Save(kanjiPath);Require(model.OpenSubtitle(kanjiPath),"Open matching fixture.");_kanjiBefore=model.ActiveEditor!.Document.Serialize();
                     window.FindControl<MenuItem>("ToolsMenu")!.IsSubMenuOpen=true;Press(window.FindControl<MenuItem>("KanjiTimingMenu")!);return;
                 case 27:
@@ -190,22 +190,24 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     _kanji!.FindControl<ComboBox>("KanjiSourceStyle")!.SelectedItem="Romaji";_kanji!.FindControl<ComboBox>("KanjiDestinationStyle")!.SelectedItem="Kanji";
                     Press(_kanji!.FindControl<Button>("KanjiStart")!);return;
                 case 28:
-                    Require(_kanji!.FindControl<ListBox>("KanjiSourceSyllables")!.Items.Count==4&&_kanji!.FindControl<ListBox>("KanjiDestinationCharacters")!.Items.Count==2,"Copier displays source syllables and destination graphemes.");
+                    Require(_kanji!.FindControl<ListBox>("KanjiSourceSyllables")!.Items.Count==3&&_kanji!.FindControl<ListBox>("KanjiDestinationCharacters")!.Items.Count==2,"Copier displays source syllables and destination graphemes.");
                     var countInput=_kanji!.FindControl<NumericUpDown>("KanjiSourceCount")!;var countPresenter=countInput.GetVisualDescendants().OfType<TextPresenter>().First();
                     countPresenter.PreeditText="か";Key(countInput,Avalonia.Input.Key.Escape);Require(_kanji!.IsVisible,"IME Escape must not close matching.");countPresenter.PreeditText=null;
+                    Require(countInput.Value==2&&_kanji!.FindControl<NumericUpDown>("KanjiDestinationCount")!.Value==1,"Aegisub kana lookahead should suggest Bo+ku for 僕 before は/wa.");
+                    Press(_kanji!.FindControl<Button>("KanjiSuggest")!);
                     countInput.Value=2;_kanji!.FindControl<NumericUpDown>("KanjiDestinationCount")!.Value=1;Press(_kanji!.FindControl<Button>("KanjiLink")!);return;
                 case 29:
-                    _kanji!.FindControl<NumericUpDown>("KanjiSourceCount")!.Value=2;_kanji!.FindControl<NumericUpDown>("KanjiDestinationCount")!.Value=1;
+                    Require(_kanji!.FindControl<NumericUpDown>("KanjiSourceCount")!.Value==1&&_kanji!.FindControl<NumericUpDown>("KanjiDestinationCount")!.Value==1,"Next-group interpolation should suggest wa for は.");
                     var syllables=_kanji!.FindControl<ListBox>("KanjiSourceSyllables")!;var syllable=syllables.ContainerFromIndex(0) as Control;Require(syllable is { Bounds.Height:>0 },"Source syllable must be realized for keyboard matching.");Press(syllable!);return;
                 case 30:
-                    Press(_kanji!.FindControl<Button>("KanjiAccept")!);return;
+                    var matchList=_kanji!.FindControl<ListBox>("KanjiSourceSyllables")!;Require(matchList.IsKeyboardFocusWithin,"Keyboard focus must remain in matching after the final source item disappears.");Key(matchList,Avalonia.Input.Key.Enter);return;
                 case 31:
                     Require(model.ActiveEditor!.Document.Serialize()==_kanjiBefore,"Accepted matches must remain unapplied until Apply.");Press(_kanji!.FindControl<Button>("KanjiApply")!);return;
                 case 32:
-                    Require(model.Events[0].Text==@"{\k10}to{\k20}u{\k30}kyo{\k40}u"&&model.Events[1].Text==@"{\k30}{\future(opaque)\bord2}東{\k70}京","Apply matches timing without changing source syllables or destination overrides.");
+                    Require(model.Events[0].Text==@"{\k10}Bo{\k20}ku{\k30}wa"&&model.Events[1].Text==@"{\k30}{\future(opaque)\bord2}僕{\k30}は","Apply matches timing without changing source syllables or destination overrides.");
                     _kanji!.Close();var matched=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_kanjiBefore,"All accepted timing copies undo in one step.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==matched,"Karaoke matching redo restores exact source.");
                     var matchedPath=Path.Combine(options.ProfileDirectory!,"matched.ass");Require(model.SaveActiveSubtitle(matchedPath),"Save matched karaoke.");await Invoke("subtitle/close");Require(model.OpenSubtitle(matchedPath)&&model.ActiveEditor.Document.Serialize()==matched,"Matched karaoke round-trips on disk.");
-                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier grouping/keyboard/Apply with undo/redo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply with undo/redo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }

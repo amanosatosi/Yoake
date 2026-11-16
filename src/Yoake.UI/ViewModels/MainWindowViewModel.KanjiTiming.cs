@@ -16,7 +16,7 @@ public sealed partial class MainWindowViewModel
         _registry.Register(new(new("tool/time/kanji","Kanji Timing Copier…","Match source karaoke syllables to destination characters","Tools"),async (_,token)=>
         { if(Dialogs is {} dialogs&&_activeId is {} owner&&CommitDraft())await dialogs.ShowKanjiTimingAsync(this,owner,token); },_=>ActiveEditor is not null&&!HasGesture));
         Actions["tool/time/kanji"]=new RegistryCommand(_registry,"tool/time/kanji",CurrentContext,hotkeys:()=>HotkeyProfile);
-        foreach(var operation in new[] { "start","link","unlink","accept","skip-source","skip-destination","previous","apply" })
+        foreach(var operation in new[] { "start","suggest","link","unlink","accept","skip-source","skip-destination","previous","apply" })
         {
             var action=operation;
             _registry.Register(new(new("tool/time/kanji/"+action,action+" karaoke match",action,"Tools"),(invocation,token)=>
@@ -27,6 +27,7 @@ public sealed partial class MainWindowViewModel
                 switch(action)
                 {
                     case "start":var start=invocation.Parameter as KanjiTimingStart??throw new ArgumentException("Choose source and destination styles.");session.Restart(start.SourceStyle,start.DestinationStyle);break;
+                    case "suggest":session.Suggest();break;
                     case "link":var group=invocation.Parameter as KanjiTimingGroup??throw new ArgumentException("Choose source and destination counts.");session.Link(group.SourceCount,group.DestinationCount);break;
                     case "unlink":session.Unlink();break;
                     case "accept":session.Accept();break;

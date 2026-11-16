@@ -246,3 +246,13 @@ copyright 2004–2012 Aegisub Project). Their paths are scaled from 64 to 24
 units and their accent and foreground layers are separately recolored by theme;
 the original third icon's stroke is retained at the scaled width. The full
 license is included in `licenses/Aegisub-BSD-3-Clause.txt`.
+
+### Aegisub 3.2.2 karaoke matcher and kana data
+
+The Kanji Timing Copier's suggestion algorithm, kana tables and reference test
+vectors are adapted from Aegisub v3.2.2 `libaegisub/common/karaoke_matcher.cpp`,
+`kana_table.cpp`, and `tests/tests/karaoke_matcher.cpp` (Thomas Goyne, 2013),
+under the ISC license. The original notices are retained in the source and
+[third_party/licenses/Aegisub-Karaoke-Matcher-ISC.txt](third_party/licenses/Aegisub-Karaoke-Matcher-ISC.txt),
+which is included in the Windows portable license bundle. These editor helpers
+are independent of Automation compatibility.

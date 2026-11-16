@@ -31,6 +31,12 @@ public sealed class KaraokeAlignmentTests
     public void AbsoluteTimingIsNotSilentlyConverted()
         =>Assert.Throws<ArgumentException>(()=>new KaraokeAlignment(@"{\kt10\k20}a","漢"));
     [Fact]
+    public void PlainTimedSourceUsesOneSyllableAndMillisecondsDoNotRoundPastAegisubOutput()
+    {
+        var match=new KaraokeAlignment("とうきょう","東京",1005);Assert.Single(match.RemainingSource);Assert.Equal(1005,match.RemainingSource[0].Duration);
+        match.Link(1,2);Assert.Equal(@"{\k100}東京",match.Render());
+    }
+    [Fact]
     public void InvalidGroupNeverConsumesInputOrRewritesAnUnlinkedLine()
     {
         var match=new KaraokeAlignment(@"{\k10}a","漢");Assert.Throws<ArgumentException>(()=>match.Link(2,1));Assert.Throws<ArgumentException>(()=>match.Link(0,0));

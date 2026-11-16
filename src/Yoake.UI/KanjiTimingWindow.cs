@@ -17,9 +17,10 @@ public sealed class KanjiTimingWindow : Window
     private readonly NameScope _names=new();
     private readonly ComboBox _sourceStyle,_destinationStyle;
     private readonly TextBox _source=new() { Name="KanjiSourceLine",IsReadOnly=true,TextWrapping=TextWrapping.Wrap,MaxHeight=70 },_destination=new() { Name="KanjiDestinationLine",IsReadOnly=true,TextWrapping=TextWrapping.Wrap,MaxHeight=70 };
-    private readonly ListBox _syllables=new() { Name="KanjiSourceSyllables",SelectionMode=SelectionMode.Multiple },_characters=new() { Name="KanjiDestinationCharacters",SelectionMode=SelectionMode.Multiple },_groups=new() { Name="KanjiLinkedGroups" };
+    private readonly ListBox _syllables=new() { Name="KanjiSourceSyllables",SelectionMode=SelectionMode.Multiple,Focusable=true },_characters=new() { Name="KanjiDestinationCharacters",SelectionMode=SelectionMode.Multiple,Focusable=true },_groups=new() { Name="KanjiLinkedGroups" };
     private readonly NumericUpDown _sourceCount=new() { Name="KanjiSourceCount",Minimum=0,Increment=1,FormatString="0",Width=85 },_destinationCount=new() { Name="KanjiDestinationCount",Minimum=0,Increment=1,FormatString="0",Width=85 };
     private readonly TextBlock _status=new() { Name="KanjiTimingStatus",TextWrapping=TextWrapping.Wrap };
+    private readonly CheckBox _interpolate=new() { Name="KanjiAutoSuggest",Content="Suggest groups automatically",IsChecked=true,VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(12,0,0,0) };
     private bool _updating;
     public KanjiTimingWindow(MainWindowViewModel model)
     {
@@ -31,7 +32,8 @@ public sealed class KanjiTimingWindow : Window
         var styles=new WrapPanel { Orientation=Orientation.Horizontal };root.Children.Add(styles);
         styles.Children.Add(new TextBlock { Text="Source style",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,8,0) });styles.Children.Add(_sourceStyle);
         styles.Children.Add(new TextBlock { Text="Destination style",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(12,0,8,0) });styles.Children.Add(_destinationStyle);
-        var start=Button("Start / restart","KanjiStart","start",()=>new KanjiTimingStart(_session,_sourceStyle.SelectedItem as string??"",_destinationStyle.SelectedItem as string??""));start.Margin=new Thickness(12,0,0,0);styles.Children.Add(start);
+        var start=Button("Start / restart","KanjiStart","start",()=>new KanjiTimingStart(_session,_sourceStyle.SelectedItem as string??"",_destinationStyle.SelectedItem as string??""));start.Margin=new Thickness(12,0,0,0);styles.Children.Add(start);styles.Children.Add(_interpolate);
+        ToolTip.SetTip(_interpolate,"Use Aegisub 3.2.2 romaji/kana and nearby-kanji heuristics to select counts. Review every suggested group before linking; this never changes text automatically.");
         var originals=new Grid { ColumnDefinitions=new("*,*"),ColumnSpacing=10 };At(root,originals,1);originals.Children.Add(_source);Grid.SetColumn(_destination,1);originals.Children.Add(_destination);
         var labels=new Grid { ColumnDefinitions=new("*,*,*"),ColumnSpacing=10 };At(root,labels,2);
         foreach(var (text,column) in new[] { ("Source syllables (centiseconds)",0),("Destination characters",1),("Linked groups",2) }){var label=new TextBlock { Text=text,TextWrapping=TextWrapping.Wrap };Grid.SetColumn(label,column);labels.Children.Add(label);}
@@ -39,6 +41,7 @@ public sealed class KanjiTimingWindow : Window
         var matching=new WrapPanel();At(root,matching,4);
         matching.Children.Add(new TextBlock { Text="Source count",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(0,0,6,0) });matching.Children.Add(_sourceCount);
         matching.Children.Add(new TextBlock { Text="Destination count",VerticalAlignment=VerticalAlignment.Center,Margin=new Thickness(12,0,6,0) });matching.Children.Add(_destinationCount);
+        matching.Children.Add(Button("Suggest group","KanjiSuggest","suggest"));
         matching.Children.Add(Button("Link group","KanjiLink","link",()=>new KanjiTimingGroup(_session,Count(_sourceCount),Count(_destinationCount))));
         matching.Children.Add(Button("Unlink last","KanjiUnlink","unlink"));matching.Children.Add(Button("Accept line →","KanjiAccept","accept"));
         var navigation=new WrapPanel();At(root,navigation,5);
@@ -48,7 +51,7 @@ public sealed class KanjiTimingWindow : Window
         var apply=Button("Apply accepted lines","KanjiApply","apply");Grid.SetColumn(apply,1);footer.Children.Add(apply);
         var cancel=new Button { Name="KanjiCancel",Content="Cancel / close",IsCancel=true };cancel.Click+=(_,_)=>Close();Grid.SetColumn(cancel,2);footer.Children.Add(cancel);
         ToolTip.SetTip(apply,"Apply only accepted lines in one undo step. Unfinished current groups stay in the matching workspace. Cancel discards unapplied lines.");
-        foreach(var control in new Control[] { _sourceStyle,_destinationStyle,_source,_destination,_syllables,_characters,_groups,_sourceCount,_destinationCount,_status,cancel })_names.Register(control.Name!,control);
+        foreach(var control in new Control[] { _sourceStyle,_destinationStyle,_source,_destination,_syllables,_characters,_groups,_sourceCount,_destinationCount,_status,_interpolate,cancel })_names.Register(control.Name!,control);
         _sourceCount.ValueChanged+=(_,_)=>SelectCounts();_destinationCount.ValueChanged+=(_,_)=>SelectCounts();
         foreach(var (list,count) in new[] { (_syllables,_sourceCount),(_characters,_destinationCount) })
             list.AddHandler(PointerPressedEvent,(_,e)=>
@@ -58,7 +61,13 @@ public sealed class KanjiTimingWindow : Window
                 var index=list.IndexFromContainer(row);if(index<0)return;
                 count.Value=index+1;row.Focus();e.Handled=true;
             },RoutingStrategies.Tunnel);
-        _session.PropertyChanged+=(_,e)=>{if(e.PropertyName==nameof(KanjiTimingSession.Status))Refresh();};_session.Invalidated+=(_,_)=>Close();Closed+=(_,_)=>_session.Dispose();
+        _interpolate.IsCheckedChanged+=(_,_)=>{if(_interpolate.IsChecked==true&&_session.Alignment is not null)_=Run("suggest",_session);};
+        _session.PropertyChanged+=(_,e)=>
+        {
+            if(e.PropertyName==nameof(KanjiTimingSession.Status))Refresh();
+            else if(e.PropertyName==nameof(KanjiTimingSession.Suggestion)&&_session.Suggestion is {} suggestion)
+            { _sourceCount.Value=suggestion.SourceCount;_destinationCount.Value=suggestion.DestinationCount; }
+        };_session.Invalidated+=(_,_)=>Close();Closed+=(_,_)=>_session.Dispose();
         AddHandler(KeyDownEvent,async (_,e)=>
         {
             if(e.Key is Key.Enter or Key.Escape&&this.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText))){e.Handled=true;return;}
@@ -96,6 +105,8 @@ public sealed class KanjiTimingWindow : Window
     {
         var ok=await _model.Registry.InvokeAsync("tool/time/kanji/"+action,new(_session.DocumentId),parameter);
         if(!ok)_status.Text=_model.SubtitleStatus;
+        else if(action is "start" or "link" or "unlink" or "suggest" or "accept" or "skip-source" or "skip-destination" or "previous")
+            await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(()=>{if(IsVisible)_syllables.Focus();},Avalonia.Threading.DispatcherPriority.Background);
     }
     private static int Count(NumericUpDown value)=>value.Value is {} count&&count==decimal.Truncate(count)&&!DataValidationErrors.GetHasErrors(value)?(int)count:throw new ArgumentException("Enter whole source and destination counts.");
     private void Refresh()
@@ -109,6 +120,7 @@ public sealed class KanjiTimingWindow : Window
             _sourceCount.Value=Math.Min(1,_sourceCount.Maximum);_destinationCount.Value=Math.Min(1,_destinationCount.Maximum);
         }
         finally{_updating=false;}SelectCounts();
+        if(_interpolate.IsChecked==true&&_session.Alignment is not null)_=Run("suggest",_session);
     }
     private void SelectCounts()
     {
