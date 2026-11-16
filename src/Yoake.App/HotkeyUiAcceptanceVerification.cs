@@ -148,7 +148,15 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Require(ReferenceEquals(waveform,model.WaveformSamples)&&ReferenceEquals(times,model.FrameTimes)&&model.CurrentFrame==_frame,"View changes must retain the providers and keyboard playback position.");
                     Press(Grid,Key.O,KeyModifiers.Alt);return;
                 case 13:
-                    _options=window.OwnedWindows.OfType<OptionsWindow>().Single();InOptions<ListBox>("OptionsCategories").SelectedItem="Keyboard shortcuts";InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
+                    _options=window.OwnedWindows.OfType<OptionsWindow>().Single();InOptions<ListBox>("OptionsCategories").SelectedItem="Keyboard shortcuts";
+                    // Let the newly visible page realize before sending native keyboard focus.
+                    await Dispatcher.UIThread.InvokeAsync(()=>
+                    {
+                        var reset=InOptions<Button>("ResetContextHotkeys");
+                        Require(reset.IsEffectivelyVisible&&reset.Bounds.Width>0&&reset.Bounds.Height>0,
+                            "The keyboard page must finish layout before testing focus: "+reset.Bounds);
+                    },DispatcherPriority.Background);
+                    InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
                     Click("ResetContextHotkeys");InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Default;
                     await Choose(CommandIds.AppToggleToolbar);Capture(Key.F12);Click("AddHotkey");
                     InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.SubtitleGrid;
@@ -310,7 +318,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
             Require(row is {Bounds.Height:>0},"A realized grid row must exist before keyboard input.");control=row!;
         }
         (TopLevel.GetTopLevel(control) as Window)?.Activate();
-        Require(control.Focus()&&control.IsKeyboardFocusWithin,"Shipping control must own focus before keyboard input: "+control.Name);
+        Require(control.Focus()&&control.IsKeyboardFocusWithin,"Shipping control must own focus before keyboard input: "+control.Name+"; visible="+control.IsEffectivelyVisible+"; bounds="+control.Bounds+"; enabled="+control.IsEnabled);
         control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});
     }
     private static void TapModifier(Control control,Key key,KeyModifiers modifiers)

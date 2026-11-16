@@ -55,7 +55,7 @@ public sealed class MangetsuMetadataWindow : Window
             revision=editor.Document.Revision;
             var selected=(MangetsuMetadataKind)kind.SelectedItem!;
             target.ItemsSource=selected==MangetsuMetadataKind.Style?model.StyleNames:editor.Document.Events.Select(e=>e.Actor).Where(a=>a.Length>0).Append("mangetsu-colorcode-applied-styles").Distinct().Order().ToArray();
-            text.Text=MangetsuMetadata.Initial(editor.Document).LastOrDefault(e=>MangetsuMetadata.Kind(e)==selected&&(selected==MangetsuMetadataKind.Style?e.Style:e.Actor)==target.Text)?.Text??"";
+            text.Text=MangetsuMetadata.Initial(editor.Document).LastOrDefault(e=>MangetsuMetadata.Kind(e)==selected&&MangetsuMetadata.MatchesTarget(e,selected,target.Text??""))?.Text??"";
             presets.IsVisible=selected==MangetsuMetadataKind.Style;
             status.Text=selected==MangetsuMetadataKind.Style?"Choose a style and edit its renderer defaults.":"Enter an actor name. The reserved actor mangetsu-colorcode-applied-styles accepts {Style}{Style 2} whitelist entries.";
         }

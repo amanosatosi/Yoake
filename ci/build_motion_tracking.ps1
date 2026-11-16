@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$OutputRoot)
+param([Parameter(Mandatory = $true)][string]$OutputRoot,[switch]$VerifyOnly)
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
@@ -8,6 +8,19 @@ $versions = Get-Content -LiteralPath (Join-Path $repo 'third_party\versions.json
 $triplet = $versions.motionOpenCv.triplet
 $prefix = Join-Path $vcpkg "installed\$triplet"
 $destination = Join-Path $OutputRoot 'motion'
+if ($VerifyOnly) {
+    foreach ($relative in @('.complete', 'bin\yoake-motion.dll', 'verification\yoake-motion-test.exe')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $destination $relative) -PathType Leaf)) { throw "Incomplete motion cache: $relative" }
+    }
+    if (-not (Get-ChildItem (Join-Path $destination 'licenses') -Filter '*copyright.txt' -File)) { throw 'Motion cache has no dependency licenses.' }
+    $originalPath = $env:PATH
+    try {
+        $env:PATH = (Join-Path $destination 'bin') + [IO.Path]::PathSeparator + $originalPath
+        & (Join-Path $destination 'verification\yoake-motion-test.exe')
+        if ($LASTEXITCODE -ne 0) { throw 'Cached motion provider synthetic-frame test failed.' }
+    } finally { $env:PATH = $originalPath }
+    return
+}
 New-Item -ItemType Directory -Force $work, $destination | Out-Null
 $revision = $versions.motionOpenCv.vcpkgCommit
 if ($revision -notmatch '^[a-f0-9]{40}$') { throw 'Invalid OpenCV registry revision.' }
@@ -32,4 +45,6 @@ Copy-Item (Join-Path $build 'Release\yoake-motion.dll') (Join-Path $destination 
 Get-ChildItem (Join-Path $prefix 'share') -Recurse -File -Filter copyright | ForEach-Object {
     Copy-Item $_.FullName (Join-Path $destination 'licenses' ("motion-" + $_.Directory.Name + '-copyright.txt')) -Force
 }
+New-Item -ItemType Directory -Force (Join-Path $destination 'verification') | Out-Null
+Copy-Item (Join-Path $build 'Release\yoake-motion-test.exe') (Join-Path $destination 'verification')
 New-Item -ItemType File -Force (Join-Path $destination '.complete') | Out-Null

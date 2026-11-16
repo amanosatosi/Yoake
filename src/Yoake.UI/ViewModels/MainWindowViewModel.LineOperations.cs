@@ -34,6 +34,13 @@ public sealed partial class MainWindowViewModel
             },context=>Applies(context)&&_gesture is null&&CanSplitAtCursor()&&(mode!=CursorSplitTiming.VideoFrame||HasFrameBoundaryTiming)));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
+        const string recombine="edit/line/recombine";
+        _registry.Register(new(new(recombine,"Recombine lines","Recombine overlapping prefix/suffix subtitle fragments","Edit"),(_,_)=>
+        {
+            RunEdit(editor=> { var active=SelectedEvent;var result=editor.Recombine(Selection());Select(result.Contains(active!)?active:result.FirstOrDefault());SetSelectedEvents(result); });
+            return ValueTask.CompletedTask;
+        },context=>Applies(context)&&_gesture is null&&Selection().Length>1));
+        Actions[recombine]=new RegistryCommand(_registry,recombine,CurrentContext,hotkeys:()=>HotkeyProfile);
         const string karaokeSplit="edit/line/split/by_karaoke";
         _registry.Register(new(new(karaokeSplit,"Split by karaoke","Split selected lines at karaoke timing boundaries","Edit"),(_,_)=>
         {

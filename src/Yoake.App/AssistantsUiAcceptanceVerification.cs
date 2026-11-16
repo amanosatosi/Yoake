@@ -21,7 +21,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private EditorAssistantWindow? _assistant;
     private MangetsuMetadataWindow? _metadata;
     private PostprocessWindow? _postprocess;
-    private string _postprocessBefore="";
+    private string _postprocessBefore="",_recombineBefore="";
     private SubtitleEncodingWindow? _encoding;
     private Task<int?>? _encodingResult;
     private byte[] _legacyBytes=[];
@@ -134,7 +134,23 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     Require(model.SelectedEvent.Text==@"{\future(opaque)}日本語 မြန်မာ","Postprocessing must preserve exact text and override tags.");
                     await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor!.Document.Serialize()==_postprocessBefore,"Timing postprocessing must undo in one step.");
                     await Invoke(CommandIds.EditRedo);
-                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, undo/redo, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen and Timing Postprocessor preview/apply/undo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    var recombinePath=Path.Combine(options.ProfileDirectory!,"recombine.ass");
+                    File.WriteAllText(recombinePath,AssDocument.CreateEmpty().Serialize()+
+                        "Dialogue: 0,0:00:01.00,0:00:02.00,Default,,0,0,0,,日本語\n"+
+                        "Dialogue: 0,0:00:02.00,0:00:03.00,Default,,0,0,0,,日本語\\Nမြန်မာ\n"+
+                        "Dialogue: 0,0:00:03.00,0:00:04.00,Default,,0,0,0,,မြန်မာ\n");
+                    Require(model.OpenSubtitle(recombinePath),"Open recombination fixture.");_recombineBefore=model.ActiveEditor!.Document.Serialize();return;
+                case 21:
+                    var grid=window.FindControl<ListBox>("SubtitleRows")!;var row=grid.ContainerFromIndex(0) as Control;
+                    Require(row is { Bounds.Height:>0 }&&row.Focus(),"A realized subtitle grid row must own focus.");
+                    row!.RaiseEvent(new KeyEventArgs { RoutedEvent=InputElement.KeyDownEvent,Key=Avalonia.Input.Key.A,KeyModifiers=Avalonia.Input.KeyModifiers.Control,Source=row });return;
+                case 22:
+                    Require(model.SelectedEvents.Count==3&&window.FindControl<ListBox>("SubtitleRows")!.SelectedItems!.Count==3,$"Select all actual grid rows through Ctrl-A (model {model.SelectedEvents.Count}, grid {window.FindControl<ListBox>("SubtitleRows")!.SelectedItems!.Count}).");
+                    window.FindControl<MenuItem>("SubtitleMenu")!.IsSubMenuOpen=true;Press(window.FindControl<MenuItem>("RecombineMenu")!);return;
+                case 23:
+                    Require(model.Events.Count==2&&model.Events[0].Text=="日本語"&&model.Events[1].Text=="မြန်မာ","The native Recombine menu must remove the combined duplicate.");
+                    await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor!.Document.Serialize()==_recombineBefore,"Recombine must restore exact source in one undo step.");
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor and Recombine with undo/redo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }

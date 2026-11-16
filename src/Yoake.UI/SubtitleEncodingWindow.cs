@@ -2,6 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Controls.Presenters;
+using Avalonia.VisualTree;
 using Yoake.Core.Subtitles;
 
 namespace Yoake.UI;
@@ -19,6 +23,7 @@ public sealed class SubtitleEncodingWindow : Window
         var actions=new StackPanel { Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Spacing=8 };Grid.SetRow(actions,3);root.Children.Add(actions);
         var open=new Button { Name="OpenWithEncoding",Content="Open",IsDefault=true };var cancel=new Button { Content="Cancel",IsCancel=true };actions.Children.Add(open);actions.Children.Add(cancel);
         open.Click+=(_,_)=>{if(choice.SelectedItem is SubtitleEncodingChoice value)Close((int?)value.CodePage);};cancel.Click+=(_,_)=>Close((int?)null);
+        AddHandler(KeyDownEvent,(_,e)=> { if(e.Key is Key.Enter or Key.Escape&&this.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))e.Handled=true; },RoutingStrategies.Tunnel);
         names.Register(choice.Name!,choice);names.Register(open.Name!,open);names.Complete();Content=root;
     }
 }

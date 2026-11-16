@@ -1463,12 +1463,20 @@
     },
     {
       "id": "edit/line/recombine",
-      "yoake_command": null,
-      "status": "missing",
+      "yoake_command": "edit/line/recombine",
+      "status": "partially implemented",
       "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Recombine subtitles which have been split and merged",
-      "exposure": [],
-      "tests": [],
-      "notes": "",
+      "exposure": [
+        "CommandRegistry",
+        "Subtitle menu",
+        "Grid context menu"
+      ],
+      "tests": [
+        "RecombineTests",
+        "RecombineWorkflowTests",
+        "AssistantsUiAcceptanceVerification"
+      ],
+      "notes": "Implemented prefix/suffix patterns, duplicates, timing expansion, empty-fragment cleanup, Unicode/override/ruby guards and protected metadata. Managed and native Linux checks passed; exact-revision Windows packaging and keyboard acceptance pending.",
       "yoake_default_hotkeys": {}
     },
     {

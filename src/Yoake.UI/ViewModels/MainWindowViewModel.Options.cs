@@ -10,11 +10,15 @@ public sealed partial class MainWindowViewModel
     private bool _publishingOptions;
     public AppSettings CaptureOptions() => _settings.Normalize();
 
-    public async Task ApplyOptionsAsync(AppSettings baseline, AppSettings edited, CancellationToken token = default)
+    public async Task<string?> ApplyOptionsAsync(AppSettings baseline, AppSettings edited, CancellationToken token = default)
     {
         token.ThrowIfCancellationRequested();
         if (_disposed) throw new ObjectDisposedException(nameof(MainWindowViewModel));
         static T Pick<T>(T before, T after, T current) => EqualityComparer<T>.Default.Equals(before, after) ? current : after;
+        if(baseline.RecoveryDirectory!=edited.RecoveryDirectory&&!string.IsNullOrWhiteSpace(edited.RecoveryDirectory))
+            _=Path.GetFullPath(edited.RecoveryDirectory,Path.GetDirectoryName(Path.GetFullPath(_settingsStore.Path))!);
+        if((edited.AutomationAutoloadDirectories??[]).Concat(edited.AutomationIncludeDirectories??[]).Any(path=>path is null||path.Contains('\0')))
+            throw new ArgumentException("Automation paths must not contain null characters.");
         var candidate = (_settings with
         {
             UiFontFamily=Pick(baseline.UiFontFamily, edited.UiFontFamily, _settings.UiFontFamily),
@@ -71,8 +75,16 @@ public sealed partial class MainWindowViewModel
         _registry.NotifyStateChanged();
         if (pathsChanged)
         {
-            await RescanAutomationAsync(token);
-            foreach (var item in _automationEntries.Where(e => e.DocumentId is not null).ToArray()) await ReloadAutomationScriptAsync(item, token);
+            try
+            {
+                await RescanAutomationAsync(token);
+                foreach (var item in _automationEntries.Where(e => e.DocumentId is not null).ToArray()) await ReloadAutomationScriptAsync(item, token);
+            }
+            catch(Exception error) when(error is IOException or UnauthorizedAccessException or ArgumentException or OperationCanceledException)
+            {
+                return "Settings saved. Automation reload could not finish: "+error.Message;
+            }
         }
+        return null;
     }
 }

@@ -55,7 +55,7 @@ public sealed class PostprocessWindow : Window
                 if(label=="Cancel") { Close();return; }
                 try
                 {
-                    int Value(NumericUpDown control)=>control.Value is {} value?(int)value:throw new ArgumentException("Enter a numeric timing threshold.");
+                    int Value(NumericUpDown control)=>control.Value is {} value&&!control.GetValue(DataValidationErrors.HasErrorsProperty)?(int)value:throw new ArgumentException("Enter a numeric timing threshold.");
                     var options=new SubtitlePostprocessOptions { Styles=styles.Children.OfType<CheckBox>().Where(c=>c.IsChecked==true).Select(c=>(string)c.Content!).ToArray(),SelectedOnly=selected.IsChecked==true,
                         AddLeadIn=leadIn.IsChecked==true,LeadIn=Value(leadInTime),AddLeadOut=leadOut.IsChecked==true,LeadOut=Value(leadOutTime),MakeAdjacent=adjacent.IsChecked==true,
                         MaximumGap=Value(gap),MaximumOverlap=Value(overlap),AdjacentBias=Value(bias)/100d,SnapKeyframes=snap.IsChecked==true,StartBefore=Value(startBefore),StartAfter=Value(startAfter),EndBefore=Value(endBefore),EndAfter=Value(endAfter) };

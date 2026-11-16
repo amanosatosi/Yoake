@@ -27,6 +27,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private GridLength _videoWidth = new(6, GridUnitType.Star), _textWidth = new(7, GridUnitType.Star);
     private bool _videoSplitterOverride;
     private bool _compactSubtitleLayout;
+    private double _uiColumnScale=1;
     private GridLength _mediaWorkspaceHeight = new(3, GridUnitType.Star);
     private GridLength _subtitleWorkspaceHeight = new(300);
     private Key _fastActorModifier;
@@ -52,7 +53,7 @@ public partial class MainWindow : Window, IEditorDialogs
         Opened+=(_,_)=>{UpdateChrome();UpdateEmbeddedVideoHost();};
         Loaded+=(_,_)=>SyncSelection();
         Opened+=StartAutomation;
-        LayoutUpdated+=(_,_)=>UpdateChrome();
+        LayoutUpdated+=(_,_)=>{UpdateUiFontLayout();UpdateChrome();};
         ScalingChanged+=(_,_)=>Dispatcher.UIThread.Post(()=>{UpdateChrome();RefreshVideoScaling();});
         PropertyChanged+=(_,e)=>{if(e.Property==WindowStateProperty)Dispatcher.UIThread.Post(UpdateChrome);};
         TemporalTextColumn.SizeChanged+=(_,_)=>ClampAudioBounds();
@@ -182,7 +183,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private async void HeaderReleased(object? sender,PointerReleasedEventArgs e)
     {
         if(_resizeColumn<0)return;_resizeColumn=-1;e.Pointer.Capture(null);
-        if(_model is not null)await _model.Registry.InvokeAsync(CommandIds.GridColumnWidths,new(),ColumnHeader.ColumnDefinitions.Take(7).Select(c=>c.Width.Value).ToArray());
+        if(_model is not null)await _model.Registry.InvokeAsync(CommandIds.GridColumnWidths,new(),ColumnHeader.ColumnDefinitions.Take(7).Select(c=>c.Width.Value/_uiColumnScale).ToArray());
     }
     private void ApplyRowWidths()
     {
@@ -486,6 +487,15 @@ public partial class MainWindow : Window, IEditorDialogs
         _closingAllowed=true;Close();
     }
     public bool RedundantCaptionHidden {get;private set;}
+    private void UpdateUiFontLayout()
+    {
+        var size=Application.Current is {} app&&app.Resources.TryGetResource("YoakeUiFontSize",null,out var value)&&value is double fontSize?fontSize:12;
+        var scale=size/12;if(Math.Abs(scale-_uiColumnScale)<0.001)return;
+        var factor=scale/_uiColumnScale;_uiColumnScale=scale;
+        foreach(var column in ColumnHeader.ColumnDefinitions.Take(7))
+            if(column.Width.IsAbsolute)column.Width=new GridLength(column.Width.Value*factor);
+        ApplyRowWidths();
+    }
     private void UpdateChrome()
     {
         if(!OperatingSystem.IsWindows())return;

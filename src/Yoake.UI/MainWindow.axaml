@@ -12,8 +12,8 @@
         Background="{DynamicResource AppBackgroundBrush}">
   <Window.Styles>
     <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
-    <Style Selector="TextBox"><Setter Property="MinHeight" Value="26" /></Style>
-    <Style Selector="ComboBox"><Setter Property="MinHeight" Value="26" /></Style>
+    <Style Selector="TextBox"><Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" /></Style>
+    <Style Selector="ComboBox"><Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" /></Style>
     <Style Selector="CheckBox"><Setter Property="MinHeight" Value="24" /></Style>
   </Window.Styles>
   <Grid>
@@ -87,7 +87,7 @@
 <MenuItem Header="Find / Replace…" InputGesture="{Binding Actions[edit/find_replace].InputGesture}" Command="{Binding Actions[edit/find_replace]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Replace}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Cancel background operation" Command="{Binding Actions[editor/cancel-operation]}" />
 </MenuItem>
-<MenuItem Header="Subtitle">
+<MenuItem Name="SubtitleMenu" Header="Subtitle">
 <MenuItem Header="Insert before" InputGesture="{Binding Actions[grid/insert/before].InputGesture}" Command="{Binding Actions[grid/insert/before]}" />
 <MenuItem Header="Insert after" InputGesture="{Binding Actions[grid/insert/after].InputGesture}" Command="{Binding Actions[grid/insert/after]}" />
 <MenuItem Header="Insert before at video time" Command="{Binding Actions[subtitle/insert/before/videotime]}" InputGesture="{Binding Actions[subtitle/insert/before/videotime].InputGesture}" />
@@ -101,6 +101,7 @@
 <MenuItem Header="At video frame" InputGesture="{Binding Actions[edit/line/split/video].InputGesture}" Command="{Binding Actions[edit/line/split/video]}" />
 <MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
 </MenuItem>
+<MenuItem Name="RecombineMenu" Header="Recombine lines" Command="{Binding Actions[edit/line/recombine]}" InputGesture="{Binding Actions[edit/line/recombine].InputGesture}" />
 <MenuItem Header="Split by karaoke" InputGesture="{Binding Actions[edit/line/split/by_karaoke].InputGesture}" Command="{Binding Actions[edit/line/split/by_karaoke]}" />
 <MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
 <MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />
@@ -468,29 +469,30 @@
           <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
         </Grid.Styles>
         <WrapPanel Grid.Row="0" Name="MetadataFields">
-          <Grid Name="CommentStyleGroup" Width="240" ColumnDefinitions="80,*" ColumnSpacing="3" Margin="0,0,12,8">
-            <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" />
+          <Grid Name="CommentStyleGroup" Width="{DynamicResource YoakeUiStyleGroupWidth}" ColumnDefinitions="Auto,*" ColumnSpacing="3" Margin="0,0,12,8">
+            <CheckBox VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" MinHeight="{DynamicResource YoakeUiRowHeight}" />
             <Grid Grid.Column="1" Name="StyleControls" ColumnDefinitions="*,26" ColumnSpacing="3">
-              <ComboBox Name="LineStyle" Height="26" VerticalAlignment="Center" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding EditorDraft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
-              <Button Grid.Column="1" Height="26" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.StylesManager}" /></Button>
+              <ComboBox Name="LineStyle" VerticalAlignment="Center" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding EditorDraft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" MinHeight="{DynamicResource YoakeUiRowHeight}" />
+              <Button Grid.Column="1" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" MinHeight="{DynamicResource YoakeUiRowHeight}"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.StylesManager}" /></Button>
             </Grid>
           </Grid>
-          <Grid Name="MetadataOtherFields" Width="336" ColumnDefinitions="*,*,86" ColumnSpacing="12" Margin="0,0,0,8">
+          <Grid Name="MetadataOtherFields" Width="{DynamicResource YoakeUiOtherGroupWidth}" ColumnDefinitions="*,*,86" ColumnSpacing="12" Margin="0,0,0,8">
             <Grid ColumnDefinitions="*,26" ColumnSpacing="2">
-            <AutoCompleteBox Name="LineActor" Height="26" VerticalAlignment="Center" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" />
-            <ToggleButton Name="FastActorToggle" Grid.Column="1" Height="26" Padding="2,0" Content="»" IsChecked="{Binding Actions[actor/fast/toggle].IsChecked, Mode=OneWay}" Command="{Binding Actions[actor/fast/toggle]}" ToolTip.Tip="Fast actor naming" />
+            <AutoCompleteBox Name="LineActor" VerticalAlignment="Center" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" MinHeight="{DynamicResource YoakeUiRowHeight}" />
+            <ToggleButton Name="FastActorToggle" Grid.Column="1" Padding="2,0" Content="»" IsChecked="{Binding Actions[actor/fast/toggle].IsChecked, Mode=OneWay}" Command="{Binding Actions[actor/fast/toggle]}" ToolTip.Tip="Fast actor naming" MinHeight="{DynamicResource YoakeUiRowHeight}" />
             <Popup Name="FastActorPopup" PlacementTarget="{Binding #LineActor}" Placement="Bottom" IsLightDismissEnabled="False">
               <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Padding="5" MinWidth="180">
                 <StackPanel Spacing="3"><TextBlock Text="Recent actors" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><ListBox Name="FastActorList" MaxHeight="240" ItemsSource="{Binding FastActorRecent}" SelectedIndex="{Binding FastActorSelectedIndex, Mode=OneWay}" /><TextBlock Text="Fast naming mode" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><ComboBox Name="FastActorMode" SelectedItem="{Binding FastActorMode, Mode=OneWay}" ToolTip.Tip="Nanashi: tap Ctrl for next line, Alt for previous line" /><TextBlock Text="After advancing, play" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><ComboBox Name="FastActorPlayback" SelectedItem="{Binding FastActorPlayback, Mode=OneWay}" /></StackPanel>
               </Border>
             </Popup>
             </Grid>
-            <TextBox Name="LineEffect" Grid.Column="1" Height="26" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" />
+            <TextBox Name="LineEffect" Grid.Column="1" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" MinHeight="{DynamicResource YoakeUiRowHeight}" />
             <NumericUpDown Name="LineLayer" Grid.Column="2" Text="{Binding EditorDraft.Layer, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647" Increment="1" FormatString="0" Padding="2,0" ToolTip.Tip="Layer" />
           </Grid>
         </WrapPanel>
         <WrapPanel Grid.Row="1" Name="TimingFields">
-          <Grid Name="LineTimingGroup" ColumnDefinitions="Auto,96,Auto,96,Auto,72" ColumnSpacing="3" Margin="0,0,12,8">
+          <Grid Name="LineTimingGroup" ColumnSpacing="3" Margin="0,0,12,8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="{DynamicResource YoakeUiTimeFieldWidth}" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="{DynamicResource YoakeUiTimeFieldWidth}" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="{DynamicResource YoakeUiDurationFieldWidth}" /></Grid.ColumnDefinitions>
             <TextBlock Text="Start" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineStart" Grid.Column="1" Text="{Binding EditorDraft.Start, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start h:mm:ss.cc" />
             <TextBlock Grid.Column="2" Text="End" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineEnd" Grid.Column="3" Text="{Binding EditorDraft.End, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End h:mm:ss.cc" />
             <TextBlock Grid.Column="4" Text="Dur." FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding EditorDraft.Duration}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" VerticalAlignment="Center" />
@@ -542,10 +544,10 @@
 </Grid>
 <GridSplitter Grid.Row="3" ResizeDirection="Rows" Background="{DynamicResource SplitterBrush}" />
 <Border Grid.Row="4" Margin="6" Name="SubtitleGridRegion" Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-<Grid RowDefinitions="24,*" ToolTip.Tip="SUBTITLE GRID">
+<Grid ToolTip.Tip="SUBTITLE GRID"><Grid.RowDefinitions><RowDefinition Height="{DynamicResource YoakeUiGridHeaderHeight}" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 <Border Padding="10,2" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1"><Grid Name="ColumnHeader" PointerPressed="HeaderPressed" PointerMoved="HeaderMoved" PointerReleased="HeaderReleased" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4" ToolTip.Tip="Drag a column boundary to resize"><TextBlock Text="#" /><TextBlock Grid.Column="1" Text="L" ToolTip.Tip="Layer" /><TextBlock Grid.Column="2" Text="Start" /><TextBlock Grid.Column="3" Text="End" /><TextBlock Grid.Column="4" Text="Style" /><TextBlock Grid.Column="5" Text="Actor" /><TextBlock Grid.Column="6" Text="Effect" /><TextBlock Grid.Column="7" Text="Text" /></Grid></Border>
 <ListBox Name="SubtitleRows" controls:SubtitleGridText.TagDisplayMode="{Binding GridTagDisplay}" Grid.Row="1" ItemsSource="{Binding Events}" SelectionMode="Multiple" AutoScrollToSelectedItem="True" BorderThickness="0" SelectionChanged="GridSelectionChanged">
-<ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,0" /><Setter Property="Height" Value="26" /><Setter Property="MinHeight" Value="26" /><Setter Property="MaxHeight" Value="26" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style><Style Selector="Grid.subtitle-row TextBlock"><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" /></Style><Style Selector="Grid.subtitle-row.comment TextBlock"><Setter Property="Foreground" Value="{DynamicResource AssSyntaxUnknown}" /></Style><Style Selector="ListBoxItem:selected Grid.subtitle-row TextBlock"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style></ListBox.Styles>
+<ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="Padding" Value="6,0" /><Setter Property="Height" Value="{DynamicResource YoakeUiRowHeight}" /><Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" /><Setter Property="MaxHeight" Value="{DynamicResource YoakeUiRowHeight}" /><Setter Property="VerticalContentAlignment" Value="Center" /></Style><Style Selector="Grid.subtitle-row TextBlock"><Setter Property="VerticalAlignment" Value="Center" /><Setter Property="TextWrapping" Value="NoWrap" /></Style><Style Selector="Grid.subtitle-row.comment TextBlock"><Setter Property="Foreground" Value="{DynamicResource AssSyntaxUnknown}" /></Style><Style Selector="ListBoxItem:selected Grid.subtitle-row TextBlock"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style></ListBox.Styles>
 <ListBox.ContextMenu><ContextMenu>
 <MenuItem Header="Save selected-line audio clip…" Command="{Binding Actions[audio/save/clip]}" InputGesture="{Binding Actions[audio/save/clip].InputGesture}" />
 <MenuItem Name="SelectLinesContextMenu" Header="Select Lines…" InputGesture="{Binding Actions[tool/line/select].InputGesture}" Command="{Binding Actions[tool/line/select]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.SelectLines}" /></MenuItem.Icon></MenuItem>
@@ -572,6 +574,7 @@
 <MenuItem Header="At video frame" InputGesture="{Binding Actions[edit/line/split/video].InputGesture}" Command="{Binding Actions[edit/line/split/video]}" />
 <MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
 </MenuItem>
+<MenuItem Header="Recombine lines" Command="{Binding Actions[edit/line/recombine]}" InputGesture="{Binding Actions[edit/line/recombine].InputGesture}" />
 <MenuItem Header="Split by karaoke" InputGesture="{Binding Actions[edit/line/split/by_karaoke].InputGesture}" Command="{Binding Actions[edit/line/split/by_karaoke]}" />
 <MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
 <MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />

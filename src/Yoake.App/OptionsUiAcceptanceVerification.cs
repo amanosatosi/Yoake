@@ -50,6 +50,9 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Require(model.UiFontSize==_initialSize,"Preview must not publish settings.");
                     Require(window.FindControl<MenuItem>("EditMenu")!.FontSize==24,"Menus must receive live typography.");
                     Require(window.FindControl<MenuItem>("EditMenu")!.Bounds.Height>=26,"The menu row must reflow with enlarged fonts.");
+                    var gridRow=window.FindControl<ListBox>("SubtitleRows")!.ContainerFromIndex(0) as Control;
+                    Require(gridRow is { Bounds.Height:>=40 },"Subtitle grid containers must reflow with enlarged fonts.");
+                    Require(window.FindControl<TextBox>("LineStart")!.Bounds.Width>=180,"Timing fields must expand with UI typography.");
                     _dialog!.Width=780;_dialog.Height=540;return;
                 case 3:
                     Require(Get<Button>("OptionsApply").IsEffectivelyVisible&&Get<Button>("OptionsApply").Bounds.Width>0,"Footer must remain usable at compact size and large type.");
@@ -63,14 +66,21 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                 case 6:
                     Require(Get<NumericUpDown>("AudioLeadOut").IsEffectivelyVisible,"Search must find individual settings across categories.");
                     Require(!Get<NumericUpDown>("UiFontSize").IsEffectivelyVisible,"Search must filter unrelated settings.");
+                    Get<TextBox>("OptionsSearch").Text="";Get<ListBox>("OptionsCategories").SelectedItem="Keyboard shortcuts";
+                    Get<CheckBox>("GlobalTimingHotkeysEditor").IsChecked=true;
+                    Get<TextBox>("OptionsSearch").Text="global";
+                    Require(Get<CheckBox>("GlobalTimingHotkeys").IsChecked==true,"The searchable setting must share the shortcut workspace draft.");
                     Get<TextBox>("OptionsSearch").Text="";Get<ListBox>("OptionsCategories").SelectedItem="Recovery";
                     Get<NumericUpDown>("AutosaveInterval").Value=90;
                     Get<ListBox>("OptionsCategories").SelectedItem="Appearance";
-                    Get<NumericUpDown>("UiFontSize").Value=15;
+                    Get<NumericUpDown>("UiFontSize").Value=null;Press(Get<Button>("OptionsApply"));
+                    Require(model.UiFontSize==_initialSize,"An incomplete numeric setting must not partially save any category.");
+                    Get<NumericUpDown>("UiFontSize").Value=15;Get<ComboBox>("ThemePreference").SelectedItem=ThemePreference.Dark;
                     Get<FontPicker>("UiFontFamily").FontName="Yoake missing test font 日本語";
                     Press(Get<Button>("OptionsApply"));return;
                 case 7:
-                    Require(model.UiFontSize==15&&model.AutosaveIntervalSeconds==90,"Apply must publish all categories together.");
+                    Require(model.UiFontSize==15&&model.AutosaveIntervalSeconds==90&&model.GlobalTimingHotkeys,"Apply must publish all categories together.");
+                    Require(Application.Current!.ActualThemeVariant==Avalonia.Styling.ThemeVariant.Dark,"Applying dark appearance must update the real native window theme.");
                     Require(model.UiFontFamily=="Yoake missing test font 日本語","Missing families must retain the requested name with fallback rendering.");
                     var saved=new SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();
                     Require(saved.UiFontSize==15&&saved.AutosaveIntervalSeconds==90,"Apply must persist all categories.");

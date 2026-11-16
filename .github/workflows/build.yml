@@ -184,6 +184,9 @@ jobs:
           $ffms2 = "yoake-csharp-ffms2-win-x64-v1-$($v.ffms2.commit)-${{ hashFiles('third_party/ffms2/**', 'ci/build_dependencies.ps1') }}-$ffmpeg"
           "ffmpeg=$ffmpeg" >> $env:GITHUB_OUTPUT
           "ffms2=$ffms2" >> $env:GITHUB_OUTPUT
+          $compilerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Get-Command cl.exe -ErrorAction Stop).Source).Hash.Substring(0,16)
+          $sdk = ($env:WindowsSDKVersion ?? 'unknown').TrimEnd('\') -replace '[^A-Za-z0-9._-]', '_'
+          "motion=yoake-motion-win-x64-v1-$compilerHash-sdk$sdk-${{ hashFiles('third_party/motion_tracking/**', 'ci/build_motion_tracking.ps1', 'third_party/versions.json') }}" >> $env:GITHUB_OUTPUT
 
       - name: Restore FFmpeg cache
         id: ffmpeg-cache
@@ -245,9 +248,26 @@ jobs:
         with:
           name: Automation-tested-native-runtime
           path: .ci-cache/native/automation
+      - name: Restore tested motion provider
+        id: motion-cache
+        uses: actions/cache/restore@v6
+        with:
+          path: .ci-cache/native/motion
+          key: ${{ steps.native-keys.outputs.motion }}
+      - name: Verify cached motion provider and licenses
+        if: steps.motion-cache.outputs.cache-hit == 'true'
+        shell: pwsh
+        run: .\ci\build_motion_tracking.ps1 -OutputRoot .ci-cache\native -VerifyOnly
       - name: Build bundled OpenCV motion provider
+        if: steps.motion-cache.outputs.cache-hit != 'true'
         shell: pwsh
         run: .\ci\build_motion_tracking.ps1 -OutputRoot .ci-cache\native
+      - name: Save tested motion provider
+        if: steps.motion-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: .ci-cache/native/motion
+          key: ${{ steps.native-keys.outputs.motion }}
       - name: Finalize dependency stack and license bundle
         shell: pwsh
         run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Finalize
@@ -272,12 +292,15 @@ jobs:
           name: ASSDraw-pinned-tested-distribution
           path: artifacts/assdraw
       - name: Stage portable application and bundled ASSDraw
+        id: portable_package
         shell: pwsh
         run: .\ci\package_windows.ps1 -PublishRoot artifacts\publish -NativeRoot .ci-cache\native -AssDrawRoot artifacts\assdraw -OutputRoot artifacts
       - name: Verify actual bundled ASSDraw identity standalone window and dependencies
+        id: portable_assdraw
         shell: pwsh
         run: .\ci\verify_assdraw_package.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable -AssDrawRoot artifacts\assdraw
       - name: Verify staged native runtime closure
+        id: portable_native
         shell: pwsh
         run: .\ci\verify_windows_runtime.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable
       - name: Generate deterministic editor media fixtures
@@ -314,7 +337,9 @@ jobs:
           name: Yoake-ui-keyboard-acceptance-diagnostics
           path: artifacts/ui-keyboard-acceptance
           if-no-files-found: warn
+      # Retain the built package for debugging a failed GUI check; the job still fails.
       - name: Publish corresponding ASSDraw source beside the portable build
+        if: ${{ always() && steps.portable_package.conclusion == 'success' && steps.portable_assdraw.conclusion == 'success' && steps.portable_native.conclusion == 'success' }}
         uses: actions/upload-artifact@v7
         with:
           name: Yoake-ASSDraw-corresponding-source
@@ -324,6 +349,7 @@ jobs:
           if-no-files-found: error
           compression-level: 0
       - uses: actions/upload-artifact@v7
+        if: ${{ always() && steps.portable_package.conclusion == 'success' && steps.portable_assdraw.conclusion == 'success' && steps.portable_native.conclusion == 'success' }}
         with:
           name: Yoake-Windows-x64-NativeAOT-portable
           path: artifacts/Yoake-Windows-x64-portable.zip

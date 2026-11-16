@@ -83,4 +83,31 @@ public sealed class MangetsuMetadataTests
         var source=AssDocument.Parse(AssDocument.CreateEmpty().Serialize()+Event("Dialogue","Default","","","first")+Event("Comment","Default","","mangetsu-style",@"{\vert1}"));
         editor.CopyStyles(source.Styles,source);Assert.Empty(document.Events);
     }
+    [Fact]
+    public void MetadataTargetMatchingUsesRendererLeadingSpaceAndDefaultRules()
+    {
+        var document=AssDocument.Parse(AssDocument.CreateEmpty().Serialize()+Event("Comment"," *default",""," mangetsu-style",@"{\vert1}"));
+        var editor=new SubtitleEditor(document);var metadata=document.Events.Single();var before=document.Serialize();
+        Assert.Equal(MangetsuMetadataKind.Style,MangetsuMetadata.Kind(metadata));
+        editor.SetMangetsuMetadata(MangetsuMetadataKind.Style,"Default",@"{\vert0}");Assert.Same(metadata,Assert.Single(document.Events));Assert.Equal(@"{\vert0}",metadata.Text);
+        editor.Undo.Undo();Assert.Equal(before,document.Serialize());
+        metadata.Effect="mangetsu-style ";Assert.Equal(MangetsuMetadataKind.None,MangetsuMetadata.Kind(metadata));
+    }
+    [Fact]
+    public void NonReservedActorSpellingDoesNotRewriteOpaquePayloadAsAWhitelist()
+    {
+        var source=ImportSource();source.Events[0].Actor="{{mangetsu-colorcode-applied-styles}}";
+        var destination=AssDocument.CreateEmpty();new SubtitleEditor(destination).CopyStyles(source.Styles,source);
+        Assert.Equal("{Default}",destination.Events.Single(e=>e.Actor=="{{mangetsu-colorcode-applied-styles}}").Text);
+    }
+    [Fact]
+    public void UnresolvedStyleExtensionMetadataSurvivesImportAndRoundTrip()
+    {
+        var source=AssDocument.Parse(AssDocument.CreateEmpty().Serialize()+Event("Comment","Future style","","mangetsu-style",@"{\futureExtension(opaque)}"));
+        var destination=AssDocument.CreateEmpty();var editor=new SubtitleEditor(destination);editor.CopyStyles(source.Styles,source);
+        var metadata=Assert.Single(destination.Events);Assert.Equal("Future style",metadata.Style);Assert.Equal(@"{\futureExtension(opaque)}",metadata.Text);
+        Assert.Equal(destination.Serialize(),AssDocument.Parse(destination.Serialize()).Serialize());
+        var conflicting=AssDocument.CreateEmpty();var other=new SubtitleEditor(conflicting);var style=conflicting.Styles[0].Clone();style.Name="Future style";other.AddStyle(style);var before=conflicting.Serialize();
+        Assert.Throws<InvalidOperationException>(()=>other.CopyStyles(source.Styles,source));Assert.Equal(before,conflicting.Serialize());
+    }
 }

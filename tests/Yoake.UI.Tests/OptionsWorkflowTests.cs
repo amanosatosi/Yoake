@@ -70,4 +70,13 @@ public sealed partial class EditorWorkflowTests
         Assert.Equal(baseline.UiFontSize,_model.UiFontSize);Assert.True(_model.VideoAutoSeek);
         Assert.Equal(100,_model.AudioTimingLeadIn);Assert.Equal(shortcut,_model.Actions[CommandIds.SubtitleNew].Shortcut);
     }
+    [Fact]
+    public async Task InvalidRecoveryOrAutomationPathCannotPartiallyApplyOtherPreferences()
+    {
+        var baseline=_model.CaptureOptions();
+        await Assert.ThrowsAsync<ArgumentException>(()=>_model.ApplyOptionsAsync(baseline,baseline with { UiFontSize=20,RecoveryDirectory="bad\0path" }));
+        Assert.Equal(baseline.UiFontSize,_model.UiFontSize);
+        await Assert.ThrowsAsync<ArgumentException>(()=>_model.ApplyOptionsAsync(baseline,baseline with { UiFontSize=20,AutomationIncludeDirectories=["bad\0path"] }));
+        Assert.Equal(baseline.UiFontSize,_model.UiFontSize);Assert.False(File.Exists(Path.Combine(_root,"settings.json")));
+    }
 }

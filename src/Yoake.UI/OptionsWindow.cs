@@ -157,7 +157,7 @@ public sealed class OptionsWindow : Window
     {
         var control=new CheckBox { Name=name,Content=label };
         Add(category,label,description,control,()=>control.IsChecked=get(_draft),()=>_draft=set(_draft,get(defaults)));
-        control.IsCheckedChanged+=(_,_)=>{if(!_loading)_draft=set(_draft,control.IsChecked==true);};
+        control.IsCheckedChanged+=(_,_)=>{if(!_loading) { _draft=set(_draft,control.IsChecked==true);if(name=="GlobalTimingHotkeys"&&_globalHotkeys is not null)_globalHotkeys.IsChecked=control.IsChecked; }};
     }
     private void Number(string category,string label,string description,string name,decimal min,decimal max,Func<AppSettings,decimal> get,Func<AppSettings,decimal,AppSettings> set,AppSettings defaults)
     {
@@ -186,11 +186,14 @@ public sealed class OptionsWindow : Window
     private void PreviewFont()=>UiFontResources.Apply(_draft.UiFontFamily,_draft.UiFontSize);
     private async Task<bool> SaveAsync()
     {
-        if(_applying)return false;_applying=true;IsEnabled=false;_status.Text="Applying settings…";
+        if(_applying)return false;
+        var invalid=_rows.FirstOrDefault(row=>row.View.GetVisualDescendants().OfType<NumericUpDown>().Any(control=>control.Value is null||control.GetValue(DataValidationErrors.HasErrorsProperty)));
+        if(invalid is not null) { _status.Text="Enter a valid numeric value before applying settings.";return false; }
+        _applying=true;IsEnabled=false;_status.Text="Applying settings…";
         try
         {
-            await _model.ApplyOptionsAsync(_baseline,_draft);
-            _baseline=_draft=_model.CaptureOptions();_hotkeys=new(_model.HotkeyProfile.Defaults,_draft.HotkeyOverrides);RefreshBindings();Reload();_status.Text="Settings saved.";return true;
+            var warning=await _model.ApplyOptionsAsync(_baseline,_draft);
+            _baseline=_draft=_model.CaptureOptions();_hotkeys=new(_model.HotkeyProfile.Defaults,_draft.HotkeyOverrides);RefreshBindings();Reload();_status.Text=warning??"Settings saved.";return true;
         }
         catch(Exception error) { _status.Text="Could not apply settings: "+error.Message;return false; }
         finally { _applying=false;IsEnabled=true; }
@@ -203,8 +206,9 @@ public sealed class OptionsWindow : Window
         _context.ItemsSource=Enum.GetValues<HotkeyContext>();_context.SelectedItem=HotkeyContext.Default;
         At(root,_filter,1);var body=new Grid { ColumnDefinitions=new("*,*"),ColumnSpacing=10 };At(root,body,2);body.Children.Add(_commands);
         var edit=new StackPanel { Spacing=7 };Grid.SetColumn(edit,1);body.Children.Add(new ScrollViewer { Content=edit, [Grid.ColumnProperty]=1 });
-        _globalHotkeys=new CheckBox { Content="Global timing keypad overrides (Medusa)", IsChecked=_draft.GlobalTimingHotkeys };
-        _globalHotkeys.IsCheckedChanged+=(_,_)=>{if(!_loading)_draft=_draft with { GlobalTimingHotkeys=_globalHotkeys.IsChecked==true };};
+        _globalHotkeys=new CheckBox { Name="GlobalTimingHotkeysEditor", Content="Global timing keypad overrides (Medusa)", IsChecked=_draft.GlobalTimingHotkeys };
+        Register(_globalHotkeys);
+        _globalHotkeys.IsCheckedChanged+=(_,_)=>{if(!_loading) { _draft=_draft with { GlobalTimingHotkeys=_globalHotkeys.IsChecked==true };if(_names.Find("GlobalTimingHotkeys") is CheckBox checkbox)checkbox.IsChecked=_globalHotkeys.IsChecked; }};
         edit.Children.Add(_globalHotkeys);
         edit.Children.Add(new TextBlock { Text="Current bindings" });edit.Children.Add(_bindings);edit.Children.Add(_gesture);edit.Children.Add(_capture);
         var buttons=new WrapPanel();edit.Children.Add(buttons);
