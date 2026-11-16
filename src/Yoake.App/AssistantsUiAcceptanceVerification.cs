@@ -173,6 +173,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     Require(_extract is { IsCompletedSuccessfully:true }&&model.ActiveDocumentId!=_originalDocument&&model.Events.Count==2,"Selected embedded track must open independently.");
                     Require(model.Events[0].Text==@"{\k10\future(opaque)}日本語, မြန်မာ é","Embedded ASS source must preserve Unicode, commas and opaque tags.");
                     if(OperatingSystem.IsWindows())Require(model.VideoSourcePath==Path.Combine(options.VerificationMedia!,"subtitles.mkv")&&model.FrameTimes.Count==3&&model.VideoFrame is not null,"Packaged Windows extraction must open the independent episode video provider and decoded preview.");
+                    Require(!model.SaveActiveSubtitle(Path.Combine(options.VerificationMedia!,"subtitles.mkv"))&&model.SubtitleStatus.Contains("ASS destination",StringComparison.Ordinal),"Save As must protect the original subtitle container.");
                     var extractedPath=Path.Combine(options.ProfileDirectory!,"embedded.ass");Require(model.SaveActiveSubtitle(extractedPath),"Extracted track must save to an ASS destination.");
                     await Invoke("subtitle/close");
                     Require(model.ActiveDocumentId==_originalDocument&&model.Draft!.Start=="unfinished"&&model.ActiveEditor!.Document.Serialize()==_embeddedBefore,"Extraction must retain the original invalid draft and source.");

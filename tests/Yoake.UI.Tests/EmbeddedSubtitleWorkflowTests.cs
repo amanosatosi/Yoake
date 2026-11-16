@@ -13,16 +13,26 @@ public sealed partial class EditorWorkflowTests
         await Command(CommandIds.GridInsertAfter);_model.Draft!.Text="existing 日本語";await Command(CommandIds.EditCommit);
         var originalId=_model.ActiveDocumentId!.Value;var editor=_model.ActiveEditor!;var before=editor.Document.Serialize();var undo=editor.Undo.NextUndoName;
         _model.Draft!.Start="unfinished";var draft=_model.Draft;
-        var fixture=Path.Combine(AppContext.BaseDirectory,"Fixtures","Matroska","episode.mkv");var bytes=File.ReadAllBytes(fixture);
+        var fixture=Path.Combine(_root,"episode.mkv");File.Copy(Path.Combine(AppContext.BaseDirectory,"Fixtures","Matroska","episode.mkv"),fixture);var bytes=File.ReadAllBytes(fixture);
         await Command("subtitle/open/video",new OpenEmbeddedSubtitlesRequest(fixture,2,false));
         Assert.NotEqual(originalId,_model.ActiveDocumentId);Assert.Null(_workspace.ActiveDocument!.Path);Assert.True(_workspace.ActiveDocument.IsDirty);
         Assert.Equal(Path.GetFullPath(fixture),_model.ActiveEditor!.Document.GetSectionValue("[Aegisub Project Garbage]","Video File"));
         Assert.Equal(2,_model.Events.Count);Assert.False(_model.ActiveEditor!.Undo.CanUndo);Assert.Null(_model.VideoSourcePath);Assert.Equal(before,editor.Document.Serialize());
         _model.Draft!.Text+=" မြန်မာ";await Command(CommandIds.EditCommit);await Command(CommandIds.EditUndo);Assert.True(_workspace.ActiveDocument.IsDirty);
+        Assert.False(_model.SaveActiveSubtitle(fixture));Assert.Equal(bytes,File.ReadAllBytes(fixture));Assert.Null(_workspace.ActiveDocument.Path);
         var importedId=_model.ActiveDocumentId!.Value;var output=Path.Combine(_root,"extracted.ass");Assert.True(_model.SaveActiveSubtitle(output));Assert.False(_workspace.ActiveDocument.IsDirty);
         Assert.Equal(_model.ActiveEditor.Document.Serialize(),AssDocument.Load(output).Serialize());Assert.Equal(bytes,File.ReadAllBytes(fixture));
         _workspace.Activate(originalId);Assert.Same(editor,_model.ActiveEditor);Assert.Same(draft,_model.Draft);Assert.Equal("unfinished",_model.Draft!.Start);Assert.Equal(undo,editor.Undo.NextUndoName);
         _workspace.Activate(importedId);Assert.Equal(output,_workspace.ActiveDocument!.Path);
+    }
+    [Fact]
+    public void SaveAsCannotOverwriteReferencedMediaAfterReopeningWithoutNativeProviders()
+    {
+        var media=Path.Combine(_root,"episode.mkv");byte[] original=[1,2,3,4];File.WriteAllBytes(media,original);
+        var subtitle=Path.Combine(_root,"project.ass");File.WriteAllText(subtitle,AssDocument.CreateEmpty().Serialize()+"[Aegisub Project Garbage]\r\nVideo File: ?script/episode.mkv\r\nAudio File: ?script/project.ass\r\n");
+        Assert.True(_model.OpenSubtitle(subtitle));var before=_model.ActiveEditor!.Document.Serialize();
+        Assert.False(_model.SaveActiveSubtitle(media));Assert.Equal(original,File.ReadAllBytes(media));Assert.Equal(before,_model.ActiveEditor.Document.Serialize());Assert.Equal(subtitle,_workspace.ActiveDocument!.Path);
+        Assert.True(_model.SaveActiveSubtitle(subtitle));Assert.Equal(before,File.ReadAllText(subtitle));
     }
     [Fact]
     public async Task InvalidContainerOrTrackDoesNotReplaceExistingDocumentOrDraft()

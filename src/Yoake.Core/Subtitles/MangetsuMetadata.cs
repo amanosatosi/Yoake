@@ -10,12 +10,14 @@ public static class MangetsuMetadata
 {
     private static readonly char[] FieldSpaces=[' ','\t','\r','\n','\v','\f'];
     internal static string FieldStart(string value)=>value.TrimStart(FieldSpaces);
+    // Mangetsu accepts exactly one optional brace pair for this reserved key.
+    public static bool IsAppliedStylesTarget(string actor)=>FieldStart(actor) is "mangetsu-colorcode-applied-styles" or "{mangetsu-colorcode-applied-styles}";
     public static bool MatchesTarget(AssEvent line,MangetsuMetadataKind kind,string target)
     {
         var value=FieldStart(kind==MangetsuMetadataKind.Style?line.Style:line.Actor);
         var expected=FieldStart(target);
         if(kind==MangetsuMetadataKind.Style) { value=value.TrimStart('*');expected=expected.TrimStart('*'); }
-        return value==expected||kind==MangetsuMetadataKind.Style&&value.Equals("Default",StringComparison.OrdinalIgnoreCase)&&expected.Equals("Default",StringComparison.OrdinalIgnoreCase);
+        return value==expected||kind==MangetsuMetadataKind.Actor&&IsAppliedStylesTarget(value)&&IsAppliedStylesTarget(expected)||kind==MangetsuMetadataKind.Style&&value.Equals("Default",StringComparison.OrdinalIgnoreCase)&&expected.Equals("Default",StringComparison.OrdinalIgnoreCase);
     }
     public static MangetsuMetadataKind Kind(AssEvent line)
     {
@@ -78,7 +80,7 @@ public sealed partial class SubtitleEditor
             }
             var copy=line.Clone();if(target is not null)copy.Style=target;
             copy.Text=MangetsuMetadata.RenameResets(copy.Text,names);
-            if(kind==MangetsuMetadataKind.Actor&&MangetsuMetadata.FieldStart(copy.Actor) is "mangetsu-colorcode-applied-styles" or "{mangetsu-colorcode-applied-styles}")copy.Text=MangetsuMetadata.RenameWhitelist(copy.Text,names);
+            if(kind==MangetsuMetadataKind.Actor&&MangetsuMetadata.IsAppliedStylesTarget(copy.Actor))copy.Text=MangetsuMetadata.RenameWhitelist(copy.Text,names);
             records.Add(copy);
         }
         return records.OrderBy(e=>MangetsuMetadata.Kind(e) switch { MangetsuMetadataKind.Style=>0,MangetsuMetadataKind.Actor=>1,_=>2 }).ToArray();

@@ -7,6 +7,16 @@ namespace Yoake.UI.Tests;
 
 public sealed partial class EditorWorkflowTests
 {
+    [Fact]
+    public async Task ActorAutocompleteIncludesColorcodedActorsWithoutReservedConfigurationNames()
+    {
+        var editor=_model.ActiveEditor!;
+        editor.SetMangetsuMetadata(MangetsuMetadataKind.Actor,"{mangetsu-colorcode-applied-styles}","{Default}");
+        var notified=false;_model.PropertyChanged+=(_,e)=>notified|=e.PropertyName==nameof(_model.ActorNames);
+        await Command("mangetsu/metadata/apply",new MangetsuMetadataEdit(_model.ActiveDocumentId!.Value,editor.Document.Revision,MangetsuMetadataKind.Actor,"Nene",@"{\1c&HFF0000&}"));
+        Assert.True(notified);
+        Assert.Contains("Nene",_model.ActorNames);Assert.DoesNotContain("{mangetsu-colorcode-applied-styles}",_model.ActorNames);
+    }
     private (AssEvent Source,AssEvent Target) PrepareKanjiPair()
     {
         var editor=_model.ActiveEditor!;

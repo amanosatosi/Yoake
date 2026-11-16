@@ -60,6 +60,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public EventEditDraft? RetainedDraft;
         public bool UnsavedSource;
         public string? RecoveryProvenance;
+        public string? ImportedContainerPath;
         public CancellationTokenSource? AttachmentWork;
         public RecoveryLease AttachmentLease=new();
         public string AttachmentStatus="";
@@ -176,7 +177,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     }
     public IReadOnlyList<AssEvent> Events => _activeSubtitleDocument?.Events ?? (IReadOnlyList<AssEvent>)Array.Empty<AssEvent>();
     public IReadOnlyList<string> StyleNames => _activeId is {} id&&_documents.TryGetValue(id,out var state)?state.StyleNames:[];
-    public IReadOnlyList<string> ActorNames => Events.Select(l=>l.Actor).Where(s=>s.Length>0).Distinct().Order().ToArray();
+    public IReadOnlyList<string> ActorNames => Events.Where(line=>MangetsuMetadata.Kind(line)!=MangetsuMetadataKind.Actor||!MangetsuMetadata.IsAppliedStylesTarget(line.Actor)).Select(l=>l.Actor).Where(s=>s.Length>0).Distinct().Order().ToArray();
     public AssEvent? SelectedEvent
     {
         get => _selectedEvent;
@@ -426,6 +427,10 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             var full = Path.GetFullPath(path);
             if (_workspace.Documents.Any(s => s.Id != session.Id && string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidOperationException("This path is already open in another tab.");
+            if(_workspace.Documents.Any(owner=>_documents.TryGetValue(owner.Id,out var state)&&
+                (new[] { state.ImportedContainerPath,state.Media?.VideoSourcePath,state.Media?.AudioSourcePath }.Any(media=>media is not null&&SameMediaPath(full,media))||
+                 ProjectMediaReferences(state.Editor.Document,owner.Path).Any(media=>(owner.Path is null||!SameMediaPath(media,owner.Path))&&SameMediaPath(full,media)&&File.Exists(media)))))
+                throw new InvalidOperationException("Choose an ASS destination other than an opened media file or imported subtitle container.");
             var references = RebaseLocalAutomationReferences(session.Id, full);
             using (var transaction = ActiveEditor.Undo.BeginTransaction("Update Automation references for Save As"))
             {

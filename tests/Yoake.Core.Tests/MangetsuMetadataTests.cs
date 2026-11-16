@@ -141,6 +141,18 @@ public sealed class MangetsuMetadataTests
         metadata.Effect="mangetsu-style ";Assert.Equal(MangetsuMetadataKind.None,MangetsuMetadata.Kind(metadata));
     }
     [Fact]
+    public void ReservedActorAliasesEditTheSameRendererSettingAndRemoveTogether()
+    {
+        var document=AssDocument.Parse(AssDocument.CreateEmpty().Serialize()+
+            Event("Comment","Default","{mangetsu-colorcode-applied-styles}","mangetsu-colorcoding","{Default}"));
+        var editor=new SubtitleEditor(document);var existing=Assert.Single(document.Events);var before=document.Serialize();
+        editor.SetMangetsuMetadata(MangetsuMetadataKind.Actor,"mangetsu-colorcode-applied-styles","{Default}{Future}");
+        Assert.Same(existing,Assert.Single(document.Events));Assert.Equal("{mangetsu-colorcode-applied-styles}",existing.Actor);Assert.Equal("{Default}{Future}",existing.Text);
+        editor.Undo.Undo();Assert.Equal(before,document.Serialize());
+        editor.RemoveMangetsuMetadata(MangetsuMetadataKind.Actor,"mangetsu-colorcode-applied-styles");Assert.Empty(document.Events);editor.Undo.Undo();Assert.Equal(before,document.Serialize());
+        Assert.False(MangetsuMetadata.IsAppliedStylesTarget("{{mangetsu-colorcode-applied-styles}}"));Assert.False(MangetsuMetadata.IsAppliedStylesTarget("mangetsu-colorcode-applied-styles "));
+    }
+    [Fact]
     public void NonReservedActorSpellingDoesNotRewriteOpaquePayloadAsAWhitelist()
     {
         var source=ImportSource();source.Events[0].Actor="{{mangetsu-colorcode-applied-styles}}";

@@ -202,15 +202,23 @@ public sealed partial class MainWindowViewModel
     private string? FindAssociatedMedia(string subtitlePath)
     {
         var directory=Path.GetDirectoryName(subtitlePath)??"";
-        foreach(var key in new[]{"Video File","Audio File"})
-        {
-            var reference=_activeSubtitleDocument?.GetSectionValue("[Aegisub Project Garbage]",key).Trim().Trim('"');
-            if(string.IsNullOrWhiteSpace(reference)||reference.StartsWith("?dummy:",StringComparison.OrdinalIgnoreCase)||reference=="?video")continue;
-            if(reference.StartsWith("?script",StringComparison.OrdinalIgnoreCase))reference=reference[7..].TrimStart('/', '\\');
-            try {var candidate=Path.GetFullPath(Path.IsPathRooted(reference)?reference:Path.Combine(directory,reference));if(File.Exists(candidate))return candidate;}catch(ArgumentException){}
-        }
+        if(ProjectMediaReferences(_activeSubtitleDocument,subtitlePath).FirstOrDefault(File.Exists) is {} associated)return associated;
         var stem=Path.Combine(directory,Path.GetFileNameWithoutExtension(subtitlePath));
         return new[]{".mkv",".mp4",".webm",".m2ts",".ts",".avi",".mov"}.Select(ext=>stem+ext).FirstOrDefault(File.Exists);
+    }
+    private static IEnumerable<string> ProjectMediaReferences(AssDocument? document,string? subtitlePath)
+    {
+        var directory=Path.GetDirectoryName(Path.GetFullPath(subtitlePath??"Untitled.ass"))!;
+        foreach(var key in new[] { "Video File","Audio File" })
+        {
+            var reference=document?.GetSectionValue("[Aegisub Project Garbage]",key).Trim().Trim('"');
+            if(string.IsNullOrWhiteSpace(reference)||reference.StartsWith("?dummy:",StringComparison.OrdinalIgnoreCase)||reference=="?video")continue;
+            if(reference.StartsWith("?script",StringComparison.OrdinalIgnoreCase))reference=reference[7..].TrimStart('/', '\\');
+            string? candidate=null;
+            try { candidate=Path.GetFullPath(reference,directory); }
+            catch(Exception error) when(error is ArgumentException or NotSupportedException or PathTooLongException) { }
+            if(candidate is not null)yield return candidate;
+        }
     }
     private Task StepFrameAsync(int delta)
     {

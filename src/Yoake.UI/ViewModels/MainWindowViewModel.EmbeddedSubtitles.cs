@@ -34,7 +34,7 @@ public sealed partial class MainWindowViewModel
                 // Opening another source must not commit or discard the current
                 // tab's draft, media, timing plans, or undo/redo history.
                 var session=_workspace.CreateUntitled();Attach(session,document);
-                _documents[session.Id].UnsavedSource=true;
+                _documents[session.Id].UnsavedSource=true;_documents[session.Id].ImportedContainerPath=Path.GetFullPath(request.Path);
                 session.Title=Path.GetFileNameWithoutExtension(request.Path)+$" — track {number}.ass";
                 SynchronizeActiveDocument();session.IsDirty=true;published=true;
                 if(request.LoadMedia)
