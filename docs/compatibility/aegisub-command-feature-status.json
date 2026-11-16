@@ -1130,7 +1130,7 @@
       "id": "edit/color/outline",
       "yoake_command": "text/format/outline",
       "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the outline color (\\3c) at the cursor position",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the outline color (\\3c) at the cursor position Pending native dialogs capture document/editor/line/draft revisions and text selection; stale results cannot redirect to another tab or range. Cancellation closes the actual font/color window before publication.",
       "exposure": [
         "CommandRegistry",
         "MainWindow menu/control (see implementation evidence)"
@@ -1138,9 +1138,11 @@
       "tests": [
         "SubtitleEditorTests",
         "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
+        "FormattingDialogWorkflowTests",
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Alt-3"
@@ -1151,7 +1153,7 @@
       "id": "edit/color/primary",
       "yoake_command": "text/format/primary",
       "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the primary fill color (\\c) at the cursor position",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the primary fill color (\\c) at the cursor position Pending native dialogs capture document/editor/line/draft revisions and text selection; stale results cannot redirect to another tab or range. Cancellation closes the actual font/color window before publication.",
       "exposure": [
         "CommandRegistry",
         "MainWindow menu/control (see implementation evidence)"
@@ -1159,9 +1161,11 @@
       "tests": [
         "SubtitleEditorTests",
         "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
+        "FormattingDialogWorkflowTests",
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Alt-1"
@@ -1172,7 +1176,7 @@
       "id": "edit/color/secondary",
       "yoake_command": "text/format/secondary",
       "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the secondary (karaoke) fill color (\\2c) at the cursor position",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the secondary (karaoke) fill color (\\2c) at the cursor position Pending native dialogs capture document/editor/line/draft revisions and text selection; stale results cannot redirect to another tab or range. Cancellation closes the actual font/color window before publication.",
       "exposure": [
         "CommandRegistry",
         "MainWindow menu/control (see implementation evidence)"
@@ -1180,9 +1184,11 @@
       "tests": [
         "SubtitleEditorTests",
         "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
+        "FormattingDialogWorkflowTests",
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Alt-2"
@@ -1193,7 +1199,7 @@
       "id": "edit/color/shadow",
       "yoake_command": "text/format/shadow",
       "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the shadow color (\\4c) at the cursor position",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Set the shadow color (\\4c) at the cursor position Pending native dialogs capture document/editor/line/draft revisions and text selection; stale results cannot redirect to another tab or range. Cancellation closes the actual font/color window before publication.",
       "exposure": [
         "CommandRegistry",
         "MainWindow menu/control (see implementation evidence)"
@@ -1201,9 +1207,11 @@
       "tests": [
         "SubtitleEditorTests",
         "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
+        "FormattingDialogWorkflowTests",
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Alt-4"
@@ -1238,7 +1246,7 @@
       "id": "edit/font",
       "yoake_command": "text/format/font",
       "status": "partially implemented",
-      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Select a font face and size",
+      "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Select a font face and size Pending native dialogs capture document/editor/line/draft revisions and text selection; stale results cannot redirect to another tab or range. Cancellation closes the actual font/color window before publication.",
       "exposure": [
         "CommandRegistry",
         "MainWindow menu/control (see implementation evidence)"
@@ -1246,9 +1254,11 @@
       "tests": [
         "SubtitleEditorTests",
         "EditorWorkflowTests",
-        "AuthoringUiVerification (representative workflows; add per-command parity coverage)"
+        "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
+        "FormattingDialogWorkflowTests",
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration.",
+      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
       "yoake_default_hotkeys": {}
     },
     {

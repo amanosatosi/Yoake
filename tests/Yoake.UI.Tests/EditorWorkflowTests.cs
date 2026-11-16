@@ -753,6 +753,10 @@ public sealed partial class EditorWorkflowTests : IDisposable
         public string? ClipboardText;
         public VideoDetails? VideoDetails;
         public bool FailFrameClipboard;
+        public Func<CancellationToken,Task<FontChoice?>>? FontDialog;
+        public Func<CancellationToken,Task<AssColor?>>? ColorDialog;
+        public Task<FontChoice?> ChooseFontAsync(string family,string size,CancellationToken token=default)=>FontDialog?.Invoke(token)??Task.FromResult<FontChoice?>(null);
+        public Task<AssColor?> ChooseColorAsync(AssColor color,CancellationToken token=default)=>ColorDialog?.Invoke(token)??Task.FromResult<AssColor?>(null);
         public bool Detached;
         public Task SetVideoDetachedAsync(bool detached,CancellationToken token){token.ThrowIfCancellationRequested();Detached=detached;return Task.CompletedTask;}
         public Task<string?> OpenSubtitleAsync()=>Task.FromResult<string?>(null);

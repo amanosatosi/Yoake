@@ -232,13 +232,23 @@ public partial class MainWindow : Window, IEditorDialogs
     public async Task ShowShiftTimesAsync(MainWindowViewModel model)=>await new ShiftTimesWindow(model).ShowDialog(this);
     public async Task ShowAudioTimingOptionsAsync(MainWindowViewModel model)=>await new AudioTimingOptionsWindow(model).ShowDialog(this);
     public async Task ShowSelectLinesAsync(MainWindowViewModel model)=>await new SelectLinesWindow(model).ShowDialog(this);
-    public Task<AssColor?> ChooseColorAsync(AssColor color)=>new AssColorDialog(color,_model?.RecentColorsPath).ShowDialog<AssColor?>(this);
-    public async Task<FontChoice?> ChooseFontAsync(string family,string size)
+    public async Task<AssColor?> ChooseColorAsync(AssColor color,CancellationToken token=default)
     {
+        token.ThrowIfCancellationRequested();var dialog=new AssColorDialog(color,_model?.RecentColorsPath);
+        using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>dialog.Close((AssColor?)null)));
+        return await dialog.ShowDialog<AssColor?>(this);
+    }
+    public async Task<FontChoice?> ChooseFontAsync(string family,string size,CancellationToken token=default)
+    {
+        token.ThrowIfCancellationRequested();
         var dialog=new Window{Name="SubtitleFontDialog",Title="Subtitle font",Width=380,SizeToContent=SizeToContent.Height,WindowStartupLocation=WindowStartupLocation.CenterOwner};
+        var names=new NameScope();NameScope.SetNameScope(dialog,names);
         var panel=new StackPanel{Margin=new Thickness(12),Spacing=6};var picker=new FontPicker{Name="SubtitleFontPicker",FontName=family};panel.Children.Add(picker);
-        var number=new NumericUpDown{Minimum=0.1m,Maximum=10000,Increment=1,Value=decimal.TryParse(size,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var value)?value:60};
-        panel.Children.Add(new TextBlock{Text="Size"});panel.Children.Add(number);var apply=new Button{Content="Apply font",IsDefault=true};apply.Click+=(_,_)=>dialog.Close(new FontChoice(picker.FontName,(number.Value??60).ToString(System.Globalization.CultureInfo.InvariantCulture)));panel.Children.Add(apply);var cancel=new Button{Content="Cancel",IsCancel=true};cancel.Click+=(_,_)=>dialog.Close();panel.Children.Add(cancel);dialog.Content=panel;return await dialog.ShowDialog<FontChoice?>(this);
+        var number=new NumericUpDown{Name="SubtitleFontSize",Minimum=0.1m,Maximum=10000,Increment=1,Value=decimal.TryParse(size,System.Globalization.NumberStyles.Float,System.Globalization.CultureInfo.InvariantCulture,out var value)?value:60};
+        panel.Children.Add(new TextBlock{Text="Size"});panel.Children.Add(number);var apply=new Button{Name="ApplySubtitleFont",Content="Apply font",IsDefault=true};apply.Click+=(_,_)=>dialog.Close(new FontChoice(picker.FontName,(number.Value??60).ToString(System.Globalization.CultureInfo.InvariantCulture)));panel.Children.Add(apply);var cancel=new Button{Content="Cancel",IsCancel=true};cancel.Click+=(_,_)=>dialog.Close();panel.Children.Add(cancel);dialog.Content=panel;
+        names.Register(picker.Name!,picker);names.Register(number.Name!,number);names.Register(apply.Name!,apply);names.Complete();
+        using var registration=token.Register(()=>Dispatcher.UIThread.Post(()=>dialog.Close((FontChoice?)null)));
+        return await dialog.ShowDialog<FontChoice?>(this);
     }
     private void UpdateAudioBounds()
     {

@@ -81,19 +81,48 @@ public sealed partial class MainWindowViewModel
         TextFormattingApplied?.Invoke(this,EventArgs.Empty);
     }
     private void ToggleFormat(string tag)=>FormatText("Format "+tag,(text,start,end,style)=>AssFormatting.Toggle(text,start,end,tag,style,ResolveFormatStyle));
-    private async ValueTask FormatFontAsync()
+    private void RegisterFormattingDialogCommands()
     {
-        if(Dialogs is null||Draft is null||ActiveEditor is null)return;
-        var state=CaretFormatState();
-        var choice=await Dialogs.ChooseFontAsync(state.GetValueOrDefault("fn",""),state.GetValueOrDefault("fs","60"));
-        if(choice is not null)FormatText("Change subtitle font",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{"fn",choice.Family},{"fs",choice.Size}},style,ResolveFormatStyle));
+        foreach (var (id, channel) in new[] { (CommandIds.FormatFont, 0), (CommandIds.FormatPrimary, 1),
+            (CommandIds.FormatSecondary, 2), (CommandIds.FormatOutline, 3), (CommandIds.FormatShadow, 4) })
+        {
+            var colorChannel = channel;
+            var label = channel == 0 ? "Font family and size…" : "Choose subtitle color…";
+            _registry.Register(new(new(id,label,label,"Edit"),
+                (_,token) => colorChannel == 0 ? FormatFontAsync(token) : FormatColorAsync(colorChannel,token),
+                context => !_disposed && _activeId is {} owner && (context.DocumentId is null || context.DocumentId == owner)
+                    && HasSelectedEvent && !HasGesture && Dialogs is not null));
+            Actions[id] = new Yoake.UI.Commands.RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
+        }
     }
-    private async ValueTask FormatColorAsync(int channel)
+    // A modal result belongs to the exact editor, draft and text range that opened
+    // it. Neither tab activation nor edits/undo while it is pending may redirect it.
+    private Func<bool>? CaptureFormattingTarget()
     {
-        if(Dialogs is null||Draft is null||ActiveEditor is null)return;
+        if (_activeId is not {} owner || !_documents.TryGetValue(owner,out var state) ||
+            Draft is not {} draft || SelectedEvent is not {} line || ActiveEditor is not {} editor) return null;
+        var revision = editor.Document.Revision; var draftRevision = state.DraftRevision;
+        var start = TextSelectionStart; var end = TextSelectionEnd; var caret = TextCursor;
+        return () => !_disposed && _activeId == owner && _documents.TryGetValue(owner,out var live) && ReferenceEquals(live,state)
+            && ReferenceEquals(ActiveEditor,editor) && ReferenceEquals(SelectedEvent,line) && ReferenceEquals(Draft,draft)
+            && editor.Document.Revision == revision && state.DraftRevision == draftRevision && !HasGesture
+            && TextSelectionStart == start && TextSelectionEnd == end && TextCursor == caret;
+    }
+    private async ValueTask FormatFontAsync(CancellationToken token)
+    {
+        if(Dialogs is null || CaptureFormattingTarget() is not {} current)return;
+        var state=CaretFormatState();
+        var choice=await Dialogs.ChooseFontAsync(state.GetValueOrDefault("fn",""),state.GetValueOrDefault("fs","60"),token);
+        token.ThrowIfCancellationRequested();
+        if(choice is not null && current())FormatText("Change subtitle font",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{"fn",choice.Family},{"fs",choice.Size}},style,ResolveFormatStyle));
+    }
+    private async ValueTask FormatColorAsync(int channel,CancellationToken token)
+    {
+        if(Dialogs is null || CaptureFormattingTarget() is not {} current)return;
         var state=CaretFormatState();
         AssColor.TryParse(state.GetValueOrDefault(channel+"c"),out var rgb);AssColor.TryParse(state.GetValueOrDefault(channel+"a"),out var alpha);
-        var color=await Dialogs.ChooseColorAsync(rgb with{Transparency=alpha.Red});
-        if(color is {} chosen)FormatText("Change subtitle color",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{channel+"c",chosen.RgbOverride},{channel+"a",chosen.AlphaOverride}},style,ResolveFormatStyle));
+        var color=await Dialogs.ChooseColorAsync(rgb with{Transparency=alpha.Red},token);
+        token.ThrowIfCancellationRequested();
+        if(color is {} chosen && current())FormatText("Change subtitle color",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{channel+"c",chosen.RgbOverride},{channel+"a",chosen.AlphaOverride}},style,ResolveFormatStyle));
     }
 }

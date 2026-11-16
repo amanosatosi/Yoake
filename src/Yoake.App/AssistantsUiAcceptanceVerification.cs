@@ -31,6 +31,9 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private SubtitleEncodingWindow? _encoding;
     private Task<int?>? _encodingResult;
     private byte[] _legacyBytes=[];
+    private string _formattingBefore="";
+    private Task<bool>? _formattingTask;
+    private CancellationTokenSource? _formattingCancellation;
     private string _before="",_translated="";
     private T Get<T>(string name) where T:Control=>_assistant!.FindControl<T>(name)??throw new InvalidOperationException("Missing Assistant control: "+name);
     public void Start() { _timer.Tick+=Tick;window.Opened+=(_,_)=>_timer.Start(); }
@@ -245,7 +248,38 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     Require(absoluteLines.All(e=>!e.Text.Contains(@"\kt",StringComparison.Ordinal))&&absoluteLines[1].Text.Contains("မြန်မာ",StringComparison.Ordinal)&&absoluteLines[2].Text.Contains("é",StringComparison.Ordinal),"Split timing is relative while Unicode and karaoke tag modes survive.");
                     var absoluteAfter=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_karaokeAbsoluteBefore,"Absolute splitting undoes in one step.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==absoluteAfter,"Absolute split redo restores exact records.");
                     var absoluteSaved=Path.Combine(options.ProfileDirectory!,"absolute-split.ass");Require(model.SaveActiveSubtitle(absoluteSaved),"Save split karaoke.");await Invoke("subtitle/close");Require(model.OpenSubtitle(absoluteSaved)&&model.ActiveEditor.Document.Serialize()==absoluteAfter,"Absolute karaoke splitting must round-trip through save/reopen.");
-                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply, metadata-safe sorting and absolute karaoke splitting with undo/redo.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    return;
+                case 40:
+                    await Invoke(CommandIds.GridInsertAfter);model.Draft!.Text="日本語 é မြန်မာ";await Invoke(CommandIds.EditCommit);
+                    _formattingBefore=model.ActiveEditor!.Document.Serialize();return;
+                case 41:
+                    var formattingText=window.FindControl<TextBox>("SubtitleText")!;
+                    Require(formattingText.Focus(),"Focus real subtitle selection for font formatting.");
+                    formattingText.CaretIndex=3;formattingText.SelectionStart=0;formattingText.SelectionEnd=3;
+                    Require(model.TextSelectionStart==0&&model.TextSelectionEnd==3,"Font dialog receives the actual editor selection.");
+                    Press(window.FindControl<Button>("SubtitleFontButton")!);return;
+                case 42:
+                    var fontDialog=window.OwnedWindows.Single(w=>w.Name=="SubtitleFontDialog");
+                    fontDialog.FindControl<Yoake.UI.Controls.FontPicker>("SubtitleFontPicker")!.FontName="Missing subtitle font 日本語";
+                    fontDialog.FindControl<NumericUpDown>("SubtitleFontSize")!.Value=31;
+                    Press(fontDialog.FindControl<Button>("ApplySubtitleFont")!);return;
+                case 43:
+                    Require(!window.OwnedWindows.Any(w=>w.Name=="SubtitleFontDialog")&&model.SelectedEvent!.Text.Contains(@"\fnMissing subtitle font 日本語",StringComparison.Ordinal)&&model.SelectedEvent.Text.Contains(@"\fs31",StringComparison.Ordinal)&&model.SelectedEvent.Text.EndsWith(" é မြန်မာ",StringComparison.Ordinal),"Subtitle font dialog applies only to the original Unicode range and retains the tail.");
+                    var fontAfter=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_formattingBefore,"Font selection has one formatting undo step.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==fontAfter,"Font selection redo preserves exact ASS.");
+                    _formattingBefore=fontAfter;_formattingCancellation=new();
+                    _formattingTask=model.Registry.InvokeAsync(CommandIds.FormatFont,new(model.ActiveDocumentId),cancellationToken:_formattingCancellation.Token).AsTask();return;
+                case 44:
+                    Require(window.OwnedWindows.Any(w=>w.Name=="SubtitleFontDialog"),"A pending native font dialog is visible before cancellation.");_formattingCancellation!.Cancel();return;
+                case 45:
+                    Require(!await _formattingTask!&&!window.OwnedWindows.Any(w=>w.Name=="SubtitleFontDialog")&&model.ActiveEditor!.Document.Serialize()==_formattingBefore,"Cancellation closes the native font dialog without formatting or committing.");
+                    _formattingCancellation!.Dispose();_formattingCancellation=new();
+                    _formattingTask=model.Registry.InvokeAsync(CommandIds.FormatPrimary,new(model.ActiveDocumentId),cancellationToken:_formattingCancellation.Token).AsTask();return;
+                case 46:
+                    Require(window.OwnedWindows.OfType<Yoake.UI.Controls.AssColorDialog>().Any(w=>w.IsVisible),"A pending native subtitle color dialog is visible before cancellation.");_formattingCancellation!.Cancel();return;
+                case 47:
+                    Require(!await _formattingTask!&&!window.OwnedWindows.OfType<Yoake.UI.Controls.AssColorDialog>().Any()&&model.ActiveEditor!.Document.Serialize()==_formattingBefore,"Cancellation closes the native color dialog without changing ASS.");
+                    _formattingCancellation!.Dispose();
+                    _timer.Stop();options.FinishVerification("PASS: native Translation/Styling, Japanese/Burmese IME preedit, Mangetsu metadata, Shift-JIS/UTF-8, Save/close/reopen, Timing Postprocessor, Recombine, embedded Matroska track selection/extraction independent Save/reopen, and Kanji Timing Copier interpolation/grouping/keyboard/Apply, metadata-safe sorting and absolute karaoke splitting with undo/redo; real subtitle-font selection/apply/undo and canceled font/color dialogs.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception error) { _timer.Stop();Program.Fatal("Assistants acceptance stage "+_stage,error);desktop.Shutdown(1); }

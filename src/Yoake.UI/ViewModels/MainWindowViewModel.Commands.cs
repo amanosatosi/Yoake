@@ -125,9 +125,7 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.FormatItalic,"Italic",()=>ToggleFormat("i"),HasLine);
         S(CommandIds.FormatUnderline,"Underline",()=>ToggleFormat("u"),HasLine);
         S(CommandIds.FormatStrikeout,"Strikeout",()=>ToggleFormat("s"),HasLine);
-        R(CommandIds.FormatFont,"Font family and size…",_=>FormatFontAsync(),HasLine);
-        foreach(var item in new[]{(CommandIds.FormatPrimary,1),(CommandIds.FormatSecondary,2),(CommandIds.FormatOutline,3),(CommandIds.FormatShadow,4)})
-        {var channel=item.Item2;R(item.Item1,"Choose subtitle color…",_=>FormatColorAsync(channel),HasLine);}
+        RegisterFormattingDialogCommands();
         S(CommandIds.FormatReset,"Reset to line style",()=>FormatText("Reset formatting",(text,start,end,style)=>AssFormatting.Reset(text,start,end,style,ResolveFormatStyle)),HasLine);
         R(CommandIds.EditComment,"Comment / Uncomment Lines",invocation=>{if(invocation.Parameter is bool desired)RunEdit(e=>{if(SelectedEvent!.IsComment!=desired)e.ToggleComment([SelectedEvent]);});return ValueTask.CompletedTask;},HasLine);
 

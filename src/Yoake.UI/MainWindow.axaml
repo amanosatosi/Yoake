@@ -515,7 +515,7 @@
             <ToggleButton Classes="authoring" IsThreeState="True" IsChecked="{Binding Formatting.Strikeout, Mode=OneWay}" Command="{Binding Actions[text/format/strikeout]}" ToolTip.Tip="Strikeout"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FormatStrikeout}" /></ToggleButton>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,12,4">
-            <Button Command="{Binding Actions[text/format/font]}" Padding="5,0" ToolTip.Tip="Font family and size for selection"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FormatFont}" /></Button>
+            <Button Name="SubtitleFontButton" Command="{Binding Actions[text/format/font]}" Padding="5,0" ToolTip.Tip="Font family and size for selection"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.FormatFont}" /></Button>
           </StackPanel>
           <StackPanel Orientation="Horizontal" Spacing="3" Margin="0,0,12,4">
             <controls:AssColorButton Value="{Binding Formatting.Primary}" Label="1" Command="{Binding Actions[text/format/primary]}" ToolTip.Tip="Primary color and alpha at caret (static state)" />
