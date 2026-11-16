@@ -47,6 +47,8 @@ public sealed class HotkeyProfile
     public void ResetContext(HotkeyContext context) => Apply(_overrides.Where(item => item.Context != context).ToArray());
     public void ResetAll() => Apply([]);
 
+    public void ReplaceOverrides(IEnumerable<HotkeyOverride> overrides) => Apply(overrides.Select(Clone).ToArray());
+
     private void Apply(HotkeyOverride[] overrides)
     {
         var replaced = overrides.Select(item => (item.Context, item.CommandId)).ToHashSet();

@@ -16,7 +16,7 @@ public sealed partial class MainWindowViewModel
         HotkeyProfile.Changed += (_, _) =>
         {
             _settings = _settings with { HotkeyOverrides=HotkeyProfile.Overrides };
-            _settingsStore.Save(_settings); _registry.NotifyStateChanged();
+            if (!_publishingOptions) _settingsStore.Save(_settings); _registry.NotifyStateChanged();
             OnPropertyChanged(nameof(AutomationMacros));
         };
         void Register(string id, string label, Func<CommandInvocation,ValueTask> action, Func<bool>? check=null)

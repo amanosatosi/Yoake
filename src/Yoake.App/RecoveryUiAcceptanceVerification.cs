@@ -55,11 +55,11 @@ internal sealed class RecoveryUiAcceptanceVerification(IClassicDesktopStyleAppli
                 window.FindControl<MenuItem>("EditMenu")!.IsSubMenuOpen=true;Press(window.FindControl<MenuItem>("OptionsMenu")!,Key.Enter);return;
             case 3:
                 _options=window.OwnedWindows.OfType<OptionsWindow>().SingleOrDefault();if(_options is null){_stage--;return;}
-                Require(_options.TryGetPlatformHandle() is {Handle:not 0},"Real Options dialog.");_options.FindControl<TabControl>("OptionsTabs")!.SelectedIndex=1;return;
+                Require(_options.TryGetPlatformHandle() is {Handle:not 0},"Real Options dialog.");_options.FindControl<ListBox>("OptionsCategories")!.SelectedItem="Recovery";return;
             case 4:
                 _options!.FindControl<NumericUpDown>("AutosaveInterval")!.Value=1;
                 Require(_options.FindControl<CheckBox>("AutosaveEnabled")!.IsChecked==true,"Autosave defaults enabled.");
-                Press(_options.FindControl<Button>("AutosaveApply")!,Key.Enter);return;
+                Press(_options.FindControl<Button>("OptionsApply")!,Key.Enter);return;
             case 5:
                 Require(model.AutosaveEnabled&&model.AutosaveIntervalSeconds==1,"Actual Options settings command.");
                 _options!.Close();Text.SetCurrentValue(TextBox.TextProperty,"pending\r\n日本語 é");window.FindControl<TextBox>("LineStart")!.SetCurrentValue(TextBox.TextProperty,"unfinished");return;

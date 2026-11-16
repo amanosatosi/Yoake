@@ -42,8 +42,10 @@ public sealed partial class MainWindowViewModel
     public IAutomationRuntimeProvider AutomationRuntimeProvider { get; set; } = new LuaAutomationProvider(Path.Combine(AppContext.BaseDirectory, "automation", "host.lua"));
     public string AutomationBaseDirectory => Path.Combine(AppContext.BaseDirectory, "automation");
     public string AutomationUserDirectory => Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!, "automation");
-    public IReadOnlyList<string> AutomationAutoloadDirectories => _settings.AutomationAutoloadDirectories ?? ["?data/automation/autoload", "?user/automation/autoload", "?data/automation-3.5-above/depctrl-autoload", "?user/automation-3.5-above/autoload"];
-    public IReadOnlyList<string> AutomationIncludeDirectories => _settings.AutomationIncludeDirectories ?? ["?user/automation/include", "?data/automation/include"];
+    public static readonly string[] DefaultAutomationAutoloadDirectories = ["?data/automation/autoload", "?user/automation/autoload", "?data/automation-3.5-above/depctrl-autoload", "?user/automation-3.5-above/autoload"];
+    public static readonly string[] DefaultAutomationIncludeDirectories = ["?user/automation/include", "?data/automation/include"];
+    public IReadOnlyList<string> AutomationAutoloadDirectories => _settings.AutomationAutoloadDirectories ?? DefaultAutomationAutoloadDirectories;
+    public IReadOnlyList<string> AutomationIncludeDirectories => _settings.AutomationIncludeDirectories ?? DefaultAutomationIncludeDirectories;
     public IReadOnlyList<AutomationScriptItem> AutomationScripts => _automationEntries.Where(e => e.DocumentId is null || e.DocumentId == _activeId).ToArray();
     public IReadOnlyList<AutomationMenuEntry> AutomationMacros => _activeId is { } id
         ? _automationCatalog.Macros(id).Select(b => new AutomationMenuEntry(b.CommandId, b.Macro.Name, b.Validation.Help ?? b.Macro.Description,

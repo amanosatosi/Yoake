@@ -70,13 +70,16 @@ public sealed class SettingsStore(string path)
         string[]? autoload=null,includes=null;string? assDrawExecutable=null,uiFontFamily=null;double? uiFontSize=null;
         bool? audioSpectrum=null,audioAutoScroll=null;
         bool? audioAutoCommit=null,audioAutoNext=null;
-        int? audioDefaultDuration=null,audioLeadIn=null,audioLeadOut=null;
+        int? audioDefaultDuration=null,audioLeadIn=null,audioLeadOut=null,videoFastJumpStep=null;
+        bool? karaokeAutoCut=null;
         double[]? widths = null; string[]? recent = null;string[]? recentKeyframes=null;string[]? recentTimecodes=null;string[]? recentVideo=null,recentAudio=null;
         Dictionary<string, JsonElement> future = [];
         foreach (var member in root.EnumerateObject())
         {
             switch (member.Name)
             {
+                case "karaokeAutoCut":if(member.Value.ValueKind is JsonValueKind.True or JsonValueKind.False)karaokeAutoCut=member.Value.GetBoolean();break;
+                case "videoFastJumpStep":if(TryReadInt(member.Value,out var fastStep))videoFastJumpStep=fastStep;break;
                 case "uiFontFamily":if(member.Value.ValueKind==JsonValueKind.String)uiFontFamily=member.Value.GetString();break;
                 case "uiFontSize":uiFontSize=ReadNumber(member.Value);break;
                 case "assDrawExecutable":if(member.Value.ValueKind==JsonValueKind.String)assDrawExecutable=member.Value.GetString();break;
@@ -138,7 +141,7 @@ public sealed class SettingsStore(string path)
                 default: future[member.Name] = member.Value.Clone(); break;
             }
         }
-        return new AppSettings { UiFontFamily=uiFontFamily,UiFontSize=uiFontSize,AssDrawExecutable=assDrawExecutable,Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
+        return new AppSettings { KaraokeAutoCut=karaokeAutoCut,VideoFastJumpStep=videoFastJumpStep,UiFontFamily=uiFontFamily,UiFontSize=uiFontSize,AssDrawExecutable=assDrawExecutable,Theme = theme, ViewMode = viewMode, SchemaVersion = schema, MainSplitRatio = ratio, GridHeight = height,
             AutosaveEnabled=autosaveEnabled,AutosaveIntervalSeconds=autosaveInterval,RecoveryDirectory=recoveryDirectory,
             HotkeyOverrides=hotkeys.ToArray(),AudioStopHotkeysMigrated=audioStopMigrated,GlobalTimingHotkeys=globalTiming,ToolbarVisible=toolbar,GridTagDisplay=tagDisplay,SearchPreferences=search,SelectionPreferences=selection,VideoAutoSeek=videoAutoSeek,VideoOverscan=videoOverscan,LastDummyVideo=lastDummy,ShiftPreferences=shift,ShiftHistory=shiftHistory.ToArray(),
             GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, RecentVideo=recentVideo, RecentAudio=recentAudio, FutureSettings = future,ShowOriginal=showOriginal,BetterView=betterView,PasteOverFields=pasteOverFields,

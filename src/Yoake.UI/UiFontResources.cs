@@ -10,6 +10,10 @@ public static class UiFontResources
     {
         if (Application.Current is not { } app) return;
         app.Resources["YoakeUiFontFamily"] = string.IsNullOrWhiteSpace(family) ? FontFamily.Default : new FontFamily(family);
-        app.Resources["YoakeUiFontSize"] = size ?? 12d;
+        var actualSize = size is {} value && double.IsFinite(value) ? Math.Clamp(value, 9, 24) : 12d;
+        app.Resources["YoakeUiFontSize"] = actualSize;
+        app.Resources["YoakeUiFontSizeSmall"] = actualSize * 11 / 12;
+        app.Resources["YoakeUiFontSizeTiny"] = actualSize * 10 / 12;
+        app.Resources["YoakeUiRowHeight"] = Math.Max(26, Math.Ceiling(actualSize * 1.8));
     }
 }

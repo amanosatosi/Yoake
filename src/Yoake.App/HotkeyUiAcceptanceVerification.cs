@@ -70,9 +70,14 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     _options=window.OwnedWindows.OfType<OptionsWindow>().Single();
                     Require(_options.IsVisible&&_options.ClientSize.Width>=650&&_options.ClientSize.Height>=460,"Keyboard settings must have usable real-window geometry.");
                     Require(InOptions<ComboBox>("HotkeyContext").Items.Count==Enum.GetValues<HotkeyContext>().Length,"All reference and Yoake contexts must be selectable.");
-                    await Choose(CommandIds.SubtitleNew);Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);Click("ChangeHotkey");return;
+                    InOptions<ListBox>("OptionsCategories").SelectedItem="Keyboard shortcuts";
+                    await Choose(CommandIds.SubtitleNew);Capture(Key.K,KeyModifiers.Control|KeyModifiers.Alt);
+                    var previousShortcut=model.Actions[CommandIds.SubtitleNew].Shortcut;
+                    Press(InOptions<Button>("ChangeHotkey"),Key.Enter);
+                    Require(model.Actions[CommandIds.SubtitleNew].Shortcut==previousShortcut,"An unapplied shortcut edit must not change live bindings.");
+                    Click("OptionsApply");return;
                 case 3:
-                    Require(model.Actions[CommandIds.SubtitleNew].Shortcut=="Ctrl-Alt-K","Change must replace the command binding immediately.");
+                    Require(model.Actions[CommandIds.SubtitleNew].Shortcut=="Ctrl-Alt-K","Apply must replace the command binding.");
                     Capture(Key.F10);Click("AddHotkey");return;
                 case 4:
                     Require(model.HotkeyProfile.EffectiveGestures(CommandIds.SubtitleNew,HotkeyContext.Default).SequenceEqual(new[]{"Ctrl-Alt-K","F10"}),"Settings must retain multiple bindings.");
@@ -143,7 +148,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     Require(ReferenceEquals(waveform,model.WaveformSamples)&&ReferenceEquals(times,model.FrameTimes)&&model.CurrentFrame==_frame,"View changes must retain the providers and keyboard playback position.");
                     Press(Grid,Key.O,KeyModifiers.Alt);return;
                 case 13:
-                    _options=window.OwnedWindows.OfType<OptionsWindow>().Single();InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
+                    _options=window.OwnedWindows.OfType<OptionsWindow>().Single();InOptions<ListBox>("OptionsCategories").SelectedItem="Keyboard shortcuts";InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Audio;
                     Click("ResetContextHotkeys");InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.Default;
                     await Choose(CommandIds.AppToggleToolbar);Capture(Key.F12);Click("AddHotkey");
                     InOptions<ComboBox>("HotkeyContext").SelectedItem=HotkeyContext.SubtitleGrid;
@@ -292,7 +297,11 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
         Press(InOptions<TextBox>("HotkeyCapture"),key,modifiers);
         Require(!string.IsNullOrEmpty(InOptions<TextBox>("HotkeyGesture").Text),"The focused capture field must receive a real key gesture.");
     }
-    private void Click(string name)=>Press(InOptions<Button>(name),Key.Enter);
+    private void Click(string name)
+    {
+        Press(InOptions<Button>(name),Key.Enter);
+        if(name!="OptionsApply")Press(InOptions<Button>("OptionsApply"),Key.Enter);
+    }
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
     {
         if(control is ListBox list)

@@ -52,12 +52,11 @@
   </Styles.Resources>
   <Style Selector="NumericUpDown">
     <Setter Property="Theme" Value="{StaticResource SubtitleNumber}" />
-    <Setter Property="MinHeight" Value="26" />
     <Setter Property="MinWidth" Value="86" />
-    <Setter Property="Height" Value="26" />
+    <Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" />
     <Setter Property="VerticalAlignment" Value="Center" />
     <Setter Property="Padding" Value="4,1" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="{DynamicResource YoakeUiFontSize}" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
   </Style>
   <Style Selector="ToggleButton.authoring">

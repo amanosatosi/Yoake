@@ -357,7 +357,7 @@
 <Button Command="{Binding Actions[app/options]}" Padding="4,2" ToolTip.Tip="Options"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Options}" /></Button>
 <Button Command="{Binding Actions[grid/tag/cycle_hiding]}" Padding="4,2" ToolTip.Tip="Cycle tag display"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TagDisplay}" /></Button>
 </StackPanel></ScrollViewer>
-<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"><TextBlock Name="VisualToolStatus" MaxWidth="120" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="10" VerticalAlignment="Center" /><TextBlock MaxWidth="160" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /></StackPanel>
+<StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="6"><TextBlock Name="VisualToolStatus" MaxWidth="120" Text="{Binding VisualHint}" ToolTip.Tip="{Binding VisualHint}" TextTrimming="CharacterEllipsis" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBlock MaxWidth="160" Text="{Binding SubtitleStatus}" ToolTip.Tip="{Binding SubtitleStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" /></StackPanel>
 </Grid></Grid></Border>
 <Grid Grid.Row="2" Name="UpperWorkspace">
   <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
@@ -383,12 +383,12 @@
           <Button Command="{Binding Actions[video/play]}" Padding="5,1" ToolTip.Tip="Play or pause video"><StackPanel Orientation="Horizontal" Spacing="3"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.VideoPlay}" IsVisible="{Binding !IsPlaying}" /><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.VideoPause}" IsVisible="{Binding IsPlaying}" /><TextBlock Text="{Binding PlayPauseText}" /></StackPanel></Button><Button Command="{Binding Actions[video/stop]}" Padding="4,2" ToolTip.Tip="Stop video playback"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoPause}" /></Button><Button Command="{Binding Actions[video/play/line]}" Padding="4,2" ToolTip.Tip="Play current subtitle line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayLine}" Foreground="{DynamicResource IconAudioLineBrush}" /></Button><ToggleButton Classes="authoring" IsChecked="{Binding Actions[video/autoseek].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/autoseek]}" Padding="4,2" ToolTip.Tip="Automatically seek video to the selected line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoAutoseek}" /></ToggleButton>
           <Button Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.FramePrevious}" /></Button><Button Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.FrameNext}" /></Button>
           <TextBox Margin="4,0,0,0" Name="ExactTime" Width="92" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
-        </StackPanel>        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="4"><controls:VideoZoomControl Name="VideoZoom" Grid.Column="1" /><TextBlock Text="{Binding FramePositionDisplay}" ToolTip.Tip="{Binding RelativeTimingDisplay}" VerticalAlignment="Center" FontSize="10" TextTrimming="CharacterEllipsis" /></Grid></Grid>
+        </StackPanel>        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="4"><controls:VideoZoomControl Name="VideoZoom" Grid.Column="1" /><TextBlock Text="{Binding FramePositionDisplay}" ToolTip.Tip="{Binding RelativeTimingDisplay}" VerticalAlignment="Center" FontSize="{DynamicResource YoakeUiFontSizeTiny}" TextTrimming="CharacterEllipsis" /></Grid></Grid>
 
     <Border Grid.Row="3" Name="VisualToolsBar" ToolTip.Tip="{Binding VisualHint}" IsVisible="{Binding HasVisualOptions}" Padding="0,4,0,0"><StackPanel>
       <WrapPanel Name="VisualToolGroups">
 
-      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,12,0"><Button Name="MoveToggle" Command="{Binding Actions[video/position/toggle-move]}" Padding="4,1" ToolTip.Tip="Convert position to frame-timed movement, or keep movement start as position"><StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VisualMoveToggle}" /><TextBlock Text="pos ⇄ move" FontSize="11" /></StackPanel></Button></StackPanel>
+      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,12,0"><Button Name="MoveToggle" Command="{Binding Actions[video/position/toggle-move]}" Padding="4,1" ToolTip.Tip="Convert position to frame-timed movement, or keep movement start as position"><StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VisualMoveToggle}" /><TextBlock Text="pos ⇄ move" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /></StackPanel></Button></StackPanel>
 
       <StackPanel Name="VectorSubtoolbar" Orientation="Horizontal" IsVisible="{Binding IsVectorClipTool}" Spacing="3" Margin="0,0,12,0">
         <ToggleButton Name="VectorSelect" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding Actions[video/vector/select].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/select]}" Padding="4,1" ToolTip.Tip="Select"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSelect}" /></ToggleButton>
@@ -400,7 +400,7 @@
         <ToggleButton Name="VectorFreehand" Classes="authoring" IsChecked="{Binding Actions[video/vector/freehand].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/freehand]}" Padding="4,1" ToolTip.Tip="Freehand"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorFreehand}" /></ToggleButton>
         <ToggleButton Name="VectorSmooth" Classes="authoring" IsChecked="{Binding Actions[video/vector/smooth].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/smooth]}" Padding="4,1" ToolTip.Tip="Smooth"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSmooth}" /></ToggleButton>
       </StackPanel>
-      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsClipFamily}" Spacing="3" Margin="0,0,0,0"><CheckBox Content="New inverse clip" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="11" /><Button Content="Invert clip" Command="{Binding Actions[video/clip/invert]}" Padding="4,1" FontSize="11" /></StackPanel>
+      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsClipFamily}" Spacing="3" Margin="0,0,0,0"><CheckBox Content="New inverse clip" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><Button Content="Invert clip" Command="{Binding Actions[video/clip/invert]}" Padding="4,1" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /></StackPanel>
       </WrapPanel>
     </StackPanel></Border>
       </Grid>
@@ -435,17 +435,17 @@
 <ToggleButton Classes="authoring" Name="KaraokeToggle" IsChecked="{Binding Actions[audio/karaoke].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/karaoke]}" Padding="4,2" ToolTip.Tip="Toshiki K-Timing"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.KaraokeTiming}" /></ToggleButton>
 <ToggleButton Classes="authoring" Content="Mute" IsChecked="{Binding PlaybackMuted, Mode=TwoWay}" Padding="4,0" ToolTip.Tip="Mute editor playback" />
 <ComboBox Name="AudioMode" Margin="4,0,0,0" SelectedIndex="{Binding AudioDisplayModeIndex, Mode=TwoWay}" Padding="5,0"><ComboBoxItem Content="Waveform" /><ComboBoxItem Content="Spectrogram" /></ComboBox>
-</StackPanel></ScrollViewer><TextBlock Grid.Column="1" MaxWidth="100" Name="AudioStatus" Text="{Binding MediaStatus}" ToolTip.Tip="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="10" /></Grid>
+</StackPanel></ScrollViewer><TextBlock Grid.Column="1" MaxWidth="100" Name="AudioStatus" Text="{Binding MediaStatus}" ToolTip.Tip="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="{DynamicResource YoakeUiFontSizeTiny}" /></Grid>
         <controls:AudioWaveformControl Grid.Row="1" Margin="0,4,132,0" Name="AudioDisplay" ToolTip.Tip="Click: seek · Green/red: drag start/end · Shift+drag inside line: move timing · Wheel: pan · Ctrl+wheel: zoom · Shift+wheel: amplitude" Model="{Binding}" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
         <Border Grid.Row="1" Grid.RowSpan="2" HorizontalAlignment="Right" Width="1" Margin="0,8,124,20" Background="{DynamicResource DividerBrush}" />
         <Grid Grid.Row="1" Grid.RowSpan="2" HorizontalAlignment="Right" ColumnDefinitions="32,32,32" RowDefinitions="14,*,18" ColumnSpacing="10" RowSpacing="4" Margin="0,4,0,0">
-          <TextBlock Grid.Column="0" Text="Time" FontSize="10" HorizontalAlignment="Center" ToolTip.Tip="Horizontal zoom" />
-          <TextBlock Grid.Column="1" Text="Amp" FontSize="10" HorizontalAlignment="Center" ToolTip.Tip="Vertical zoom / display amplitude" />
-          <TextBlock Grid.Column="2" Text="Vol" FontSize="10" HorizontalAlignment="Center" ToolTip.Tip="Playback volume" />
+          <TextBlock Grid.Column="0" Text="Time" FontSize="{DynamicResource YoakeUiFontSizeTiny}" HorizontalAlignment="Center" ToolTip.Tip="Horizontal zoom" />
+          <TextBlock Grid.Column="1" Text="Amp" FontSize="{DynamicResource YoakeUiFontSizeTiny}" HorizontalAlignment="Center" ToolTip.Tip="Vertical zoom / display amplitude" />
+          <TextBlock Grid.Column="2" Text="Vol" FontSize="{DynamicResource YoakeUiFontSizeTiny}" HorizontalAlignment="Center" ToolTip.Tip="Playback volume" />
           <Slider Grid.Row="1" Grid.Column="0" Name="AudioHorizontalZoom" Orientation="Vertical" Minimum="0" Maximum="100" Value="{Binding AudioHorizontalZoom, Mode=TwoWay}" ToolTip.Tip="Horizontal zoom · time per pixel" />
           <Slider Grid.Row="1" Grid.Column="1" Name="AudioIntensity" Orientation="Vertical" Minimum="10" Maximum="100" Value="{Binding AudioAmplitude, Mode=TwoWay}" ToolTip.Tip="Display amplitude / spectral intensity (independent of volume)" />
           <Slider Grid.Row="1" Grid.Column="2" Name="AudioVolume" IsEnabled="{Binding IsVolumeIndependent}" Orientation="Vertical" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding PlaybackVolume, Mode=TwoWay}" ToolTip.Tip="Playback volume · 0–100%" />
-          <ToggleButton Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Name="AudioVolumeLink" Classes="authoring" HorizontalAlignment="Stretch" MinWidth="44" FontSize="10" MinHeight="16" Padding="2,0" IsChecked="{Binding Actions[audio/opt/vertical_link].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/vertical_link]}" ToolTip.Tip="Link display amplitude to playback level"><StackPanel Orientation="Horizontal" Spacing="2"><PathIcon Width="13" Height="13" Data="{x:Static icons:IconGeometries.AudioLink}" /><TextBlock Text="Link" /></StackPanel></ToggleButton>
+          <ToggleButton Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Name="AudioVolumeLink" Classes="authoring" HorizontalAlignment="Stretch" MinWidth="44" FontSize="{DynamicResource YoakeUiFontSizeTiny}" MinHeight="16" Padding="2,0" IsChecked="{Binding Actions[audio/opt/vertical_link].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/vertical_link]}" ToolTip.Tip="Link display amplitude to playback level"><StackPanel Orientation="Horizontal" Spacing="2"><PathIcon Width="13" Height="13" Data="{x:Static icons:IconGeometries.AudioLink}" /><TextBlock Text="Link" /></StackPanel></ToggleButton>
         </Grid>
         <ScrollBar Grid.Row="2" Name="AudioPanner" Orientation="Horizontal" Minimum="0" Maximum="{Binding #AudioDisplay.MaximumPan}" ViewportSize="{Binding #AudioDisplay.VisibleSeconds}" Value="{Binding #AudioDisplay.ViewportStart, Mode=TwoWay}" SmallChange="0.5" LargeChange="5" Margin="0,0,132,0" ToolTip.Tip="Pan the visible audio time range" />
       </Grid>
@@ -456,14 +456,14 @@
     <Border Grid.Row="2" Background="{DynamicResource PanelBrush}">
       <Grid Name="EventEditorRegion" Margin="6" RowDefinitions="Auto,Auto,Auto,*" RowSpacing="4" IsEnabled="{Binding HasSelectedEvent}">
         <Grid.Styles>
-          <Style Selector="TextBox"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
-          <Style Selector="ComboBox"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
-          <Style Selector="NumericUpDown"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="12" /></Style>
+          <Style Selector="TextBox"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="{DynamicResource YoakeUiFontSize}" /></Style>
+          <Style Selector="ComboBox"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="{DynamicResource YoakeUiFontSize}" /></Style>
+          <Style Selector="NumericUpDown"><Setter Property="MinHeight" Value="24" /><Setter Property="FontSize" Value="{DynamicResource YoakeUiFontSize}" /></Style>
           <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
         </Grid.Styles>
         <WrapPanel Grid.Row="0" Name="MetadataFields">
           <Grid Name="CommentStyleGroup" Width="240" ColumnDefinitions="80,*" ColumnSpacing="3" Margin="0,0,12,8">
-            <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="11" />
+            <CheckBox Height="26" VerticalAlignment="Center" Content="Comment" IsChecked="{Binding SelectedIsComment, Mode=OneWay}" Command="{Binding Actions[edit/comment]}" CommandParameter="{Binding $self.IsChecked}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" />
             <Grid Grid.Column="1" Name="StyleControls" ColumnDefinitions="*,26" ColumnSpacing="3">
               <ComboBox Name="LineStyle" Height="26" VerticalAlignment="Center" ItemsSource="{Binding StyleNames}" SelectedItem="{Binding EditorDraft.Style, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="3,0" ToolTip.Tip="Style" />
               <Button Grid.Column="1" Height="26" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.StylesManager}" /></Button>
@@ -475,7 +475,7 @@
             <ToggleButton Name="FastActorToggle" Grid.Column="1" Height="26" Padding="2,0" Content="»" IsChecked="{Binding Actions[actor/fast/toggle].IsChecked, Mode=OneWay}" Command="{Binding Actions[actor/fast/toggle]}" ToolTip.Tip="Fast actor naming" />
             <Popup Name="FastActorPopup" PlacementTarget="{Binding #LineActor}" Placement="Bottom" IsLightDismissEnabled="False">
               <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Padding="5" MinWidth="180">
-                <StackPanel Spacing="3"><TextBlock Text="Recent actors" FontSize="11" /><ListBox Name="FastActorList" MaxHeight="240" ItemsSource="{Binding FastActorRecent}" SelectedIndex="{Binding FastActorSelectedIndex, Mode=OneWay}" /><TextBlock Text="Fast naming mode" FontSize="11" /><ComboBox Name="FastActorMode" SelectedItem="{Binding FastActorMode, Mode=OneWay}" ToolTip.Tip="Nanashi: tap Ctrl for next line, Alt for previous line" /><TextBlock Text="After advancing, play" FontSize="11" /><ComboBox Name="FastActorPlayback" SelectedItem="{Binding FastActorPlayback, Mode=OneWay}" /></StackPanel>
+                <StackPanel Spacing="3"><TextBlock Text="Recent actors" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><ListBox Name="FastActorList" MaxHeight="240" ItemsSource="{Binding FastActorRecent}" SelectedIndex="{Binding FastActorSelectedIndex, Mode=OneWay}" /><TextBlock Text="Fast naming mode" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><ComboBox Name="FastActorMode" SelectedItem="{Binding FastActorMode, Mode=OneWay}" ToolTip.Tip="Nanashi: tap Ctrl for next line, Alt for previous line" /><TextBlock Text="After advancing, play" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><ComboBox Name="FastActorPlayback" SelectedItem="{Binding FastActorPlayback, Mode=OneWay}" /></StackPanel>
               </Border>
             </Popup>
             </Grid>
@@ -485,14 +485,14 @@
         </WrapPanel>
         <WrapPanel Grid.Row="1" Name="TimingFields">
           <Grid Name="LineTimingGroup" ColumnDefinitions="Auto,96,Auto,96,Auto,72" ColumnSpacing="3" Margin="0,0,12,8">
-            <TextBlock Text="Start" FontSize="10" VerticalAlignment="Center" /><TextBox Name="LineStart" Grid.Column="1" Text="{Binding EditorDraft.Start, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start h:mm:ss.cc" />
-            <TextBlock Grid.Column="2" Text="End" FontSize="10" VerticalAlignment="Center" /><TextBox Name="LineEnd" Grid.Column="3" Text="{Binding EditorDraft.End, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End h:mm:ss.cc" />
-            <TextBlock Grid.Column="4" Text="Dur." FontSize="10" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding EditorDraft.Duration}" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Text="Start" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineStart" Grid.Column="1" Text="{Binding EditorDraft.Start, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start h:mm:ss.cc" />
+            <TextBlock Grid.Column="2" Text="End" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineEnd" Grid.Column="3" Text="{Binding EditorDraft.End, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End h:mm:ss.cc" />
+            <TextBlock Grid.Column="4" Text="Dur." FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding EditorDraft.Duration}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" VerticalAlignment="Center" />
           </Grid>
           <Grid Name="LineMarginGroup" ColumnDefinitions="Auto,86,Auto,86,Auto,86" ColumnSpacing="3" Margin="0,0,0,8">
-            <TextBlock Text="L" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Text="{Binding EditorDraft.MarginL, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
-            <TextBlock Grid.Column="2" Text="R" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Text="{Binding EditorDraft.MarginR, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
-            <TextBlock Grid.Column="4" Text="V" FontSize="10" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Text="{Binding EditorDraft.MarginV, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
+            <TextBlock Text="L" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Text="{Binding EditorDraft.MarginL, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
+            <TextBlock Grid.Column="2" Text="R" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><NumericUpDown Name="MarginRight" Grid.Column="3" Text="{Binding EditorDraft.MarginR, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
+            <TextBlock Grid.Column="4" Text="V" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><NumericUpDown Name="MarginVertical" Grid.Column="5" Text="{Binding EditorDraft.MarginV, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
           </Grid>
         </WrapPanel>
         <WrapPanel Grid.Row="2" Name="FormattingToolbar" Margin="0,0,0,4">
@@ -512,10 +512,10 @@
             <controls:AssColorButton Value="{Binding Formatting.Shadow}" Label="4" Command="{Binding Actions[text/format/shadow]}" ToolTip.Tip="Shadow color and alpha at caret (static state)" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-            <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="5,0" FontSize="11" ToolTip.Tip="Reset to line style at caret / selection" />
+            <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" ToolTip.Tip="Reset to line style at caret / selection" />
           </StackPanel>
-          <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" Height="24" MinHeight="24" FontSize="11" Margin="8,0,0,4" />
-          <CheckBox Name="BetterViewToggle" Content="Better View" IsChecked="{Binding Actions[edit/better-view].IsChecked, Mode=OneWay}" Command="{Binding Actions[edit/better-view]}" Height="24" MinHeight="24" FontSize="11" Margin="8,0,0,4" ToolTip.Tip="Show hard line breaks and compact motion data" />
+          <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" Height="24" MinHeight="24" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="8,0,0,4" />
+          <CheckBox Name="BetterViewToggle" Content="Better View" IsChecked="{Binding Actions[edit/better-view].IsChecked, Mode=OneWay}" Command="{Binding Actions[edit/better-view]}" Height="24" MinHeight="24" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="8,0,0,4" ToolTip.Tip="Show hard line breaks and compact motion data" />
         </WrapPanel>
 
         <Grid Grid.Row="3" RowDefinitions="Auto,*,Auto">
@@ -523,10 +523,10 @@
           <controls:AssTextBox Name="SubtitleText" Grid.Row="1" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="14" SourceText="{Binding EditorDraft.Text, Mode=TwoWay}" BetterView="{Binding BetterView}" ShowMotionData="{Binding ShowMotionData}" MotionToggleCommand="{Binding Actions[edit/motion-block/toggle]}" MotionCopyCommand="{Binding Actions[edit/motion-block/copy]}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
           <WrapPanel Grid.Row="2" IsVisible="{Binding ShowOriginal}" Margin="0,3,0,0">
             <StackPanel IsVisible="{Binding ShowOriginal}" Orientation="Horizontal" Spacing="3">
-              <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="11" />
-              <Button Name="OriginalClear" Content="Clear" Command="{Binding Actions[edit/clear]}" Padding="5,0" FontSize="11" />
-              <Button Name="OriginalClearText" Content="Clear Text" Command="{Binding Actions[edit/clear/text]}" Padding="5,0" FontSize="11" />
-              <Button Name="OriginalInsert" Content="Insert Original" Command="{Binding Actions[edit/insert_original]}" Padding="5,0" FontSize="11" />
+              <Button Name="OriginalRevert" Content="Revert" Command="{Binding Actions[edit/revert]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" />
+              <Button Name="OriginalClear" Content="Clear" Command="{Binding Actions[edit/clear]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" />
+              <Button Name="OriginalClearText" Content="Clear Text" Command="{Binding Actions[edit/clear/text]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" />
+              <Button Name="OriginalInsert" Content="Insert Original" Command="{Binding Actions[edit/insert_original]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" />
             </StackPanel>
           </WrapPanel>
         </Grid>
@@ -593,8 +593,8 @@
 <MenuItem Header="Cut lines" InputGesture="{Binding Actions[grid/cut].InputGesture}" Command="{Binding Actions[grid/cut]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Cut}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Paste lines" InputGesture="{Binding Actions[grid/paste].InputGesture}" Command="{Binding Actions[grid/paste]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Paste}" /></MenuItem.Icon></MenuItem>
 <MenuItem Header="Select all lines" InputGesture="{Binding Actions[grid/select-all].InputGesture}" Command="{Binding Actions[grid/select-all]}" />
-</ContextMenu></ListBox.ContextMenu><ListBox.ItemTemplate><DataTemplate x:DataType="sub:AssEvent"><Grid Tag="SubtitleRow" Classes="subtitle-row" Classes.comment="{Binding IsComment}" Height="26" ClipToBounds="True" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4">
-<Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource IconAccentBrush}" IsVisible="{Binding IsCurrent}" /><Border Grid.ColumnSpan="8" Background="{DynamicResource IconAccentBrush}" Opacity="0.12" IsVisible="{Binding IsActive}" /><TextBlock Text="{Binding Number}" FontSize="11" Margin="5,0,0,0" /><TextBlock Grid.Column="1" Text="{Binding DisplayLayer}" FontSize="11" /><TextBlock Grid.Column="2" Text="{Binding DisplayStart}" FontSize="11" /><TextBlock Grid.Column="3" Text="{Binding DisplayEnd}" FontSize="11" /><TextBlock Grid.Column="4" Text="{Binding DisplayStyle}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="5" Text="{Binding DisplayActor}" TextTrimming="CharacterEllipsis" FontSize="11" /><TextBlock Grid.Column="6" Text="{Binding DisplayEffect}" TextTrimming="CharacterEllipsis" FontSize="11" /><controls:SubtitleGridText Grid.Column="7" SourceText="{Binding DisplayText}" MaxLines="1" TextTrimming="CharacterEllipsis" FontSize="12" />
+</ContextMenu></ListBox.ContextMenu><ListBox.ItemTemplate><DataTemplate x:DataType="sub:AssEvent"><Grid Tag="SubtitleRow" Classes="subtitle-row" Classes.comment="{Binding IsComment}" MinHeight="{DynamicResource YoakeUiRowHeight}" ClipToBounds="True" ColumnDefinitions="40,36,92,92,110,100,90,*" ColumnSpacing="4">
+<Border Width="3" HorizontalAlignment="Left" Background="{DynamicResource IconAccentBrush}" IsVisible="{Binding IsCurrent}" /><Border Grid.ColumnSpan="8" Background="{DynamicResource IconAccentBrush}" Opacity="0.12" IsVisible="{Binding IsActive}" /><TextBlock Text="{Binding Number}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="5,0,0,0" /><TextBlock Grid.Column="1" Text="{Binding DisplayLayer}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><TextBlock Grid.Column="2" Text="{Binding DisplayStart}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><TextBlock Grid.Column="3" Text="{Binding DisplayEnd}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><TextBlock Grid.Column="4" Text="{Binding DisplayStyle}" TextTrimming="CharacterEllipsis" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><TextBlock Grid.Column="5" Text="{Binding DisplayActor}" TextTrimming="CharacterEllipsis" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><TextBlock Grid.Column="6" Text="{Binding DisplayEffect}" TextTrimming="CharacterEllipsis" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><controls:SubtitleGridText Grid.Column="7" SourceText="{Binding DisplayText}" MaxLines="1" TextTrimming="CharacterEllipsis" FontSize="{DynamicResource YoakeUiFontSize}" />
 </Grid></DataTemplate></ListBox.ItemTemplate></ListBox></Grid></Border>
     <Border Name="SubtitleLoadingOverlay" Grid.RowSpan="5" Background="#99000000" IsVisible="{Binding OpeningSubtitle}">
       <Border Background="{DynamicResource AppBackgroundBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="4" Padding="20" Width="380" HorizontalAlignment="Center" VerticalAlignment="Center">

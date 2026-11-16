@@ -3,222 +3,259 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Yoake.Core.Hotkeys;
-using Yoake.UI.Commands;
+using Yoake.Core.Settings;
+using Yoake.Core.Subtitles;
 using Yoake.UI.Controls;
+using Yoake.UI.Commands;
 using Yoake.UI.ViewModels;
 
 namespace Yoake.UI;
 
 public sealed class OptionsWindow : Window
 {
-    private sealed record CommandChoice(string Id,string Label,bool Registered)
+    private sealed record CommandChoice(string Id, string Label)
     {
-        public override string ToString()=>Label+" · "+Id+(Registered?"":"  (backend not available)");
+        public override string ToString() => Label + " · " + Id;
     }
+    private sealed record PreferenceRow(string Category, string Search, Control View, Action Reload, Action Reset);
     private readonly MainWindowViewModel _model;
-    private readonly ComboBox _context=new(){Name="HotkeyContext",MinWidth=200};
-    private readonly TextBox _filter=new(){Name="HotkeyFilter",PlaceholderText="Filter commands…"};
-    private readonly ListBox _commands=new(){Name="HotkeyCommands"};
-    private readonly ListBox _bindings=new(){Name="EffectiveHotkeys",MinHeight=72};
-    private readonly TextBox _gesture=new(){Name="HotkeyGesture",IsVisible=false};
-    private readonly TextBox _capture=new(){Name="HotkeyCapture",PlaceholderText="Click here, then press the shortcut",IsReadOnly=true};
-    private readonly TextBlock _status=new(){Name="HotkeyStatus",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
-    private readonly CheckBox _global=new(){Name="GlobalTimingHotkeys",Content="Global timing keypad overrides (Medusa)"};
-    private bool _refreshing;
-    private HotkeyContext Context=>(HotkeyContext)(_context.SelectedItem??HotkeyContext.Default);
-    private CommandChoice? Choice=>_commands.SelectedItem as CommandChoice;
+    private AppSettings _baseline, _draft;
+    private HotkeyProfile _hotkeys;
+    private readonly List<PreferenceRow> _rows = [];
+    private readonly NameScope _names = new();
+    private readonly ListBox _navigation = new() { Name = "OptionsCategories", MinWidth = 155 };
+    private readonly TextBox _search = new() { Name = "OptionsSearch", PlaceholderText = "Search all settings…" };
+    private readonly TextBlock _status = new() { Name = "OptionsStatus", TextWrapping = TextWrapping.Wrap };
+    private readonly StackPanel _form = new() { Spacing = 14, Margin = new Thickness(18, 12) };
+    private readonly ComboBox _context = new() { Name = "HotkeyContext", MinWidth = 140 };
+    private readonly TextBox _filter = new() { Name = "HotkeyFilter", PlaceholderText = "Filter commands…" };
+    private readonly ListBox _commands = new() { Name = "HotkeyCommands" };
+    private readonly ListBox _bindings = new() { Name = "EffectiveHotkeys", MaxHeight = 110, MinHeight = 55 };
+    private readonly TextBox _gesture = new() { Name = "HotkeyGesture", IsVisible = false };
+    private readonly TextBox _capture = new() { Name = "HotkeyCapture", PlaceholderText = "Press a shortcut here", IsReadOnly = true };
+    private readonly TextBlock _hotkeyStatus = new() { Name = "HotkeyStatus", TextWrapping = TextWrapping.Wrap };
+    private bool _loading, _applying;
+    private CheckBox? _globalHotkeys;
+    private HotkeyContext Context => (HotkeyContext)(_context.SelectedItem ?? HotkeyContext.Default);
+    private CommandChoice? Choice => _commands.SelectedItem as CommandChoice;
 
-    public OptionsWindow(MainWindowViewModel model,bool externalTools=false)
+    public OptionsWindow(MainWindowViewModel model, bool externalTools = false)
     {
-        _model=model;Title="Options — Keyboard shortcuts";Name="OptionsDialog";Width=860;Height=620;MinWidth=650;MinHeight=460;
-        var names=new NameScope();NameScope.SetNameScope(this,names);
-        foreach(var control in new Control[]{_context,_filter,_commands,_bindings,_gesture,_capture,_status,_global})names.Register(control.Name!,control);
-        WindowStartupLocation=WindowStartupLocation.CenterOwner;
-        // This grid belongs to the Keyboard shortcuts tab. Do not attach it to
-        // the Window first: Avalonia cannot reparent a live logical child into
-        // TabControl during native dialog layout.
-        var root=new Grid{Margin=new Thickness(12),RowDefinitions=new("Auto,Auto,*,Auto,Auto"),RowSpacing=8};
-        var heading=new StackPanel{Orientation=Orientation.Horizontal,Spacing=12};root.Children.Add(heading);
-        heading.Children.Add(new TextBlock{Text="Context",VerticalAlignment=VerticalAlignment.Center});heading.Children.Add(_context);heading.Children.Add(_global);
-        _context.ItemsSource=Enum.GetValues<HotkeyContext>();_context.SelectedItem=HotkeyContext.Default;
-        At(root,_filter,1);
-        var body=new Grid{ColumnDefinitions=new("3*,2*"),ColumnSpacing=10};At(root,body,2);body.Children.Add(_commands);
-        var edit=new StackPanel{Spacing=8};Grid.SetColumn(edit,1);body.Children.Add(edit);
-        edit.Children.Add(new TextBlock{Text="Current bindings",FontWeight=Avalonia.Media.FontWeight.SemiBold});edit.Children.Add(_bindings);
-        edit.Children.Add(new TextBlock{Text="Shortcut",FontWeight=Avalonia.Media.FontWeight.SemiBold});
-        edit.Children.Add(_gesture);edit.Children.Add(_capture);
-        var row=new WrapPanel{Orientation=Orientation.Horizontal};edit.Children.Add(row);
-        Button Action(string text,string name,Func<Task> action)
+        _model = model; _baseline = _draft = model.CaptureOptions();
+        _hotkeys = new(model.HotkeyProfile.Defaults, _draft.HotkeyOverrides);
+        Name = "OptionsDialog"; Title = "Options"; Width = 900; Height = 650; MinWidth = 640; MinHeight = 420;
+        WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        NameScope.SetNameScope(this, _names);
+        Register(_navigation); Register(_search); Register(_status);
+        var defaults = new AppSettings().Normalize();
+        ChoiceSetting("Appearance", "Theme", "Use the system appearance, light or dark colors.", "ThemePreference", Enum.GetValues<ThemePreference>(), s => s.Theme, (s,v) => s with { Theme=v }, defaults);
+        var font = new FontPicker { Name="UiFontFamily", HorizontalAlignment=HorizontalAlignment.Stretch };
+        Add("Appearance", "Application UI font", "Search installed families or enter a name. Blank means System Default. Missing fonts fall back; subtitle styles and rendered ASS are independent.", font,
+            () => font.FontName=_draft.UiFontFamily??"", () => _draft=_draft with { UiFontFamily=null });
+        font.PropertyChanged += (_,change) => { if (change.Property==FontPicker.FontNameProperty&&!_loading) { _draft=_draft with { UiFontFamily=font.FontName }; PreviewFont(); } };
+        Number("Appearance", "UI font size", "Interface size in device independent pixels (9–24).", "UiFontSize", 9,24, s=>(decimal)(s.UiFontSize??12), (s,v)=>s with { UiFontSize=(double)v }, defaults);
+        var sample = new TextBlock { Text="Yoake — 日本語　မြန်မာစာ\nMixed scripts: á こんにちは မင်္ဂလာပါ", TextWrapping=TextWrapping.Wrap };
+        Add("Appearance", "Live preview", "Font changes preview across the application. Cancel restores the last applied font.", sample, ()=>{}, ()=>{});
+        var resetFont = new Button { Name="ResetUiFont", Content="System Default" };
+        resetFont.Click += (_,_) => { _draft=_draft with { UiFontFamily=null, UiFontSize=null }; Reload(); };
+        Add("Appearance", "Reset application font", "Restore the default interface family and size.", resetFont, ()=>{}, ()=>{});
+        Toggle("General", "Show toolbar", "Keep the command toolbar visible.", "ToolbarVisible", s=>s.ToolbarVisible==true,(s,v)=>s with { ToolbarVisible=v }, defaults);
+        Toggle("Editor", "Better View", "Show hard line breaks and compact motion data in the subtitle editor.", "BetterView", s=>s.BetterView==true,(s,v)=>s with { BetterView=v }, defaults);
+        Toggle("Editor", "Show Original", "Display the original line text beside translation controls.", "ShowOriginal", s=>s.ShowOriginal,(s,v)=>s with { ShowOriginal=v }, defaults);
+        ChoiceSetting("Subtitle grid", "Override tag display", "Show full tags, simplified tags or hide tags in the grid. Source is preserved.", "GridTagDisplay", Enum.GetValues<GridTagDisplayMode>(),s=>s.GridTagDisplay!.Value,(s,v)=>s with { GridTagDisplay=v }, defaults);
+        Toggle("Audio", "Spectrogram", "Display the spectrum instead of the waveform.", "AudioSpectrum", s=>s.AudioSpectrum==true,(s,v)=>s with { AudioSpectrum=v }, defaults);
+        Toggle("Audio", "Autoscroll", "Follow the selected subtitle in the audio display.", "AudioAutoScroll", s=>s.AudioAutoScroll==true,(s,v)=>s with { AudioAutoScroll=v }, defaults);
+        Toggle("Timing", "Auto-commit timing", "Commit audio marker adjustments automatically.", "AudioAutoCommit", s=>s.AudioAutoCommit==true,(s,v)=>s with { AudioAutoCommit=v }, defaults);
+        Toggle("Timing", "Advance after commit", "Move to the next line after committing audio timing.", "AudioAutoNext", s=>s.AudioAutoNext==true,(s,v)=>s with { AudioAutoNext=v }, defaults);
+        Number("Timing", "Default line duration", "Duration for a new audio timing range, in milliseconds.", "AudioDefaultDuration",10,600000,s=>s.AudioDefaultDuration!.Value,(s,v)=>s with { AudioDefaultDuration=(int)v }, defaults);
+        Number("Timing", "Lead-in", "Time added before a line by the lead-in action, in milliseconds.", "AudioLeadIn",0,60000,s=>s.AudioLeadIn!.Value,(s,v)=>s with { AudioLeadIn=(int)v }, defaults);
+        Number("Timing", "Lead-out", "Time added after a line by the lead-out action, in milliseconds.", "AudioLeadOut",0,60000,s=>s.AudioLeadOut!.Value,(s,v)=>s with { AudioLeadOut=(int)v }, defaults);
+        Toggle("Video", "Seek to selected subtitle", "Jump to the first visible frame when selecting a line.", "VideoAutoSeekOption",s=>s.VideoAutoSeek==true,(s,v)=>s with { VideoAutoSeek=v }, defaults);
+        Toggle("Video", "Overscan guides", "Show safe area guides over the video preview.", "VideoOverscan",s=>s.VideoOverscan,(s,v)=>s with { VideoOverscan=v }, defaults);
+        Number("Video", "Fast jump (frames)", "Number of frames skipped by fast video navigation.", "VideoFastJumpStep",1,1000000,s=>s.VideoFastJumpStep!.Value,(s,v)=>s with { VideoFastJumpStep=(int)v }, defaults);
+        Paths("Automation", "Autoload directories", "One path per line. Keeps the existing Automation directory structure. Scripts use the Aegisub 3.2.2 API. Applying changed paths reloads scripts.", "AutomationAutoload",s=>s.AutomationAutoloadDirectories??MainWindowViewModel.DefaultAutomationAutoloadDirectories,(s,v)=>s with { AutomationAutoloadDirectories=v });
+        Paths("Automation", "Include directories", "One path per line; ?data and ?user aliases are supported.", "AutomationIncludes",s=>s.AutomationIncludeDirectories??MainWindowViewModel.DefaultAutomationIncludeDirectories,(s,v)=>s with { AutomationIncludeDirectories=v });
+        Toggle("Keyboard shortcuts", "Global timing keypad overrides (Medusa)", "Allow global timing shortcuts outside the audio panel.", "GlobalTimingHotkeys",s=>s.GlobalTimingHotkeys,(s,v)=>s with { GlobalTimingHotkeys=v }, defaults);
+        Toggle("Recovery", "Automatically save recovery snapshots", "Retain up to ten versions per document within a 512 MiB profile budget.", "AutosaveEnabled",s=>s.AutosaveEnabled==true,(s,v)=>s with { AutosaveEnabled=v }, defaults);
+        Number("Recovery", "Autosave interval", "Seconds between recovery snapshots. Does not overwrite the original subtitle file.", "AutosaveInterval",1,86400,s=>s.AutosaveIntervalSeconds!.Value,(s,v)=>s with { AutosaveIntervalSeconds=(int)v }, defaults);
+        TextSetting("Recovery", "Recovery directory", "Blank uses this profile's recovery directory. Relative paths are resolved from the profile.", "RecoveryDirectory",s=>s.RecoveryDirectory??"",(s,v)=>s with { RecoveryDirectory=v }, defaults);
+        var assDraw=TextSetting("External tools", "ASSDraw executable", "Blank uses the bundled ASSDraw fork. Choose an existing executable to override it.", "AssDrawExecutablePath",s=>s.AssDrawExecutable??"",(s,v)=>s with { AssDrawExecutable=v }, defaults);
+        var browse=new Button { Name="AssDrawBrowse", Content="Choose executable…" };
+        browse.Click += async (_,_) =>
         {
-            var button=new Button{Content=text,Name=name,Margin=new Thickness(0,0,5,5)};
-            names.Register(name,button);
-            button.Click+=async(_,_)=>{await action();};row.Children.Add(button);return button;
-        }
-        Action("Add","AddHotkey",()=>Modify("add"));Action("Change","ChangeHotkey",()=>Modify("change"));Action("Remove","RemoveHotkey",()=>Modify("remove"));
-        Action("Clear command","ClearHotkeys",()=>Apply("settings/hotkeys/set",Choice is {} choice?new HotkeyChange(Context,choice.Id,[]):null));
-        Action("Reset command","ResetCommandHotkeys",()=>Apply("settings/hotkeys/reset-command",Choice is {} choice?new HotkeyCommandReset(Context,choice.Id):null));
-        Action("Reset context","ResetContextHotkeys",()=>Apply("settings/hotkeys/reset-context",Context));Action("Reset all","ResetAllHotkeys",()=>Apply("settings/hotkeys/reset-all"));
-        edit.Children.Add(new TextBlock{Text="Changes apply and save immediately. Each context can bind the same key differently. A conflict leaves existing bindings unchanged.",TextWrapping=Avalonia.Media.TextWrapping.Wrap});
-        var step=new NumericUpDown{Name="VideoFastJumpStep",Minimum=1,Maximum=1000000,Value=_model.VideoFastJumpStep,Width=100};names.Register(step.Name!,step);
-        var stepRow=new StackPanel{Orientation=Orientation.Horizontal,Spacing=8};stepRow.Children.Add(new TextBlock{Text="Fast video jump (frames)",VerticalAlignment=VerticalAlignment.Center});stepRow.Children.Add(step);edit.Children.Add(stepRow);
-        step.ValueChanged+=(_,_)=>_model.VideoFastJumpStep=step.Value;
-        At(root,_status,3);var close=new Button{Content="Close",HorizontalAlignment=HorizontalAlignment.Right,IsCancel=true};close.Click+=(_,_)=>Close();At(root,close,4);
-        _context.SelectionChanged+=(_,_)=>RefreshCommands();_filter.TextChanged+=(_,_)=>RefreshCommands();
-        _commands.SelectionChanged+=(_,_)=>RefreshBindings();_bindings.SelectionChanged+=(_,_)=>{if(_bindings.SelectedItem is string key){_gesture.Text=key;_capture.Text=key;}};
-        _capture.AddHandler(InputElement.KeyDownEvent,(_,args)=>
-        {
-            args.Handled=true;
-            if(args.Key is Key.None or Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)return;
-            var modifiers=EditorKeyNames.FromModifiers(args.KeyModifiers);
-            _gesture.Text=new HotkeyGesture(EditorKeyNames.FromEvent(args),modifiers).Format();_capture.Text=_gesture.Text;
-        },RoutingStrategies.Tunnel);
-        _global.Click+=async(_,_)=>{if(!_refreshing)await Apply("app/toggle/global_hotkeys");};
-        _model.HotkeyProfile.Changed+=ProfileChanged;_model.Registry.StateChanged+=CommandStateChanged;
-        Closed+=(_,_)=>{_model.HotkeyProfile.Changed-=ProfileChanged;_model.Registry.StateChanged-=CommandStateChanged;};
-        RefreshCommands();
-        var autosave=new StackPanel{Margin=new Thickness(12),Spacing=8};
-        var enabled=new CheckBox{Name="AutosaveEnabled",Content="Automatically save recovery snapshots",IsChecked=model.AutosaveEnabled};
-        var interval=new NumericUpDown{Name="AutosaveInterval",Minimum=1,Maximum=86400,Value=model.AutosaveIntervalSeconds,Width=120,HorizontalAlignment=HorizontalAlignment.Left};
-        var directory=new TextBox{Name="RecoveryDirectory",Text=model.RecoveryDirectory,PlaceholderText="Blank uses this profile's recovery directory"};
-        var applyAutosave=new Button{Name="AutosaveApply",Content="Apply autosave settings",HorizontalAlignment=HorizontalAlignment.Left};
-        var autosaveStatus=new TextBlock{Name="AutosaveOptionsStatus",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
-        foreach(var control in new Control[]{enabled,interval,directory,applyAutosave,autosaveStatus})names.Register(control.Name!,control);
-        autosave.Children.Add(enabled);autosave.Children.Add(new TextBlock{Text="Interval (seconds)"});autosave.Children.Add(interval);
-        autosave.Children.Add(new TextBlock{Text="Recovery directory"});autosave.Children.Add(directory);
-        autosave.Children.Add(new TextBlock{Text="Defaults: enabled, every 60 seconds. Keeps up to 10 versions per document, with a 512 MiB profile budget. Originals, dirty state and undo are unaffected. Recovery versions remain until pruned or explicitly discarded.",TextWrapping=Avalonia.Media.TextWrapping.Wrap});
-        autosave.Children.Add(applyAutosave);autosave.Children.Add(autosaveStatus);
-        applyAutosave.Click+=async(_,_)=>
-        {
-            var success=await model.Registry.InvokeAsync("settings/autosave",new(),new AutosaveOptions(enabled.IsChecked==true,(int)(interval.Value??60),directory.Text));
-            autosaveStatus.Text=success?"Autosave settings saved.":model.SubtitleStatus;
+            try { var files=await StorageProvider.OpenFilePickerAsync(new() { Title="Choose ASSDraw executable", AllowMultiple=false }); if(files.FirstOrDefault() is {} file) assDraw.Text=file.Path.LocalPath; }
+            catch(Exception error) { _status.Text=error.Message; }
         };
-        var tools=new StackPanel{Margin=new Thickness(12),Spacing=8};
-        var assDraw=new TextBox{Name="AssDrawExecutablePath",Text=model.AssDrawExecutable,PlaceholderText="Blank uses the ASSDraw fork bundled with Yoake"};
-        var assDrawBrowse=new Button{Name="AssDrawBrowse",Content="Choose executable…",HorizontalAlignment=HorizontalAlignment.Left};
-        var assDrawApply=new Button{Name="AssDrawPathApply",Content="Save ASSDraw3 path",HorizontalAlignment=HorizontalAlignment.Left,Command=new RegistryCommand(model.Registry,"settings/assdraw/path",()=>new(model.ActiveDocumentId),parameterFactory:()=>assDraw.Text??"")};
-        var assDrawStatus=new TextBlock{Name="AssDrawPathStatus",TextWrapping=Avalonia.Media.TextWrapping.Wrap};
-        foreach(var control in new Control[]{assDraw,assDrawBrowse,assDrawApply,assDrawStatus})names.Register(control.Name!,control);
-        tools.Children.Add(new TextBlock{Text="ASSDraw3 external drawing tool"});tools.Children.Add(assDraw);tools.Children.Add(assDrawBrowse);tools.Children.Add(assDrawApply);
-        tools.Children.Add(new TextBlock{Text="Yoake includes ASSDraw3. Leave the path blank to use the bundled fork, or choose another existing build. ASSDraw opens separately; use its Copy ASS action to copy a drawing into subtitle text.",TextWrapping=Avalonia.Media.TextWrapping.Wrap});tools.Children.Add(assDrawStatus);
-        assDrawBrowse.Click+=async(sender,args)=>
-        {
-            try{var files=await StorageProvider.OpenFilePickerAsync(new(){Title="Choose ASSDraw3 executable",AllowMultiple=false,FileTypeFilter=[new Avalonia.Platform.Storage.FilePickerFileType("Windows executable"){Patterns=["*.exe"]}]});if(files.FirstOrDefault() is {} file)assDraw.Text=file.Path.LocalPath;}
-            catch(Exception error){model.Registry.ReportFailure("settings/assdraw/path",error);}
-        };
-        void AssDrawFeedback(object? sender,System.ComponentModel.PropertyChangedEventArgs args){if(args.PropertyName==nameof(MainWindowViewModel.SubtitleStatus))assDrawStatus.Text=model.SubtitleStatus;}
-        model.PropertyChanged+=AssDrawFeedback;Closed+=(sender,args)=>model.PropertyChanged-=AssDrawFeedback;
-        tools.AddHandler(InputElement.KeyDownEvent,(sender,args)=>
-        {
-            if(args.Key is not (Key.Enter or Key.Escape))return;
-            if(assDraw.IsKeyboardFocusWithin&&assDraw.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))args.Handled=true;
-        },RoutingStrategies.Tunnel);
-        var video=new StackPanel{Margin=new Thickness(12),Spacing=8};
-        video.Children.Add(new TextBlock{Text="Video",FontWeight=Avalonia.Media.FontWeight.SemiBold,FontSize=15});
-        var autoSeek=new CheckBox{Name="VideoAutoSeekOption",Content="Jump to the selected subtitle's first visible frame",IsChecked=model.VideoAutoSeek,Command=model.Actions["video/autoseek"]};
-        names.Register(autoSeek.Name!,autoSeek);video.Children.Add(autoSeek);
-        video.Children.Add(new TextBlock{Text="Video zoom and navigation",FontWeight=Avalonia.Media.FontWeight.SemiBold,Margin=new Thickness(0,10,0,0)});
-        video.Children.Add(new TextBlock{Text="Scroll: resize the video area\nCtrl + scroll: zoom the picture around the pointer\nMiddle-drag: pan the picture\nRight-click: video options and reset pan",TextWrapping=Avalonia.Media.TextWrapping.Wrap});
-        void VideoFeedback(object? sender,System.ComponentModel.PropertyChangedEventArgs args){if(args.PropertyName==nameof(MainWindowViewModel.VideoAutoSeek))autoSeek.IsChecked=model.VideoAutoSeek;}
-        model.PropertyChanged+=VideoFeedback;Closed+=(sender,args)=>model.PropertyChanged-=VideoFeedback;
-        // Font changes are previewed in all windows, but are persisted only on Apply/OK.
-        // Closing the dialog restores the most recently applied value.
-        var font = new FontPicker { Name="UiFontFamily", FontName=model.UiFontFamily??"", HorizontalAlignment=HorizontalAlignment.Stretch };
-        var fontSize = new NumericUpDown { Name="UiFontSize", Minimum=9, Maximum=24, Increment=1, Value=(decimal)(model.UiFontSize??12), Width=110, HorizontalAlignment=HorizontalAlignment.Left };
-        var sample = new TextBlock { Text="Yoake — 日本語　မြန်မာစာ\nMixed scripts: á こんにちは မင်္ဂလာပါ", TextWrapping=Avalonia.Media.TextWrapping.Wrap, Margin=new Thickness(0,8) };
-        var fontStatus = new TextBlock { Name="UiFontStatus", TextWrapping=Avalonia.Media.TextWrapping.Wrap };
-        var appearance = new StackPanel { Margin=new Thickness(16), Spacing=8 };
-        appearance.Children.Add(new TextBlock { Text="Appearance and Fonts", FontSize=18, FontWeight=Avalonia.Media.FontWeight.SemiBold });
-        appearance.Children.Add(new TextBlock { Text="Application UI font", FontWeight=Avalonia.Media.FontWeight.SemiBold });
-        appearance.Children.Add(new TextBlock { Text="Leave the family blank for the system default. This does not change subtitle styles or rendering.", TextWrapping=Avalonia.Media.TextWrapping.Wrap });
-        appearance.Children.Add(font);
-        appearance.Children.Add(new TextBlock { Text="UI font size (9–24)" }); appearance.Children.Add(fontSize);
-        appearance.Children.Add(sample);
-        var actions = new WrapPanel(); appearance.Children.Add(actions);
-        var resetFont = new Button { Content="Reset to default", Name="ResetUiFont", Margin=new Thickness(0,0,6,4) };
-        var applyFont = new Button { Content="Apply", Name="ApplyUiFont", Margin=new Thickness(0,0,6,4) };
-        var okFont = new Button { Content="OK", Name="OkUiFont", Margin=new Thickness(0,0,6,4) };
-        var cancelFont = new Button { Content="Cancel", Name="CancelUiFont", Margin=new Thickness(0,0,6,4) };
-        foreach (var button in new[] { resetFont, applyFont, okFont, cancelFont }) actions.Children.Add(button);
-        appearance.Children.Add(fontStatus);
-        foreach (var control in new Control[] { font, fontSize, fontStatus, resetFont, applyFont, okFont, cancelFont }) names.Register(control.Name!,control);
-        void PreviewFont() => UiFontResources.Apply(font.FontName, (double?)(fontSize.Value));
-        font.ValueChanged += (_,_) => PreviewFont(); fontSize.ValueChanged += (_,_) => PreviewFont();
-        resetFont.Click += (_,_) => { font.FontName=""; fontSize.Value=12; PreviewFont(); };
-        async Task<bool> SaveFont()
-        {
-            var success=await model.Registry.InvokeAsync("settings/ui-font",new(),new UiFontOptions(font.FontName,(double?)(fontSize.Value)));
-            fontStatus.Text=success?"Application font saved.":model.SubtitleStatus;
-            return success;
-        }
-        applyFont.Click += async (_,_) => await SaveFont();
-        okFont.Click += async (_,_) => { if(await SaveFont()) Close(); };
-        cancelFont.Click += (_,_) => Close();
-        Closed += (_,_) => UiFontResources.Apply(model.UiFontFamily,model.UiFontSize);
+        Add("External tools", "Choose ASSDraw", "Select an external drawing tool.",browse,()=>{},()=>{});
 
-        var tabs=new TabControl{Name="OptionsTabs",TabStripPlacement=Dock.Left,ItemsSource=new TabItem[]{new(){Header="Keyboard shortcuts",Content=root},new(){Header="Autosave / Recovery",Content=new ScrollViewer{Content=autosave}},new(){Header="External tools",Content=new ScrollViewer{Content=tools}},new(){Header="Video and Playback",Content=new ScrollViewer{Content=video}},new(){Header="Appearance and Fonts",Content=new ScrollViewer{Content=appearance}}},SelectedIndex=externalTools?2:0};
-        names.Register(tabs.Name!,tabs);
-        var search = new TextBox { Name="OptionsSearch", PlaceholderText="Search settings…", Margin=new Thickness(12,10,12,6) };
-        names.Register(search.Name!,search);
-        var searchHint = new TextBlock { Margin=new Thickness(12,0,12,4), IsVisible=false, TextWrapping=Avalonia.Media.TextWrapping.Wrap };
-        var categories = new[] { "keyboard shortcuts hotkeys context bindings video fast jump", "autosave recovery interval directory", "external tools assdraw executable path", "video playback auto seek zoom pan", "appearance fonts font family size system default" };
-        search.TextChanged += (_,_) =>
+        var shortcuts=BuildShortcuts();
+        var scroll=new ScrollViewer { Name="OptionsContent", Content=_form, HorizontalScrollBarVisibility=Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+        Register(scroll);
+        var content=new Grid(); content.Children.Add(scroll); content.Children.Add(shortcuts);
+        void Filter()
         {
-            var query=(search.Text??"").Trim();
-            searchHint.IsVisible=false;
-            if(query.Length==0)return;
-            var index=Array.FindIndex(categories, text=>text.Contains(query,StringComparison.OrdinalIgnoreCase));
-            if(index>=0)tabs.SelectedIndex=index;
-            else { searchHint.Text="No matching section. Try a shorter search."; searchHint.IsVisible=true; }
+            var query=(_search.Text??"").Trim(); var category=_navigation.SelectedItem as string;
+            var terms=query.Split(' ',StringSplitOptions.RemoveEmptyEntries);
+            var matches=0;
+            foreach(var row in _rows)
+            {
+                row.View.IsVisible=query.Length==0 ? row.Category==category : terms.All(term=>row.Search.Contains(term,StringComparison.CurrentCultureIgnoreCase));
+                if(row.View.IsVisible)matches++;
+            }
+            shortcuts.IsVisible=query.Length==0&&category=="Keyboard shortcuts";
+            // The shortcut workspace owns its bounded list scrolling.
+            scroll.IsVisible=!shortcuts.IsVisible;
+            _status.Text=matches==0&&!shortcuts.IsVisible?"No matching settings.":query.Length>0?$"{matches} matching settings":"Changes take effect only after Apply or OK.";
+            scroll.Offset=default;
+        }
+        _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Timing", "Video", "Automation", "Keyboard shortcuts", "Recovery", "External tools" };
+        _navigation.SelectionChanged+=(_,_)=>{ if(!string.IsNullOrEmpty(_search.Text)) _search.Text=""; Filter(); };
+        _search.TextChanged+=(_,_)=>Filter();
+        var body=new Grid { ColumnDefinitions=new("Auto,*"), ColumnSpacing=1 }; body.Children.Add(_navigation); Grid.SetColumn(content,1); body.Children.Add(content);
+        var footer=new Grid { ColumnDefinitions=new("*,Auto"), Margin=new Thickness(12,8), ColumnSpacing=12 };
+        var restore=new Button { Name="RestoreOptionsDefaults", Content="Restore category defaults", HorizontalAlignment=HorizontalAlignment.Left };
+        ToolTip.SetTip(restore,"Reset only the selected category. Apply or OK saves the result; Cancel discards it."); Register(restore);
+        restore.Click+=(_,_)=>
+        {
+            foreach(var row in _rows.Where(r=>r.Category==_navigation.SelectedItem as string))row.Reset();
+            if(_navigation.SelectedItem as string=="Keyboard shortcuts") { _hotkeys.ResetAll(); _draft=_draft with { HotkeyOverrides=_hotkeys.Overrides }; RefreshBindings(); }
+            Reload();
         };
-        var shell=new Grid { RowDefinitions=new("Auto,Auto,*") };
-        At(shell,search,0);At(shell,searchHint,1);At(shell,tabs,2);
-        Content=shell;Title="Options";Width=900;Height=650;
-        names.Complete();
+        footer.Children.Add(restore);
+        var actions=new StackPanel { Orientation=Orientation.Horizontal, Spacing=8 }; Grid.SetColumn(actions,1);footer.Children.Add(actions);
+        foreach(var (label,name) in new[] { ("Apply","OptionsApply"),("OK","OptionsOk"),("Cancel","OptionsCancel") })
+        {
+            var button=new Button { Content=label, Name=name, MinWidth=72, IsCancel=label=="Cancel", IsDefault=label=="OK" }; Register(button);actions.Children.Add(button);
+            button.Click+=async (_,_)=>{ if(label=="Cancel")Close(); else if(await SaveAsync()&&label=="OK")Close(); };
+        }
+        var shell=new Grid { RowDefinitions=new("Auto,*,Auto,Auto") };
+        _search.Margin=new Thickness(12,10); At(shell,_search,0);At(shell,body,1);_status.Margin=new Thickness(12,6,12,0);At(shell,_status,2);At(shell,footer,3);Content=shell;
+        AddHandler(KeyDownEvent,(_,e)=>
+        {
+            if(e.Key is Key.Enter or Key.Escape && this.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))e.Handled=true;
+            if(e.Key==Key.F&&e.KeyModifiers==Avalonia.Input.KeyModifiers.Control) { _search.Focus();e.Handled=true; }
+        },RoutingStrategies.Tunnel);
+        Closing+=(_,e)=> { if(_applying)e.Cancel=true; };
+        Closed+=(_,_)=>UiFontResources.Apply(_model.UiFontFamily,_model.UiFontSize);
+        Reload();_navigation.SelectedItem=externalTools?"External tools":"General";Filter();_names.Complete();
     }
 
-    private static void At(Grid parent,Control child,int row){Grid.SetRow(child,row);parent.Children.Add(child);}
-    private void ProfileChanged(object? sender,EventArgs args)=>RefreshBindings();
-    private void CommandStateChanged(object? sender,EventArgs args)
+    private void Register(Control control) { if(control.Name is {} name)_names.Register(name,control); }
+    private void Add(string category,string label,string description,Control control,Action reload,Action reset)
     {
-        if(!Avalonia.Threading.Dispatcher.UIThread.CheckAccess()){Avalonia.Threading.Dispatcher.UIThread.Post(()=>CommandStateChanged(sender,args));return;}
-        _refreshing=true;_global.IsChecked=_model.GlobalTimingHotkeys;_refreshing=false;
+        Register(control);ToolTip.SetTip(control,description);
+        var row=new StackPanel { Spacing=4 };
+        row.Children.Add(new TextBlock { Text=category+"  /  "+label, FontWeight=FontWeight.SemiBold,TextWrapping=TextWrapping.Wrap });
+        row.Children.Add(control);
+        row.Children.Add(new TextBlock { Text=description, TextWrapping=TextWrapping.Wrap, Opacity=0.75 });
+        _form.Children.Add(row);_rows.Add(new(category,category+" "+label+" "+description,row,reload,reset));
+    }
+    private void Toggle(string category,string label,string description,string name,Func<AppSettings,bool> get,Func<AppSettings,bool,AppSettings> set,AppSettings defaults)
+    {
+        var control=new CheckBox { Name=name,Content=label };
+        Add(category,label,description,control,()=>control.IsChecked=get(_draft),()=>_draft=set(_draft,get(defaults)));
+        control.IsCheckedChanged+=(_,_)=>{if(!_loading)_draft=set(_draft,control.IsChecked==true);};
+    }
+    private void Number(string category,string label,string description,string name,decimal min,decimal max,Func<AppSettings,decimal> get,Func<AppSettings,decimal,AppSettings> set,AppSettings defaults)
+    {
+        var control=new NumericUpDown { Name=name, Minimum=min,Maximum=max,Increment=1,FormatString="0",Width=140,HorizontalAlignment=HorizontalAlignment.Left };
+        Add(category,label,description,control,()=>control.Value=get(_draft),()=>_draft=set(_draft,get(defaults)));
+        control.ValueChanged+=(_,_)=>{if(!_loading&&control.Value is {} value) { _draft=set(_draft,value);if(name=="UiFontSize")PreviewFont(); }};
+    }
+    private TextBox TextSetting(string category,string label,string description,string name,Func<AppSettings,string> get,Func<AppSettings,string,AppSettings> set,AppSettings defaults)
+    {
+        var control=new TextBox { Name=name };
+        Add(category,label,description,control,()=>control.Text=get(_draft),()=>_draft=set(_draft,get(defaults)));
+        control.TextChanged+=(_,_)=>{if(!_loading)_draft=set(_draft,control.Text??"");};return control;
+    }
+    private void Paths(string category,string label,string description,string name,Func<AppSettings,string[]> get,Func<AppSettings,string[],AppSettings> set)
+    {
+        var control=TextSetting(category,label,description,name,s=>string.Join(Environment.NewLine,get(s)),(s,v)=>set(s,v.Split(['\r','\n'],StringSplitOptions.RemoveEmptyEntries|StringSplitOptions.TrimEntries)),new AppSettings());
+        control.AcceptsReturn=true;control.TextWrapping=TextWrapping.Wrap;control.MinHeight=85;
+    }
+    private void ChoiceSetting<T>(string category,string label,string description,string name,T[] values,Func<AppSettings,T> get,Func<AppSettings,T,AppSettings> set,AppSettings defaults)
+    {
+        var control=new ComboBox { Name=name,ItemsSource=values,MinWidth=160,HorizontalAlignment=HorizontalAlignment.Left };
+        Add(category,label,description,control,()=>control.SelectedItem=get(_draft),()=>_draft=set(_draft,get(defaults)));
+        control.SelectionChanged+=(_,_)=>{if(!_loading&&control.SelectedItem is T value)_draft=set(_draft,value);};
+    }
+    private void Reload() { _loading=true;try { foreach(var row in _rows)row.Reload(); if(_globalHotkeys is not null)_globalHotkeys.IsChecked=_draft.GlobalTimingHotkeys; }finally { _loading=false; } PreviewFont(); }
+    private void PreviewFont()=>UiFontResources.Apply(_draft.UiFontFamily,_draft.UiFontSize);
+    private async Task<bool> SaveAsync()
+    {
+        if(_applying)return false;_applying=true;IsEnabled=false;_status.Text="Applying settings…";
+        try
+        {
+            await _model.ApplyOptionsAsync(_baseline,_draft);
+            _baseline=_draft=_model.CaptureOptions();_hotkeys=new(_model.HotkeyProfile.Defaults,_draft.HotkeyOverrides);RefreshBindings();Reload();_status.Text="Settings saved.";return true;
+        }
+        catch(Exception error) { _status.Text="Could not apply settings: "+error.Message;return false; }
+        finally { _applying=false;IsEnabled=true; }
+    }
+    private Control BuildShortcuts()
+    {
+        foreach(var control in new Control[] { _context,_filter,_commands,_bindings,_gesture,_capture,_hotkeyStatus })Register(control);
+        var root=new Grid { Margin=new Thickness(14),RowDefinitions=new("Auto,Auto,*,Auto"),RowSpacing=8 };
+        var heading=new StackPanel { Spacing=8, Orientation=Orientation.Horizontal };heading.Children.Add(new TextBlock { Text="Context",VerticalAlignment=VerticalAlignment.Center });heading.Children.Add(_context);root.Children.Add(heading);
+        _context.ItemsSource=Enum.GetValues<HotkeyContext>();_context.SelectedItem=HotkeyContext.Default;
+        At(root,_filter,1);var body=new Grid { ColumnDefinitions=new("*,*"),ColumnSpacing=10 };At(root,body,2);body.Children.Add(_commands);
+        var edit=new StackPanel { Spacing=7 };Grid.SetColumn(edit,1);body.Children.Add(new ScrollViewer { Content=edit, [Grid.ColumnProperty]=1 });
+        _globalHotkeys=new CheckBox { Content="Global timing keypad overrides (Medusa)", IsChecked=_draft.GlobalTimingHotkeys };
+        _globalHotkeys.IsCheckedChanged+=(_,_)=>{if(!_loading)_draft=_draft with { GlobalTimingHotkeys=_globalHotkeys.IsChecked==true };};
+        edit.Children.Add(_globalHotkeys);
+        edit.Children.Add(new TextBlock { Text="Current bindings" });edit.Children.Add(_bindings);edit.Children.Add(_gesture);edit.Children.Add(_capture);
+        var buttons=new WrapPanel();edit.Children.Add(buttons);
+        foreach(var (label,name,operation) in new[] { ("Add","AddHotkey","add"),("Change","ChangeHotkey","change"),("Remove","RemoveHotkey","remove"),("Clear command","ClearHotkeys","clear"),("Reset command","ResetCommandHotkeys","reset"),("Reset context","ResetContextHotkeys","context"),("Reset all","ResetAllHotkeys","all") })
+        {
+            var button=new Button { Name=name,Content=label,Margin=new Thickness(0,0,4,4) };Register(button);buttons.Children.Add(button);button.Click+=(_,_)=>Modify(operation);
+        }
+        edit.Children.Add(new TextBlock { Text="Changes are staged until Apply or OK. A conflicting key leaves the draft bindings unchanged.",TextWrapping=TextWrapping.Wrap });At(root,_hotkeyStatus,3);
+        _context.SelectionChanged+=(_,_)=>RefreshCommands();_filter.TextChanged+=(_,_)=>RefreshCommands();_commands.SelectionChanged+=(_,_)=>RefreshBindings();
+        _bindings.SelectionChanged+=(_,_)=>{if(_bindings.SelectedItem is string key)_capture.Text=_gesture.Text=key;};
+        _capture.AddHandler(KeyDownEvent,(_,e)=>
+        {
+            e.Handled=true;
+            if(e.Key is Key.None or Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin)return;
+            _capture.Text=_gesture.Text=new HotkeyGesture(EditorKeyNames.FromEvent(e),EditorKeyNames.FromModifiers(e.KeyModifiers)).Format();
+        },RoutingStrategies.Tunnel);
+        RefreshCommands();return root;
     }
     private void RefreshCommands()
     {
         var selected=Choice?.Id;var filter=_filter.Text??"";
-        var ids=_model.Hotkeys.Bindings.Where(binding=>binding.Context==Context).Select(binding=>binding.CommandId)
-            .Concat(_model.Registry.Commands.Select(command=>command.Metadata.Id)).Distinct(StringComparer.Ordinal);
-        var choices=ids.Select(id=>_model.Registry.TryGet(id,out var command)&&command is not null
-            ?new CommandChoice(id,command.Metadata.Label,true):new CommandChoice(id,id,false))
-            .Where(choice=>choice.Id.Contains(filter,StringComparison.OrdinalIgnoreCase)||choice.Label.Contains(filter,StringComparison.OrdinalIgnoreCase))
-            .OrderBy(choice=>choice.Label,StringComparer.OrdinalIgnoreCase).ToArray();
-        _commands.ItemsSource=choices;_commands.SelectedItem=choices.FirstOrDefault(choice=>choice.Id==selected)??choices.FirstOrDefault();
-        RefreshBindings();CommandStateChanged(null,EventArgs.Empty);
+        var choices=_model.Registry.Commands.Select(c=>new CommandChoice(c.Metadata.Id,c.Metadata.Label))
+            .Concat(_hotkeys.Resolver.Bindings.Select(b=>new CommandChoice(b.CommandId,b.CommandId))).DistinctBy(c=>c.Id)
+            .Where(c=>c.Id.Contains(filter,StringComparison.OrdinalIgnoreCase)||c.Label.Contains(filter,StringComparison.OrdinalIgnoreCase)).OrderBy(c=>c.Label).ToArray();
+        _commands.ItemsSource=choices;_commands.SelectedItem=choices.FirstOrDefault(c=>c.Id==selected)??choices.FirstOrDefault();RefreshBindings();
     }
     private void RefreshBindings()
     {
-        if(!Avalonia.Threading.Dispatcher.UIThread.CheckAccess()){Avalonia.Threading.Dispatcher.UIThread.Post(RefreshBindings);return;}
-        var selected=_bindings.SelectedItem as string;
-        var keys=Choice is {} choice?_model.HotkeyProfile.EffectiveGestures(choice.Id,Context):[];
-        _bindings.ItemsSource=keys;_bindings.SelectedItem=keys.FirstOrDefault(key=>key==selected)??keys.FirstOrDefault();
+        var keys=Choice is {} choice?_hotkeys.EffectiveGestures(choice.Id,Context):[];
+        _bindings.ItemsSource=keys;_bindings.SelectedItem=keys.FirstOrDefault();
     }
-    private Task Modify(string operation)
+    private void Modify(string operation)
     {
-        if(Choice is not {} choice){_status.Text="Choose a command.";return Task.CompletedTask;}
-        var keys=_model.HotkeyProfile.EffectiveGestures(choice.Id,Context).ToList();
-        if(operation is "change" or "remove")
+        try
         {
-            if(_bindings.SelectedItem is not string selected){_status.Text="Choose a binding.";return Task.CompletedTask;}keys.Remove(selected);
+            if(operation=="all")_hotkeys.ResetAll();else if(operation=="context")_hotkeys.ResetContext(Context);
+            else
+            {
+                if(Choice is not {} choice)throw new ArgumentException("Choose a command.");
+                if(operation=="reset")_hotkeys.ResetCommand(Context,choice.Id);
+                else
+                {
+                    var keys=_hotkeys.EffectiveGestures(choice.Id,Context).ToList();
+                    if(operation is "change" or "remove") { if(_bindings.SelectedItem is not string selected)throw new ArgumentException("Choose a binding."); keys.Remove(selected); }
+                    if(operation=="clear")keys.Clear();else if(operation!="remove")keys.Add(_gesture.Text??"");
+                    _hotkeys.Set(Context,choice.Id,keys);
+                }
+            }
+            _draft=_draft with { HotkeyOverrides=_hotkeys.Overrides };RefreshBindings();_hotkeyStatus.Text="Shortcut changes staged.";
         }
-        if(operation!="remove")keys.Add(_gesture.Text??"");
-        return Apply("settings/hotkeys/set",new HotkeyChange(Context,choice.Id,keys.ToArray()));
+        catch(Exception error) when(error is ArgumentException or InvalidOperationException) { _hotkeyStatus.Text=error.Message; }
     }
-    private async Task Apply(string command,object? parameter=null)
-    {
-        var success=await _model.Registry.InvokeAsync(command,new(_model.ActiveDocumentId),parameter);
-        _status.Text=success?"Saved. Shortcuts and menus updated.":_model.SubtitleStatus;
-        RefreshBindings();CommandStateChanged(null,EventArgs.Empty);
-    }
+    private static void At(Grid parent,Control child,int row) { Grid.SetRow(child,row);parent.Children.Add(child); }
 }
