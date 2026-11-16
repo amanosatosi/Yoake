@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Yoake.Core.Hotkeys;
 using Yoake.UI.Commands;
+using Yoake.UI.Controls;
 using Yoake.UI.ViewModels;
 
 namespace Yoake.UI;
@@ -121,8 +122,59 @@ public sealed class OptionsWindow : Window
         video.Children.Add(new TextBlock{Text="Scroll: resize the video area\nCtrl + scroll: zoom the picture around the pointer\nMiddle-drag: pan the picture\nRight-click: video options and reset pan",TextWrapping=Avalonia.Media.TextWrapping.Wrap});
         void VideoFeedback(object? sender,System.ComponentModel.PropertyChangedEventArgs args){if(args.PropertyName==nameof(MainWindowViewModel.VideoAutoSeek))autoSeek.IsChecked=model.VideoAutoSeek;}
         model.PropertyChanged+=VideoFeedback;Closed+=(sender,args)=>model.PropertyChanged-=VideoFeedback;
-        var tabs=new TabControl{Name="OptionsTabs",TabStripPlacement=Dock.Left,ItemsSource=new TabItem[]{new(){Header="Keyboard shortcuts",Content=root},new(){Header="Autosave / Recovery",Content=autosave},new(){Header="External tools",Content=tools},new(){Header="Video",Content=video}},SelectedIndex=externalTools?2:0};
-        names.Register(tabs.Name!,tabs);Content=tabs;Title="Options";Height=650;
+        // Font changes are previewed in all windows, but are persisted only on Apply/OK.
+        // Closing the dialog restores the most recently applied value.
+        var font = new FontPicker { Name="UiFontFamily", FontName=model.UiFontFamily??"", HorizontalAlignment=HorizontalAlignment.Stretch };
+        var fontSize = new NumericUpDown { Name="UiFontSize", Minimum=9, Maximum=24, Increment=1, Value=(decimal)(model.UiFontSize??12), Width=110, HorizontalAlignment=HorizontalAlignment.Left };
+        var sample = new TextBlock { Text="Yoake — 日本語　မြန်မာစာ\nMixed scripts: á こんにちは မင်္ဂလာပါ", TextWrapping=Avalonia.Media.TextWrapping.Wrap, Margin=new Thickness(0,8) };
+        var fontStatus = new TextBlock { Name="UiFontStatus", TextWrapping=Avalonia.Media.TextWrapping.Wrap };
+        var appearance = new StackPanel { Margin=new Thickness(16), Spacing=8 };
+        appearance.Children.Add(new TextBlock { Text="Appearance and Fonts", FontSize=18, FontWeight=Avalonia.Media.FontWeight.SemiBold });
+        appearance.Children.Add(new TextBlock { Text="Application UI font", FontWeight=Avalonia.Media.FontWeight.SemiBold });
+        appearance.Children.Add(new TextBlock { Text="Leave the family blank for the system default. This does not change subtitle styles or rendering.", TextWrapping=Avalonia.Media.TextWrapping.Wrap });
+        appearance.Children.Add(font);
+        appearance.Children.Add(new TextBlock { Text="UI font size (9–24)" }); appearance.Children.Add(fontSize);
+        appearance.Children.Add(sample);
+        var actions = new WrapPanel(); appearance.Children.Add(actions);
+        var resetFont = new Button { Content="Reset to default", Name="ResetUiFont", Margin=new Thickness(0,0,6,4) };
+        var applyFont = new Button { Content="Apply", Name="ApplyUiFont", Margin=new Thickness(0,0,6,4) };
+        var okFont = new Button { Content="OK", Name="OkUiFont", Margin=new Thickness(0,0,6,4) };
+        var cancelFont = new Button { Content="Cancel", Name="CancelUiFont", Margin=new Thickness(0,0,6,4) };
+        foreach (var button in new[] { resetFont, applyFont, okFont, cancelFont }) actions.Children.Add(button);
+        appearance.Children.Add(fontStatus);
+        foreach (var control in new Control[] { font, fontSize, fontStatus, resetFont, applyFont, okFont, cancelFont }) names.Register(control.Name!,control);
+        void PreviewFont() => UiFontResources.Apply(font.FontName, (double?)(fontSize.Value));
+        font.ValueChanged += (_,_) => PreviewFont(); fontSize.ValueChanged += (_,_) => PreviewFont();
+        resetFont.Click += (_,_) => { font.FontName=""; fontSize.Value=12; PreviewFont(); };
+        async Task<bool> SaveFont()
+        {
+            var success=await model.Registry.InvokeAsync("settings/ui-font",new(),new UiFontOptions(font.FontName,(double?)(fontSize.Value)));
+            fontStatus.Text=success?"Application font saved.":model.SubtitleStatus;
+            return success;
+        }
+        applyFont.Click += async (_,_) => await SaveFont();
+        okFont.Click += async (_,_) => { if(await SaveFont()) Close(); };
+        cancelFont.Click += (_,_) => Close();
+        Closed += (_,_) => UiFontResources.Apply(model.UiFontFamily,model.UiFontSize);
+
+        var tabs=new TabControl{Name="OptionsTabs",TabStripPlacement=Dock.Left,ItemsSource=new TabItem[]{new(){Header="Keyboard shortcuts",Content=root},new(){Header="Autosave / Recovery",Content=new ScrollViewer{Content=autosave}},new(){Header="External tools",Content=new ScrollViewer{Content=tools}},new(){Header="Video and Playback",Content=new ScrollViewer{Content=video}},new(){Header="Appearance and Fonts",Content=new ScrollViewer{Content=appearance}}},SelectedIndex=externalTools?2:0};
+        names.Register(tabs.Name!,tabs);
+        var search = new TextBox { Name="OptionsSearch", PlaceholderText="Search settings…", Margin=new Thickness(12,10,12,6) };
+        names.Register(search.Name!,search);
+        var searchHint = new TextBlock { Margin=new Thickness(12,0,12,4), IsVisible=false, TextWrapping=Avalonia.Media.TextWrapping.Wrap };
+        var categories = new[] { "keyboard shortcuts hotkeys context bindings video fast jump", "autosave recovery interval directory", "external tools assdraw executable path", "video playback auto seek zoom pan", "appearance fonts font family size system default" };
+        search.TextChanged += (_,_) =>
+        {
+            var query=(search.Text??"").Trim();
+            searchHint.IsVisible=false;
+            if(query.Length==0)return;
+            var index=Array.FindIndex(categories, text=>text.Contains(query,StringComparison.OrdinalIgnoreCase));
+            if(index>=0)tabs.SelectedIndex=index;
+            else { searchHint.Text="No matching section. Try a shorter search."; searchHint.IsVisible=true; }
+        };
+        var shell=new Grid { RowDefinitions=new("Auto,Auto,*") };
+        At(shell,search,0);At(shell,searchHint,1);At(shell,tabs,2);
+        Content=shell;Title="Options";Width=900;Height=650;
         names.Complete();
     }
 

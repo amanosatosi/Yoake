@@ -22,6 +22,8 @@ public enum WorkspaceViewMode
 
 public sealed record AppSettings
 {
+    public string? UiFontFamily { get; init; }
+    public double? UiFontSize { get; init; }
     public string? AssDrawExecutable {get;init;}
     public bool? KaraokeAutoCut { get; init; }
     public double[] GridColumnWidths { get; init; } = [40,65,48,92,92,110,100,90];
@@ -98,7 +100,7 @@ public sealed record AppSettings
         var height = double.IsFinite(GridHeight) && GridHeight > 0 ? Math.Clamp(GridHeight, 100, 2000) : defaults.GridHeight;
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
-        return this with { GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), RecentTimecodes=(NormalizePaths(RecentTimecodes)??[]).Take(12).ToArray(), RecentVideo=(NormalizePaths(RecentVideo)??[]).Take(12).ToArray(), RecentAudio=(NormalizePaths(RecentAudio)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
+        return this with { UiFontFamily=string.IsNullOrWhiteSpace(UiFontFamily)?null:UiFontFamily.Trim(), UiFontSize=UiFontSize is {} fontSize && double.IsFinite(fontSize) && fontSize >= 9 && fontSize <= 24 ? fontSize : null, GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), RecentTimecodes=(NormalizePaths(RecentTimecodes)??[]).Take(12).ToArray(), RecentVideo=(NormalizePaths(RecentVideo)??[]).Take(12).ToArray(), RecentAudio=(NormalizePaths(RecentAudio)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
             HotkeyOverrides=HotkeyProfile.Normalize(AudioStopHotkeysMigrated?HotkeyOverrides:AegisubHotkeyDefaults.MigrateAudioStopOverrides(HotkeyOverrides), report),
             AudioStopHotkeysMigrated=true,
             ToolbarVisible=ToolbarVisible??true,

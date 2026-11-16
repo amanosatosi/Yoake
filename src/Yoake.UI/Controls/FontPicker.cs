@@ -83,7 +83,7 @@ public sealed class FontPicker : UserControl
     }
     private void Refresh()
     {
-        _status.Text=_fonts.Length==0?"":FontAvailability.IsInstalled(FontName,_fonts)?"":"Unavailable family; exact name retained";
+        _status.Text=_fonts.Length==0||string.IsNullOrWhiteSpace(FontName)?"":FontAvailability.IsInstalled(FontName,_fonts)?"":"Unavailable family; exact name retained";
         _status.IsVisible=!string.IsNullOrEmpty(_status.Text);
     }
 }

@@ -10,7 +10,7 @@ public sealed class AutomationPathsWindow : Window
 {
     public AutomationPathsWindow(IReadOnlyList<string> autoload, IReadOnlyList<string> includes)
     {
-        Name = "AutomationSearchPaths"; Title = "Automation search paths"; Width = 620; Height = 450; MinWidth = 460; MinHeight = 340; FontSize = 12;
+        Name = "AutomationSearchPaths"; Title = "Automation search paths"; Width = 620; Height = 450; MinWidth = 460; MinHeight = 340;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var root = new Grid { RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto,*,Auto,Auto"), RowSpacing = 5, Margin = new Thickness(10) };
         root.Children.Add(new TextBlock { Text = "One directory per line, in search order. Use absolute paths or ?data / ?user tokens.", TextWrapping = TextWrapping.Wrap });

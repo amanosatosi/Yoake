@@ -40,6 +40,7 @@ public partial class App : Application
             var settingsWarnings = new List<string>();
             var settings = settingsStore.Load(message => { settingsWarnings.Add(message); StartupDiagnostics.Checkpoint(message); });
             StartupDiagnostics.Checkpoint("Settings loaded and normalized");
+            UiFontResources.Apply(settings.UiFontFamily, settings.UiFontSize);
 
             var logPath = System.IO.Path.Combine(
                 System.IO.Path.GetDirectoryName(settingsPath) ?? AppContext.BaseDirectory,

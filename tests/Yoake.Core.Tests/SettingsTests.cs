@@ -4,6 +4,29 @@ namespace Yoake.Core.Tests;
 
 public sealed class SettingsTests
 {
+    [Fact]
+    public void UiFontRoundTripsAndSurvivesDamagedUnrelatedSetting()
+    {
+        var root=Path.Combine(Path.GetTempPath(),"yoake-font-settings-"+Guid.NewGuid());
+        Directory.CreateDirectory(root);
+        var store=new SettingsStore(Path.Combine(root,"settings.json"));
+        try
+        {
+            store.Save(new AppSettings { UiFontFamily=" Noto Sans Myanmar ", UiFontSize=15, GlobalTimingHotkeys=true });
+            var loaded=store.Load();
+            Assert.Equal("Noto Sans Myanmar",loaded.UiFontFamily);
+            Assert.Equal(15,loaded.UiFontSize);
+            Assert.True(loaded.GlobalTimingHotkeys);
+            File.WriteAllText(store.Path,"{\"uiFontFamily\":\"日本語\",\"uiFontSize\":16,\"viewMode\":{}}");
+            loaded=store.Load();
+            Assert.Equal("日本語",loaded.UiFontFamily);
+            Assert.Equal(16,loaded.UiFontSize);
+            Assert.Null((loaded with { UiFontSize=double.NaN }).Normalize().UiFontSize);
+            Assert.Null((loaded with { UiFontFamily="  " }).Normalize().UiFontFamily);
+        }
+        finally { Directory.Delete(root,true); }
+    }
+
     [Theory]
     [InlineData(WorkspaceViewMode.Default)]
     [InlineData(WorkspaceViewMode.Audio)]

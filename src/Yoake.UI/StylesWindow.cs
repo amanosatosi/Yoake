@@ -48,7 +48,7 @@ public sealed class StylesWindow : Window
         var libraryFile=libraryPath??Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),"Yoake","style-library.json");
         _library=new(libraryFile);_recentColorsPath=Path.Combine(Path.GetDirectoryName(libraryFile)!,"recent-colors.txt");
         if(_library.Collections.Count==0)_library.Create("Personal");
-        FontSize=12;Title="Styles Manager";Width=1180;Height=740;MinWidth=940;MinHeight=570;WindowStartupLocation=WindowStartupLocation.CenterOwner;
+        Title="Styles Manager";Width=1180;Height=740;MinWidth=940;MinHeight=570;WindowStartupLocation=WindowStartupLocation.CenterOwner;
         this.Bind(BackgroundProperty,this.GetResourceObservable("AppBackgroundBrush"));
         var root=new Grid{ColumnDefinitions=new("1*,4,1*,4,3.4*"),RowDefinitions=new("*,Auto"),Margin=new Thickness(8),ColumnSpacing=5,RowSpacing=5};Content=root;
         if(splitWeights is {Length:3})for(var i=0;i<3;i++)root.ColumnDefinitions[i*2].Width=new GridLength(splitWeights[i],GridUnitType.Star);

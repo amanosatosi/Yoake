@@ -4,6 +4,10 @@
              RequestedThemeVariant="Default">
   <Application.Styles>
     <FluentTheme />
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="{DynamicResource YoakeUiFontFamily}" />
+      <Setter Property="FontSize" Value="{DynamicResource YoakeUiFontSize}" />
+    </Style>
     <StyleInclude Source="avares://Yoake.UI/Controls/AssEditor.axaml" />
   </Application.Styles>
   <Application.Resources>

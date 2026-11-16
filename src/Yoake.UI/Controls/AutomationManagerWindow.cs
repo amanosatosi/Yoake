@@ -12,7 +12,7 @@ public sealed class AutomationManagerWindow : Window
 {
     public AutomationManagerWindow(MainWindowViewModel model)
     {
-        Name = "AutomationManager"; Title = "Automation Manager"; Width = 720; Height = 500; MinWidth = 500; MinHeight = 380; FontSize = 12;
+        Name = "AutomationManager"; Title = "Automation Manager"; Width = 720; Height = 500; MinWidth = 500; MinHeight = 380;
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         var grid = new Grid { RowDefinitions = new RowDefinitions("Auto,2*,Auto,*,Auto"), Margin = new Thickness(10), RowSpacing = 6 };
         grid.Children.Add(new TextBlock { Text = "Autoload scripts and scripts attached to this document" });
