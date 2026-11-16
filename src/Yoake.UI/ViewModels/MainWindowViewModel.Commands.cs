@@ -126,7 +126,7 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.FormatUnderline,"Underline",()=>ToggleFormat("u"),HasLine);
         S(CommandIds.FormatStrikeout,"Strikeout",()=>ToggleFormat("s"),HasLine);
         RegisterFormattingDialogCommands();
-        S(CommandIds.FormatReset,"Reset to line style",()=>FormatText("Reset formatting",(text,start,end,style)=>AssFormatting.Reset(text,start,end,style,ResolveFormatStyle)),HasLine);
+        S(CommandIds.FormatReset,"Reset to line style",()=>FormatText("Reset formatting",(text,start,end,style)=>AssFormatting.Reset(text,start,end,style,ResolveFormatStyle),true),HasLine);
         R(CommandIds.EditComment,"Comment / Uncomment Lines",invocation=>{if(invocation.Parameter is bool desired)RunEdit(e=>{if(SelectedEvent!.IsComment!=desired)e.ToggleComment([SelectedEvent]);});return ValueTask.CompletedTask;},HasLine);
 
         void GestureStep(Action action){try{action();}catch{CancelGestureCore();throw;}}

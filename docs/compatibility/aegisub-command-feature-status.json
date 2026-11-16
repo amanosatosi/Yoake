@@ -571,7 +571,7 @@
     {
       "id": "audio/open/video",
       "yoake_command": "audio/open/video",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Uses the current real video source path through the existing transactional OpenMediaTrackAsync audio replacement; retains video provider/frame maps, subtitle drafts, timing selection and undo.",
       "exposure": [
         "CommandRegistry",
@@ -581,7 +581,7 @@
         "MediaOwnershipWorkflowTests",
         "MediaOwnershipUiAcceptanceVerification"
       ],
-      "notes": "Implemented explicit current-video audio reuse. Dummy video disables this action; current-video source has the same stream-selection menu after opening. Windows native/provider acceptance is pending for this addition. Project Save records actual provider source paths, zero-based audio stream, external VFR timecodes and keyframes through undoable project properties; user Open restores these without changing ASS. Explicit closure persists and failed saves roll back. Saved stream failures fall back to the default with a visible status. Local 844 Core/233 UI tests pass; new packaged verification is pending.",
+      "notes": "Explicit current-video audio reuse and source-stream chooser pass Windows NativeAOT/provider acceptance in run 43904977731, repeated in 43942681506. Dummy video disables the action. Actual selected PCM stream, cancel/failure rollback, independent video/audio ownership, Save/reopen with zero-based stream, external VFR timecodes/keyframes and explicit closure are verified. Saved stream failure falls back visibly to the default.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1140,9 +1140,12 @@
         "EditorWorkflowTests",
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
         "FormattingDialogWorkflowTests",
-        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)",
+        "MultilineFormattingWorkflowTests",
+        "FormattingSelectionMappingTests",
+        "MultilineFormattingUiVerification"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
+      "notes": "Font/color application now covers all selected ordinary lines with mapped visible Unicode ranges, per-line styles, protected Mangetsu metadata/Effect inheritance and one undo operation. Dialog results retain document/draft/range/selection/cancellation fences. Local 876 Core/250 UI tests and native Linux font/color batch dialogs pass; Windows verification of multi-line application is pending. Yoake preserves its selection-end formatting restoration; full upstream defaults/font attribute parity remains under review.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Alt-3"
@@ -1163,9 +1166,12 @@
         "EditorWorkflowTests",
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
         "FormattingDialogWorkflowTests",
-        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)",
+        "MultilineFormattingWorkflowTests",
+        "FormattingSelectionMappingTests",
+        "MultilineFormattingUiVerification"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
+      "notes": "Font/color application now covers all selected ordinary lines with mapped visible Unicode ranges, per-line styles, protected Mangetsu metadata/Effect inheritance and one undo operation. Dialog results retain document/draft/range/selection/cancellation fences. Local 876 Core/250 UI tests and native Linux font/color batch dialogs pass; Windows verification of multi-line application is pending. Yoake preserves its selection-end formatting restoration; full upstream defaults/font attribute parity remains under review.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Alt-1"
@@ -1186,9 +1192,12 @@
         "EditorWorkflowTests",
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
         "FormattingDialogWorkflowTests",
-        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)",
+        "MultilineFormattingWorkflowTests",
+        "FormattingSelectionMappingTests",
+        "MultilineFormattingUiVerification"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
+      "notes": "Font/color application now covers all selected ordinary lines with mapped visible Unicode ranges, per-line styles, protected Mangetsu metadata/Effect inheritance and one undo operation. Dialog results retain document/draft/range/selection/cancellation fences. Local 876 Core/250 UI tests and native Linux font/color batch dialogs pass; Windows verification of multi-line application is pending. Yoake preserves its selection-end formatting restoration; full upstream defaults/font attribute parity remains under review.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Alt-2"
@@ -1209,9 +1218,12 @@
         "EditorWorkflowTests",
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
         "FormattingDialogWorkflowTests",
-        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)",
+        "MultilineFormattingWorkflowTests",
+        "FormattingSelectionMappingTests",
+        "MultilineFormattingUiVerification"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
+      "notes": "Font/color application now covers all selected ordinary lines with mapped visible Unicode ranges, per-line styles, protected Mangetsu metadata/Effect inheritance and one undo operation. Dialog results retain document/draft/range/selection/cancellation fences. Local 876 Core/250 UI tests and native Linux font/color batch dialogs pass; Windows verification of multi-line application is pending. Yoake preserves its selection-end formatting restoration; full upstream defaults/font attribute parity remains under review.",
       "yoake_default_hotkeys": {
         "Subtitle Edit Box": [
           "Alt-4"
@@ -1256,9 +1268,12 @@
         "EditorWorkflowTests",
         "AuthoringUiVerification (representative workflows; add per-command parity coverage)",
         "FormattingDialogWorkflowTests",
-        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)"
+        "AssistantsUiAcceptanceVerification (native font Apply/undo and font/color cancellation)",
+        "MultilineFormattingWorkflowTests",
+        "FormattingSelectionMappingTests",
+        "MultilineFormattingUiVerification"
       ],
-      "notes": "Rich structured formatting/color/font UI exists; active-line formatting does not yet cover upstream multi-line selection semantics. Exact defaults and registry checked state need integration. New owner/range/cancellation regression coverage passes locally (35 added UI cases, 231 total); native Linux combined workflow also passes. New Windows CI is pending.",
+      "notes": "Font/color application now covers all selected ordinary lines with mapped visible Unicode ranges, per-line styles, protected Mangetsu metadata/Effect inheritance and one undo operation. Dialog results retain document/draft/range/selection/cancellation fences. Local 876 Core/250 UI tests and native Linux font/color batch dialogs pass; Windows verification of multi-line application is pending. Yoake preserves its selection-end formatting restoration; full upstream defaults/font attribute parity remains under review.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -1474,7 +1489,7 @@
     {
       "id": "edit/line/recombine",
       "yoake_command": "edit/line/recombine",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "Structured lossless ASS edits through SubtitleEditor and rollback-by-default undo. Required action: Recombine subtitles which have been split and merged",
       "exposure": [
         "CommandRegistry",
@@ -1486,7 +1501,7 @@
         "RecombineWorkflowTests",
         "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Implemented prefix/suffix patterns, duplicates, timing expansion, empty-fragment cleanup, Unicode/override/ruby guards and protected metadata. Managed and native Linux checks passed; exact-revision Windows packaging and keyboard acceptance pending.",
+      "notes": "Prefix/suffix patterns, duplicates, timing expansion, empty-fragment cleanup, Unicode/override/ruby guards and protected metadata pass managed tests and native Windows keyboard/undo/save-reopen acceptance in run 43942681506.",
       "yoake_default_hotkeys": {}
     },
     {
@@ -3475,7 +3490,7 @@
     {
       "id": "tool/time/postprocess",
       "yoake_command": "tool/time/postprocess",
-      "status": "partially implemented",
+      "status": "already complete",
       "backend": "A usable document-local tool workflow with undo, cancellation and keyboard routing. Required action: Post-process the subtitle timing to add lead-ins and lead-outs, snap timing to scene changes, etc.",
       "exposure": [
         "CommandRegistry",
@@ -3487,7 +3502,7 @@
         "PostprocessWorkflowTests",
         "AssistantsUiAcceptanceVerification"
       ],
-      "notes": "Implemented style/selection scope, collision-aware leads, adjacency/bias, VFR keyframe snapping, preview/cancel, one undo step and persisted preferences. 10,000-line fixture and native Linux GUI passed; Windows NativeAOT acceptance pending.",
+      "notes": "Style/selection scope, collision-aware leads, adjacency/bias, VFR keyframe snapping, preview/cancel, one undo step and persisted preferences pass managed 10,000-line fixtures and native Windows NativeAOT acceptance in run 43942681506.",
       "yoake_default_hotkeys": {}
     },
     {

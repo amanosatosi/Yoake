@@ -55,6 +55,28 @@ public static class AssFormatting
         var enabled = !int.TryParse(state.GetValueOrDefault(tag), out var value) || value != 0;
         return Apply(text,start,end,new Dictionary<string,string>{{tag,enabled?"0":"1"}},style,resolve);
     }
+    // Transfer the active visible range across selected lines, independently of
+    // their override-block lengths. Offsets are UTF-16, then expanded to actual
+    // grapheme boundaries by SourceSelection; opaque/drawing blocks stay intact.
+    public static (int Start,int End) VisibleSelection(string source,int start,int end)
+    {
+        var projection=new SubtitleSearchProjection(source,true);
+        int Offset(int index)
+        {
+            var offset=0;
+            while(offset<projection.Text.Length&&projection.SourceIndex(offset)<index)offset++;
+            return offset;
+        }
+        return (Offset(Boundary(source,Math.Min(start,end),start==end)),Offset(Boundary(source,Math.Max(start,end),true)));
+    }
+    public static (int Start,int End) SourceSelection(string source,int start,int end)
+    {
+        var projection=new SubtitleSearchProjection(source,true);
+        var from=Math.Clamp(start,0,projection.Text.Length);var to=Math.Clamp(end,from,projection.Text.Length);
+        var left=projection.SourceIndex(from);
+        var right=left+projection.SourceLength(from,to-from);
+        return (Boundary(source,left,start==end),Boundary(source,right,true));
+    }
     public static AssTextEdit Apply(string text, int start, int end, IReadOnlyDictionary<string,string> values, AssStyle style, Func<string,AssStyle?>? resolve = null)
     {
         var hasSelection = start != end;

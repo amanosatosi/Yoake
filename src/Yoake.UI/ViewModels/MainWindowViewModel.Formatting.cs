@@ -39,7 +39,7 @@ public sealed partial class MainWindowViewModel
     public string RecentColorsPath=>Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!,"recent-colors.txt");
     public string StyleLibraryPath=>Path.Combine(Path.GetDirectoryName(_settingsStore.Path)!,"style-library.json");
     private AssStyle FormattingStyle=>ActiveEditor!.Document.Styles.FirstOrDefault(s=>s.Name==(Draft?.Style??SelectedEvent?.Style))??ActiveEditor.Document.Styles.FirstOrDefault()??AssDocument.CreateEmpty().Styles[0];
-    private void FormatText(string name,Func<string,int,int,AssStyle,AssTextEdit> operation)
+    private void FormatText(string name,Func<string,int,int,AssStyle,AssTextEdit> operation,bool selectedLines=false)
     {
         if(Draft is null||SelectedEvent is null||ActiveEditor is null)return;
         // Older recovery bundles and direct draft callers may still contain
@@ -51,6 +51,15 @@ public sealed partial class MainWindowViewModel
         if(!CommitDraft())return;
         var edit=operation(SelectedEvent.Text,start,end,FormattingStyle);
         var editor=ActiveEditor;var line=SelectedEvent;
+        var visible=AssFormatting.VisibleSelection(line.Text,start,end);
+        var edits=new List<(AssEvent Line,AssTextEdit Edit)> { (line,edit) };
+        if(selectedLines)
+            foreach(var target in Selection().Where(target=>!ReferenceEquals(target,line)&&MangetsuMetadata.Kind(target)==MangetsuMetadataKind.None&&!MangetsuMetadata.IsInherited(target)))
+            {
+                var range=AssFormatting.SourceSelection(target.Text,visible.Start,visible.End);
+                var style=editor.Document.Styles.FirstOrDefault(style=>style.Name==target.Style)??editor.Document.Styles.FirstOrDefault()??FormattingStyle;
+                edits.Add((target,operation(target.Text,range.Start,range.End,style)));
+            }
         var afterPosition=new TextPosition(edit.SelectionEnd,edit.SelectionStart,edit.SelectionEnd);
         void Position(TextPosition position)
         {
@@ -58,10 +67,10 @@ public sealed partial class MainWindowViewModel
             if(!ReferenceEquals(ActiveEditor,editor)||!ReferenceEquals(SelectedEvent,line))return;
             TextCursor=position.Caret;TextSelectionStart=position.Start;TextSelectionEnd=position.End;
         }
-        if(edit.Text!=line.Text)
+        if(edits.Any(item=>item.Edit.Text!=item.Line.Text))
         {
             using var transaction=editor.Undo.BeginTransaction(name);
-            editor.SetField(line,"Text",edit.Text,name);
+            foreach(var item in edits)editor.SetField(item.Line,"Text",item.Edit.Text,name);
             editor.Undo.Execute(new Yoake.Core.Undo.DelegateUndoOperation(name,()=>Position(beforePosition),()=>Position(afterPosition)));
             transaction.Commit();
         }
@@ -80,7 +89,7 @@ public sealed partial class MainWindowViewModel
         TextSelectionStart=TextSelectionEnd=TextCursor=start+2;
         TextFormattingApplied?.Invoke(this,EventArgs.Empty);
     }
-    private void ToggleFormat(string tag)=>FormatText("Format "+tag,(text,start,end,style)=>AssFormatting.Toggle(text,start,end,tag,style,ResolveFormatStyle));
+    private void ToggleFormat(string tag)=>FormatText("Format "+tag,(text,start,end,style)=>AssFormatting.Toggle(text,start,end,tag,style,ResolveFormatStyle),true);
     private void RegisterFormattingDialogCommands()
     {
         foreach (var (id, channel) in new[] { (CommandIds.FormatFont, 0), (CommandIds.FormatPrimary, 1),
@@ -102,10 +111,12 @@ public sealed partial class MainWindowViewModel
         if (_activeId is not {} owner || !_documents.TryGetValue(owner,out var state) ||
             Draft is not {} draft || SelectedEvent is not {} line || ActiveEditor is not {} editor) return null;
         var revision = editor.Document.Revision; var draftRevision = state.DraftRevision;
+        var selection=SelectedEvents.ToArray();
         var start = TextSelectionStart; var end = TextSelectionEnd; var caret = TextCursor;
         return () => !_disposed && _activeId == owner && _documents.TryGetValue(owner,out var live) && ReferenceEquals(live,state)
             && ReferenceEquals(ActiveEditor,editor) && ReferenceEquals(SelectedEvent,line) && ReferenceEquals(Draft,draft)
             && editor.Document.Revision == revision && state.DraftRevision == draftRevision && !HasGesture
+            &&selection.SequenceEqual(SelectedEvents)
             && TextSelectionStart == start && TextSelectionEnd == end && TextCursor == caret;
     }
     private async ValueTask FormatFontAsync(CancellationToken token)
@@ -114,7 +125,7 @@ public sealed partial class MainWindowViewModel
         var state=CaretFormatState();
         var choice=await Dialogs.ChooseFontAsync(state.GetValueOrDefault("fn",""),state.GetValueOrDefault("fs","60"),token);
         token.ThrowIfCancellationRequested();
-        if(choice is not null && current())FormatText("Change subtitle font",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{"fn",choice.Family},{"fs",choice.Size}},style,ResolveFormatStyle));
+        if(choice is not null && current())FormatText("Change subtitle font",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{"fn",choice.Family},{"fs",choice.Size}},style,ResolveFormatStyle),true);
     }
     private async ValueTask FormatColorAsync(int channel,CancellationToken token)
     {
@@ -123,6 +134,6 @@ public sealed partial class MainWindowViewModel
         AssColor.TryParse(state.GetValueOrDefault(channel+"c"),out var rgb);AssColor.TryParse(state.GetValueOrDefault(channel+"a"),out var alpha);
         var color=await Dialogs.ChooseColorAsync(rgb with{Transparency=alpha.Red},token);
         token.ThrowIfCancellationRequested();
-        if(color is {} chosen && current())FormatText("Change subtitle color",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{channel+"c",chosen.RgbOverride},{channel+"a",chosen.AlphaOverride}},style,ResolveFormatStyle));
+        if(color is {} chosen && current())FormatText("Change subtitle color",(text,start,end,style)=>AssFormatting.Apply(text,start,end,new Dictionary<string,string>{{channel+"c",chosen.RgbOverride},{channel+"a",chosen.AlphaOverride}},style,ResolveFormatStyle),true);
     }
 }
