@@ -99,6 +99,7 @@
 <MenuItem Header="At video frame" InputGesture="{Binding Actions[edit/line/split/video].InputGesture}" Command="{Binding Actions[edit/line/split/video]}" />
 <MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
 </MenuItem>
+<MenuItem Header="Split by karaoke" InputGesture="{Binding Actions[edit/line/split/by_karaoke].InputGesture}" Command="{Binding Actions[edit/line/split/by_karaoke]}" />
 <MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
 <MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />
 <MenuItem Header="Join selected">
@@ -565,6 +566,7 @@
 <MenuItem Header="At video frame" InputGesture="{Binding Actions[edit/line/split/video].InputGesture}" Command="{Binding Actions[edit/line/split/video]}" />
 <MenuItem Header="Divide time equally" InputGesture="{Binding Actions[grid/split].InputGesture}" Command="{Binding Actions[grid/split]}" />
 </MenuItem>
+<MenuItem Header="Split by karaoke" InputGesture="{Binding Actions[edit/line/split/by_karaoke].InputGesture}" Command="{Binding Actions[edit/line/split/by_karaoke]}" />
 <MenuItem Header="Split before current frame" InputGesture="{Binding Actions[edit/line/split/before].InputGesture}" Command="{Binding Actions[edit/line/split/before]}" />
 <MenuItem Header="Split after current frame" InputGesture="{Binding Actions[edit/line/split/after].InputGesture}" Command="{Binding Actions[edit/line/split/after]}" />
 <MenuItem Header="Join selected">

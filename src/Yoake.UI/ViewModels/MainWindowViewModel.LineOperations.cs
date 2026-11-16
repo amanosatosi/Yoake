@@ -34,6 +34,13 @@ public sealed partial class MainWindowViewModel
             },context=>Applies(context)&&_gesture is null&&CanSplitAtCursor()&&(mode!=CursorSplitTiming.VideoFrame||HasFrameBoundaryTiming)));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
+        const string karaokeSplit="edit/line/split/by_karaoke";
+        _registry.Register(new(new(karaokeSplit,"Split by karaoke","Split selected lines at karaoke timing boundaries","Edit"),(_,_)=>
+        {
+            RunEdit(editor=>{var result=editor.SplitByKaraoke(Selection());if(result.Count>0)SelectCopies(result);});
+            return ValueTask.CompletedTask;
+        },context=>Applies(context)&&_gesture is null&&Selection().Length>0));
+        Actions[karaokeSplit]=new RegistryCommand(_registry,karaokeSplit,CurrentContext,hotkeys:()=>HotkeyProfile);
         foreach(var (id,label,before) in new[]{("edit/line/split/before","Split before current frame",true),("edit/line/split/after","Split after current frame",false)})
         {
             _registry.Register(new(new(id,label,label,"Edit"),(_,_)=>
