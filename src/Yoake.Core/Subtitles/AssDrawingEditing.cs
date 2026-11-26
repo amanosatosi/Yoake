@@ -22,9 +22,11 @@ public static class AssDrawingEditing
         var cursor = 0;
         bool ReadContent(int end)
         {
-            if (source.AsSpan(cursor, end - cursor).Trim().IsEmpty) return true;
+            var content = source.AsSpan(cursor, end - cursor);
+            var trimmed = content.Trim();
+            if (trimmed.IsEmpty) return true;
             if (run is not null || scale is < 1 or > 30) return false;
-            run = new(cursor, end - cursor, scale);
+            run = new(cursor + content.Length - content.TrimStart().Length, trimmed.Length, scale);
             return true;
         }
 
@@ -48,7 +50,7 @@ public static class AssDrawingEditing
     public static string Insert(string source, string drawing) =>
         source + @"{\p1}" + drawing + @"{\p0}";
 
-    public static AssBox ControlBounds(AssVectorPath path)
+    public static AssBox ControlBounds(AssVectorPath path, double coordinateFactor = 1, bool quantize = false)
     {
         var left = double.PositiveInfinity;
         var top = double.PositiveInfinity;
@@ -56,10 +58,12 @@ public static class AssDrawingEditing
         var bottom = double.NegativeInfinity;
         foreach (var (_, point, _) in path.Handles())
         {
-            left = Math.Min(left, point.X);
-            top = Math.Min(top, point.Y);
-            right = Math.Max(right, point.X);
-            bottom = Math.Max(bottom, point.Y);
+            var x = quantize ? Math.Round(point.X * coordinateFactor, MidpointRounding.AwayFromZero) / coordinateFactor : point.X;
+            var y = quantize ? Math.Round(point.Y * coordinateFactor, MidpointRounding.AwayFromZero) / coordinateFactor : point.Y;
+            left = Math.Min(left, x);
+            top = Math.Min(top, y);
+            right = Math.Max(right, x);
+            bottom = Math.Max(bottom, y);
         }
         return double.IsFinite(left) ? new(left, top, right - left, bottom - top) : default;
     }

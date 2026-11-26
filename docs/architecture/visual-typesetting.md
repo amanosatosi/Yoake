@@ -116,9 +116,10 @@ The Drawing tool uses the existing ASS vector topology parser and curve
 operations. A shape preset maps its contour into the drag rectangle. Drawing
 edits replace a single ASS drawing range and retain its drawing scale, outer
 override blocks and event metadata. Existing isolated drawings support point
-and handle selection, edge conversion/splitting, freehand paths, and whole
+and handle selection, new contours, edge conversion/splitting, freehand paths, and whole
 drawing translation, resizing and rotation. The editor uses the shared
 video viewport and the original drawing and line placement as the drag baseline.
+The subtitle edit box shows the current transaction text during drawing drags.
 Bounds-dependent alignment changes are compensated in drawing coordinates,
 preserving the event position, origin and movement timing. Escape and capture loss restore source.
 

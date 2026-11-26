@@ -113,6 +113,7 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     _detached!.Width+=100;_detached.Height+=80;return;
                 case 11:
                     Require(Math.Abs(Area().Height-_before.Height)<1,"Detached resize with active pan/content zoom preserves content height.");
+                    await VerifyDetachedDrawing();
                     await Invoke("video/jump",new VideoJumpRequest(Frame:175));_playFrame=model.CurrentFrame;Press(Overlay,Key.Space);Require(model.IsPlaying,"Detached Video uses existing central playback after retained Audio EOF.");return;
                 case 12:
                     if(model.CurrentFrame<=_playFrame){_stage--;return;}
@@ -156,12 +157,43 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     Require((await model.ExtractCurrentVideoFrameAsync(FrameImageKind.Raw)).Image.Pixels.SequenceEqual(_raw!),"Zoom, pan, host and aspect stay out of source exports.");
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"No bindings or native window errors.");
                     await EmbeddedVideoWorkspaceVerification.VerifyAsync(window,model,_audio);
-                    _timer.Stop();options.FinishVerification("PASS: separate packaged Video presentation; real zoom preset/in/out menu and default/remapped keyboard routing, physical source/DPI mapping and radio/availability, middle capture/release/Escape/loss with no source edit, anchored content zoom/reset, script clipboard and visual clipping/one-step undo at zoom/pan; real native detach, same controls/providers/central playback, editable zoom IME, resize, native close/reattach, tab ownership, view modes, Video Close/Recent/dummy/external timecodes and Audio Close retention; source-resolution export unchanged; actual embedded 37.5%/50%/37.5% panel and splitter geometry, manual retention/explicit override, bounded oversized zoom and narrow-window usability.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
+                    _timer.Stop();options.FinishVerification("PASS: separate packaged Video presentation; real zoom preset/in/out menu and default/remapped keyboard routing, physical source/DPI mapping and radio/availability, middle capture/release/Escape/loss with no source edit, anchored content zoom/reset, script clipboard, visual clipping and direct drawing/one-step undo at zoom/pan; real native detach, same controls/providers/central playback, editable zoom IME, resize, native close/reattach, tab ownership, view modes, Video Close/Recent/dummy/external timecodes and Audio Close retention; source-resolution export unchanged; actual embedded 37.5%/50%/37.5% panel and splitter geometry, manual retention/explicit override, bounded oversized zoom and narrow-window usability.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
         catch(Exception exception){_timer.Stop();Program.Fatal("Packaged Video presentation stage "+(_stage-1),exception);desktop.Shutdown(1);}
         finally{_ticking=false;}
     }
+    private async Task VerifyDetachedDrawing()
+    {
+        model.Draft!.Layer="0";
+        model.Draft.Text=@"{\an7\bord0\shad0\unknown(keep)}";
+        Require(model.CommitDraft(),"Prepare an isolated drawing event in the detached window.");
+        await Invoke("video/tool/drawing");
+        _detached!.UpdateLayout();
+        var picker=window.FindControl<ComboBox>("DrawingPresetPicker")!;
+        Require(ReferenceEquals(TopLevel.GetTopLevel(picker),_detached)&&picker.Bounds.Width>100,"Shape presets follow the native detached video host.");
+        picker.SetCurrentValue(ComboBox.SelectedItemProperty,"Rectangle");
+        Require(model.DrawingPreset=="Rectangle","The real preset selector must update the active canvas tool.");
+        var visible=Image.VideoArea.Intersect(new Rect(Overlay.Bounds.Size));
+        var start=new Point(visible.Center.X-16,visible.Center.Y-12);
+        var end=start+new Vector(32,25);
+        var scriptStart=Area().ToScript(start.X,start.Y,320,180);
+        var scriptEnd=Area().ToScript(end.X,end.Y,320,180);
+        Down(start,false);Move(end,RawInputModifiers.LeftMouseButton);Up(end,false);
+        var text=model.SelectedEvent!.Text;
+        var run=AssDrawingEditing.FindIsolatedRun(text).Run;
+        Require(run is not null&&AssVisualTags.Position(text) is {} position&&VisualGeometry.Distance(position,scriptStart)<.01,
+            "Detached shape inserts at the exact mapped position after zoom, pan and host resize.");
+        var path=AssVectorPath.Parse(text.Substring(run!.Value.Start,run.Value.Length),run.Value.Scale)!;
+        var bounds=AssDrawingEditing.ControlBounds(path);
+        Require(Math.Abs(bounds.Width-(scriptEnd.X-scriptStart.X))<=1&&Math.Abs(bounds.Height-(scriptEnd.Y-scriptStart.Y))<=1,
+            "Detached drag size matches the zoomed script coordinates within ASS integer quantization.");
+        await Invoke(CommandIds.EditUndo);await Invoke(CommandIds.EditUndo);
+        Require(model.ActiveEditor!.Document.Serialize()==_source,"Detached drawing and its fixture undo exactly.");
+        model.DrawingPreset="No preset";
+        model.Draft!.Layer="unfinished";_draft=model.Draft;
+    }
+
     private static readonly string[] ZoomIds=["video/zoom/50","video/zoom/100","video/zoom/200","video/zoom/in","video/zoom/out"];
     private static readonly string[] Seven=[..ZoomIds,"video/reset_pan","video/detach"];
     private VideoPresentation Area(){var r=Image.VideoArea;return new(r.X,r.Y,r.Width,r.Height);}

@@ -123,6 +123,11 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private EventEditDraft? _draft;
     private readonly EventEditDraft _emptyDraft=new(AssDocument.CreateEmpty().NewEvent());
     public EventEditDraft EditorDraft=>Draft??_emptyDraft;
+    public string EventEditorText
+    {
+        get=>IsDrawingGesture?VisualText:EditorDraft.Text;
+        set{if(!IsDrawingGesture)EditorDraft.Text=value;}
+    }
     public string VisualText=>_gesture is not null?SelectedEvent?.Text??"":Draft?.Text??"";
     private CancellationTokenSource? _editBurstDelay;
     public IEditorDialogs? Dialogs { get; set; }
@@ -147,13 +152,14 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         private set
         {
             if (_draft is not null) _draft.PropertyChanged -= DraftChanged;
-            SetField(ref _draft,value);OnPropertyChanged(nameof(EditorDraft));
+            SetField(ref _draft,value);OnPropertyChanged(nameof(EditorDraft));OnPropertyChanged(nameof(EventEditorText));
             if (_draft is not null) _draft.PropertyChanged += DraftChanged;
             RefreshFormatting();
         }
     }
     private void DraftChanged(object? sender,PropertyChangedEventArgs e)
     {
+        if(e.PropertyName==nameof(EventEditDraft.Text))OnPropertyChanged(nameof(EventEditorText));
         if(_publishingAudioTiming)return;
         if(e.PropertyName is nameof(EventEditDraft.IsChanged) or nameof(EventEditDraft.Duration))return;
         if(e.PropertyName==nameof(EventEditDraft.Actor))FastActorDraftChanged();

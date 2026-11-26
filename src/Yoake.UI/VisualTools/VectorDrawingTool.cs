@@ -105,7 +105,12 @@ public sealed class VectorDrawingTool : VisualTool
 
     public override bool Press(VisualToolContext context, VisualPointer pointer)
     {
-        if (context.Active is not {} line || Read(line.Text) is not {} source || !CanMap(line)) return false;
+        if (context.Active is not {} line) return false;
+        if (Read(line.Text) is not {} source || !CanMap(line))
+        {
+            context.Model.ReportUnsupportedDrawing();
+            return false;
+        }
         if (!ReferenceEquals(_selectionOwner, line.Line))
         {
             _selectionOwner = line.Line;
@@ -189,7 +194,7 @@ public sealed class VectorDrawingTool : VisualTool
             Apply(context, changed);
             _selected.Clear();
         }
-        else if (_preset == "No preset" && _mode is "Line" or "Bicubic") Move(context, pointer);
+        else if (_preset == "No preset" && _mode is "Line" or "Bicubic" or "Contour") Move(context, pointer);
         return true;
     }
 
@@ -262,13 +267,25 @@ public sealed class VectorDrawingTool : VisualTool
                 changed.Translate(_selected, Subtract(_mapping.Unmap(Add(Anchor.Script, Delta(pointer))), _mapping.Unmap(Anchor.Script)));
                 Apply(context, changed);
                 return;
+            case "Contour":
             case "Line":
             case "Bicubic":
                 var appended = source.Path.Copy();
-                appended.Append(point, _mode == "Bicubic");
+                if (_mode == "Contour") appended.Commands.Add(new('m', [point]));
+                else appended.Append(point, _mode == "Bicubic");
                 Apply(context, appended);
                 return;
         }
+    }
+
+    public override void Release(VisualToolContext context, VisualPointer pointer)
+    {
+        Move(context, pointer);
+        if (Initial is null || _preset != "No preset" || _mode is not ("Freehand" or "Smooth")) return;
+        var point = _mapping.Unmap(pointer.Script);
+        if (!double.IsFinite(point.X) || !double.IsFinite(point.Y) || Distance(_samples[^1], point) < .01) return;
+        _samples.Add(point);
+        Apply(context, AssVectorPath.Freehand(_samples, _mode == "Smooth"));
     }
 
     private void Apply(VisualToolContext context, AssVectorPath path)
@@ -279,10 +296,8 @@ public sealed class VectorDrawingTool : VisualTool
         // Compare the bounds in the same integer drawing space as the renderer.
         // A uniform correction changes the drawing's local origin while keeping
         // its ASS position, move endpoints and rotation origin intact.
-        var rounded = AssDrawingEditing.Map(path, p => new(
-            Math.Round(p.X * factor, MidpointRounding.AwayFromZero) / factor,
-            Math.Round(p.Y * factor, MidpointRounding.AwayFromZero) / factor));
-        var corrected = _mapping.AlignmentCorrection(AssDrawingEditing.ControlBounds(rounded), line.Alignment);
+        var bounds = AssDrawingEditing.ControlBounds(path, factor, quantize: true);
+        var corrected = _mapping.AlignmentCorrection(bounds, line.Alignment);
         if (corrected != default) path = AssDrawingEditing.Map(path, p => Add(p, corrected));
         if (path.Handles().Any(h => !double.IsFinite(h.Point.X) || !double.IsFinite(h.Point.Y)
             || Math.Abs(h.Point.X * factor) >= 33_554_432 || Math.Abs(h.Point.Y * factor) >= 33_554_432)) return;

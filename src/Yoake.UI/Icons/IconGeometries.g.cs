@@ -565,6 +565,11 @@ public static class IconGeometries
     {
         internal static readonly Geometry Value = Build(("F1 M8.0754765 2.305203525 19.430414625 5.376449625 22.086416625000002 20.1942405 1.9205853375000002 21.440886 8.0754765 2.305203525Z", false, 1.875, PenLineCap.Round, PenLineJoin.Round), ("F1 M9.9823035 7.3362405 16.697218499999998 8.509152 17.35436325 16.697315624999998 7.939591499999999 16.738449 9.9823035 7.3362405Z", true, 0.870131, PenLineCap.Round, PenLineJoin.Round));
     }
+    public static Geometry VisualDrawing => VisualDrawingHolder.Value;
+    private static class VisualDrawingHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M4 18 C4 8 13 3 20 6 L18 17 L4 18 Z M4 18 L8 8 M16 4 L20 6", false, 2, PenLineCap.Round, PenLineJoin.Round));
+    }
     public static Geometry VisualMoveToggle => VisualMoveToggleHolder.Value;
     private static class VisualMoveToggleHolder
     {
@@ -594,6 +599,21 @@ public static class IconGeometries
     private static class VisualScaleHolder
     {
         internal static readonly Geometry Value = Build(("F1 M3.0 3.0H21.0V21.0H3.0V3.0Z", false, 0.75, PenLineCap.Round, PenLineJoin.Round), ("F1 M8.25 8.25H15.75V15.75H8.25V8.25Z", true, 0.75, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualShear => VisualShearHolder.Value;
+    private static class VisualShearHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M6 5 H20 L16 19 H2 Z M3 9 H18 M5 14 H17", false, 2, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualShift => VisualShiftHolder.Value;
+    private static class VisualShiftHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M3 12 H21 M3 12 L6 9 M3 12 L6 15 M21 12 L18 9 M21 12 L18 15 M12 3 V21 M12 3 L9 6 M12 3 L15 6 M12 21 L9 18 M12 21 L15 18", false, 2, PenLineCap.Round, PenLineJoin.Round));
+    }
+    public static Geometry VisualTags => VisualTagsHolder.Value;
+    private static class VisualTagsHolder
+    {
+        internal static readonly Geometry Value = Build(("F1 M3 6 H21 M3 12 H21 M3 18 H21 M8 4 V8 M16 10 V14 M11 16 V20", false, 2, PenLineCap.Round, PenLineJoin.Round));
     }
     public static Geometry VisualVector => VisualVectorHolder.Value;
     private static class VisualVectorHolder

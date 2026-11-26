@@ -234,6 +234,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 var shapeStart=new AssPoint(Size.Width*.3,Size.Height*.3);
                 Press(shapeStart);Move(Add(shapeStart,Size.Width*.2,Size.Height*.2));
                 Require(model.HasGesture&&ReadDrawing().Curves().Count(curve=>curve.Cubic)==4,"Ellipse must create a valid cubic ASS drawing during the drag.");
+                Require(window.FindControl<AssTextBox>("SubtitleText")!.SourceText==_line!.Text,"The subtitle edit box must show live drawing source during capture.");
                 WaitForPreview();return false;
             case 20:
             {
@@ -245,26 +246,88 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Invoke(CommandIds.EditRedo);Require(_line.Text==ellipse,"Redo must restore the exact drawing source.");
                 model.DrawingPreset="No preset";
                 var control=ReadDrawing().Handles().First(handle=>handle.Control);
-                var origin=AssVisualTags.Position(_line.Text)!.Value;
-                var handlePoint=Add(origin,control.Point.X,control.Point.Y);
+                var drawingOrigin=AssVisualTags.Position(_line.Text)!.Value;
+                var handlePoint=Add(drawingOrigin,control.Point.X,control.Point.Y);
                 Press(handlePoint);Move(Add(handlePoint,ScriptDip(20),-ScriptDip(15)));Release(Add(handlePoint,ScriptDip(20),-ScriptDip(15)));
                 Require(ReadDrawing().Handles().First(handle=>handle.Control).Point!=control.Point,"An existing cubic control must be draggable.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"An existing drawing's handle drag must undo exactly.");
-                model.DrawingMode="Move";var center=new AssPoint(Size.Width*.4,Size.Height*.4);
-                Press(center);Move(Add(center,ScriptDip(15),ScriptDip(5)));Release(Add(center,ScriptDip(15),ScriptDip(5)));
-                Require(AssVisualTags.Position(_line.Text)!=origin&&ReadDrawing().Serialize(1)==ReadPath(ellipse).Serialize(1),"Moving a complete drawing changes position and preserves topology.");
+                model.DrawingMode="Move";var drawingCenter=new AssPoint(Size.Width*.4,Size.Height*.4);
+                Press(drawingCenter);Move(Add(drawingCenter,ScriptDip(15),ScriptDip(5)));Release(Add(drawingCenter,ScriptDip(15),ScriptDip(5)));
+                Require(AssVisualTags.Position(_line.Text)!=drawingOrigin&&ReadDrawing().Serialize(1)==ReadPath(ellipse).Serialize(1),"Moving a complete drawing changes position and preserves topology.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"Drawing move must be losslessly undoable.");
-                Tool("Shear");Press(center);Move(Add(center,ScriptDip(25),-ScriptDip(10)));Release(Add(center,ScriptDip(25),-ScriptDip(10)));
+                Tool("Shear");Press(drawingCenter);Move(Add(drawingCenter,ScriptDip(25),-ScriptDip(10)));Release(Add(drawingCenter,ScriptDip(25),-ScriptDip(10)));
                 Require(AssVisualTags.Scalar(_line.Text,"fax",0)>.2&&AssVisualTags.Scalar(_line.Text,"fay",0)>.05,"Shear must set both ASS shear tags.");
                 Invoke(CommandIds.EditUndo);Tool("Tags");
-                model.VisualNumericTag="bord";Press(center);Move(Add(center,ScriptDip(15),0));Release(Add(center,ScriptDip(15),0));
+                model.VisualNumericTag="bord";Press(drawingCenter);Move(Add(drawingCenter,ScriptDip(15),0));Release(Add(drawingCenter,ScriptDip(15),0));
                 Require(AssVisualTags.Scalar(_line.Text,"bord",0)>.5&&ReadDrawing().Serialize(1)==ReadPath(ellipse).Serialize(1),"Numeric tag editing must preserve drawing commands.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"Numeric tag edit must undo exactly.");
-                Tool("Position");return true;
+                Tool("Shift");Fixture(At(drawingOrigin)+@"\org(10,20)\clip(10,20,50,60)}SHIFT");
+                var shiftFixture=_line.Text;
+                Press(drawingCenter);Move(Add(drawingCenter,17,9));Release(Add(drawingCenter,17,9));
+                Require(VisualGeometry.Distance(AssVisualTags.Position(_line.Text)!.Value,Add(drawingOrigin,17,9))<.01
+                    &&AssVisualTags.Origin(_line.Text)==new AssPoint(27,29)
+                    &&AssVisualTags.Clip(_line.Text)!.Points[0]==new AssPoint(27,29),"Shift moves position, origin and clip together.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==shiftFixture,"Shift must undo exactly.");
+                Fixture(ellipse);Tool("Drawing");VerifyDrawingTools(ellipse,drawingOrigin,drawingCenter);
+                Tool("Position");model.PositionMode="Two frames";Fixture(At(drawingOrigin)+"}TRACK");
+                _baseline=_line.Text;
+                Click(drawingCenter);Require(!model.HasGesture&&_line.Text==_baseline,"First frame sample leaves source unchanged.");
+                model.CurrentTimeSeconds=.6;
+                return false;
+            }
+            case 21:
+            {
+                var active=model.VisibleVisualLines().Single();
+                if(active.RelativeTime<550)return Retry();
+                var secondSample=new AssPoint(Size.Width*.4+25,Size.Height*.4-10);
+                Click(secondSample);
+                var tracked=AssVisualTags.Move(_line!.Text);
+                Require(tracked is { StartTime:400,EndTime:600 }&&
+                    VisualGeometry.Distance(tracked.Value.End,Add(tracked.Value.Start,25,-10))<.01&&
+                    AssVisualTags.Position(_line.Text) is null,"Two frames create movement with sampled timing and displacement.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"Two-frame movement must be one undo action.");
+                model.PositionMode="Endpoints";
+                return true;
             }
             default:return true;
         }
     }
+    private void VerifyDrawingTools(string original,AssPoint position,AssPoint center)
+    {
+        var path=ReadDrawing();
+        var bounds=AssDrawingEditing.ControlBounds(path);
+        var corner=Add(position,bounds.Left+bounds.Width,bounds.Top+bounds.Height);
+        model.DrawingMode="Resize";
+        Press(corner);Move(Add(corner,25,12));Release(Add(corner,25,12));
+        Require(AssDrawingEditing.ControlBounds(ReadDrawing()).Width>bounds.Width+20,"Resize changes the path bounds.");
+        Invoke(CommandIds.EditUndo);Require(_line!.Text==original,"Resize is one undo action.");
+        model.DrawingMode="Rotate";
+        Press(corner);Move(Add(center,0,-Math.Max(20,bounds.Height/2)));Release(Add(center,0,-Math.Max(20,bounds.Height/2)));
+        Require(ReadDrawing().Serialize(1)!=path.Serialize(1)&&AssVisualTags.Position(_line.Text)==position,"Rotation edits points around the drawing center.");
+        Invoke(CommandIds.EditUndo);
+        var curve=path.Curves().First();
+        var midpoint=curve.At(.5);
+        model.DrawingMode="Insert";Click(Add(position,midpoint.X,midpoint.Y));
+        Require(ReadDrawing().Curves().Count()==path.Curves().Count()+1,"Insert splits an existing ASS cubic.");
+        Invoke(CommandIds.EditUndo);
+        model.DrawingMode="Convert";Click(Add(position,midpoint.X,midpoint.Y));
+        Require(ReadDrawing().Curves().Count(c=>c.Cubic)==3,"Convert replaces a cubic segment with a line.");
+        Invoke(CommandIds.EditUndo);
+        model.DrawingMode="Remove";var first=path.Handles().First().Point;Click(Add(position,first.X,first.Y));
+        Require(ReadDrawing().PointCount<path.PointCount,"Remove deletes the selected vector point.");
+        Invoke(CommandIds.EditUndo);
+        foreach(var mode in new[]{"Contour","Line","Bicubic","Freehand","Smooth"})
+        {
+            model.DrawingMode=mode;
+            var start=Add(center,-30,0);var end=Add(center,30,15);
+            Press(start);Move(center);Move(end);Release(end);
+            Require(_line.Text!=original&&ReadDrawing().PointCount>1,mode+" must produce valid drawing topology.");
+            Invoke(CommandIds.EditUndo);
+            Require(_line.Text==original,mode+" must undo exactly.");
+        }
+        model.DrawingMode="Select";
+    }
+
     private AssVectorPath ReadDrawing()=>ReadPath(_line!.Text);
     private static AssVectorPath ReadPath(string text)
     {

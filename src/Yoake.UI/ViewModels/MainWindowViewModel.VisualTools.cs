@@ -30,10 +30,11 @@ public sealed partial class MainWindowViewModel
     public bool IsVectorFreehand=>VectorMode=="Freehand";
     public bool IsVectorSmooth=>VectorMode=="Smooth";
     public bool IsDrawingTool=>ActiveVisualTool=="Drawing";
+    public bool IsDrawingGesture=>IsDrawingTool&&_gesture is not null;
     public bool IsTagsTool=>ActiveVisualTool=="Tags";
     public IReadOnlyList<string> PositionModes {get;}=["Endpoints","Two frames","Horizontal","Vertical","Origin"];
     public string PositionMode {get=>VisualState?.PositionMode??"Endpoints";set=>SetVisualOption(value,PositionModes,nameof(PositionMode),(state,v)=>state.PositionMode=v);}
-    public IReadOnlyList<string> DrawingModes {get;}=["Select","Move","Resize","Rotate","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];
+    public IReadOnlyList<string> DrawingModes {get;}=["Select","Move","Resize","Rotate","Contour","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];
     public IReadOnlyList<string> DrawingPresets {get;}=["No preset","Rectangle","Ellipse","Rounded box","Triangle","Diamond","Star"];
     public IReadOnlyList<string> VisualNumericTags=>AssVisualTags.NumericVisualTags;
     public IReadOnlyList<string> VisualTagOperations {get;}=["Adjust","Set","By line","Reverse lines","By text","Reverse text"];
@@ -113,14 +114,18 @@ public sealed partial class MainWindowViewModel
         try { SelectedEvent=line; return ReferenceEquals(SelectedEvent,line); }
         finally { _suppressSelectionSeek=suppress; }
     }
+    internal void ReportUnsupportedDrawing()=>SubtitleStatus="Select an isolated drawing or a blank event. Animated geometry and advanced layout tags need the text editor.";
     public void UpdateVisualGesture(Func<VisualLine,string> edit)=>InvokeGesture("video/visual/update",edit);
     private void UpdateVisualGestureCore(Func<VisualLine,string> edit)
     {
         if(_gesture is null||_gestureEditor is null)return;
         // Compute the complete batch before mutating. Any parse failure rolls
         // back the transaction, including edits to earlier selected lines.
-        var changes=_visualBaseline.Select(line=>(line.Line,Text:edit(line))).ToArray();
+        var changes=_visualBaseline.Select(line=>(line.Line,Text:edit(line)))
+            .Where(change=>change.Line.Text!=change.Text).ToArray();
+        if(changes.Length==0)return;
         foreach(var change in changes)_gestureEditor.SetField(change.Line,"Text",change.Text,"Visual typesetting");
+        if(IsDrawingGesture)OnPropertyChanged(nameof(EventEditorText));
         GestureChanged();
     }
     private void SelectVisualTool(string tool)
