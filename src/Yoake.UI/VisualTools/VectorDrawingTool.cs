@@ -108,12 +108,14 @@ public sealed class VectorDrawingTool : VisualTool
                 foreach (var curve in source.Path.Curves())
                     if (curve.Cubic)
                     {
-                        canvas.ScreenLine(Screen(curve.Start), Screen(curve.Control1), Brushes.Gray, true);
-                        canvas.ScreenLine(Screen(curve.Control2), Screen(curve.End), Brushes.Gray, true);
+                        canvas.ScreenLine(Screen(curve.Start), Screen(curve.Control1), Brushes.Gold, true);
+                        canvas.ScreenLine(Screen(curve.Control2), Screen(curve.End), Brushes.Gold, true);
                     }
                 foreach (var handle in source.Path.Handles())
                     canvas.Handle(map.Map(handle.Point), handle.Control ? HandleShape.Square : HandleShape.Circle,
-                        ReferenceEquals(_selectionOwner, line.Line) && _selected.Contains(handle.Index));
+                        ReferenceEquals(_selectionOwner, line.Line) && _selected.Contains(handle.Index), primary: !handle.Control);
+                if (_baseline is null && canvas.Inside && canvas.Context.Model.DrawingPreset == "No preset" && mode is ("Line" or "Bicubic"))
+                    canvas.Line(map.Map(source.Path.Commands[^1].Points[^1]), canvas.Pointer.Script, Brushes.Gold, true);
             }
         }
 
@@ -286,12 +288,41 @@ public sealed class VectorDrawingTool : VisualTool
                 Apply(context, changed);
                 return;
             case "Contour":
+                var contour = source.Path.Copy();
+                contour.Commands.Add(new('m', [point]));
+                Apply(context, contour);
+                return;
             case "Line":
+                var straight = source.Path.Copy();
+                if (straight.Commands.Count == 0)
+                {
+                    var first = _mapping.Unmap(Anchor.Script);
+                    straight.Append(first, false);
+                    if (Distance(first, point) >= 1) straight.Append(point, false);
+                }
+                else straight.Append(point, false);
+                Apply(context, straight);
+                return;
             case "Bicubic":
-                var appended = source.Path.Copy();
-                if (_mode == "Contour") appended.Commands.Add(new('m', [point]));
-                else appended.Append(point, _mode == "Bicubic");
-                Apply(context, appended);
+                var curved = source.Path.Copy();
+                // Click places the endpoint; dragging supplies its incoming
+                // tangent instead of moving the endpoint. Consecutive cubic
+                // segments reflect the previous handle for a smooth join.
+                var endpoint = _mapping.Unmap(Anchor.Script);
+                if (curved.Commands.Count == 0) curved.Append(endpoint, false);
+                else
+                {
+                    var previous = curved.Commands[^1];
+                    var from = previous.Points[^1];
+                    var firstControl = previous.Kind == 'b'
+                        ? Add(from, Subtract(from, previous.Points[1]))
+                        : Lerp(from, endpoint, .25);
+                    var secondControl = Distance(endpoint, point) >= 1
+                        ? Subtract(endpoint, Subtract(point, endpoint))
+                        : Lerp(from, endpoint, .75);
+                    curved.Commands.Add(new('b', [firstControl, secondControl, endpoint]));
+                }
+                Apply(context, curved);
                 return;
         }
     }

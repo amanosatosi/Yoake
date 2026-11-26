@@ -244,14 +244,14 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Release(shapeEnd);var ellipse=_line!.Text;
                 Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"Shape drag must undo in one step.");
                 Invoke(CommandIds.EditRedo);Require(_line.Text==ellipse,"Redo must restore the exact drawing source.");
-                model.DrawingPreset="No preset";
+                model.DrawingPreset="No preset";DrawingModeButton("Select");
                 var control=ReadDrawing().Handles().First(handle=>handle.Control);
                 var drawingOrigin=AssVisualTags.Position(_line.Text)!.Value;
                 var handlePoint=Add(drawingOrigin,control.Point.X,control.Point.Y);
                 Press(handlePoint);Move(Add(handlePoint,ScriptDip(20),-ScriptDip(15)));Release(Add(handlePoint,ScriptDip(20),-ScriptDip(15)));
                 Require(ReadDrawing().Handles().First(handle=>handle.Control).Point!=control.Point,"An existing cubic control must be draggable.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"An existing drawing's handle drag must undo exactly.");
-                model.DrawingMode="Move";var drawingCenter=new AssPoint(Size.Width*.4,Size.Height*.4);
+                DrawingModeButton("Move");var drawingCenter=new AssPoint(Size.Width*.4,Size.Height*.4);
                 Press(drawingCenter);Move(Add(drawingCenter,ScriptDip(15),ScriptDip(5)));Release(Add(drawingCenter,ScriptDip(15),ScriptDip(5)));
                 Require(AssVisualTags.Position(_line.Text)!=drawingOrigin&&ReadDrawing().Serialize(1)==ReadPath(ellipse).Serialize(1),"Moving a complete drawing changes position and preserves topology.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"Drawing move must be losslessly undoable.");
@@ -269,6 +269,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                     &&AssVisualTags.Clip(_line.Text)!.Points[0]==new AssPoint(27,29),"Shift moves position, origin and clip together.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==shiftFixture,"Shift must undo exactly.");
                 Fixture(ellipse);Tool("Drawing");VerifyDrawingTools(ellipse,drawingOrigin,drawingCenter);
+                VerifyBlankDrawing();
                 Tool("Position");model.PositionMode="Two frames";Fixture(At(drawingOrigin)+"}TRACK");
                 _baseline=_line.Text;
                 Click(drawingCenter);Require(Overlay.HasPendingPositionSample&&!model.HasGesture&&_line.Text==_baseline,"First frame sample leaves source unchanged.");
@@ -325,33 +326,71 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
             default:return true;
         }
     }
+    private void DrawingModeButton(string mode)
+    {
+        var button=window.FindControl<ToggleButton>("Drawing"+mode);
+        Require(button is { IsVisible:true }&&button.Command?.CanExecute(button.CommandParameter)==true,
+            "Drawing mode must be directly accessible: "+mode);
+        button!.Command!.Execute(button.CommandParameter);
+        Require(model.DrawingMode==mode&&model.DrawingPreset=="No preset","Drawing toolbar must select "+mode);
+    }
+
+    private void VerifyBlankDrawing()
+    {
+        const string blank=@"{\an7\bord0\shad0\1c&HFFFFFF&}";
+        Fixture(blank);Tool("Drawing");window.UpdateLayout();
+        var toolbar=window.FindControl<Border>("VisualToolsBar")!;
+        Require(!toolbar.GetVisualDescendants().OfType<ScrollViewer>().Any(s=>s.HorizontalScrollBarVisibility==Avalonia.Controls.Primitives.ScrollBarVisibility.Auto),
+            "Drawing controls must not require a horizontal scrollbar.");
+        foreach(var mode in model.DrawingModes)
+        {
+            var button=window.FindControl<ToggleButton>("Drawing"+mode);
+            Require(button is {IsVisible:true}&&button.Bounds.Width>20&&button.Bounds.Height>0,
+                "Drawing mode must be laid out: "+mode);
+        }
+        var a=new AssPoint(Size.Width*.25,Size.Height*.3);
+        var b=Add(a,35,0);var c=Add(a,20,35);
+        DrawingModeButton("Line");Click(a);Click(b);Click(c);
+        Require(ReadDrawing().Commands.Select(command=>command.Kind).SequenceEqual(new[]{'m','l','l'}),
+            "Three successive canvas clicks create a polygon on a blank event.");
+        for(var i=0;i<3;i++)Invoke(CommandIds.EditUndo);
+        Require(_line!.Text==blank,"Polygon point placement must undo to the exact blank source.");
+        DrawingModeButton("Bicubic");Click(a);Press(b);Move(Add(b,0,25));Release(Add(b,0,25));
+        var curve=ReadDrawing().Curves().Single();
+        Require(curve.Cubic&&Math.Abs(curve.Control2.Y-curve.End.Y)>10,
+            "Click and drag creates a non-collinear Bézier tangent on a new drawing.");
+        Invoke(CommandIds.EditUndo);Invoke(CommandIds.EditUndo);
+        Require(_line.Text==blank,"New Bézier construction must undo to the exact blank event.");
+        DrawingModeButton("Select");
+    }
+
     private void VerifyDrawingTools(string original,AssPoint position,AssPoint center)
     {
         var path=ReadDrawing();
         var bounds=AssDrawingEditing.ControlBounds(path);
         var corner=Add(position,bounds.Left+bounds.Width,bounds.Top+bounds.Height);
-        model.DrawingMode="Resize";
+        DrawingModeButton("Resize");
         Press(corner);Move(Add(corner,25,12));Release(Add(corner,25,12));
         Require(AssDrawingEditing.ControlBounds(ReadDrawing()).Width>bounds.Width+20,"Resize changes the path bounds.");
         Invoke(CommandIds.EditUndo);Require(_line!.Text==original,"Resize is one undo action.");
-        model.DrawingMode="Rotate";
+        DrawingModeButton("Rotate");
         Press(corner);Move(Add(center,0,-Math.Max(20,bounds.Height/2)));Release(Add(center,0,-Math.Max(20,bounds.Height/2)));
         Require(ReadDrawing().Serialize(1)!=path.Serialize(1)&&AssVisualTags.Position(_line.Text)==position,"Rotation edits points around the drawing center.");
         Invoke(CommandIds.EditUndo);
         var curve=path.Curves().First();
         var midpoint=curve.At(.5);
-        model.DrawingMode="Insert";Click(Add(position,midpoint.X,midpoint.Y));
+        DrawingModeButton("Insert");Click(Add(position,midpoint.X,midpoint.Y));
         Require(ReadDrawing().Curves().Count()==path.Curves().Count()+1,"Insert splits an existing ASS cubic.");
         Invoke(CommandIds.EditUndo);
-        model.DrawingMode="Convert";Click(Add(position,midpoint.X,midpoint.Y));
+        DrawingModeButton("Convert");Click(Add(position,midpoint.X,midpoint.Y));
         Require(ReadDrawing().Curves().Count(c=>c.Cubic)==3,"Convert replaces a cubic segment with a line.");
         Invoke(CommandIds.EditUndo);
-        model.DrawingMode="Remove";var first=path.Handles().First().Point;Click(Add(position,first.X,first.Y));
+        DrawingModeButton("Remove");var first=path.Handles().First().Point;Click(Add(position,first.X,first.Y));
         Require(ReadDrawing().PointCount<path.PointCount,"Remove deletes the selected vector point.");
         Invoke(CommandIds.EditUndo);
         foreach(var mode in new[]{"Contour","Line","Bicubic","Freehand","Smooth","Spline"})
         {
-            model.DrawingMode=mode;
+            DrawingModeButton(mode);
             var start=Add(center,-30,0);var end=Add(center,30,15);
             Press(start);Move(Add(center,-15,-20));Move(center);Move(end);Release(end);
             var edited=ReadDrawing();
@@ -360,7 +399,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
             Invoke(CommandIds.EditUndo);
             Require(_line.Text==original,mode+" must undo exactly.");
         }
-        model.DrawingMode="Select";
+        DrawingModeButton("Select");
     }
 
     private AssVectorPath ReadDrawing()=>ReadPath(_line!.Text);

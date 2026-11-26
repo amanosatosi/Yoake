@@ -315,7 +315,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var playbackBottom=playback.TranslatePoint(new Point(0,playback.Bounds.Height),window)!.Value.Y;
         var toolsTop=tools.TranslatePoint(default,window)!.Value.Y;
         Require(toolsTop>=playbackBottom&&toolsTop-playbackBottom<12,"Visual tools must immediately follow playback.");
-        var primary=window.FindControl<StackPanel>("VisualPrimaryTools")!;
+        var primary=window.FindControl<WrapPanel>("VisualPrimaryTools")!;
         Require(primary.Orientation==Avalonia.Layout.Orientation.Horizontal&&primary.Bounds.Height<36,"Primary tools must use a compact horizontal toolbar.");
         Require(window.FindControl<TextBlock>("VisualToolHelp") is null,"Visual help belongs in tooltips, without a permanent workspace row.");
         }

@@ -45,8 +45,27 @@ public sealed partial class MainWindowViewModel
     public IReadOnlyList<string> DrawingPresets {get;}=["No preset","Rectangle","Ellipse","Rounded box","Triangle","Diamond","Star"];
     public IReadOnlyList<string> VisualNumericTags=>AssVisualTags.NumericVisualTags;
     public IReadOnlyList<string> VisualTagOperations {get;}=["Adjust","Set","By line","Reverse lines","By text","Reverse text"];
-    public string DrawingMode {get=>VisualState?.DrawingMode??"Select";set=>SetVisualOption(value,DrawingModes,nameof(DrawingMode),(state,v)=>state.DrawingMode=v);}
-    public string DrawingPreset {get=>VisualState?.DrawingPreset??"No preset";set=>SetVisualOption(value,DrawingPresets,nameof(DrawingPreset),(state,v)=>state.DrawingPreset=v);}
+    public string DrawingMode
+    {
+        get=>VisualState?.DrawingMode??"Select";
+        set
+        {
+            if(value==DrawingMode||!DrawingModes.Contains(value))return;
+            SetVisualOption(value,DrawingModes,nameof(DrawingMode),(state,v)=>state.DrawingMode=v);
+            _registry.NotifyStateChanged();
+        }
+    }
+    public string DrawingPreset
+    {
+        get=>VisualState?.DrawingPreset??"No preset";
+        set
+        {
+            if(value==DrawingPreset||!DrawingPresets.Contains(value))return;
+            SetVisualOption(value,DrawingPresets,nameof(DrawingPreset),(state,v)=>state.DrawingPreset=v);
+            if(value!="No preset")DrawingMode="Select";
+            _registry.NotifyStateChanged();
+        }
+    }
     public string VisualNumericTag {get=>VisualState?.NumericVisualTag??"bord";set=>SetVisualOption(value,VisualNumericTags,nameof(VisualNumericTag),(state,v)=>state.NumericVisualTag=v);}
     public string VisualTagOperation {get=>VisualState?.VisualTagOperation??"Adjust";set=>SetVisualOption(value,VisualTagOperations,nameof(VisualTagOperation),(state,v)=>state.VisualTagOperation=v);}
     private void SetVisualOption(string value,IReadOnlyList<string> options,string property,Action<DocumentState,string> assign)
@@ -69,7 +88,10 @@ public sealed partial class MainWindowViewModel
         "Scale"=>"Drag: scale · Shift: one axis · Alt: aspect · Ctrl: 25% snap",
         "Clip"=>"Drag: new rectangle · corners: resize · Shift+drag / inside: move clip",
         "VectorClip"=>VectorMode+" · Ctrl: toggle points · empty drag: box select · Esc: cancel",
-        "Drawing"=>DrawingPreset=="No preset"?DrawingMode+" · select an existing drawing or draw on a blank event":"Drag a shape onto the video · Shift: constrain proportions",
+        "Drawing" when DrawingPreset!="No preset"=>"Drag a shape onto the video · Shift: constrain proportions",
+        "Drawing" when DrawingMode=="Line"=>"Click successive vertices · drag to start a line · use New drawing event for text lines",
+        "Drawing" when DrawingMode=="Bicubic"=>"Click an endpoint; drag to set its tangent · first click starts the contour",
+        "Drawing"=>DrawingMode+" · select an existing drawing or use New drawing event",
         "Shear"=>"Drag horizontally for fax, vertically for fay · Shift: one axis",
         "Shift"=>"Shift "+ShiftMode.ToLowerInvariant()+" by dragging · Shift: one axis",
         "Tags"=>"Drag horizontally to edit "+VisualNumericTag+" · Shift: fine adjustment",
@@ -124,7 +146,7 @@ public sealed partial class MainWindowViewModel
         try { SelectedEvent=line; return ReferenceEquals(SelectedEvent,line); }
         finally { _suppressSelectionSeek=suppress; }
     }
-    internal void ReportUnsupportedDrawing()=>SubtitleStatus="Select an isolated drawing or a blank event. Animated geometry and advanced layout tags need the text editor.";
+    internal void ReportUnsupportedDrawing()=>SubtitleStatus="Use New drawing event to draw without replacing dialogue, or select an isolated drawing. Animated geometry and advanced layout tags need the text editor.";
     public void UpdateVisualGesture(Func<VisualLine,string> edit)=>InvokeGesture("video/visual/update",edit);
     private void UpdateVisualGestureCore(Func<VisualLine,string> edit)
     {
@@ -141,6 +163,8 @@ public sealed partial class MainWindowViewModel
     private void SelectVisualTool(string tool)
     {
         CancelGesture();ActiveVisualTool=tool;
+        if(tool=="Drawing"&&HasSelectedEvent&&DrawingMode=="Select"&&DrawingPreset=="No preset"&&AssDrawingEditing.FindIsolatedRun(VisualText).CanInsert)
+            DrawingMode="Line";
         NotifyVisualToolState();
     }
     private void NotifyVisualToolState()
@@ -153,11 +177,11 @@ public sealed partial class MainWindowViewModel
     private void RegisterVisualToolCommands()
     {
         bool Owns(CommandContext context)=>_activeId is not null&&(context.DocumentId is null||context.DocumentId==_activeId);
-        void Register(string id,string label,Action select,Func<bool> check)
+        void Register(string id,string label,Action select,Func<bool> check,Func<bool>? enabled=null)
         {
             _registry.Register(new(new(id,label,label,"Video visual tools"),(_,token)=>
             {token.ThrowIfCancellationRequested();select();return ValueTask.CompletedTask;},
-                c=>Owns(c)&&_media?.HasVideo==true&&!HasEditOperation,isChecked:c=>Owns(c)&&check()));
+                c=>Owns(c)&&_media?.HasVideo==true&&!HasEditOperation&&(enabled?.Invoke()??true),isChecked:c=>Owns(c)&&check()));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
         foreach(var name in VisualToolNames)
@@ -171,6 +195,19 @@ public sealed partial class MainWindowViewModel
             Register("video/vector/"+mode.ToLowerInvariant(),"Vector clip: "+mode,
                 ()=>{CancelGesture();SelectVisualTool("VectorClip");VectorMode=mode;},()=>IsVectorClipTool&&VectorMode==mode);
         }
+        foreach(var name in DrawingModes)
+        {
+            var mode=name;
+            Register("video/drawing/"+mode.ToLowerInvariant(),"Drawing: "+mode,
+                ()=>{SelectVisualTool("Drawing");DrawingPreset="No preset";DrawingMode=mode;},
+                ()=>IsDrawingTool&&DrawingPreset=="No preset"&&DrawingMode==mode);
+        }
+        Register("video/drawing/new","New drawing event at video time",()=>
+        {
+            if(SelectedEvent is not {} selected)return;
+            RunEdit(e=>Select(e.InsertAtVideoTime(selected,true,ActiveFrameTiming().SubtitleBoundary(CurrentFrame,Yoake.Core.Media.FrameTimeKind.Start),_settings.AudioDefaultDuration??3000)));
+            SelectVisualTool("Drawing");DrawingPreset="No preset";DrawingMode="Line";
+        },()=>false,()=>HasSelectedEvent&&!HasGesture&&CanShiftByFrames&&FrameTimes.Count>0);
     }
     private void ToggleVisualMove()
     {
