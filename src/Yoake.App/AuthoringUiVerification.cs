@@ -310,11 +310,13 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         if (model.ShowVideo)
         {
         foreach(var name in MainWindowViewModel.VisualToolNames)Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("VisualTool"+name) is {Bounds.Width:>20},"Baseline visual tool must realize: "+name);
-        var video=window.FindControl<Grid>("VideoRegion")!;var tools=window.FindControl<Border>("VisualToolsBar")!;
-        var videoBottom=video.TranslatePoint(new Point(0,video.Bounds.Height),window)!.Value.Y;var toolsTop=tools.TranslatePoint(default,window)!.Value.Y;
-        Require(toolsTop-videoBottom<12,"Contextual options must immediately adjoin the video workspace.");
+        var playback=window.FindControl<Grid>("VideoPlaybackControls")!;
+        var tools=window.FindControl<Border>("VisualToolsBar")!;
+        var playbackBottom=playback.TranslatePoint(new Point(0,playback.Bounds.Height),window)!.Value.Y;
+        var toolsTop=tools.TranslatePoint(default,window)!.Value.Y;
+        Require(toolsTop>=playbackBottom&&toolsTop-playbackBottom<12,"Visual tools must immediately follow playback.");
         var primary=window.FindControl<StackPanel>("VisualPrimaryTools")!;
-        Require(primary.Orientation==Avalonia.Layout.Orientation.Vertical&&primary.Bounds.Width<40,"Primary tools must use a compact vertical rail.");
+        Require(primary.Orientation==Avalonia.Layout.Orientation.Horizontal&&primary.Bounds.Height<36,"Primary tools must use a compact horizontal toolbar.");
         Require(window.FindControl<TextBlock>("VisualToolHelp") is null,"Visual help belongs in tooltips, without a permanent workspace row.");
         }
     }

@@ -4,8 +4,10 @@
 letterbox/video/script mapping, and invalidation. `IVisualTool` implementations
 own rendering, hit testing, hover affordances, selected points and interpretation
 of a captured gesture. The registry chooses tools and vector subtools with stable
-`video/tool/*` and `video/vector/*` IDs. The primary selector is a compact vertical rail beside video. Contextual options
-collapse beneath navigation/playback; help is available on the canvas/options
+`video/tool/*` and `video/vector/*` IDs. The primary selector and contextual controls share a compact horizontal toolbar
+below navigation and playback. The same toolbar follows the video into the
+detached host. Horizontal scrolling keeps contextual controls accessible at
+narrow widths; help is available on the canvas/options
 tooltips and the existing command-bar status area without a permanent helper row. The overlay paints a transparent input
 surface across the video, including the no-clip state. Packaged checks assert
 actual input hit targets before raising pointer events.
@@ -80,9 +82,8 @@ Workspace spacing follows semantic groups: 2–4 DIP within related controls,
 10–12 DIP between groups and 6-DIP pane insets. Splitters define pane boundaries;
 repeated VIDEO/AUDIO/EDIT headers and bordered cards do not consume workspace.
 Metadata groups Comment/Style/Edit Style separately from Actor, Effect and Layer.
-Timing/margins and B-I-U-S/font/colors/reset have distinct group gaps. Visual
-primary tools occupy the vertical rail; only contextual controls use a bottom
-row. Frame status shares playback horizontal space. The default split reserves
+Timing/margins and B-I-U-S/font/colors/reset have distinct group gaps. The visual toolbar uses the row immediately after playback. Frame status shares
+playback horizontal space. The default split reserves
 at least 600 DIP for video input and audio timing independently. Audio has labelled 32-DIP columns with 10-DIP gaps and a
 separator from the visualizer. Grid rows are fixed at 26 DIP, with shaped-text height and containment checks
 for Japanese, Burmese, Arabic, Latin, emoji and combining marks. The 20,000-row
@@ -103,3 +104,35 @@ and renders its complete closed contour, replacing the old closing edge. It
 uses the same append/save and clip-mapping compensation as the eventual edit.
 Cubic handles and the prospective closing segment remain visible. Hover never
 mutates document text. Packaged captures assert preview/commit topology equality.
+
+## Drawing and numeric tag tools
+
+Kainote's VideoToolbar, VisualClips, VisualDrawingShapes, VisualMoveAll and
+VisualAllTags sources were inspected for tool placement and interaction.
+Kainote is GPLv3. Yoake's BSD-licensed implementation uses its own toolbar,
+presets, coordinate math and undo pipeline, with no Kainote code or assets.
+
+The Drawing tool uses the existing ASS vector topology parser and curve
+operations. A shape preset maps its contour into the drag rectangle. Drawing
+edits replace a single ASS drawing range and retain its drawing scale, outer
+override blocks and event metadata. Existing isolated drawings support point
+and handle selection, edge conversion/splitting, freehand paths, and whole
+drawing translation, resizing and rotation. The editor uses the shared
+video viewport and the original drawing and line placement as the drag baseline.
+Bounds-dependent alignment changes compensate the line position, including
+both endpoints of an existing move. Escape and capture loss restore source.
+
+Drawing authoring currently requires an empty event or one isolated drawing.
+Mixed text and drawings, multiple drawing runs, animated transforms, nonzero
+shear, X/Y perspective rotations and baseline/warp extensions require text
+editing. The drawing tool handles Z rotation, static scale, alignment,
+position, origin and ordinary movement. Mangetsu and libass use drawing
+control-box dimensions for the glyph advance and ascent. Historical xy-VSFilter
+has its own CPolygon placement path. The overlay models the Mangetsu renderer
+shipped by Yoake.
+
+Shear edits fax/fay independently. Shift translates position, origin and
+editable clips together. Numeric Tags supports static numeric properties,
+including set, relative changes, and gradients over selected visible lines.
+Kainote also has gradients over text, custom tag definitions and a configurable
+shape library. This implementation has built-in presets and numeric properties.

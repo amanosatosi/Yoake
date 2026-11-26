@@ -133,10 +133,9 @@ public partial class MainWindow
             - VideoRegion.RowSpacing * 3;
         if (workspaceWidth <= 0 || rowHeight <= 0) return; // Layout is not ready yet.
 
-        // Reserve the text editor's minimum width and the visual tools. The
+        // Reserve the text editor's minimum width. The
         // zoomed viewport claims real workspace width up to this limit.
-        var toolWidth = Math.Max(44, VisualPrimaryTools.Bounds.Width + VisualPrimaryTools.Margin.Right);
-        var chrome = toolWidth + VideoRegion.Margin.Left + VideoRegion.Margin.Right;
+        var chrome = VideoRegion.Margin.Left + VideoRegion.Margin.Right;
         var maxColumn = Math.Max(UpperWorkspace.ColumnDefinitions[0].MinWidth,
             workspaceWidth - UpperWorkspace.ColumnDefinitions[2].MinWidth - UpperWorkspace.ColumnDefinitions[1].ActualWidth);
         var columns = UpperWorkspace.ColumnDefinitions;
@@ -198,8 +197,7 @@ public partial class MainWindow
                 model.ActiveDocumentId!=owner||!ReferenceEquals(model.VideoView,state)||
                 UpperWorkspace.Parent is not Grid workspace||workspace.Bounds.Height<=0||UpperWorkspace.Bounds.Width<=0)return;
             var columns=UpperWorkspace.ColumnDefinitions;
-            var toolWidth=Math.Max(44,VisualPrimaryTools.Bounds.Width+VisualPrimaryTools.Margin.Right);
-            var chromeWidth=toolWidth+VideoRegion.Margin.Left+VideoRegion.Margin.Right;
+            var chromeWidth=VideoRegion.Margin.Left+VideoRegion.Margin.Right;
             var chromeHeight=VideoRegion.Margin.Top+VideoRegion.Margin.Bottom+
                 VideoRegion.RowDefinitions.Skip(1).Sum(row=>row.ActualHeight)+VideoRegion.RowSpacing*3+
                 Math.Max(0,VisualColumn.Bounds.Height-VideoDock.Bounds.Height);
@@ -208,7 +206,7 @@ public partial class MainWindow
             var maximumWidth=Math.Max(columns[0].MinWidth,UpperWorkspace.Bounds.Width-columns[2].MinWidth-columns[1].ActualWidth);
             var width=Math.Clamp(requestedHeight*model.VideoAspectRatio+chromeWidth,columns[0].MinWidth,maximumWidth);
             var upper=workspace.RowDefinitions[2];
-            var height=Math.Clamp(Math.Max(requestedHeight,VisualPrimaryTools.DesiredSize.Height)+chromeHeight,
+            var height=Math.Clamp(requestedHeight+chromeHeight,
                 upper.MinHeight,MaximumEmbeddedWorkspaceHeight(workspace));
             // Both dividers belong to an explicit window-zoom request. The
             // remaining editor/grid tracks must stretch even after a manual

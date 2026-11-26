@@ -4,14 +4,14 @@ using Yoake.UI.Commands;
 
 namespace Yoake.UI.ViewModels;
 
-public sealed record VisualLine(AssEvent Line,string Text,AssPoint DefaultPosition,AssPoint Position,AssPoint Origin,AssTransform Transform,double RelativeTime,double Duration,bool Active);
+public sealed record VisualLine(AssEvent Line,string Text,AssPoint DefaultPosition,AssPoint Position,AssPoint Origin,AssTransform Transform,double RelativeTime,double Duration,bool Active,int Alignment=2,AssStyle? Style=null);
 
 public sealed partial class MainWindowViewModel
 {
     private VisualLine[] _visualBaseline=[];
     public bool HasGesture=>_gesture is not null||_audioTimingGesture is not null||_karaokeGesture is not null;
     public event EventHandler? GestureEnded;
-    public static readonly string[] VisualToolNames=["Crosshair","Position","RotateZ","RotateXY","Scale","Clip","VectorClip","Distort"];
+    public static readonly string[] VisualToolNames=["Crosshair","Position","RotateZ","RotateXY","Scale","Clip","VectorClip","Distort","Drawing","Shear","Shift","Tags"];
     public static readonly string[] VectorModes=["Select","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];
     private string _vectorMode="Select";
     public string VectorMode {get=>VisualState?.VectorMode??_vectorMode;private set{if(VisualState is {} state)state.VectorMode=value;SetField(ref _vectorMode,value);OnPropertyChanged();OnPropertyChanged(nameof(VisualHint));foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);}}
@@ -29,7 +29,21 @@ public sealed partial class MainWindowViewModel
     public bool IsVectorRemove=>VectorMode=="Remove";
     public bool IsVectorFreehand=>VectorMode=="Freehand";
     public bool IsVectorSmooth=>VectorMode=="Smooth";
-    public bool HasVisualOptions=>IsPositionTool||IsClipFamily;
+    public bool IsDrawingTool=>ActiveVisualTool=="Drawing";
+    public bool IsTagsTool=>ActiveVisualTool=="Tags";
+    public IReadOnlyList<string> DrawingModes {get;}=["Select","Move","Resize","Rotate","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];
+    public IReadOnlyList<string> DrawingPresets {get;}=["No preset","Rectangle","Ellipse","Rounded box","Triangle","Diamond","Star"];
+    public IReadOnlyList<string> VisualNumericTags=>AssVisualTags.NumericVisualTags;
+    public IReadOnlyList<string> VisualTagOperations {get;}=["Adjust","Set","By line","Reverse"];
+    public string DrawingMode {get=>VisualState?.DrawingMode??"Select";set=>SetVisualOption(value,DrawingModes,nameof(DrawingMode),(state,v)=>state.DrawingMode=v);}
+    public string DrawingPreset {get=>VisualState?.DrawingPreset??"No preset";set=>SetVisualOption(value,DrawingPresets,nameof(DrawingPreset),(state,v)=>state.DrawingPreset=v);}
+    public string VisualNumericTag {get=>VisualState?.NumericVisualTag??"bord";set=>SetVisualOption(value,VisualNumericTags,nameof(VisualNumericTag),(state,v)=>state.NumericVisualTag=v);}
+    public string VisualTagOperation {get=>VisualState?.VisualTagOperation??"Adjust";set=>SetVisualOption(value,VisualTagOperations,nameof(VisualTagOperation),(state,v)=>state.VisualTagOperation=v);}
+    private void SetVisualOption(string value,IReadOnlyList<string> options,string property,Action<DocumentState,string> assign)
+    {
+        if(VisualState is not {} state||!options.Contains(value))return;
+        CancelGesture();assign(state,value);OnPropertyChanged(property);OnPropertyChanged(nameof(VisualHint));
+    }
     public bool IsClipFamily=>IsClipTool||IsVectorClipTool;
     public string VisualHint=>ActiveVisualTool switch
     {
@@ -40,6 +54,10 @@ public sealed partial class MainWindowViewModel
         "Scale"=>"Drag: scale · Shift: one axis · Alt: aspect · Ctrl: 25% snap",
         "Clip"=>"Drag: new rectangle · corners: resize · Shift+drag / inside: move clip",
         "VectorClip"=>VectorMode+" · Ctrl: toggle points · empty drag: box select · Esc: cancel",
+        "Drawing"=>DrawingPreset=="No preset"?DrawingMode+" · select an existing drawing or draw on a blank event":"Drag a shape onto the video · Shift: constrain proportions",
+        "Shear"=>"Drag horizontally for fax, vertically for fay · Shift: one axis",
+        "Shift"=>"Drag: move position, origin and clip together · Shift: one axis",
+        "Tags"=>"Drag horizontally to edit "+VisualNumericTag+" · Shift: fine adjustment",
         "Distort"=>"Drag corners: bilinear distortion · center: translate · eight normalized values",
         _=>""
     };
@@ -81,7 +99,8 @@ public sealed partial class MainWindowViewModel
             var fallback=AssVisualTags.DefaultPosition(line,style,size.Width,size.Height,text);
             var relative=time-entry.Timing.Start;var duration=entry.Timing.End-entry.Timing.Start;
             var position=AssVisualTags.PositionAtTime(text,(long)relative,duration)??fallback;
-            return new VisualLine(line,text,fallback,position,AssVisualTags.Origin(text)??position,AssVisualTags.Transform(text,style),relative,duration,ReferenceEquals(line,primary));
+            return new VisualLine(line,text,fallback,position,AssVisualTags.Origin(text)??position,AssVisualTags.Transform(text,style),relative,duration,ReferenceEquals(line,primary),
+                AssVisualTags.Alignment(text,int.TryParse(style?.Get("Alignment"),out var alignment)&&alignment is >=1 and <=9?alignment:2),style);
         }).ToArray();
     }
     public bool SelectVisualLine(AssEvent line)
@@ -109,7 +128,7 @@ public sealed partial class MainWindowViewModel
     {
         OnPropertyChanged(nameof(ActiveVisualTool));OnPropertyChanged(nameof(VectorMode));
         foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);
-        foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(HasVisualOptions),nameof(VisualHint)})OnPropertyChanged(property);
+        foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(IsDrawingTool),nameof(IsTagsTool),nameof(DrawingMode),nameof(DrawingPreset),nameof(VisualNumericTag),nameof(VisualTagOperation),nameof(VisualHint)})OnPropertyChanged(property);
     }
     private DocumentState? VisualState=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?state:null;
     private void RegisterVisualToolCommands()

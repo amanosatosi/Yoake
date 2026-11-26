@@ -18,7 +18,8 @@ public sealed class VisualOverlayControl : Control
     private readonly Dictionary<string,IVisualTool> _tools=new()
     {
         ["Crosshair"]=new CrosshairTool(),["Position"]=new PositionTool(),["RotateZ"]=new RotateZTool(),["RotateXY"]=new RotateXYTool(),
-        ["Scale"]=new ScaleTool(),["Clip"]=new RectangleClipTool(),["VectorClip"]=new VectorClipTool(),["Distort"]=new DistortTool()
+        ["Scale"]=new ScaleTool(),["Clip"]=new RectangleClipTool(),["VectorClip"]=new VectorClipTool(),["Distort"]=new DistortTool(),
+        ["Drawing"]=new VectorDrawingTool(),["Shear"]=new ShearTool(),["Shift"]=new ShiftGeometryTool(),["Tags"]=new NumericTagsTool()
     };
     private IVisualTool? _tool;
     private VisualToolContext? _context;
@@ -70,9 +71,9 @@ public sealed class VisualOverlayControl : Control
             if(Model?.IsPlaying==true)Cancel();
             Refresh();
         }
-        if(e.PropertyName is nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.VideoSourcePath))
+        if(e.PropertyName is nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.DrawingMode) or nameof(MainWindowViewModel.DrawingPreset) or nameof(MainWindowViewModel.VisualNumericTag) or nameof(MainWindowViewModel.VisualTagOperation) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.VideoSourcePath))
         {Cancel();}
-        if(e.PropertyName is nameof(MainWindowViewModel.VideoPresentationRevision) or nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.PreviewRevision) or nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.CurrentTimeSeconds) or nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.EditorDraft) or nameof(MainWindowViewModel.VisualBounds) or nameof(MainWindowViewModel.VisualBoundsPending))Refresh();
+        if(e.PropertyName is nameof(MainWindowViewModel.VideoPresentationRevision) or nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.PreviewRevision) or nameof(MainWindowViewModel.VideoFrame) or nameof(MainWindowViewModel.CurrentTimeSeconds) or nameof(MainWindowViewModel.ActiveVisualTool) or nameof(MainWindowViewModel.VectorMode) or nameof(MainWindowViewModel.DrawingMode) or nameof(MainWindowViewModel.DrawingPreset) or nameof(MainWindowViewModel.VisualNumericTag) or nameof(MainWindowViewModel.VisualTagOperation) or nameof(MainWindowViewModel.SelectedEvent) or nameof(MainWindowViewModel.Events) or nameof(MainWindowViewModel.EditorDraft) or nameof(MainWindowViewModel.VisualBounds) or nameof(MainWindowViewModel.VisualBoundsPending))Refresh();
     }
     private void Refresh()
     {
@@ -128,7 +129,7 @@ public sealed class VisualOverlayControl : Control
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);if(IsPanning){if(e.InitialPressMouseButton==MouseButton.Middle)FinishPan(true);e.Handled=true;return;}if(_capture is null)return;
-        try{if(_context is {} state)_tool?.Release(state,Pointer(e));ReleaseCapture();if(Model?.HasGesture==true)Model.EndGesture();e.Handled=true;InvalidateVisual();}catch(Exception ex){Fail(ex);}
+        try{if(_context is {} state)_tool?.Release(state,Pointer(e));ReleaseCapture();if(Model?.HasGesture==true)Model.EndGesture();else _tool?.Cancel();e.Handled=true;InvalidateVisual();}catch(Exception ex){Fail(ex);}
     }
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);if(_capture is not null)Cancel();}
     protected override void OnKeyDown(KeyEventArgs e){base.OnKeyDown(e);if(e.Key==Key.Escape&&HasTransientInput){Cancel();e.Handled=true;}else Modifiers(e.KeyModifiers);}

@@ -31,7 +31,7 @@ public sealed class VectorClipTool : VisualTool
         if(_cache.TryGetValue(text,out var path))return path;
         if(_cache.Count>8)_cache.Clear();return _cache[text]=Parse(AssVisualTags.Clip(text));
     }
-    private static StreamGeometry Geometry(AssVectorPath path,Func<AssPoint,Point> map)
+    internal static StreamGeometry Geometry(AssVectorPath path,Func<AssPoint,Point> map)
     {
         var geometry=new StreamGeometry();using(var g=geometry.Open())
         {

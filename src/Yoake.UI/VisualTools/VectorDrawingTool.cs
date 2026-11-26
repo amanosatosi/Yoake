@@ -1,0 +1,308 @@
+using Avalonia;
+using Avalonia.Input;
+using Avalonia.Media;
+using Yoake.Core.Subtitles;
+using Yoake.UI.ViewModels;
+using static Yoake.Core.Subtitles.VisualGeometry;
+
+namespace Yoake.UI.VisualTools;
+
+public sealed class VectorDrawingTool : VisualTool
+{
+    private sealed record Source(AssDrawingRun? Run, AssVectorPath Path);
+    private readonly record struct Mapping(AssPoint Position, AssPoint Origin, bool ExplicitOrigin,
+        AssPoint AlignmentOffset, double ScaleX, double ScaleY, double Angle)
+    {
+        private AssPoint Scale(AssPoint p) => new(p.X * ScaleX, p.Y * ScaleY);
+        private AssPoint Unscale(AssPoint p) => new(p.X / ScaleX, p.Y / ScaleY);
+        private AssPoint Unrotated => Subtract(Position, Origin);
+        public AssPoint Map(AssPoint p) =>
+            Add(Origin, Rotate(Add(Unrotated, Scale(Subtract(p, AlignmentOffset))), Angle));
+        public AssPoint Unmap(AssPoint p) =>
+            Add(AlignmentOffset, Unscale(Subtract(Rotate(Subtract(p, Origin), -Angle), Unrotated)));
+        public AssPoint AnchorChange(AssPoint newOffset)
+        {
+            var delta = Scale(Subtract(newOffset, AlignmentOffset));
+            return ExplicitOrigin ? delta : Rotate(delta, Angle);
+        }
+    }
+
+    private string? _cachedText;
+    private Source? _cachedSource;
+    private Source? _baseline;
+    private Mapping _mapping;
+    private string _mode = "Select", _preset = "No preset";
+    private readonly HashSet<int> _selected = [];
+    private readonly List<AssPoint> _samples = [];
+    private AssEvent? _selectionOwner;
+    private int _hit;
+    private bool _box;
+    private Point _boxEnd;
+    private HashSet<int> _boxBaseline = [];
+    private AssBox _bounds;
+    private AssPoint _pivot;
+    private Point? _lastApplied;
+    private KeyModifiers _lastModifiers;
+
+    private Source? Read(string text)
+    {
+        if (_cachedText == text) return _cachedSource;
+        _cachedText = text;
+        var (run, insert) = AssDrawingEditing.FindIsolatedRun(text);
+        var path = run is {} r ? AssVectorPath.Parse(text.Substring(r.Start, r.Length), r.Scale) :
+            insert ? new AssVectorPath() : null;
+        return _cachedSource = path is null ? null : new(run, path);
+    }
+
+    private static bool CanMap(VisualLine line)
+    {
+        var t = line.Transform;
+        return t.ScaleX > 0 && t.ScaleY > 0 && t.X == 0 && t.Y == 0 &&
+            t.ShearX == 0 && t.ShearY == 0 &&
+            !AssVisualTags.Scan(line.Text).Any(tag => tag.Name is "pbo" or "distort" or "t" or "pos3d" or "warp");
+    }
+
+    private static AssPoint AlignmentOffset(AssBox bounds, int alignment) =>
+        new(bounds.Width * ((alignment - 1) % 3) / 2, bounds.Height * (2 - (alignment - 1) / 3) / 2);
+
+    private static Mapping GetMapping(VisualLine line, AssBox bounds) =>
+        new(line.Position, line.Origin, AssVisualTags.Origin(line.Text) is not null,
+            AlignmentOffset(bounds, line.Alignment), line.Transform.ScaleX / 100,
+            line.Transform.ScaleY / 100, -line.Transform.Z * Math.PI / 180);
+
+    private static AssPoint Rotate(AssPoint p, double radians)
+    {
+        var (sin, cos) = Math.SinCos(radians);
+        return new(p.X * cos - p.Y * sin, p.X * sin + p.Y * cos);
+    }
+
+    public override void Render(VisualCanvas canvas)
+    {
+        if (canvas.Context.Active is not {} line || Read(line.Text) is not {} source || !CanMap(line)) return;
+        var bounds = AssDrawingEditing.ControlBounds(source.Path);
+        var map = GetMapping(line, bounds);
+        Point Screen(AssPoint point) => canvas.Screen(map.Map(point));
+        var mode = canvas.Context.Model.DrawingMode;
+        if (source.Path.Commands.Count > 0)
+        {
+            canvas.Path(VectorClipTool.Geometry(source.Path, Screen));
+            if (mode is "Move" or "Resize" or "Rotate")
+            {
+                var a = map.Map(bounds.Map(new(0, 0)));
+                var b = map.Map(bounds.Map(new(1, 0)));
+                var c = map.Map(bounds.Map(new(1, 1)));
+                var d = map.Map(bounds.Map(new(0, 1)));
+                canvas.Line(a, b); canvas.Line(b, c); canvas.Line(c, d); canvas.Line(d, a);
+                foreach (var point in new[] { a, b, c, d }) canvas.Handle(point);
+                canvas.Handle(map.Map(bounds.Map(new(.5, .5))), HandleShape.Circle);
+            }
+            else
+            {
+                foreach (var curve in source.Path.Curves())
+                    if (curve.Cubic)
+                    {
+                        canvas.ScreenLine(Screen(curve.Start), Screen(curve.Control1), Brushes.Gray, true);
+                        canvas.ScreenLine(Screen(curve.Control2), Screen(curve.End), Brushes.Gray, true);
+                    }
+                foreach (var handle in source.Path.Handles())
+                    canvas.Handle(map.Map(handle.Point), handle.Control ? HandleShape.Square : HandleShape.Circle,
+                        ReferenceEquals(_selectionOwner, line.Line) && _selected.Contains(handle.Index));
+            }
+        }
+
+        if (_box) canvas.Rectangle(Anchor.Script, canvas.Context.Script(_boxEnd), false, false);
+    }
+
+    public override bool Press(VisualToolContext context, VisualPointer pointer)
+    {
+        if (context.Active is not {} line || Read(line.Text) is not {} source || !CanMap(line)) return false;
+        if (!ReferenceEquals(_selectionOwner, line.Line))
+        {
+            _selectionOwner = line.Line;
+            _selected.Clear();
+        }
+        _baseline = source;
+        _bounds = AssDrawingEditing.ControlBounds(source.Path);
+        _mapping = GetMapping(line, _bounds);
+        _mode = context.Model.DrawingMode;
+        _preset = context.Model.DrawingPreset;
+        _lastApplied = null;
+        var local = _mapping.Unmap(pointer.Script);
+        _hit = -1;
+        foreach (var handle in source.Path.Handles().Reverse())
+            if (context.Near(_mapping.Map(handle.Point), pointer.Screen))
+            { _hit = handle.Index; break; }
+
+        if (_preset == "No preset")
+        {
+            if (_mode == "Select")
+            {
+                if (_hit < 0)
+                {
+                    Anchor = pointer;
+                    _box = true;
+                    _boxEnd = pointer.Screen;
+                    _boxBaseline = pointer.Ctrl ? new(_selected) : [];
+                    if (!pointer.Ctrl) _selected.Clear();
+                    return true;
+                }
+                if (pointer.Ctrl && !_selected.Add(_hit)) { _selected.Remove(_hit); return false; }
+                if (!pointer.Ctrl && !_selected.Contains(_hit)) { _selected.Clear(); _selected.Add(_hit); }
+            }
+            if (_mode == "Remove" && _hit < 0) return false;
+            if ((_mode is "Move" or "Resize" or "Rotate") && source.Run is null) return false;
+            if (_mode == "Resize")
+            {
+                if (_bounds.Width <= 0 || _bounds.Height <= 0) return false;
+                var corners = new AssPoint[] { new(0, 0), new(1, 0), new(1, 1), new(0, 1) };
+                var corner = Array.FindIndex(corners, p => context.Near(_mapping.Map(_bounds.Map(p)), pointer.Screen, 14));
+                if (corner < 0) return false;
+                var dragged = _bounds.Map(corners[corner]);
+                _pivot = _bounds.Map(corners[(corner + 2) % 4]);
+                _resizeStart = dragged;
+            }
+            if (_mode == "Rotate")
+            {
+                _pivot = _mapping.Map(_bounds.Map(new(.5, .5)));
+                if (context.Near(_pivot, pointer.Screen, 2)) return false;
+            }
+        }
+
+        (AssCurve Curve, double T, double Distance)? nearest = null;
+        if (_preset == "No preset" && _mode is "Convert" or "Insert")
+        {
+            nearest = source.Path.Nearest(local);
+            if (nearest is not {} segment || !context.Near(_mapping.Map(segment.Curve.At(segment.T)), pointer.Screen, 12))
+                return false;
+        }
+
+        _samples.Clear();
+        _samples.Add(local);
+        if (!Begin(context, pointer, "Edit ASS drawing")) return false;
+        if (nearest is {} edge)
+        {
+            var changed = source.Path.Copy();
+            if (_mode == "Convert") changed.Convert(edge.Curve); else changed.Split(edge.Curve, edge.T);
+            Apply(context, changed);
+        }
+        else if (_mode == "Remove" && _preset == "No preset")
+        {
+            var changed = source.Path.Copy();
+            changed.Remove(_hit);
+            Apply(context, changed);
+            _selected.Clear();
+        }
+        else if (_preset == "No preset" && _mode is "Line" or "Bicubic") Move(context, pointer);
+        return true;
+    }
+
+    private AssPoint _resizeStart;
+
+    public override void Move(VisualToolContext context, VisualPointer pointer)
+    {
+        if (_box && _baseline is {} boxSource)
+        {
+            _boxEnd = pointer.Screen;
+            var box = new Rect(Anchor.Screen, _boxEnd);
+            _selected.Clear();
+            _selected.UnionWith(_boxBaseline);
+            foreach (var handle in boxSource.Path.Handles())
+                if (box.Contains(context.Screen(_mapping.Map(handle.Point)))) _selected.Add(handle.Index);
+            return;
+        }
+        if (Initial is not {} line || _baseline is not {} source) return;
+        if (_lastApplied == pointer.Screen && _lastModifiers == pointer.Modifiers) return;
+        _lastApplied = pointer.Screen;
+        _lastModifiers = pointer.Modifiers;
+        var delta = Subtract(pointer.Script, Anchor.Script);
+        var point = _mapping.Unmap(pointer.Script);
+        if (_preset != "No preset")
+        {
+            var end = pointer.Script;
+            if (pointer.Shift)
+            {
+                var side = Math.Max(Math.Abs(delta.X), Math.Abs(delta.Y));
+                end = Add(Anchor.Script, new(Math.CopySign(side, delta.X), Math.CopySign(side, delta.Y)));
+            }
+            var width = Math.Abs(end.X - Anchor.Script.X);
+            var height = Math.Abs(end.Y - Anchor.Script.Y);
+            if (width < 1 || height < 1) { context.Apply(l => l.Text); return; }
+            var box = new AssBox(Math.Min(end.X, Anchor.Script.X), Math.Min(end.Y, Anchor.Script.Y), width, height);
+            Apply(context, AssDrawingEditing.Map(AssDrawingEditing.CreatePreset(_preset, box), _mapping.Unmap));
+            return;
+        }
+
+        switch (_mode)
+        {
+            case "Move":
+                context.Apply(l => !ReferenceEquals(l.Line, line.Line) || delta == default ? l.Text :
+                    AssVisualTags.ShiftPosition(l.Text, l.DefaultPosition, pointer.Shift ? Axis(delta) : delta));
+                return;
+            case "Resize":
+                var start = Subtract(_resizeStart, _pivot);
+                var end = Add(start, Subtract(point, _mapping.Unmap(Anchor.Script)));
+                var sx = Math.Clamp(end.X / start.X, .01, 100);
+                var sy = Math.Clamp(end.Y / start.Y, .01, 100);
+                if (pointer.Shift) sx = sy = Math.Abs(sx - 1) >= Math.Abs(sy - 1) ? sx : sy;
+                Apply(context, AssDrawingEditing.Map(source.Path,
+                    p => Add(_pivot, new((p.X - _pivot.X) * sx, (p.Y - _pivot.Y) * sy))));
+                return;
+            case "Rotate":
+                var angle = Angle(pointer.Script, _pivot) - Angle(Anchor.Script, _pivot);
+                if (pointer.Ctrl) angle = Snap(angle, 15);
+                Apply(context, AssDrawingEditing.Map(source.Path, p =>
+                    _mapping.Unmap(Add(_pivot, Rotate(Subtract(_mapping.Map(p), _pivot), -angle * Math.PI / 180)))));
+                return;
+            case "Freehand":
+            case "Smooth":
+                if (Distance(_mapping.Map(_samples[^1]), pointer.Script) >= context.ScriptDistance(4))
+                    _samples.Add(point);
+                if (_samples.Count > 1) Apply(context, AssVectorPath.Freehand(_samples, _mode == "Smooth"));
+                return;
+            case "Select":
+                var changed = source.Path.Copy();
+                changed.Translate(_selected, Subtract(_mapping.Unmap(Add(Anchor.Script, Delta(pointer))), _mapping.Unmap(Anchor.Script)));
+                Apply(context, changed);
+                return;
+            case "Line":
+            case "Bicubic":
+                var appended = source.Path.Copy();
+                appended.Append(point, _mode == "Bicubic");
+                Apply(context, appended);
+                return;
+        }
+    }
+
+    private void Apply(VisualToolContext context, AssVectorPath path)
+    {
+        if (Initial is not {} line || _baseline is not {} source) return;
+        var serialized = path.Serialize(source.Run?.Scale ?? 1);
+        if (serialized == source.Path.Serialize(source.Run?.Scale ?? 1))
+        {
+            context.Apply(l => l.Text);
+            return;
+        }
+        // Alignment depends on the serialized outline's dimensions. Correct
+        // position to keep the unedited vertices stationary when bounds change.
+        var rounded = AssVectorPath.Parse(serialized, source.Run?.Scale ?? 1);
+        var offset = AlignmentOffset(rounded is null ? default : AssDrawingEditing.ControlBounds(rounded), line.Alignment);
+        var correction = _mapping.AnchorChange(offset);
+        var edited = source.Run is {} run ? run.Replace(line.Text, path) : AssDrawingEditing.Insert(line.Text, path);
+        if (correction != default || source.Run is null)
+        {
+            if (AssVisualTags.Move(line.Text) is {} move)
+                edited = AssVisualTags.SetMove(edited, move with { Start = Add(move.Start, correction), End = Add(move.End, correction) });
+            else
+                edited = AssVisualTags.SetPosition(edited, Add(line.Position, correction));
+        }
+        context.Apply(l => ReferenceEquals(l.Line, line.Line) ? edited : l.Text);
+    }
+
+    public override void Cancel()
+    {
+        base.Cancel();
+        _baseline = null;
+        _samples.Clear();
+        _box = false;
+    }
+}

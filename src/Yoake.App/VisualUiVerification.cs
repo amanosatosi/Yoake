@@ -225,9 +225,49 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
             case 18:
                 var quick=Add(_position,Size.Width*.08,Size.Height*.05);Hover(quick);ShotBoth("crosshair",0);_baseline=_line!.Text;Press(quick,KeyModifiers.None,2);
                 Require(!model.HasGesture&&AssVisualTags.Position(_line.Text) is {} placed&&VisualGeometry.Distance(placed,quick)<.001,"Crosshair double-click must position the line and finish one transaction.");
-                Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"Quick position must undo losslessly.");Tool("Position");return true;
+                Invoke(CommandIds.EditUndo);Require(_line!.Text==_baseline,"Quick position must undo losslessly.");
+                Fixture(@"{\an7\bord0\shad0\1c&HFFFFFF&}");Tool("Drawing");
+                model.DrawingPreset="Ellipse";_baseline=_line.Text;WaitForPreview();return false;
+            case 19:
+                if(!Ready)return Retry();
+                _baselinePixels=pixels();
+                var shapeStart=new AssPoint(Size.Width*.3,Size.Height*.3);
+                Press(shapeStart);Move(Add(shapeStart,Size.Width*.2,Size.Height*.2));
+                Require(model.HasGesture&&ReadDrawing().Curves().Count(curve=>curve.Cubic)==4,"Ellipse must create a valid cubic ASS drawing during the drag.");
+                WaitForPreview();return false;
+            case 20:
+                if(!Ready)return Retry();
+                Require(!_baselinePixels!.AsSpan().SequenceEqual(pixels()),"New ASS drawing must render in Mangetsu during the captured drag.");
+                var shapeEnd=new AssPoint(Size.Width*.5,Size.Height*.5);
+                Release(shapeEnd);var ellipse=_line!.Text;
+                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"Shape drag must undo in one step.");
+                Invoke(CommandIds.EditRedo);Require(_line.Text==ellipse,"Redo must restore the exact drawing source.");
+                model.DrawingPreset="No preset";
+                var control=ReadDrawing().Handles().First(handle=>handle.Control);
+                var origin=AssVisualTags.Position(_line.Text)!.Value;
+                var handlePoint=Add(origin,control.Point.X,control.Point.Y);
+                Press(handlePoint);Move(Add(handlePoint,ScriptDip(20),-ScriptDip(15)));Release(Add(handlePoint,ScriptDip(20),-ScriptDip(15)));
+                Require(ReadDrawing().Handles().First(handle=>handle.Control).Point!=control.Point,"An existing cubic control must be draggable.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"An existing drawing's handle drag must undo exactly.");
+                model.DrawingMode="Move";var center=new AssPoint(Size.Width*.4,Size.Height*.4);
+                Press(center);Move(Add(center,ScriptDip(15),ScriptDip(5)));Release(Add(center,ScriptDip(15),ScriptDip(5)));
+                Require(AssVisualTags.Position(_line.Text)!=origin&&ReadDrawing().Serialize(1)==ReadPath(ellipse).Serialize(1),"Moving a complete drawing changes position and preserves topology.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"Drawing move must be losslessly undoable.");
+                Tool("Shear");Press(center);Move(Add(center,ScriptDip(25),-ScriptDip(10)));Release(Add(center,ScriptDip(25),-ScriptDip(10)));
+                Require(AssVisualTags.Scalar(_line.Text,"fax",0)>.2&&AssVisualTags.Scalar(_line.Text,"fay",0)>.05,"Shear must set both ASS shear tags.");
+                Invoke(CommandIds.EditUndo);Tool("Tags");
+                model.VisualNumericTag="bord";Press(center);Move(Add(center,ScriptDip(15),0));Release(Add(center,ScriptDip(15),0));
+                Require(AssVisualTags.Scalar(_line.Text,"bord",0)>.5&&ReadDrawing().Serialize(1)==ReadPath(ellipse).Serialize(1),"Numeric tag editing must preserve drawing commands.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"Numeric tag edit must undo exactly.");
+                Tool("Position");return true;
             default:return true;
         }
+    }
+    private AssVectorPath ReadDrawing()=>ReadPath(_line!.Text);
+    private static AssVectorPath ReadPath(string text)
+    {
+        var run=AssDrawingEditing.FindIsolatedRun(text).Run!.Value;
+        return AssVectorPath.Parse(text.Substring(run.Start,run.Length),run.Scale)!;
     }
     private string At(AssPoint p)=>@"{\an5\fs80\bord0\shad0\1c&HFFFFFF&\pos("+N(p.X)+","+N(p.Y)+")";
     private string Drawing()=>"m "+N(Size.Width)+" "+N(Size.Height)+" l "+N(Size.Width*3)+" "+N(Size.Height)+" b "+N(Size.Width*3)+" "+N(Size.Height*2)+" "+N(Size.Width*2)+" "+N(Size.Height*3)+" "+N(Size.Width)+" "+N(Size.Height*3);
