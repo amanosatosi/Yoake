@@ -186,6 +186,12 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                             $"Post-publication supersession must return false for obsolete request; old={oldPublishedResult}, latest={newestResult}, source={model.VideoSourcePath}, status={model.MediaStatus}.");
                     }
                     finally { model.PropertyChanged -= onPublished; }
+                    // A successful provider publication can be followed by a
+                    // newer asynchronous preview request. Capture a displayed
+                    // frame before testing its identity across Audio Close.
+                    for(var frameWait=0;model.VideoFrame is null&&frameWait<80;frameWait++)
+                        await Task.Delay(25);
+                    Require(model.VideoFrame is not null,"The retained video must have a displayed frame before Audio audition.");
                     await Invoke("audio/play/current"); Require(model.IsPlaying, "Audio audition starts before Audio Close.");
                     using (var canceledClose = new CancellationTokenSource())
                     { canceledClose.Cancel(); Require(!await model.Registry.InvokeAsync("audio/close",new(model.ActiveDocumentId),cancellationToken:canceledClose.Token) && model.IsPlaying && model.AudioSourcePath == _video,"Canceled Audio Close retains active playback and both resources."); }
@@ -206,7 +212,7 @@ internal sealed class MediaOwnershipUiAcceptanceVerification(IClassicDesktopStyl
                         "Audio Close stops audition and keeps Video playback enabled.");
                     Require(ReferenceEquals(_retainedFrame, model.VideoFrame) && ReferenceEquals(_retainedTimes, model.FrameTimes) &&
                         model.ExternalTimecodePath is not null && model.ExternalKeyframePath is not null,
-                        "Audio Close retains exact Video frame/provider map and external metadata.");
+                        $"Audio Close retains exact Video frame/provider map and external metadata. Frame present before={_retainedFrame is not null}, same frame={ReferenceEquals(_retainedFrame,model.VideoFrame)}, same map={ReferenceEquals(_retainedTimes,model.FrameTimes)}, timecodes={model.ExternalTimecodePath is not null}, keyframes={model.ExternalKeyframePath is not null}.");
                     Require(await RejectedAnalysis(_obsoleteWaveform!) && await RejectedAnalysis(_obsoleteSpectrum!), "Closed Audio analysis cannot publish obsolete detail or spectrum.");
                     Require(!window.FindControl<AudioWaveformControl>("AudioDisplay")!.SpectrumTileReady, "Audio Close clears the presented spectrum.");
                     DocumentUnchanged();
