@@ -47,9 +47,7 @@ public partial class MainWindow : Window, IEditorDialogs
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent,HandleFastActorKeyUp,RoutingStrategies.Tunnel);
-        DragDrop.SetAllowDrop(this, true);
-        AddHandler(DragDrop.DragOverEvent, HandleFileDragOver, RoutingStrategies.Tunnel);
-        AddHandler(DragDrop.DropEvent, HandleFileDrop, RoutingStrategies.Tunnel);
+        RegisterFileDropHost(this);
         Opened+=(_,_)=>{UpdateChrome();UpdateEmbeddedVideoHost();};
         Loaded+=(_,_)=>SyncSelection();
         Opened+=StartAutomation;
@@ -99,53 +97,92 @@ public partial class MainWindow : Window, IEditorDialogs
         Deactivated+=(_,_)=>ClearFastActorModifier();
         Closed+=(_,_)=>{MoveVideoHost(false);AudioDisplay.Model=null;_model?.Dispose();};
     }
-    private static string[] DropPaths(DragEventArgs e)
+    // Avalonia's DragEnter, DragOver and Drop events are Bubble-only.
+    // Register on each top-level host, including the detached video window.
+    private void RegisterFileDropHost(Window host)
     {
-        // Only Explorer's local file URIs are meaningful here; never attempt
-        // network/non-file URI loading or treat drag text as a file path.
+        DragDrop.SetAllowDrop(host,true);
+        host.AddHandler(DragDrop.DragEnterEvent,HandleFileDragOver,RoutingStrategies.Bubble,handledEventsToo:true);
+        host.AddHandler(DragDrop.DragOverEvent,HandleFileDragOver,RoutingStrategies.Bubble,handledEventsToo:true);
+        host.AddHandler(DragDrop.DropEvent,HandleFileDrop,RoutingStrategies.Bubble,handledEventsToo:true);
+    }
+    private void UnregisterFileDropHost(Window host)
+    {
+        host.RemoveHandler(DragDrop.DragEnterEvent,HandleFileDragOver);
+        host.RemoveHandler(DragDrop.DragOverEvent,HandleFileDragOver);
+        host.RemoveHandler(DragDrop.DropEvent,HandleFileDrop);
+        DragDrop.SetAllowDrop(host,false);
+    }
+    private static string[]? DropPaths(DragEventArgs e)
+    {
+        // Leave ordinary text drags to the text controls. Copy paths before
+        // returning from the event: the platform owns the transfer lifetime.
+        if(!e.DataTransfer.Formats.Contains(DataFormat.File))return null;
         return (e.DataTransfer.TryGetFiles() ?? [])
-            .Select(item => item.Path is { IsAbsoluteUri: true, IsFile: true } uri ? uri.LocalPath : null)
-            .Where(path => path is not null)
-            .Select(path => path!)
+            .Select(item=>item.Path is { IsAbsoluteUri:true,IsFile:true } uri ? uri.LocalPath : "")
             .ToArray();
     }
-    private void HandleFileDragOver(object? sender, DragEventArgs e)
+
+    public Task<bool> FileDropCompletion {get;private set;}=Task.FromResult(true);
+    private void HandleFileDragOver(object? sender,DragEventArgs e)
     {
         var paths=DropPaths(e);
-        e.DragEffects=paths.Length>0 && paths.All(FileDropPlanner.IsCandidate) ? DragDropEffects.Copy : DragDropEffects.None;
+        if(paths is null)return;
+        e.DragEffects=FileDropCompletion.IsCompleted && _model is {OpeningSubtitle:false}
+            && paths.Length>0 && paths.All(FileDropPlanner.IsCandidate)
+            ? e.DragEffects & DragDropEffects.Copy : DragDropEffects.None;
         e.Handled=true;
     }
-    private async void HandleFileDrop(object? sender, DragEventArgs e)
+    private void HandleFileDrop(object? sender,DragEventArgs e)
     {
         var paths=DropPaths(e);
+        if(paths is null)return;
         e.Handled=true;
-        if(_model is not { } model)return;
+        if(!FileDropCompletion.IsCompleted || _model is not {OpeningSubtitle:false} model ||
+            paths.Length==0 || !paths.All(FileDropPlanner.IsCandidate))
+        {e.DragEffects=DragDropEffects.None;return;}
+        e.DragEffects &= DragDropEffects.Copy;
+        if(e.DragEffects==DragDropEffects.None)return;
+        FileDropCompletion=OpenDroppedFilesAsync(model,paths);
+    }
+    private async Task<bool> OpenDroppedFilesAsync(MainWindowViewModel model,string[] paths)
+    {
         try
         {
             if(!FileDropPlanner.TryBuild(paths,out var files,out var error))
-            {
-                await ShowDropErrorAsync(error);return;
-            }
+            {await ShowDropErrorAsync(error);return false;}
+            var lastSubtitle=files.LastOrDefault(file=>file.Type==DroppedFileType.Subtitle);
+            var explicitVideo=files.Any(file=>file.Type==DroppedFileType.Video);
+            var owner=model.ActiveDocumentId;
             foreach(var file in files)
             {
-                if(!ReferenceEquals(_model,model))return;
-                var context=new CommandContext(model.ActiveDocumentId);
+                // Do not redirect the rest of a batch to a different tab if
+                // the user switches documents while an asynchronous open runs.
+                if(!ReferenceEquals(_model,model)||model.ActiveDocumentId!=owner)return false;
+                var context=new CommandContext(owner);
                 var ok=file.Type switch
                 {
-                    DroppedFileType.Subtitle=>await model.Registry.InvokeAsync(CommandIds.SubtitleOpen,context,file.Path),
-                    DroppedFileType.Video=>await OpenCombinedDropAsync(model,file.Path),
-                    DroppedFileType.Audio=>await model.Registry.InvokeAsync("audio/open",context,file.Path),
+                    DroppedFileType.Subtitle=>await model.OpenDroppedSubtitleAsync(file.Path,
+                        openAssociatedMedia:!(explicitVideo&&ReferenceEquals(file,lastSubtitle))),
+                    DroppedFileType.Video=>await model.OpenMediaAsync(file.Path),
+                    DroppedFileType.Audio=>await model.OpenAudioAsync(file.Path),
                     DroppedFileType.Timecodes=>await model.Registry.InvokeAsync("timecode/open",context,file.Path),
                     DroppedFileType.Keyframes=>await model.Registry.InvokeAsync("keyframe/open",context,file.Path),
                     _=>false
                 };
-                if(!ok){await ShowDropErrorAsync("Could not open dropped file: "+Path.GetFileName(file.Path));return;}
+                if(!ok){await ShowDropErrorAsync("Could not open dropped file: "+Path.GetFileName(file.Path));return false;}
+                if(file.Type==DroppedFileType.Subtitle)
+                {
+                    // Opening a subtitle intentionally activates its tab.
+                    if(!string.Equals(model.ActiveSubtitlePath,file.Path,StringComparison.OrdinalIgnoreCase))return false;
+                    owner=model.ActiveDocumentId;
+                }
+                else if(model.ActiveDocumentId!=owner)return false;
             }
+            return true;
         }
-        catch(Exception ex){await ShowDropErrorAsync(ex.Message);}
+        catch(Exception ex){await ShowDropErrorAsync(ex.Message);return false;}
     }
-    private static async Task<bool> OpenCombinedDropAsync(MainWindowViewModel model,string path)
-        => await model.OpenMediaAsync(path);
     private async Task ShowDropErrorAsync(string message)
         => await AskAsync("File drop",message,["OK"]);
 

@@ -43,10 +43,15 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
             {
                 case 0:
                     foreach(var id in Seven)Require(!model.Actions[id].CanExecute(null),"No-video availability: "+id);
-                    var path=Path.Combine(options.ProfileDirectory!,"presentation.ass");File.WriteAllText(path,Fixture());Require(model.OpenSubtitle(path),"Presentation fixture opens.");
-                    _audio=Path.Combine(options.VerificationMedia!,"av.avi");_opening=model.OpenMediaAsync(_audio);return;
+                    var path=Path.Combine(options.ProfileDirectory!,"日本語 presentation.ass");File.WriteAllText(path,Fixture());
+                    _audio=Path.Combine(options.VerificationMedia!,"av.avi");
+                    // Send an actual bubbling file transfer through the
+                    // shipping window from its subtitle grid, video first.
+                    _opening=DropFiles(window.FindControl<ListBox>("SubtitleRows")!,window,_audio,path);return;
                 case 1:
-                    if(_opening?.IsCompleted!=true){_stage--;return;}Require(await _opening,"Load independent native Audio/Video.");
+                    if(_opening?.IsCompleted!=true){_stage--;return;}Require(await _opening,"Mixed file drop opens subtitle then native Audio/Video.");
+                    Require(model.ActiveSubtitlePath==Path.Combine(options.ProfileDirectory!,"日本語 presentation.ass")&&model.VideoSourcePath==_audio&&model.AudioSourcePath==_audio,
+                        "The combined drop must attach both media tracks to the dropped subtitle tab.");
                     await Invoke(CommandIds.ViewAudioVideo);await Invoke("video/open/dummy",new DummyVideoOptions{Width=320,Height=180,FrameCount=600,FramesPerSecond=25,Checkerboard=true});
                     var keyPath=Path.Combine(options.ProfileDirectory!,"pan-keys.txt");File.WriteAllText(keyPath,"# keyframe format v1\nfps 0\n0\n5\n175\n");await Invoke("keyframe/open",keyPath);_keys=model.Keyframes;
                     await Invoke("time/lead/out");model.Draft!.Layer="unfinished";
@@ -96,6 +101,13 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                 case 9:
                     _detached=window.DetachedVideoWindow;Require(_detached is {IsVisible:true,IsLoaded:true,CanResize:true}&&_detached.TryGetPlatformHandle() is {Handle: not 0},"Detach creates a real native resizable window.");
                     Require(ReferenceEquals(TopLevel.GetTopLevel(Overlay),_detached)&&!window.FindControl<Grid>("VisualColumn")!.IsVisible&&window.FindControl<MenuItem>("VideoDetachMenu")!.IsChecked,"Existing controls and tools moved, main host hidden, toggle checked.");
+                    using(var transfer=await FileTransfer(_detached!,_audio))
+                    {
+                        Require(DragDrop.GetAllowDrop(Overlay),"Detached video inherits file drop permission.");
+                        var over=new DragEventArgs(DragDrop.DragOverEvent,transfer,Overlay,new Point(10,10),Avalonia.Input.KeyModifiers.None){DragEffects=DragDropEffects.Copy};
+                        Overlay.RaiseEvent(over);
+                        Require(over.Handled&&over.DragEffects==DragDropEffects.Copy,"Detached video receives the bubbling file drag.");
+                    }
                     foreach(var id in ZoomIds)Require(!model.Actions[id].CanExecute(null),"Aegisub attached-only zoom command: "+id);
                     Require(ReferenceEquals(_map,model.FrameTimes)&&ReferenceEquals(_keys,model.Keyframes)&&ReferenceEquals(_state,model.VideoView),"Detach preserves external keys, map and presentation owner.");Unchanged();
                     Pan(new(100,100),new(120,111));Require(model.VideoView!.PanX!=0&&!model.HasGesture,"Detached pointer input pans same source.");
@@ -163,6 +175,40 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
         catch(Exception exception){_timer.Stop();Program.Fatal("Packaged Video presentation stage "+(_stage-1),exception);desktop.Shutdown(1);}
         finally{_ticking=false;}
     }
+    private static async Task<IDataTransfer> FileTransfer(Window host,params string[] paths)
+    {
+        var data=new DataTransfer();
+        foreach(var path in paths)
+        {
+            var file=await host.StorageProvider.TryGetFileFromPathAsync(new Uri(Path.GetFullPath(path)));
+            Require(file is not null,"Native storage file for drag: "+path);
+            data.Add(DataTransferItem.CreateFile(file));
+        }
+        return data;
+    }
+
+    private async Task<bool> DropFiles(Control target,Window host,params string[] paths)
+    {
+        using var data=await FileTransfer(host,paths);
+        Require(DragDrop.GetAllowDrop(target),"Child inherits native file drop permission.");
+        using(var text=(IDataTransfer)new DataTransfer())
+        {
+            ((DataTransfer)text).Add(DataTransferItem.CreateText("ordinary text"));
+            var textOver=new DragEventArgs(DragDrop.DragOverEvent,text,target,new Point(10,10),Avalonia.Input.KeyModifiers.None){DragEffects=DragDropEffects.Copy};
+            // Raise on the root to isolate the application-level handler
+            // from text controls' own drag handling.
+            host.RaiseEvent(textOver);
+            Require(!textOver.Handled,"File drop must not consume ordinary text drags.");
+        }
+        var over=new DragEventArgs(DragDrop.DragOverEvent,data,target,new Point(10,10),Avalonia.Input.KeyModifiers.None){DragEffects=DragDropEffects.Copy};
+        target.RaiseEvent(over);
+        Require(over.Handled&&over.DragEffects==DragDropEffects.Copy,"Bubbling drag over must accept supported files.");
+        var drop=new DragEventArgs(DragDrop.DropEvent,data,target,new Point(10,10),Avalonia.Input.KeyModifiers.None){DragEffects=DragDropEffects.Copy};
+        target.RaiseEvent(drop);
+        Require(drop.Handled&&drop.DragEffects==DragDropEffects.Copy,"Bubbling drop reaches the application handler.");
+        return await window.FileDropCompletion;
+    }
+
     private async Task VerifyDetachedDrawing()
     {
         model.Draft!.Layer="0";

@@ -41,6 +41,7 @@ public partial class MainWindow
             {
                 var host = new Window { Name = "DetachedVideoWindow", Title = "Detached Video", Width = Math.Max(440, VideoRegion.Bounds.Width + 16), Height = Math.Max(320, VideoRegion.Bounds.Height + 40), MinWidth = 240, MinHeight = 180, CanResize = true, DataContext = _model, WindowStartupLocation = WindowStartupLocation.CenterOwner };
                 host.AddHandler(KeyDownEvent, HandleKey, RoutingStrategies.Tunnel);
+                RegisterFileDropHost(host);
                 host.Deactivated += VideoHostDeactivated; host.Closing += DetachedClosing; host.Closed += DetachedClosed;
                 host.SizeChanged += DetachedResized;
                 host.ScalingChanged += DetachedScalingChanged;
@@ -91,6 +92,7 @@ public partial class MainWindow
     }
     private void RemoveVideoHandlers(Window host)
     {
+        UnregisterFileDropHost(host);
         host.RemoveHandler(KeyDownEvent, HandleKey); host.Deactivated -= VideoHostDeactivated;
         host.Closing -= DetachedClosing; host.Closed -= DetachedClosed; host.SizeChanged -= DetachedResized; host.ScalingChanged -= DetachedScalingChanged;
         host.DataContext = null;

@@ -381,11 +381,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private Guid? _subtitleOpenMediaDocument;
     public bool OpeningSubtitle { get => _openingSubtitle; private set { SetField(ref _openingSubtitle, value); _registry.NotifyStateChanged(); } }
     public string OpeningSubtitleText { get; private set; } = "Opening subtitle…";
-    private async Task OpenSubtitleForUserAsync(string path,System.Text.Encoding? encoding=null)
+    public Task<bool> OpenDroppedSubtitleAsync(string path,bool openAssociatedMedia=true)
+        => OpenSubtitleForUserAsync(path,openAssociatedMedia:openAssociatedMedia);
+    private async Task<bool> OpenSubtitleForUserAsync(string path,System.Text.Encoding? encoding=null,bool openAssociatedMedia=true)
     {
-        if (OpeningSubtitle) return;
+        if (OpeningSubtitle) return false;
         CancelGesture();
-        if (!CommitDraft()) return;
+        if (!CommitDraft()) return false;
         var originatingTab=_activeId;
         OpeningSubtitleText = $"Opening {Path.GetFileName(path)}…";
         OnPropertyChanged(nameof(OpeningSubtitleText)); OpeningSubtitle = true;
@@ -394,24 +396,25 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         {
             var full = Path.GetFullPath(path);
             var existing = _workspace.Documents.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase));
-            if (existing is not null) { _workspace.Activate(existing.Id); return; }
+            if (existing is not null) { _workspace.Activate(existing.Id); return true; }
             var doc = await Task.Run(() => encoding is null?AssDocument.Load(full):AssDocument.Load(full,encoding), cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
-            if (_disposed) return;
+            if (_disposed) return false;
             // A second route may have opened the same file while parsing.
             existing = _workspace.Documents.FirstOrDefault(s => string.Equals(s.Path, full, StringComparison.OrdinalIgnoreCase));
-            if (existing is not null) { _workspace.Activate(existing.Id); return; }
+            if (existing is not null) { _workspace.Activate(existing.Id); return true; }
             var session = OpenLoadedSubtitle(full, doc, originatingTab);
             Remember(full); SubtitleStatus = $"Loaded {doc.Events.Count} events";
-            if (_media is null)
+            if (openAssociatedMedia && _media is null)
             {
                 _subtitleOpenMediaDocument = session.Id;
                 await OpenAssociatedMediaAsync(full,session.Id,cancellation.Token);
                 cancellation.Token.ThrowIfCancellationRequested();
             }
+            return true;
         }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { SubtitleStatus = "Opening canceled."; }
-        catch (Exception e) { SubtitleStatus = $"Open failed: {e.Message}"; _registry.ReportFailure(CommandIds.SubtitleOpen, e); }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { SubtitleStatus = "Opening canceled."; return false; }
+        catch (Exception e) { SubtitleStatus = $"Open failed: {e.Message}"; _registry.ReportFailure(CommandIds.SubtitleOpen, e); return false; }
         finally { _subtitleOpenMediaDocument=null; if (ReferenceEquals(_subtitleOpenCancellation,cancellation)) _subtitleOpenCancellation=null; OpeningSubtitle = false; }
     }
     private void CancelSubtitleOpen()

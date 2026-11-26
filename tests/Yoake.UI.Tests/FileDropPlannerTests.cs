@@ -19,8 +19,8 @@ public sealed class FileDropPlannerTests
             Assert.Single(plan);Assert.Equal(DroppedFileType.Video,plan[0].Type);
             Assert.True(FileDropPlanner.TryBuild([audio],out plan,out _));
             Assert.Single(plan);Assert.Equal(DroppedFileType.Audio,plan[0].Type);
-            Assert.False(FileDropPlanner.TryBuild([video,audio],out plan,out var message));
-            Assert.Empty(plan);Assert.Contains("replaces both",message);
+            Assert.True(FileDropPlanner.TryBuild([audio,video],out plan,out _));
+            Assert.Equal(new[]{DroppedFileType.Video,DroppedFileType.Audio},plan.Select(f=>f.Type));
         }
         finally { Directory.Delete(root,true); }
     }
@@ -40,6 +40,11 @@ public sealed class FileDropPlannerTests
             Assert.True(FileDropPlanner.TryBuild([keyframes,first,timecodes,second],out var files,out _));
             Assert.Equal(new[]{DroppedFileType.Subtitle,DroppedFileType.Subtitle,DroppedFileType.Timecodes,DroppedFileType.Keyframes},
                 files.Select(f=>f.Type));
+            var video=Path.Combine(root,"映像.MKV");var audio=Path.Combine(root,"အသံ.wav");
+            File.WriteAllBytes(video,[]);File.WriteAllBytes(audio,[]);
+            Assert.True(FileDropPlanner.TryBuild([audio,keyframes,video,first,timecodes,second,first],out files,out _));
+            Assert.Equal(new[]{DroppedFileType.Subtitle,DroppedFileType.Subtitle,DroppedFileType.Video,DroppedFileType.Audio,DroppedFileType.Timecodes,DroppedFileType.Keyframes},files.Select(f=>f.Type));
+            Assert.Equal(new[]{first,second,video,audio,timecodes,keyframes},files.Select(f=>f.Path));
             Assert.False(FileDropPlanner.TryBuild([first,Path.Combine(root,"missing.ass")],out _,out _));
             var notes=Path.Combine(root,"notes.txt");File.WriteAllText(notes,"Just a note");
             Assert.False(FileDropPlanner.TryBuild([first,notes],out _,out _));

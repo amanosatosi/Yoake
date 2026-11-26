@@ -71,13 +71,9 @@ public static class FileDropPlanner
         foreach (var type in new[] { DroppedFileType.Video, DroppedFileType.Audio, DroppedFileType.Timecodes, DroppedFileType.Keyframes })
             if (classified.Count(f => f.Type == type) > 1)
             { error = "Drop only one " + type + " file at a time."; return false; }
-        if (classified.Any(f => f.Type == DroppedFileType.Video) && classified.Any(f => f.Type == DroppedFileType.Audio))
-        {
-            error = "Drop the video and replacement audio separately. A video drop always replaces both tracks.";
-            return false;
-        }
         // Subtitles become individual tabs; any media/metadata goes to the
         // last opened subtitle tab, regardless of Explorer's file ordering.
+        // Combined video opens before an explicit replacement audio track.
         files = classified.OrderBy(f => f.Type).ToArray();
         return true;
     }
