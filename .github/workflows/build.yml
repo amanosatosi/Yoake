@@ -85,7 +85,7 @@ jobs:
           $compilerHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $compiler).Hash.Substring(0,16)
           $sdk = ($env:WindowsSDKVersion ?? 'unknown').TrimEnd('\') -replace '[^A-Za-z0-9._-]', '_'
           $toolchain = "$compilerHash-sdk$sdk"
-          $dependencyHash = "${{ hashFiles('third_party/automation/vcpkg.json', 'third_party/automation/vcpkg-configuration.json', 'third_party/versions.json') }}"
+          $dependencyHash = "${{ hashFiles('third_party/automation/vcpkg.json', 'third_party/automation/vcpkg-configuration.json', 'third_party/automation/boost-locale-fix-source-group.patch', 'third_party/versions.json') }}"
           $runtimeHash = "${{ hashFiles('third_party/automation/**', 'third_party/versions.json', 'third_party/licenses/**', 'ci/build_dependencies.ps1') }}"
           "dependencies=yoake-automation-dependencies-win-x64-v2-$toolchain-$dependencyHash" >> $env:GITHUB_OUTPUT
           "runtime=yoake-automation-native-win-x64-v1-$toolchain-$runtimeHash" >> $env:GITHUB_OUTPUT

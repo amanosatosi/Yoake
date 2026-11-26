@@ -72,13 +72,30 @@ if ($Stage -in @('Automation', 'All')) {
   $env:VCPKG_DISABLE_METRICS = '1'
   $env:VCPKG_BINARY_SOURCES = "clear;files,$binaryCache,readwrite"
   Remove-Item Env:VCPKG_ROOT -ErrorAction SilentlyContinue
+  # Backport vcpkg's CMake 4.5 source-group fix without changing the pinned
+  # Boost.Locale package version or features.
+  $automationOverlays = Join-Path $workRoot 'automation-port-overlays'
+  $localePort = Join-Path $automationVcpkg 'ports\boost-locale'
+  $localeOverlay = Join-Path $automationOverlays 'boost-locale'
+  if ((Get-Content -Raw -LiteralPath (Join-Path $localePort 'vcpkg.json') | ConvertFrom-Json).version -ne '1.91.0') {
+    throw 'Recheck the Boost.Locale CMake patch when changing the pinned package version.'
+  }
+  New-Item -ItemType Directory -Force -Path $localeOverlay | Out-Null
+  foreach ($name in @('features.cmake', 'vcpkg.json')) {
+    Copy-Item -LiteralPath (Join-Path $localePort $name) -Destination $localeOverlay -Force
+  }
+  $portRecipe = [IO.File]::ReadAllText((Join-Path $localePort 'portfile.cmake'))
+  if (!$portRecipe.Contains('    HEAD_REF master')) { throw 'Unexpected Boost.Locale port recipe.' }
+  $portRecipe = $portRecipe.Replace('    HEAD_REF master', ('    HEAD_REF master' + [Environment]::NewLine + '    PATCHES fix-source-group.patch'))
+  [IO.File]::WriteAllText((Join-Path $localeOverlay 'portfile.cmake'), $portRecipe)
+  Copy-Item -LiteralPath (Join-Path $repoRoot 'third_party\automation\boost-locale-fix-source-group.patch') -Destination (Join-Path $localeOverlay 'fix-source-group.patch') -Force
   $automationBuild = Join-Path $workRoot 'automation-bridge'
-  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $automationBuild -A x64 "-DLUAJIT_ROOT=$luaSource" "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $automationVcpkg 'scripts\buildsystems\vcpkg.cmake')" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $automationBuild -A x64 "-DLUAJIT_ROOT=$luaSource" "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $automationVcpkg 'scripts\buildsystems\vcpkg.cmake')" "-DVCPKG_OVERLAY_PORTS=$automationOverlays" -DVCPKG_TARGET_TRIPLET=x64-windows-static
   Assert-LastExitCode 'Automation bridge configure'
   cmake --build $automationBuild --config Release
   Assert-LastExitCode 'Automation bridge build'
   $modernBuild = Join-Path $workRoot 'automation-modern-bridge'
-  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $modernBuild -A x64 "-DLUAJIT_ROOT=$modernLuaSource" "-DYOAKE_AUTOMATION_TARGET=yoake-automation-modern" "-DYOAKE_LUAJIT_LIB=lua52-yoake.lib" "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $automationVcpkg 'scripts\buildsystems\vcpkg.cmake')" -DVCPKG_TARGET_TRIPLET=x64-windows-static
+  cmake -S (Join-Path $repoRoot 'third_party\automation') -B $modernBuild -A x64 "-DLUAJIT_ROOT=$modernLuaSource" "-DYOAKE_AUTOMATION_TARGET=yoake-automation-modern" "-DYOAKE_LUAJIT_LIB=lua52-yoake.lib" "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $automationVcpkg 'scripts\buildsystems\vcpkg.cmake')" "-DVCPKG_OVERLAY_PORTS=$automationOverlays" -DVCPKG_TARGET_TRIPLET=x64-windows-static
   Assert-LastExitCode 'Modern Automation bridge configure'
   cmake --build $modernBuild --config Release
   Assert-LastExitCode 'Modern Automation bridge build'
