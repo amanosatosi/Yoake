@@ -82,6 +82,7 @@ public sealed class ShiftGeometryTool : VisualTool
 public sealed class NumericTagsTool : VisualTool
 {
     private readonly Dictionary<AssEvent, (int Index, double Value)> _values = [];
+    private readonly Dictionary<AssEvent, AssNumericTextGradient> _gradients = [];
     private string _tag = "bord", _operation = "Adjust";
     private double _activeValue;
 
@@ -102,8 +103,14 @@ public sealed class NumericTagsTool : VisualTool
         _operation = context.Model.VisualTagOperation;
         if (!Begin(context, pointer, "Edit ASS " + _tag)) return false;
         _values.Clear();
+        _gradients.Clear();
         foreach (var line in context.Lines)
-            _values.Add(line.Line, (_values.Count, AssVisualTags.VisualScalar(line.Text, line.Style, _tag)));
+        {
+            var value = AssVisualTags.VisualScalar(line.Text, line.Style, _tag);
+            _values.Add(line.Line, (_values.Count, value));
+            if (_operation is "By text" or "Reverse text")
+                _gradients.Add(line.Line, new(line.Text, _tag, value));
+        }
         _activeValue = _values[Initial!.Line].Value;
         return true;
     }
@@ -116,11 +123,12 @@ public sealed class NumericTagsTool : VisualTool
         context.Apply(line =>
         {
             if (delta == 0 || !_values.TryGetValue(line.Line, out var original)) return line.Text;
+            if (_gradients.TryGetValue(line.Line, out var gradient)) return gradient.Apply(delta, _operation == "Reverse text");
             var value = _operation switch
             {
                 "Set" => _activeValue + delta,
                 "By line" => original.Value + delta * original.Index,
-                "Reverse" => original.Value + delta * (_values.Count - original.Index - 1),
+                "Reverse lines" => original.Value + delta * (_values.Count - original.Index - 1),
                 _ => original.Value + delta
             };
             return value == original.Value ? line.Text : AssVisualTags.SetVisualScalar(line.Text, _tag, value);
@@ -131,5 +139,6 @@ public sealed class NumericTagsTool : VisualTool
     {
         base.Cancel();
         _values.Clear();
+        _gradients.Clear();
     }
 }

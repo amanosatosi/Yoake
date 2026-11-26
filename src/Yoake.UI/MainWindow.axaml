@@ -403,7 +403,7 @@
         <ToggleButton Name="VisualToolTags" Classes="authoring" IsChecked="{Binding Actions[video/tool/tags].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/tags]}" Padding="4,2" ToolTip.Tip="Numeric tags"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.TagDisplay}" /></ToggleButton>
       </StackPanel>
 
-      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,12,0"><Button Name="MoveToggle" Command="{Binding Actions[video/position/toggle-move]}" Padding="4,1" ToolTip.Tip="Convert position to frame-timed movement, or keep movement start as position"><StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VisualMoveToggle}" /><TextBlock Text="pos ⇄ move" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /></StackPanel></Button></StackPanel>
+      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,12,0" Spacing="4"><ComboBox ItemsSource="{Binding PositionModes}" SelectedItem="{Binding PositionMode, Mode=TwoWay}" Width="112" Padding="4,1" ToolTip.Tip="Choose how to set position, movement endpoints or rotation origin" /><Button Name="MoveToggle" Command="{Binding Actions[video/position/toggle-move]}" Padding="4,1" ToolTip.Tip="Convert position to frame-timed movement, or keep movement start as position"><StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VisualMoveToggle}" /><TextBlock Text="pos ⇄ move" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /></StackPanel></Button></StackPanel>
 
       <StackPanel Name="VectorSubtoolbar" Orientation="Horizontal" IsVisible="{Binding IsVectorClipTool}" Spacing="3" Margin="0,0,12,0">
         <ToggleButton Name="VectorSelect" Margin="0,0,8,0" Classes="authoring" IsChecked="{Binding Actions[video/vector/select].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/vector/select]}" Padding="4,1" ToolTip.Tip="Select"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VectorSelect}" /></ToggleButton>
@@ -417,8 +417,8 @@
       </StackPanel>
       <StackPanel Orientation="Horizontal" IsVisible="{Binding IsClipFamily}" Spacing="3" Margin="0,0,0,0"><CheckBox Content="New inverse clip" IsChecked="{Binding InverseClip, Mode=TwoWay}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /><Button Content="Invert clip" Command="{Binding Actions[video/clip/invert]}" Padding="4,1" FontSize="{DynamicResource YoakeUiFontSizeSmall}" /></StackPanel>
       <StackPanel Orientation="Horizontal" IsVisible="{Binding IsDrawingTool}" Spacing="4">
-        <ComboBox ItemsSource="{Binding DrawingModes}" SelectedItem="{Binding DrawingMode, Mode=TwoWay}" Width="108" Padding="4,1" ToolTip.Tip="Edit drawing points, curves or the entire drawing" />
-        <ComboBox ItemsSource="{Binding DrawingPresets}" SelectedItem="{Binding DrawingPreset, Mode=TwoWay}" Width="125" Padding="4,1" ToolTip.Tip="Select a shape and drag it onto the video" />
+        <ComboBox Name="DrawingModePicker" ItemsSource="{Binding DrawingModes}" SelectedItem="{Binding DrawingMode, Mode=TwoWay}" Width="108" Padding="4,1" ToolTip.Tip="Edit drawing points, curves or the entire drawing" />
+        <ComboBox Name="DrawingPresetPicker" ItemsSource="{Binding DrawingPresets}" SelectedItem="{Binding DrawingPreset, Mode=TwoWay}" Width="125" Padding="4,1" ToolTip.Tip="Select a shape and drag it onto the video" />
       </StackPanel>
       <StackPanel Orientation="Horizontal" IsVisible="{Binding IsTagsTool}" Spacing="4">
         <ComboBox ItemsSource="{Binding VisualNumericTags}" SelectedItem="{Binding VisualNumericTag, Mode=TwoWay}" Width="105" Padding="4,1" ToolTip.Tip="Choose the numeric ASS tag to change" />

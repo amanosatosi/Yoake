@@ -50,4 +50,42 @@ public sealed class AssDrawingEditingTests
         Assert.Equal(@"{\xbord2\bord5\xbord9\t(0,100,\xbord7)\unknown(keep)}sign{\xbord8}next",
             AssVisualTags.SetVisualScalar(source, "xbord", 9));
     }
+    [Theory]
+    [InlineData(7)]
+    [InlineData(5)]
+    [InlineData(3)]
+    public void ProjectionRoundTripsAndKeepsUntouchedVerticesWhenBoundsChange(int alignment)
+    {
+        var position = new AssPoint(200, 180);
+        var origin = new AssPoint(160, 130);
+        var transform = new AssTransform(22, -31, 17, 125, 75, .2, -.1);
+        var projection = new AssDrawingProjection(position, origin, transform, new(0, 0, 80, 60), alignment, .75);
+        var vertex = new AssPoint(42, 27);
+        var mapped = projection.Map(vertex);
+        Assert.True(VisualGeometry.Distance(vertex, projection.Unmap(mapped)) < 1e-8);
+        var changed = new AssBox(0, 0, 100, 72);
+        var correction = projection.AlignmentCorrection(changed, alignment);
+        var next = new AssDrawingProjection(position, origin, transform, changed, alignment, .75);
+        Assert.True(VisualGeometry.Distance(mapped, next.Map(VisualGeometry.Add(vertex, correction))) < 1e-8);
+    }
+
+    [Fact]
+    public void TextGradientUsesGraphemesAndPreservesOverrideBlocks()
+    {
+        const string source = "A{note}\u0301{\\unknown(keep)}😀\\Nあ";
+        var gradient = new AssNumericTextGradient(source, "bord", 1);
+        Assert.Equal("{\\bord1}A{note}\u0301{\\unknown(keep)}{\\bord3}😀\\N{\\bord5}あ", gradient.Apply(2, false));
+        Assert.Equal("{\\bord5}A{note}\u0301{\\unknown(keep)}{\\bord3}😀\\N{\\bord1}あ", gradient.Apply(2, true));
+        Assert.Equal(source, gradient.Apply(0, false));
+    }
+
+    [Fact]
+    public void TrackedMoveReplacesPositionAndKeepsUnrelatedSource()
+    {
+        var source = @"{\an7\pos(2,3)\org(4,5)\unknown(keep)}Sign";
+        var result = AssVisualTags.SetTrackedMove(source, new(new(2,3),new(22,15),200,600));
+        Assert.Null(AssVisualTags.Position(result));
+        Assert.Equal(new AssMove(new(2,3),new(22,15),200,600), AssVisualTags.Move(result)!.Value);
+        Assert.Contains(@"\org(4,5)\unknown(keep)", result);
+    }
 }

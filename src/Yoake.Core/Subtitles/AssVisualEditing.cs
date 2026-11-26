@@ -35,6 +35,14 @@ public static partial class AssVisualTags
         if(move.StartTime is {} a&&move.EndTime is {} b){values.Add(a);values.Add(b);}
         return SetTuple(text,"move",values,true);
     }
+    public static string SetTrackedMove(string text, AssMove move)
+    {
+        var tag=Scan(text).FirstOrDefault(t=>t.Name is "pos" or "move");
+        if(tag.Length==0||tag.Name=="move")return SetMove(text,move);
+        if(Position(text) is null||tag.Arguments.Split(',').Any(p=>p.TrimStart().StartsWith('+')))
+            throw new InvalidOperationException("The current position uses relative or expression coordinates.");
+        return SetMove(Splice(text,tag,""),move);
+    }
     public static string ShiftPosition(string text,AssPoint fallback,AssPoint delta)
     {
         string result;

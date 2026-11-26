@@ -236,6 +236,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Require(model.HasGesture&&ReadDrawing().Curves().Count(curve=>curve.Cubic)==4,"Ellipse must create a valid cubic ASS drawing during the drag.");
                 WaitForPreview();return false;
             case 20:
+            {
                 if(!Ready)return Retry();
                 Require(!_baselinePixels!.AsSpan().SequenceEqual(pixels()),"New ASS drawing must render in Mangetsu during the captured drag.");
                 var shapeEnd=new AssPoint(Size.Width*.5,Size.Height*.5);
@@ -260,6 +261,7 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Require(AssVisualTags.Scalar(_line.Text,"bord",0)>.5&&ReadDrawing().Serialize(1)==ReadPath(ellipse).Serialize(1),"Numeric tag editing must preserve drawing commands.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==ellipse,"Numeric tag edit must undo exactly.");
                 Tool("Position");return true;
+            }
             default:return true;
         }
     }

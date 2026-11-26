@@ -36,6 +36,11 @@ internal sealed class SubtitleSearchProjection
     }
     private bool Visible {get;}
     public bool IsWholeGraphemeRange(int index,int length)=>_boundaries[index]&&_boundaries[index+length];
+    internal IEnumerable<int> GraphemeSourceIndices()
+    {
+        for (var i=0;i<Text.Length;i++)
+            if (_boundaries[i] && Text[i] != '\n') yield return SourceIndex(i);
+    }
     public int SourceIndex(int index)=>!Visible?index:index<_units.Length?_units[index].Start:_units.Length==0?_source.Length:_units[^1].End;
     public int SourceLength(int index,int length)=>length==0?0:!Visible?length:_units[index+length-1].End-SourceIndex(index);
     public string Replace(string source,int index,int length,string replacement)

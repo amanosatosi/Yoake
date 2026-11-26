@@ -9,28 +9,13 @@ namespace Yoake.UI.VisualTools;
 
 public sealed class VectorDrawingTool : VisualTool
 {
-    private sealed record Source(AssDrawingRun? Run, AssVectorPath Path);
-    private readonly record struct Mapping(AssPoint Position, AssPoint Origin, bool ExplicitOrigin,
-        AssPoint AlignmentOffset, double ScaleX, double ScaleY, double Angle)
-    {
-        private AssPoint Scale(AssPoint p) => new(p.X * ScaleX, p.Y * ScaleY);
-        private AssPoint Unscale(AssPoint p) => new(p.X / ScaleX, p.Y / ScaleY);
-        private AssPoint Unrotated => Subtract(Position, Origin);
-        public AssPoint Map(AssPoint p) =>
-            Add(Origin, Rotate(Add(Unrotated, Scale(Subtract(p, AlignmentOffset))), Angle));
-        public AssPoint Unmap(AssPoint p) =>
-            Add(AlignmentOffset, Unscale(Subtract(Rotate(Subtract(p, Origin), -Angle), Unrotated)));
-        public AssPoint AnchorChange(AssPoint newOffset)
-        {
-            var delta = Scale(Subtract(newOffset, AlignmentOffset));
-            return ExplicitOrigin ? delta : Rotate(delta, Angle);
-        }
-    }
+    private sealed record Source(AssDrawingRun? Run, AssVectorPath Path, string Serialized);
 
     private string? _cachedText;
     private Source? _cachedSource;
     private Source? _baseline;
-    private Mapping _mapping;
+    private AssDrawingProjection _mapping;
+    private AssPoint _placement;
     private string _mode = "Select", _preset = "No preset";
     private readonly HashSet<int> _selected = [];
     private readonly List<AssPoint> _samples = [];
@@ -51,24 +36,29 @@ public sealed class VectorDrawingTool : VisualTool
         var (run, insert) = AssDrawingEditing.FindIsolatedRun(text);
         var path = run is {} r ? AssVectorPath.Parse(text.Substring(r.Start, r.Length), r.Scale) :
             insert ? new AssVectorPath() : null;
-        return _cachedSource = path is null ? null : new(run, path);
+        return _cachedSource = path is null ? null : new(run, path, path.Serialize(run?.Scale ?? 1));
     }
 
     private static bool CanMap(VisualLine line)
     {
         var t = line.Transform;
-        return t.ScaleX > 0 && t.ScaleY > 0 && t.X == 0 && t.Y == 0 &&
-            t.ShearX == 0 && t.ShearY == 0 &&
-            !AssVisualTags.Scan(line.Text).Any(tag => tag.Name is "pbo" or "distort" or "t" or "pos3d" or "warp");
+        if (t.ScaleX <= 0 || t.ScaleY <= 0 || Math.Abs(1 - t.ShearX * t.ShearY) < 1e-8) return false;
+
+        foreach (var tag in AssVisualTags.Scan(line.Text))
+        {
+            if (tag.Name is "pbo" or "distort" or "z" or "ortho" or "scale" or "fsc" or "moves3" or "moves4" or "mover" or "movevc" or "ct" or "vert")
+                return false;
+            if (tag.Name is "pos" or "move" && tag.Arguments.Split(',').Any(arg => arg.TrimStart().StartsWith('+')))
+                return false;
+            if (tag.Name == "t" && AssVisualTags.Scan("{" + tag.Arguments + "}").Any(animated =>
+                animated.Name is "fr" or "frz" or "frx" or "fry" or "fax" or "fay" or "fscx" or "fscy" or "pbo" or "z" or "distort" or "scale" or "fsc"))
+                return false;
+        }
+        return true;
     }
 
-    private static AssPoint AlignmentOffset(AssBox bounds, int alignment) =>
-        new(bounds.Width * ((alignment - 1) % 3) / 2, bounds.Height * (2 - (alignment - 1) / 3) / 2);
-
-    private static Mapping GetMapping(VisualLine line, AssBox bounds) =>
-        new(line.Position, line.Origin, AssVisualTags.Origin(line.Text) is not null,
-            AlignmentOffset(bounds, line.Alignment), line.Transform.ScaleX / 100,
-            line.Transform.ScaleY / 100, -line.Transform.Z * Math.PI / 180);
+    private static AssDrawingProjection GetMapping(VisualToolContext context, VisualLine line, AssBox bounds) =>
+        new(line.Position, line.Origin, line.Transform, bounds, line.Alignment, context.Model.VisualLayoutScale);
 
     private static AssPoint Rotate(AssPoint p, double radians)
     {
@@ -80,7 +70,7 @@ public sealed class VectorDrawingTool : VisualTool
     {
         if (canvas.Context.Active is not {} line || Read(line.Text) is not {} source || !CanMap(line)) return;
         var bounds = AssDrawingEditing.ControlBounds(source.Path);
-        var map = GetMapping(line, bounds);
+        var map = GetMapping(canvas.Context, line, bounds);
         Point Screen(AssPoint point) => canvas.Screen(map.Map(point));
         var mode = canvas.Context.Model.DrawingMode;
         if (source.Path.Commands.Count > 0)
@@ -123,11 +113,18 @@ public sealed class VectorDrawingTool : VisualTool
         }
         _baseline = source;
         _bounds = AssDrawingEditing.ControlBounds(source.Path);
-        _mapping = GetMapping(line, _bounds);
+        _placement = line.Position;
+        if (source.Run is null && AssVisualTags.Position(line.Text) is null && AssVisualTags.Move(line.Text) is null)
+        {
+            _placement = pointer.Script;
+            line = line with { Position = _placement, Origin = AssVisualTags.Origin(line.Text) ?? _placement };
+        }
+        _mapping = GetMapping(context, line, _bounds);
         _mode = context.Model.DrawingMode;
         _preset = context.Model.DrawingPreset;
         _lastApplied = null;
         var local = _mapping.Unmap(pointer.Script);
+        if (!double.IsFinite(local.X) || !double.IsFinite(local.Y)) return false;
         _hit = -1;
         foreach (var handle in source.Path.Handles().Reverse())
             if (context.Near(_mapping.Map(handle.Point), pointer.Screen))
@@ -216,6 +213,7 @@ public sealed class VectorDrawingTool : VisualTool
         _lastModifiers = pointer.Modifiers;
         var delta = Subtract(pointer.Script, Anchor.Script);
         var point = _mapping.Unmap(pointer.Script);
+        if (!double.IsFinite(point.X) || !double.IsFinite(point.Y)) return;
         if (_preset != "No preset")
         {
             var end = pointer.Script;
@@ -276,25 +274,28 @@ public sealed class VectorDrawingTool : VisualTool
     private void Apply(VisualToolContext context, AssVectorPath path)
     {
         if (Initial is not {} line || _baseline is not {} source) return;
-        var serialized = path.Serialize(source.Run?.Scale ?? 1);
-        if (serialized == source.Path.Serialize(source.Run?.Scale ?? 1))
+        var scale = source.Run?.Scale ?? 1;
+        var factor = Math.ScaleB(1, scale - 1);
+        // Compare the bounds in the same integer drawing space as the renderer.
+        // A uniform correction changes the drawing's local origin while keeping
+        // its ASS position, move endpoints and rotation origin intact.
+        var rounded = AssDrawingEditing.Map(path, p => new(
+            Math.Round(p.X * factor, MidpointRounding.AwayFromZero) / factor,
+            Math.Round(p.Y * factor, MidpointRounding.AwayFromZero) / factor));
+        var corrected = _mapping.AlignmentCorrection(AssDrawingEditing.ControlBounds(rounded), line.Alignment);
+        if (corrected != default) path = AssDrawingEditing.Map(path, p => Add(p, corrected));
+        if (path.Handles().Any(h => !double.IsFinite(h.Point.X) || !double.IsFinite(h.Point.Y)
+            || Math.Abs(h.Point.X * factor) >= 33_554_432 || Math.Abs(h.Point.Y * factor) >= 33_554_432)) return;
+
+        var serialized = path.Serialize(scale);
+        if (serialized == source.Serialized)
         {
             context.Apply(l => l.Text);
             return;
         }
-        // Alignment depends on the serialized outline's dimensions. Correct
-        // position to keep the unedited vertices stationary when bounds change.
-        var rounded = AssVectorPath.Parse(serialized, source.Run?.Scale ?? 1);
-        var offset = AlignmentOffset(rounded is null ? default : AssDrawingEditing.ControlBounds(rounded), line.Alignment);
-        var correction = _mapping.AnchorChange(offset);
-        var edited = source.Run is {} run ? run.Replace(line.Text, path) : AssDrawingEditing.Insert(line.Text, path);
-        if (correction != default || source.Run is null)
-        {
-            if (AssVisualTags.Move(line.Text) is {} move)
-                edited = AssVisualTags.SetMove(edited, move with { Start = Add(move.Start, correction), End = Add(move.End, correction) });
-            else
-                edited = AssVisualTags.SetPosition(edited, Add(line.Position, correction));
-        }
+        var edited = source.Run is {} run ? run.Replace(line.Text, serialized) : AssDrawingEditing.Insert(line.Text, serialized);
+        if (source.Run is null && AssVisualTags.Move(line.Text) is null && AssVisualTags.Position(line.Text) is null)
+            edited = AssVisualTags.SetPosition(edited, _placement);
         context.Apply(l => ReferenceEquals(l.Line, line.Line) ? edited : l.Text);
     }
 

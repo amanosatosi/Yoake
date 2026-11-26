@@ -119,20 +119,23 @@ override blocks and event metadata. Existing isolated drawings support point
 and handle selection, edge conversion/splitting, freehand paths, and whole
 drawing translation, resizing and rotation. The editor uses the shared
 video viewport and the original drawing and line placement as the drag baseline.
-Bounds-dependent alignment changes compensate the line position, including
-both endpoints of an existing move. Escape and capture loss restore source.
+Bounds-dependent alignment changes are compensated in drawing coordinates,
+preserving the event position, origin and movement timing. Escape and capture loss restore source.
 
 Drawing authoring currently requires an empty event or one isolated drawing.
-Mixed text and drawings, multiple drawing runs, animated transforms, nonzero
-shear, X/Y perspective rotations and baseline/warp extensions require text
-editing. The drawing tool handles Z rotation, static scale, alignment,
-position, origin and ordinary movement. Mangetsu and libass use drawing
+Mixed text and drawings, multiple drawing runs, animated geometry and
+baseline/warp extensions require text editing. The drawing tool projects
+static scale, shear and all three rotations, and uses an inverse projection
+for hit testing and drag coordinates. Perspective cubic guides approximate
+the projected curve while projecting their control handles individually. Mangetsu and libass use drawing
 control-box dimensions for the glyph advance and ascent. Historical xy-VSFilter
 has its own CPolygon placement path. The overlay models the Mangetsu renderer
 shipped by Yoake.
 
 Shear edits fax/fay independently. Shift translates position, origin and
 editable clips together. Numeric Tags supports static numeric properties,
-including set, relative changes, and gradients over selected visible lines.
-Kainote also has gradients over text, custom tag definitions and a configurable
-shape library. This implementation has built-in presets and numeric properties.
+including set, relative changes, and forward and reverse gradients over
+selected visible lines or graphemes. Position can restrict an edit to one axis
+or use two clicks on a video feature at different frames to create a timed move.
+Kainote also supports custom tag definitions and a configurable shape library.
+Yoake provides built-in presets and numeric properties.

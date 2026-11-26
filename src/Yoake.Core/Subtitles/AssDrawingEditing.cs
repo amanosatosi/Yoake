@@ -5,7 +5,10 @@ namespace Yoake.Core.Subtitles;
 public readonly record struct AssDrawingRun(int Start, int Length, int Scale)
 {
     public string Replace(string source, AssVectorPath drawing) =>
-        source[..Start] + drawing.Serialize(Scale) + source[(Start + Length)..];
+        Replace(source, drawing.Serialize(Scale));
+
+    public string Replace(string source, string drawing) =>
+        source[..Start] + drawing + source[(Start + Length)..];
 }
 
 public static class AssDrawingEditing
@@ -42,8 +45,8 @@ public static class AssDrawingEditing
         return (run, run is null);
     }
 
-    public static string Insert(string source, AssVectorPath drawing) =>
-        source.TrimEnd() + @"{\p1}" + drawing.Serialize(1) + @"{\p0}";
+    public static string Insert(string source, string drawing) =>
+        source + @"{\p1}" + drawing + @"{\p0}";
 
     public static AssBox ControlBounds(AssVectorPath path)
     {

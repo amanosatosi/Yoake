@@ -31,10 +31,12 @@ public sealed partial class MainWindowViewModel
     public bool IsVectorSmooth=>VectorMode=="Smooth";
     public bool IsDrawingTool=>ActiveVisualTool=="Drawing";
     public bool IsTagsTool=>ActiveVisualTool=="Tags";
+    public IReadOnlyList<string> PositionModes {get;}=["Endpoints","Two frames","Horizontal","Vertical","Origin"];
+    public string PositionMode {get=>VisualState?.PositionMode??"Endpoints";set=>SetVisualOption(value,PositionModes,nameof(PositionMode),(state,v)=>state.PositionMode=v);}
     public IReadOnlyList<string> DrawingModes {get;}=["Select","Move","Resize","Rotate","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];
     public IReadOnlyList<string> DrawingPresets {get;}=["No preset","Rectangle","Ellipse","Rounded box","Triangle","Diamond","Star"];
     public IReadOnlyList<string> VisualNumericTags=>AssVisualTags.NumericVisualTags;
-    public IReadOnlyList<string> VisualTagOperations {get;}=["Adjust","Set","By line","Reverse"];
+    public IReadOnlyList<string> VisualTagOperations {get;}=["Adjust","Set","By line","Reverse lines","By text","Reverse text"];
     public string DrawingMode {get=>VisualState?.DrawingMode??"Select";set=>SetVisualOption(value,DrawingModes,nameof(DrawingMode),(state,v)=>state.DrawingMode=v);}
     public string DrawingPreset {get=>VisualState?.DrawingPreset??"No preset";set=>SetVisualOption(value,DrawingPresets,nameof(DrawingPreset),(state,v)=>state.DrawingPreset=v);}
     public string VisualNumericTag {get=>VisualState?.NumericVisualTag??"bord";set=>SetVisualOption(value,VisualNumericTags,nameof(VisualNumericTag),(state,v)=>state.NumericVisualTag=v);}
@@ -48,6 +50,8 @@ public sealed partial class MainWindowViewModel
     public string VisualHint=>ActiveVisualTool switch
     {
         "Crosshair"=>"Double-click: shift visible selection · coordinates in script pixels",
+        "Position" when PositionMode=="Two frames"=>"Click a video feature, seek to a different frame, then click the same feature",
+        "Position" when PositionMode=="Origin"=>"Drag to set or translate the rotation origin",
         "Position"=>"Square: start · circle: end · triangle: origin · Shift: one axis · endpoint time: current frame",
         "RotateZ"=>"Drag ring: rotate · Ctrl: 30° snap · triangle: origin",
         "RotateXY"=>"Drag: X/Y rotation · Shift: one axis · Ctrl: 30° snap · triangle: origin",
@@ -128,7 +132,7 @@ public sealed partial class MainWindowViewModel
     {
         OnPropertyChanged(nameof(ActiveVisualTool));OnPropertyChanged(nameof(VectorMode));
         foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);
-        foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(IsDrawingTool),nameof(IsTagsTool),nameof(DrawingMode),nameof(DrawingPreset),nameof(VisualNumericTag),nameof(VisualTagOperation),nameof(VisualHint)})OnPropertyChanged(property);
+        foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(IsDrawingTool),nameof(IsTagsTool),nameof(PositionMode),nameof(DrawingMode),nameof(DrawingPreset),nameof(VisualNumericTag),nameof(VisualTagOperation),nameof(VisualHint)})OnPropertyChanged(property);
     }
     private DocumentState? VisualState=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?state:null;
     private void RegisterVisualToolCommands()

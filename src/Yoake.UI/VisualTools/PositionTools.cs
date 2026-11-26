@@ -25,6 +25,35 @@ public sealed class CrosshairTool : VisualTool
 public sealed class PositionTool : VisualTool
 {
     private int _feature;
+    private (AssEvent Line,string Text,AssPoint Point,AssPoint Position,double Time,int Provider)? _sample;
+
+    public bool CancelSample()
+    {
+        var pending = _sample is not null;
+        _sample = null;
+        return pending;
+    }
+
+    private bool Track(VisualToolContext context,VisualPointer pointer)
+    {
+        if (context.Active is not {} line) return false;
+        if (_sample is not {} sample || !ReferenceEquals(sample.Line,line.Line) ||
+            sample.Provider != context.Model.VideoProviderRevision || sample.Text != line.Text)
+        {
+            _sample = (line.Line,line.Text,pointer.Script,line.Position,line.RelativeTime,context.Model.VideoProviderRevision);
+            return false;
+        }
+        if (sample.Time == line.RelativeTime) return false;
+        CancelSample();
+        if (!Begin(context,pointer,"Track movement between frames")) return false;
+        var destination = VisualGeometry.Add(sample.Position,VisualGeometry.Subtract(pointer.Script,sample.Point));
+        var movement = sample.Time < line.RelativeTime
+            ? new AssMove(sample.Position,destination,sample.Time,line.RelativeTime)
+            : new AssMove(destination,sample.Position,line.RelativeTime,sample.Time);
+        context.Apply(l => ReferenceEquals(l.Line,line.Line) ? AssVisualTags.SetTrackedMove(l.Text,movement) : l.Text);
+        context.Model.EndGesture();
+        return false;
+    }
     private static IEnumerable<(int Id,AssPoint Point)> Features(VisualLine l)
     {
         yield return(0,AssVisualTags.Move(l.Text)?.Start??l.Position);
@@ -33,6 +62,12 @@ public sealed class PositionTool : VisualTool
     }
     public override void Render(VisualCanvas c)
     {
+        if(c.Context.Model.PositionMode=="Two frames" && _sample is {} sample &&
+            c.Context.Active is {} active && ReferenceEquals(active.Line,sample.Line) && active.Text==sample.Text)
+        {
+            c.Handle(sample.Point,HandleShape.Square,true);
+            if(c.Inside)c.Arrow(sample.Point,c.Pointer.Script);
+        }
         foreach(var l in c.Context.Lines)
         {
             if(AssVisualTags.Move(l.Text) is {} move){c.Arrow(move.Start,move.End);c.Handle(l.Position,HandleShape.Circle,false,false);}
@@ -42,6 +77,8 @@ public sealed class PositionTool : VisualTool
     }
     public override bool Press(VisualToolContext c,VisualPointer p)
     {
+        if(c.Model.PositionMode=="Two frames")return Track(c,p);
+        if(c.Model.PositionMode=="Origin"){_feature=2;return Begin(c,p,"Move subtitle origins");}
         if(p.ClickCount==2)return new CrosshairTool().Press(c,p);
         _feature=p.Alt?2:-1;
         if(!p.Alt)foreach(var l in c.Lines.OrderByDescending(l=>l.Active))foreach(var f in Features(l).Reverse())if(c.Near(f.Point,p.Screen))
@@ -60,7 +97,12 @@ public sealed class PositionTool : VisualTool
     public override void Move(VisualToolContext c,VisualPointer p)
     {
         if(Initial is null)return;var delta=Delta(p);var feature=_feature;
-        c.Apply(l=>feature==2?AssVisualTags.SetOrigin(l.Text,VisualGeometry.Add(l.Origin,delta)):
+        if(c.Model.PositionMode is "Horizontal" or "Vertical")
+        {
+            var full=VisualGeometry.Subtract(p.Script,Anchor.Script);
+            delta=c.Model.PositionMode=="Horizontal"?new(full.X,0):new(0,full.Y);
+        }
+        c.Apply(l=>delta==default?l.Text:feature==2?AssVisualTags.SetOrigin(l.Text,VisualGeometry.Add(l.Origin,delta)):
             AssVisualTags.Move(l.Text) is not null?AssVisualTags.MoveEndpoint(l.Text,feature,delta,l.RelativeTime,l.Duration):
             feature==0?AssVisualTags.SetPosition(l.Text,VisualGeometry.Add(l.Position,delta)):l.Text);
     }
