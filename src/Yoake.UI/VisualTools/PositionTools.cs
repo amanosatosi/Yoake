@@ -28,6 +28,8 @@ public sealed class PositionTool : VisualTool
     private AssPoint? _rectangleEnd;
     private (AssEvent Line,string Text,AssPoint Point,AssPoint Position,double Time,int Provider)? _sample;
 
+    public bool HasPendingSample=>_sample is not null;
+
     public bool CancelSample()
     {
         var pending = _sample is not null;

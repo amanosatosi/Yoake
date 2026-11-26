@@ -35,6 +35,7 @@ public sealed class VisualOverlayControl : Control
     private (double X, double Y)? _panCheckpoint;
     private int _panProviderRevision;
     public bool IsPanning => _panPointer is not null;
+    public bool HasPendingPositionSample=>PositionTool.HasPendingSample;
     public bool HasTransientInput=>_capture is not null||Model?.HasGesture==true;
     public int RenderedHandles {get;private set;}
     public string? VectorPreviewDrawing=>(_tool as VectorClipTool)?.PreviewDrawing;

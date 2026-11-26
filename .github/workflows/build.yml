@@ -124,7 +124,21 @@ jobs:
       - name: Build pinned LuaJIT and protected native bridge
         if: steps.automation-runtime.outputs.cache-hit != 'true'
         shell: pwsh
-        run: .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Automation
+        run: |
+          $buildLog = Join-Path $env:RUNNER_TEMP 'yoake-automation-build.log'
+          try {
+            .\ci\build_dependencies.ps1 -OutputRoot .ci-cache\native -Stage Automation *> $buildLog
+          } finally {
+            # Keep compiler and package-manager errors visible without sending
+            # the entire uncached native build output through the job log.
+            if (Test-Path -LiteralPath $buildLog) { Get-Content -LiteralPath $buildLog -Tail 160 }
+          }
+      - uses: actions/upload-artifact@v7
+        if: failure() && steps.automation-runtime.outputs.cache-hit != 'true'
+        with:
+          name: Automation-native-build-log
+          path: ${{ runner.temp }}/yoake-automation-build.log
+          if-no-files-found: warn
       - name: Save Automation native dependency archives
         if: success() && steps.automation-runtime.outputs.cache-hit != 'true' && steps.automation-dependencies.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
@@ -160,6 +174,21 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
+
+  windows-nativeaot-compile-on-prerequisite-failure:
+    name: NativeAOT compile when Automation blocks packaging
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: [source-policy, managed-tests, automation-provider-tests]
+    if: ${{ !cancelled() && needs.source-policy.result == 'success' && needs.managed-tests.result == 'success' && needs.automation-provider-tests.result == 'failure' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.403"
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: Compile the application with NativeAOT
+        run: dotnet publish src/Yoake.App/Yoake.App.csproj -c Release -r win-x64 --self-contained true -p:PublishAot=true -p:SourceRevisionId=${{ github.event.pull_request.head.sha || github.sha }} -o artifacts/nativeaot-compile-only
 
   windows-nativeaot:
     runs-on: windows-latest

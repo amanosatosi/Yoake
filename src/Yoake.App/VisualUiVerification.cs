@@ -271,7 +271,9 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                 Fixture(ellipse);Tool("Drawing");VerifyDrawingTools(ellipse,drawingOrigin,drawingCenter);
                 Tool("Position");model.PositionMode="Two frames";Fixture(At(drawingOrigin)+"}TRACK");
                 _baseline=_line.Text;
-                Click(drawingCenter);Require(!model.HasGesture&&_line.Text==_baseline,"First frame sample leaves source unchanged.");
+                Click(drawingCenter);Require(Overlay.HasPendingPositionSample&&!model.HasGesture&&_line.Text==_baseline,"First frame sample leaves source unchanged.");
+                Escape();Require(!Overlay.HasPendingPositionSample,"Escape cancels an uncommitted frame sample.");
+                Click(drawingCenter);
                 model.CurrentTimeSeconds=.6;
                 return false;
             }
