@@ -36,8 +36,14 @@ public sealed class VectorDrawingTool : VisualTool
         var (run, insert) = AssDrawingEditing.FindIsolatedRun(text);
         var path = run is {} r ? AssVectorPath.Parse(text.Substring(r.Start, r.Length), r.Scale) :
             insert ? new AssVectorPath() : null;
-        return _cachedSource = path is null ? null : new(run, path, path.Serialize(run?.Scale ?? 1));
+        var scale = run?.Scale ?? 1;
+        return _cachedSource = path is not null && ValidCoordinates(path, Math.ScaleB(1, scale - 1))
+            ? new(run, path, path.Serialize(scale)) : null;
     }
+
+    private static bool ValidCoordinates(AssVectorPath path, double factor) =>
+        path.Handles().All(h => Math.Abs(h.Point.X * factor) < 33_554_432 &&
+            Math.Abs(h.Point.Y * factor) < 33_554_432);
 
     private static bool CanMap(VisualLine line)
     {
@@ -47,6 +53,10 @@ public sealed class VectorDrawingTool : VisualTool
         foreach (var tag in AssVisualTags.Scan(line.Text))
         {
             if (tag.Name is "pbo" or "distort" or "z" or "ortho" or "scale" or "fsc" or "moves3" or "moves4" or "mover" or "movevc" or "ct" or "vert")
+                return false;
+            if (tag.Name == "pos" && AssVisualTags.Position(line.Text) is null ||
+                tag.Name == "move" && AssVisualTags.Move(line.Text) is null ||
+                tag.Name == "org" && AssVisualTags.Origin(line.Text) is null)
                 return false;
             if (tag.Name is "pos" or "move" && tag.Arguments.Split(',').Any(arg => arg.TrimStart().StartsWith('+')))
                 return false;
@@ -75,6 +85,13 @@ public sealed class VectorDrawingTool : VisualTool
         var mode = canvas.Context.Model.DrawingMode;
         if (source.Path.Commands.Count > 0)
         {
+            // Reject non-renderable coordinates before passing them to Avalonia.
+            if (source.Path.Handles().Any(h =>
+                {
+                    var p = Screen(h.Point);
+                    return !(Math.Abs(p.X) < 1_000_000 && Math.Abs(p.Y) < 1_000_000);
+                }))
+                return;
             canvas.Path(VectorClipTool.Geometry(source.Path, Screen));
             if (mode is "Move" or "Resize" or "Rotate")
             {
@@ -258,9 +275,10 @@ public sealed class VectorDrawingTool : VisualTool
                 return;
             case "Freehand":
             case "Smooth":
+            case "Spline":
                 if (Distance(_mapping.Map(_samples[^1]), pointer.Script) >= context.ScriptDistance(4))
                     _samples.Add(point);
-                if (_samples.Count > 1) Apply(context, AssVectorPath.Freehand(_samples, _mode == "Smooth"));
+                if (_samples.Count > 1) Apply(context, SampledPath());
                 return;
             case "Select":
                 var changed = source.Path.Copy();
@@ -278,14 +296,16 @@ public sealed class VectorDrawingTool : VisualTool
         }
     }
 
+    private AssVectorPath SampledPath() => _mode == "Spline" ? AssVectorPath.Spline(_samples) : AssVectorPath.Freehand(_samples, _mode == "Smooth");
+
     public override void Release(VisualToolContext context, VisualPointer pointer)
     {
         Move(context, pointer);
-        if (Initial is null || _preset != "No preset" || _mode is not ("Freehand" or "Smooth")) return;
+        if (Initial is null || _preset != "No preset" || _mode is not ("Freehand" or "Smooth" or "Spline")) return;
         var point = _mapping.Unmap(pointer.Script);
         if (!double.IsFinite(point.X) || !double.IsFinite(point.Y) || Distance(_samples[^1], point) < .01) return;
         _samples.Add(point);
-        Apply(context, AssVectorPath.Freehand(_samples, _mode == "Smooth"));
+        Apply(context, SampledPath());
     }
 
     private void Apply(VisualToolContext context, AssVectorPath path)
@@ -296,11 +316,11 @@ public sealed class VectorDrawingTool : VisualTool
         // Compare the bounds in the same integer drawing space as the renderer.
         // A uniform correction changes the drawing's local origin while keeping
         // its ASS position, move endpoints and rotation origin intact.
+        if (!ValidCoordinates(path, factor)) return;
         var bounds = AssDrawingEditing.ControlBounds(path, factor, quantize: true);
         var corrected = _mapping.AlignmentCorrection(bounds, line.Alignment);
         if (corrected != default) path = AssDrawingEditing.Map(path, p => Add(p, corrected));
-        if (path.Handles().Any(h => !double.IsFinite(h.Point.X) || !double.IsFinite(h.Point.Y)
-            || Math.Abs(h.Point.X * factor) >= 33_554_432 || Math.Abs(h.Point.Y * factor) >= 33_554_432)) return;
+        if (corrected != default && !ValidCoordinates(path, factor)) return;
 
         var serialized = path.Serialize(scale);
         if (serialized == source.Serialized)

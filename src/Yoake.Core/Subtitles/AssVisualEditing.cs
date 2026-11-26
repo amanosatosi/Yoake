@@ -43,12 +43,12 @@ public static partial class AssVisualTags
             throw new InvalidOperationException("The current position uses relative or expression coordinates.");
         return SetMove(Splice(text,tag,""),move);
     }
-    public static string ShiftPosition(string text,AssPoint fallback,AssPoint delta)
+    public static string ShiftPosition(string text,AssPoint fallback,AssPoint delta,bool shiftOrigin=true)
     {
         string result;
         if(Move(text) is {} move)result=SetMove(text,move with{Start=VisualGeometry.Add(move.Start,delta),End=VisualGeometry.Add(move.End,delta)});
         else result=SetPosition(text,VisualGeometry.Add(Position(text)??fallback,delta));
-        if(Origin(text) is {} origin)result=SetOrigin(result,VisualGeometry.Add(origin,delta));
+        if(shiftOrigin&&Origin(text) is {} origin)result=SetOrigin(result,VisualGeometry.Add(origin,delta));
         return result;
     }
     public static string MoveEndpoint(string text,int endpoint,AssPoint delta,double time,double duration)

@@ -32,7 +32,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public Dictionary<AssEvent,KaraokeEntry> Karaoke = [];
         public string KaraokeStatus="";
         public string VisualTool="Crosshair",VectorMode="Select";
-        public string PositionMode="Endpoints",DrawingMode="Select",DrawingPreset="No preset",NumericVisualTag="bord",VisualTagOperation="Adjust";
+        public string PositionMode="Endpoints",ScaleMode="Drag",RotateZMode="Ring",ShiftMode="All",DrawingMode="Select",DrawingPreset="No preset",NumericVisualTag="bord",VisualTagOperation="Adjust";
         public FastActorState FastActor = new();
         public bool ShowMotionData;
         public VideoAspect VideoAspect = new();

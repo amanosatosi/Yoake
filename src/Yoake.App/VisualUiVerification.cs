@@ -286,7 +286,38 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
                     VisualGeometry.Distance(tracked.Value.End,Add(tracked.Value.Start,25,-10))<.01&&
                     AssVisualTags.Position(_line.Text) is null,"Two frames create movement with sampled timing and displacement.");
                 Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"Two-frame movement must be one undo action.");
-                model.PositionMode="Endpoints";
+                var alignBoxStart=new AssPoint(Size.Width*.2,Size.Height*.25);
+                var alignBoxEnd=new AssPoint(Size.Width*.4,Size.Height*.45);
+                model.PositionMode="Rectangle";
+                Press(alignBoxStart);Move(alignBoxEnd);Release(alignBoxEnd);
+                Require(VisualGeometry.Distance(AssVisualTags.Position(_line.Text)!.Value,VisualGeometry.Lerp(alignBoxStart,alignBoxEnd,.5))<.01,
+                    "Rectangle positioning uses the subtitle's center alignment.");
+                Invoke(CommandIds.EditUndo);model.PositionMode="Endpoints";
+                Tool("RotateZ");model.RotateZMode="Guide line";
+                var guideEnd=Add(alignBoxStart,25,-25);
+                Press(alignBoxStart);Move(guideEnd);Release(guideEnd);
+                Require(Math.Abs(AssVisualTags.Scalar(_line.Text,"frz",0)-45)<.01,"Guide line sets absolute Z rotation.");
+                Invoke(CommandIds.EditUndo);model.RotateZMode="Ring";
+                Tool("Scale");model.ScaleMode="Width";
+                var widthEnd=Add(alignBoxStart,ScriptDip(20),-ScriptDip(15));
+                Press(alignBoxStart);Move(widthEnd);Release(widthEnd);
+                Require(AssVisualTags.Scalar(_line.Text,"fscx",100)>120&&AssVisualTags.Scalar(_line.Text,"fscy",100)==100,
+                    "Width-only scale leaves the other axis intact.");
+                Invoke(CommandIds.EditUndo);model.ScaleMode="Fit rectangle";
+                return false;
+            }
+            case 22:
+            {
+                var fitLine=model.VisibleVisualLines().Single();
+                if(model.VisualBoundsPending||model.VisualBounds(fitLine) is not {Width:>0,Height:>0} fitBox)return Retry();
+                var fitStart=new AssPoint(Size.Width*.2,Size.Height*.25);
+                var fitEnd=Add(fitStart,fitBox.Width*.75,fitBox.Height*1.5);
+                Press(fitStart);Move(fitEnd);Release(fitEnd);
+                Require(Math.Abs(AssVisualTags.Scalar(_line!.Text,"fscx",100)-75)<.01&&
+                    Math.Abs(AssVisualTags.Scalar(_line.Text,"fscy",100)-150)<.01,
+                    "Fit rectangle derives both scale factors from measured outline bounds.");
+                Invoke(CommandIds.EditUndo);Require(_line.Text==_baseline,"Fitting scale is one undoable action.");
+                model.ScaleMode="Drag";Tool("Position");
                 return true;
             }
             default:return true;
@@ -316,12 +347,14 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
         model.DrawingMode="Remove";var first=path.Handles().First().Point;Click(Add(position,first.X,first.Y));
         Require(ReadDrawing().PointCount<path.PointCount,"Remove deletes the selected vector point.");
         Invoke(CommandIds.EditUndo);
-        foreach(var mode in new[]{"Contour","Line","Bicubic","Freehand","Smooth"})
+        foreach(var mode in new[]{"Contour","Line","Bicubic","Freehand","Smooth","Spline"})
         {
             model.DrawingMode=mode;
             var start=Add(center,-30,0);var end=Add(center,30,15);
-            Press(start);Move(center);Move(end);Release(end);
-            Require(_line.Text!=original&&ReadDrawing().PointCount>1,mode+" must produce valid drawing topology.");
+            Press(start);Move(Add(center,-15,-20));Move(center);Move(end);Release(end);
+            var edited=ReadDrawing();
+            Require(_line.Text!=original&&edited.PointCount>1,mode+" must produce valid drawing topology.");
+            if(mode=="Spline")Require(edited.Curves().Any(c=>c.Cubic),"Spline gesture must create editable cubic segments.");
             Invoke(CommandIds.EditUndo);
             Require(_line.Text==original,mode+" must undo exactly.");
         }

@@ -29,7 +29,7 @@ No upstream artwork, code, dependency or license obligation was added.
 
 ## Workspace balance
 
-Primary visual tools use a compact vertical rail. Contextual options alone use
+At this correction pass, primary visual tools used a compact vertical rail. The current [visual typesetting architecture](architecture/visual-typesetting.md) describes the horizontal toolbar that superseded it. Contextual options alone used
 a bottom row. Help uses tooltips and command-bar status. Metadata, timing/margins
 and formatting are packed into semantic groups with 2–4 DIP within groups and
 10–12 DIP between groups, without repeated pane headers/cards.

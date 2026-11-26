@@ -32,9 +32,16 @@ public sealed partial class MainWindowViewModel
     public bool IsDrawingTool=>ActiveVisualTool=="Drawing";
     public bool IsDrawingGesture=>IsDrawingTool&&_gesture is not null;
     public bool IsTagsTool=>ActiveVisualTool=="Tags";
-    public IReadOnlyList<string> PositionModes {get;}=["Endpoints","Two frames","Horizontal","Vertical","Origin"];
+    public IReadOnlyList<string> PositionModes {get;}=["Endpoints","Two frames","Horizontal","Vertical","Origin","Rectangle"];
     public string PositionMode {get=>VisualState?.PositionMode??"Endpoints";set=>SetVisualOption(value,PositionModes,nameof(PositionMode),(state,v)=>state.PositionMode=v);}
-    public IReadOnlyList<string> DrawingModes {get;}=["Select","Move","Resize","Rotate","Contour","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth"];
+    public IReadOnlyList<string> ScaleModes {get;}=["Drag","Width","Height","Proportional","Fit rectangle"];
+    public IReadOnlyList<string> RotateZModes {get;}=["Ring","Guide line"];
+    public IReadOnlyList<string> ShiftModes {get;}=["All","Position","Move start","Move end","Origin","Clip"];
+    public bool IsShiftTool=>ActiveVisualTool=="Shift";
+    public string ScaleMode {get=>VisualState?.ScaleMode??"Drag";set=>SetVisualOption(value,ScaleModes,nameof(ScaleMode),(state,v)=>state.ScaleMode=v);}
+    public string RotateZMode {get=>VisualState?.RotateZMode??"Ring";set=>SetVisualOption(value,RotateZModes,nameof(RotateZMode),(state,v)=>state.RotateZMode=v);}
+    public string ShiftMode {get=>VisualState?.ShiftMode??"All";set=>SetVisualOption(value,ShiftModes,nameof(ShiftMode),(state,v)=>state.ShiftMode=v);}
+    public IReadOnlyList<string> DrawingModes {get;}=["Select","Move","Resize","Rotate","Contour","Line","Bicubic","Convert","Insert","Remove","Freehand","Smooth","Spline"];
     public IReadOnlyList<string> DrawingPresets {get;}=["No preset","Rectangle","Ellipse","Rounded box","Triangle","Diamond","Star"];
     public IReadOnlyList<string> VisualNumericTags=>AssVisualTags.NumericVisualTags;
     public IReadOnlyList<string> VisualTagOperations {get;}=["Adjust","Set","By line","Reverse lines","By text","Reverse text"];
@@ -53,15 +60,18 @@ public sealed partial class MainWindowViewModel
         "Crosshair"=>"Double-click: shift visible selection · coordinates in script pixels",
         "Position" when PositionMode=="Two frames"=>"Click a video feature, seek to a different frame, then click the same feature",
         "Position" when PositionMode=="Origin"=>"Drag to set or translate the rotation origin",
+        "Position" when PositionMode=="Rectangle"=>"Draw a reference rectangle and place the line at its alignment point",
         "Position"=>"Square: start · circle: end · triangle: origin · Shift: one axis · endpoint time: current frame",
+        "RotateZ" when RotateZMode=="Guide line"=>"Drag along a visual guide to set the Z angle",
         "RotateZ"=>"Drag ring: rotate · Ctrl: 30° snap · triangle: origin",
         "RotateXY"=>"Drag: X/Y rotation · Shift: one axis · Ctrl: 30° snap · triangle: origin",
+        "Scale" when ScaleMode=="Fit rectangle"=>"Draw a rectangle to fit the unrotated subtitle bounds",
         "Scale"=>"Drag: scale · Shift: one axis · Alt: aspect · Ctrl: 25% snap",
         "Clip"=>"Drag: new rectangle · corners: resize · Shift+drag / inside: move clip",
         "VectorClip"=>VectorMode+" · Ctrl: toggle points · empty drag: box select · Esc: cancel",
         "Drawing"=>DrawingPreset=="No preset"?DrawingMode+" · select an existing drawing or draw on a blank event":"Drag a shape onto the video · Shift: constrain proportions",
         "Shear"=>"Drag horizontally for fax, vertically for fay · Shift: one axis",
-        "Shift"=>"Drag: move position, origin and clip together · Shift: one axis",
+        "Shift"=>"Shift "+ShiftMode.ToLowerInvariant()+" by dragging · Shift: one axis",
         "Tags"=>"Drag horizontally to edit "+VisualNumericTag+" · Shift: fine adjustment",
         "Distort"=>"Drag corners: bilinear distortion · center: translate · eight normalized values",
         _=>""
@@ -137,7 +147,7 @@ public sealed partial class MainWindowViewModel
     {
         OnPropertyChanged(nameof(ActiveVisualTool));OnPropertyChanged(nameof(VectorMode));
         foreach(var mode in VectorModes)OnPropertyChanged("IsVector"+mode);
-        foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(IsDrawingTool),nameof(IsTagsTool),nameof(PositionMode),nameof(DrawingMode),nameof(DrawingPreset),nameof(VisualNumericTag),nameof(VisualTagOperation),nameof(VisualHint)})OnPropertyChanged(property);
+        foreach(var property in new[]{nameof(IsCrosshairTool),nameof(IsPositionTool),nameof(IsRotateZTool),nameof(IsRotateXYTool),nameof(IsScaleTool),nameof(IsClipTool),nameof(IsVectorClipTool),nameof(IsDistortTool),nameof(IsClipFamily),nameof(IsDrawingTool),nameof(IsTagsTool),nameof(IsShiftTool),nameof(PositionMode),nameof(ScaleMode),nameof(RotateZMode),nameof(ShiftMode),nameof(DrawingMode),nameof(DrawingPreset),nameof(VisualNumericTag),nameof(VisualTagOperation),nameof(VisualHint)})OnPropertyChanged(property);
     }
     private DocumentState? VisualState=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?state:null;
     private void RegisterVisualToolCommands()

@@ -70,11 +70,21 @@ public sealed class ShiftGeometryTool : VisualTool
     {
         if (Initial is null) return;
         var delta = Delta(pointer);
+        var mode = context.Model.ShiftMode;
         context.Apply(line =>
         {
             if (delta == default) return line.Text;
-            var shifted = AssVisualTags.ShiftPosition(line.Text, line.DefaultPosition, delta);
-            return AssVisualTags.Clip(line.Text) is null ? shifted : AssVisualTags.TranslateClip(shifted, delta);
+            var text = line.Text;
+            if (mode is "All" or "Position")
+                text = AssVisualTags.ShiftPosition(text, line.DefaultPosition, delta, shiftOrigin: mode == "All");
+            if (mode == "Origin")
+                text = AssVisualTags.SetOrigin(text, Add(line.Origin, delta));
+            if ((mode is "Move start" or "Move end") && AssVisualTags.Move(text) is {} move)
+                text = AssVisualTags.SetMove(text, mode == "Move start" ?
+                    move with { Start = Add(move.Start, delta) } : move with { End = Add(move.End, delta) });
+            if ((mode is "All" or "Clip") && AssVisualTags.Clip(text) is not null)
+                text = AssVisualTags.TranslateClip(text, delta);
+            return text;
         });
     }
 }

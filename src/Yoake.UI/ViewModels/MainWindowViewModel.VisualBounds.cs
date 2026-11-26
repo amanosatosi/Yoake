@@ -15,7 +15,7 @@ public sealed partial class MainWindowViewModel
     public AssBox? VisualBounds(VisualLine line)=>_visualBounds.TryGetValue(line.Line,out var value)?value.Bounds:null;
     public void RequestVisualBounds()
     {
-        if(_disposed||!IsDistortTool||HasGesture||ActiveEditor is not {} editor||VideoFrame is null)return;
+        if(_disposed||!(IsDistortTool||IsScaleTool&&ScaleMode=="Fit rectangle")||HasGesture||ActiveEditor is not {} editor||VideoFrame is null)return;
         var lines=VisibleVisualLines();var size=ScriptSize;var width=(int)Math.Clamp(size.Width,1,4096);var height=(int)Math.Clamp(size.Height,1,2160);
         var source=PreviewRevision+":"+size+":"+VideoFrame.PixelSize+":"+string.Join(',',lines.Select(l=>l.Line.Number));if(source==_boundsSource)return;_boundsSource=source;
         var header=VisualMeasurement.Header(editor.Document);

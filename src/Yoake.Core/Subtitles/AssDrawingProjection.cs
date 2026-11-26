@@ -21,9 +21,9 @@ public readonly struct AssDrawingProjection
         _shearY = transform.ShearY;
         _camera = 312.5 * layoutScale;
 
-        var (sx, cx) = Math.SinCos(-transform.X * Math.PI / 180);
-        var (sy, cy) = Math.SinCos(transform.Y * Math.PI / 180);
-        var (sz, cz) = Math.SinCos(-transform.Z * Math.PI / 180);
+        var (sx, cx) = Math.SinCos(-transform.X * (Math.PI / 180));
+        var (sy, cy) = Math.SinCos(transform.Y * (Math.PI / 180));
+        var (sz, cz) = Math.SinCos(-transform.Z * (Math.PI / 180));
         _xx = cz * cy - sz * sx * sy;
         _xy = sz * cx;
         _xz = cz * sy + sz * sx * cy;

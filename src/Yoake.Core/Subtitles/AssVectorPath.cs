@@ -156,6 +156,16 @@ public sealed class AssVectorPath
         }
         return path;
     }
+    public static AssVectorPath Spline(IReadOnlyList<AssPoint> points)
+    {
+        if(points.Count<4)return Freehand(points,false);
+        var path=new AssVectorPath();
+        path.Commands.Add(new('m',[points[0]]));
+        path.Commands.Add(new('s',points.Skip(1).ToArray()));
+        path.Commands.Add(new('c',[]));
+        return path.ExpandSplines()!;
+    }
+
     public string Serialize(int scale)
     {
         if(scale is <1 or >30)throw new ArgumentOutOfRangeException(nameof(scale));var factor=Math.Pow(2,scale-1);

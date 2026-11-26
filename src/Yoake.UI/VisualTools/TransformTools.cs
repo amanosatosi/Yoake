@@ -25,9 +25,12 @@ public abstract class OriginTool : VisualTool
 }
 public sealed class RotateZTool : OriginTool
 {
+    private AssPoint? _guideEnd;
     public override void Render(VisualCanvas c)
     {
-        if(c.Context.Active is not {} l)return;Origin(c);var o=c.Screen(l.Origin);var radius=Math.Max(50,VisualToolContext.Distance(c.Screen(l.Position),o));c.Ring(l.Origin,radius);
+        if(c.Context.Active is not {} l)return;
+        if(_guideEnd is {} end)c.Line(Anchor.Script,end,Brushes.Yellow,true);
+        Origin(c);var o=c.Screen(l.Origin);var radius=Math.Max(50,VisualToolContext.Distance(c.Screen(l.Position),o));c.Ring(l.Origin,radius);
         for(var angle=0;angle<360;angle+=30)
         {
             var a=angle*Math.PI/180;var direction=new Vector(Math.Cos(a),-Math.Sin(a));c.ScreenLine(o+direction*(radius-3),o+direction*(radius+6),Brushes.LightGray);
@@ -35,10 +38,29 @@ public sealed class RotateZTool : OriginTool
         var rad=l.Transform.Z*Math.PI/180;var v=new Vector(Math.Cos(rad),-Math.Sin(rad));c.ScreenLine(o-v*radius,o+v*radius);c.Handle(c.Context.Script(o+v*radius),HandleShape.Circle);
         c.Label(FormattableString.Invariant($"Z {l.Transform.Z:0.##}°"),o+new Vector(10,10));
     }
-    public override bool Press(VisualToolContext c,VisualPointer p)=>BeginTransform(c,p,"Rotate subtitles Z");
+    public override bool Press(VisualToolContext c,VisualPointer p)
+    {
+        if(c.Model.RotateZMode!="Guide line")return BeginTransform(c,p,"Rotate subtitles Z");
+        DragOrigin=false;
+        return Begin(c,p,"Rotate subtitles to guide");
+    }
+    public override void Cancel()
+    {
+        base.Cancel();
+        _guideEnd=null;
+    }
     public override void Move(VisualToolContext c,VisualPointer p)
     {
         if(UpdateOrigin(c,p)||Initial is not {} initial)return;
+        if(c.Model.RotateZMode=="Guide line")
+        {
+            _guideEnd=p.Script;
+            if(VisualToolContext.Distance(p.Screen,Anchor.Screen)<2){c.Apply(l=>l.Text);return;}
+            var angle=VisualGeometry.Angle(p.Script,Anchor.Script);
+            if(p.Ctrl)angle=VisualGeometry.Snap(angle,30);
+            c.Apply(l=>AssVisualTags.SetScalar(l.Text,"frz",l.Transform.Z+angle-initial.Transform.Z));
+            return;
+        }
         var delta=VisualGeometry.Angle(p.Script,initial.Origin)-VisualGeometry.Angle(Anchor.Script,initial.Origin);
         delta=(delta+540)%360-180;var value=initial.Transform.Z+delta;if(p.Ctrl)value=VisualGeometry.Snap(value,30);delta=value-initial.Transform.Z;
         c.Apply(l=>AssVisualTags.SetScalar(l.Text,"frz",l.Transform.Z+delta));
@@ -73,9 +95,15 @@ public sealed class RotateXYTool : OriginTool
 }
 public sealed class ScaleTool : VisualTool
 {
+    private AssBox? _fitBounds;
+    private AssPoint? _fitEnd;
     public override void Render(VisualCanvas c)
     {
-        if(c.Context.Active is not {} l)return;var t=l.Transform with{ScaleX=100,ScaleY=100,ShearX=0,ShearY=0};
+        if(c.Context.Active is not {} l)return;
+        if(_fitEnd is {} end)c.Rectangle(Anchor.Script,end,false,false);
+        if(c.Context.Model.ScaleMode=="Fit rectangle"&&c.Context.Model.VisualBoundsPending)
+            c.Label("Measuring subtitle bounds…",c.Context.Video.TopLeft+new Vector(8,8));
+        var t=l.Transform with{ScaleX=100,ScaleY=100,ShearX=0,ShearY=0};
         // Keep guides comfortably inside the video while retaining orientation.
         var p=c.Screen(l.Position);var area=c.Context.Video;p=new(Math.Clamp(p.X,area.Left+Math.Min(90,area.Width/2),area.Right-Math.Min(90,area.Width/2)),Math.Clamp(p.Y,area.Top+Math.Min(90,area.Height/2),area.Bottom-Math.Min(90,area.Height/2)));
         var center=c.Context.Script(p);var unit=c.Context.ScriptDistance(80);
@@ -85,13 +113,46 @@ public sealed class ScaleTool : VisualTool
         c.Line(a,b);c.Line(d,e);foreach(var point in new[]{a,b,d,e})c.Handle(point,HandleShape.Circle);
         c.Label(FormattableString.Invariant($"{l.Transform.ScaleX:0.#}% × {l.Transform.ScaleY:0.#}%"),p+new Vector(-50,-20));
     }
-    public override bool Press(VisualToolContext c,VisualPointer p)=>Begin(c,p,"Scale subtitles");
+    public override bool Press(VisualToolContext c,VisualPointer p)
+    {
+        _fitBounds=null;
+        if(c.Model.ScaleMode=="Fit rectangle")
+        {
+            if(c.Active is not {} line||c.Model.VisualBoundsPending||
+                c.Model.VisualBounds(line) is not {Width:>0,Height:>0} bounds)return false;
+            _fitBounds=bounds;
+        }
+        return Begin(c,p,"Scale subtitles");
+    }
+    public override void Cancel()
+    {
+        base.Cancel();
+        _fitBounds=null;
+        _fitEnd=null;
+    }
     public override void Move(VisualToolContext c,VisualPointer p)
     {
         if(Initial is not {} initial)return;var d=p.Screen-Anchor.Screen;var delta=new AssPoint(d.X*1.25,-d.Y*1.25);
-        var target=VisualGeometry.Scale(new(initial.Transform.ScaleX,initial.Transform.ScaleY),delta,p.Shift,p.Alt,p.Ctrl);
+        var mode=c.Model.ScaleMode;
+        var target=VisualGeometry.Scale(new(initial.Transform.ScaleX,initial.Transform.ScaleY),delta,p.Shift,
+            p.Alt||mode=="Proportional",p.Ctrl);
+        if(mode=="Width")target=target with{Y=initial.Transform.ScaleY};
+        if(mode=="Height")target=target with{X=initial.Transform.ScaleX};
+        if(_fitBounds is {} box)
+        {
+            _fitEnd=p.Script;
+            var extent=VisualGeometry.Subtract(p.Script,Anchor.Script);
+            if(Math.Abs(extent.X)<1||Math.Abs(extent.Y)<1){c.Apply(l=>l.Text);return;}
+            target=new(Math.Abs(extent.X)*100/box.Width,Math.Abs(extent.Y)*100/box.Height);
+        }
         var ratioX=initial.Transform.ScaleX>0?target.X/initial.Transform.ScaleX:1;var ratioY=initial.Transform.ScaleY>0?target.Y/initial.Transform.ScaleY:1;
-        c.Apply(l=>AssVisualTags.SetScalar(AssVisualTags.SetScalar(l.Text,"fscx",initial.Transform.ScaleX>0?l.Transform.ScaleX*ratioX:target.X),"fscy",initial.Transform.ScaleY>0?l.Transform.ScaleY*ratioY:target.Y));
+        c.Apply(l=>
+        {
+            var text=l.Text;
+            if(mode!="Height")text=AssVisualTags.SetScalar(text,"fscx",initial.Transform.ScaleX>0?l.Transform.ScaleX*ratioX:target.X);
+            if(mode!="Width")text=AssVisualTags.SetScalar(text,"fscy",initial.Transform.ScaleY>0?l.Transform.ScaleY*ratioY:target.Y);
+            return text;
+        });
     }
     public override StandardCursorType Cursor(VisualToolContext? c,VisualPointer p)=>StandardCursorType.SizeAll;
 }

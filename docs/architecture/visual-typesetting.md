@@ -116,7 +116,8 @@ The Drawing tool uses the existing ASS vector topology parser and curve
 operations. A shape preset maps its contour into the drag rectangle. Drawing
 edits replace a single ASS drawing range and retain its drawing scale, outer
 override blocks and event metadata. Existing isolated drawings support point
-and handle selection, new contours, edge conversion/splitting, freehand paths, and whole
+and handle selection, new contours, edge conversion/splitting, freehand paths, uniform B-splines
+converted to cubic segments, and whole
 drawing translation, resizing and rotation. The editor uses the shared
 video viewport and the original drawing and line placement as the drag baseline.
 The subtitle edit box shows the current transaction text during drawing drags.
@@ -133,10 +134,13 @@ control-box dimensions for the glyph advance and ascent. Historical xy-VSFilter
 has its own CPolygon placement path. The overlay models the Mangetsu renderer
 shipped by Yoake.
 
-Shear edits fax/fay independently. Shift translates position, origin and
-editable clips together. Numeric Tags supports static numeric properties,
+Shear edits fax/fay independently. Shift translates position, origins,
+individual move endpoints or editable clips. It can also translate all event
+placement and clipping together. Scale can target either axis, lock proportions
+or fit a drag rectangle using Mangetsu measurements. Z rotation can use a guide line. Numeric Tags supports static numeric properties,
 including set, relative changes, and forward and reverse gradients over
 selected visible lines or graphemes. Position can restrict an edit to one axis
 or use two clicks on a video feature at different frames to create a timed move.
+It can also place the line at its alignment point within a drag rectangle.
 Kainote also supports custom tag definitions and a configurable shape library.
 Yoake provides built-in presets and numeric properties.

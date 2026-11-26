@@ -25,6 +25,7 @@ public sealed class CrosshairTool : VisualTool
 public sealed class PositionTool : VisualTool
 {
     private int _feature;
+    private AssPoint? _rectangleEnd;
     private (AssEvent Line,string Text,AssPoint Point,AssPoint Position,double Time,int Provider)? _sample;
 
     public bool CancelSample()
@@ -68,6 +69,7 @@ public sealed class PositionTool : VisualTool
             c.Handle(sample.Point,HandleShape.Square,true);
             if(c.Inside)c.Arrow(sample.Point,c.Pointer.Script);
         }
+        if(_rectangleEnd is {} end)c.Rectangle(Anchor.Script,end,false,false);
         foreach(var l in c.Context.Lines)
         {
             if(AssVisualTags.Move(l.Text) is {} move){c.Arrow(move.Start,move.End);c.Handle(l.Position,HandleShape.Circle,false,false);}
@@ -78,6 +80,7 @@ public sealed class PositionTool : VisualTool
     public override bool Press(VisualToolContext c,VisualPointer p)
     {
         if(c.Model.PositionMode=="Two frames")return Track(c,p);
+        if(c.Model.PositionMode=="Rectangle")return Begin(c,p,"Place subtitle at rectangle alignment");
         if(c.Model.PositionMode=="Origin"){_feature=2;return Begin(c,p,"Move subtitle origins");}
         if(p.ClickCount==2)return new CrosshairTool().Press(c,p);
         _feature=p.Alt?2:-1;
@@ -96,7 +99,19 @@ public sealed class PositionTool : VisualTool
     }
     public override void Move(VisualToolContext c,VisualPointer p)
     {
-        if(Initial is null)return;var delta=Delta(p);var feature=_feature;
+        if(Initial is not {} initial)return;
+        if(c.Model.PositionMode=="Rectangle")
+        {
+            _rectangleEnd=p.Script;
+            var box=new AssBox(Math.Min(p.Script.X,Anchor.Script.X),Math.Min(p.Script.Y,Anchor.Script.Y),
+                Math.Abs(p.Script.X-Anchor.Script.X),Math.Abs(p.Script.Y-Anchor.Script.Y));
+            if(VisualToolContext.Distance(p.Screen,Anchor.Screen)<2){c.Apply(l=>l.Text);return;}
+            var point=box.Map(new(((initial.Alignment-1)%3)/2d,(2-(initial.Alignment-1)/3)/2d));
+            var shift=VisualGeometry.Subtract(point,initial.Position);
+            c.Apply(l=>AssVisualTags.ShiftPosition(l.Text,l.DefaultPosition,shift));
+            return;
+        }
+        var delta=Delta(p);var feature=_feature;
         if(c.Model.PositionMode is "Horizontal" or "Vertical")
         {
             var full=VisualGeometry.Subtract(p.Script,Anchor.Script);
@@ -105,6 +120,11 @@ public sealed class PositionTool : VisualTool
         c.Apply(l=>delta==default?l.Text:feature==2?AssVisualTags.SetOrigin(l.Text,VisualGeometry.Add(l.Origin,delta)):
             AssVisualTags.Move(l.Text) is not null?AssVisualTags.MoveEndpoint(l.Text,feature,delta,l.RelativeTime,l.Duration):
             feature==0?AssVisualTags.SetPosition(l.Text,VisualGeometry.Add(l.Position,delta)):l.Text);
+    }
+    public override void Cancel()
+    {
+        base.Cancel();
+        _rectangleEnd=null;
     }
     public override StandardCursorType Cursor(VisualToolContext? c,VisualPointer p)=>StandardCursorType.SizeAll;
 }
