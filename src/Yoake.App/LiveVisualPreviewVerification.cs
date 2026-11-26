@@ -26,18 +26,29 @@ internal static class LiveVisualPreviewVerification
         Require(model.OpenSubtitle(path),"Open an independent live-drag fixture.");
         var dummyOptions=new DummyVideoOptions { Width=640,Height=360,FrameCount=150,FramesPerSecond=25,Checkerboard=true };
         await Invoke("video/open/dummy",dummyOptions);
+        Require(model.VideoSourcePath==dummyOptions.SourceName,"The independent dummy video must open: "+model.MediaStatus);
         await Invoke("video/tool/position");await Invoke("video/presentation/zoom","100%");
+        // Opening media publishes the provider before rendering is guaranteed to
+        // complete: a newer preview request can supersede the initial refresh.
+        // Seek to the fixture's active frame and let the UI pump publish it.
+        await model.SeekPlaybackAsync(0);
+        for(var i=0;i<600&&(model.VideoFrame is null||model.DisplayedPreviewRevision!=model.PreviewRevision);i++)await Task.Delay(16);
+        var initialFrame=model.VideoFrame??throw new InvalidOperationException("Initial live-drag frame was not published: "+model.MediaStatus);
+        Require(model.DisplayedPreviewRevision==model.PreviewRevision,"Initial live-drag frame must match the current preview revision: "+model.MediaStatus);
+        Require(initialFrame.PixelSize.Width==dummyOptions.Width&&initialFrame.PixelSize.Height==dummyOptions.Height,"Initial frame must belong to the independent dummy video.");
         if(OperatingSystem.IsWindows())
         {
             using var raw=new DummyVideoProvider(dummyOptions);
-            using var frame=model.VideoFrame!.Lock();var bytes=new byte[frame.RowBytes*frame.Size.Height];Marshal.Copy(frame.Address,bytes,0,bytes.Length);
-            Require(!bytes.SequenceEqual(raw.GetFrame(0).Pixels),"The initial composed frame must visibly contain subtitles before testing drag movement: "+model.MediaStatus);
+            var expected=raw.GetFrame(0).Pixels;
+            for(var i=3;i<expected.Length;i+=4)expected[i]=0;
+            Require(!CaptureVisiblePixels(initialFrame).SequenceEqual(expected),"The initial composed frame must visibly contain subtitles before testing drag movement: "+model.MediaStatus);
         }
         await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
         await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
-        var overlay=window.FindControl<VisualOverlayControl>("VisualOverlay")!;
-        var image=window.FindControl<VideoPresentationControl>("VideoImage")!;
-        var rect=image.VideoArea;var area=new VideoPresentation(rect.X,rect.Y,rect.Width,rect.Height);
+        var overlay=window.FindControl<VisualOverlayControl>("VisualOverlay")??throw new InvalidOperationException("Missing live-drag visual overlay.");
+        var image=window.FindControl<VideoPresentationControl>("VideoImage")??throw new InvalidOperationException("Missing live-drag video image.");
+        var rect=image.VideoArea;Require(rect.Width>0&&rect.Height>0,"The live-drag video area must be laid out.");
+        var area=new VideoPresentation(rect.X,rect.Y,rect.Width,rect.Height);
         Point PointAt(double x)=>new(area.FromScript(new(x,140),384,288).X,area.FromScript(new(x,140),384,288).Y);
         Point Root(Point point)=>overlay.TranslatePoint(point,window)??throw new InvalidOperationException("Embedded visual control must belong to the native window.");
         var pointer=new Pointer(957,PointerType.Mouse,true);
@@ -47,8 +58,7 @@ internal static class LiveVisualPreviewVerification
         {
             if(!model.HasGesture||model.DisplayedPreviewRevision<=initialRevision||model.VideoFrame is not {} bitmap)return;
             revisions.Add(model.DisplayedPreviewRevision);
-            using var buffer=bitmap.Lock();var bytes=new byte[buffer.RowBytes*buffer.Size.Height];
-            Marshal.Copy(buffer.Address,bytes,0,bytes.Length);pixels.Add(Convert.ToHexString(SHA256.HashData(bytes)));
+            pixels.Add(Convert.ToHexString(SHA256.HashData(CaptureVisiblePixels(bitmap))));
         }
         model.FrameReady+=Frame;
         try
@@ -76,6 +86,16 @@ internal static class LiveVisualPreviewVerification
             model.FrameReady-=Frame;
             if(model.HasGesture)model.CancelGesture();pointer.Capture(null);
         }
+    }
+    // Compare actual visible RGB, excluding row padding and alpha-only changes.
+    private static byte[] CaptureVisiblePixels(Avalonia.Media.Imaging.WriteableBitmap bitmap)
+    {
+        using var buffer=bitmap.Lock();
+        var rowBytes=checked(buffer.Size.Width*4);
+        var pixels=new byte[checked(rowBytes*buffer.Size.Height)];
+        for(var y=0;y<buffer.Size.Height;y++)Marshal.Copy(buffer.Address+y*buffer.RowBytes,pixels,y*rowBytes,rowBytes);
+        for(var i=3;i<pixels.Length;i+=4)pixels[i]=0;
+        return pixels;
     }
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
 }
