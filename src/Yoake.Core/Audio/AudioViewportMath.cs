@@ -42,4 +42,17 @@ public static class AudioViewportMath
     // Playback provider supports attenuation, not amplification. Link the
     // normalized display-control position to that provider's 0..1 range.
     public static double LinkedVolume(double intensity)=>AmplitudePosition(intensity)/100;
+    public static double SnapTime(double target,double tolerance,IEnumerable<double> candidates)
+    {
+        if(!double.IsFinite(target)||!double.IsFinite(tolerance)||tolerance<0)throw new ArgumentException("Invalid snap geometry.");
+        var best=target;var distance=tolerance;
+        if(distance==0)return best;
+        foreach(var candidate in candidates)
+        {
+            if(!double.IsFinite(candidate)||candidate<0)continue;
+            var delta=Math.Abs(candidate-target);
+            if(delta<distance||delta==distance&&(best==target||candidate<best)){best=candidate;distance=delta;}
+        }
+        return best;
+    }
 }

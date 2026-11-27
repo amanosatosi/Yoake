@@ -5,6 +5,7 @@ using Avalonia.Media;
 using System.ComponentModel;
 using System.Collections.Specialized;
 using Yoake.Core.Subtitles;
+using Yoake.Core.Settings;
 using Yoake.UI.ViewModels;
 using Yoake.UI.VisualTools;
 
@@ -68,6 +69,7 @@ public sealed class VisualOverlayControl : Control
     private void GestureEnded(object? sender,EventArgs e){ReleaseCapture();_tool?.Cancel();Refresh();}
     private void Changed(object? sender,PropertyChangedEventArgs e)
     {
+        if(e.PropertyName==nameof(MainWindowViewModel.VideoVisualAutohide))InvalidateVisual();
         if(e.PropertyName==nameof(MainWindowViewModel.IsPlaying))
         {
             if(Model?.IsPlaying==true)Cancel();
@@ -95,6 +97,7 @@ public sealed class VisualOverlayControl : Control
         // Keep the entire video an input surface even before any clip/handles exist.
         context.FillRectangle(Brushes.Transparent,new Rect(Bounds.Size));
         base.Render(context);RenderedHandles=0;RenderedTool=null;
+        if(Model?.VideoVisualAutohide==true&&!_pointerOver&&!HasTransientInput)return;
         if(Model?.IsPlaying==true||_context is not {} state||_tool is null||state.Video.Width<=0||state.Video.Height<=0)return;
         IBrush ColorResource(string key,IBrush fallback)=>this.TryFindResource(key,ActualThemeVariant,out var value)&&value is IBrush brush?brush:fallback;
         var canvas=new VisualCanvas(context,state,_pointer,_inside)
@@ -158,12 +161,19 @@ public sealed class VisualOverlayControl : Control
     {
         base.OnPointerWheelChanged(e);if(Model?.VideoFrame is null)return;
         Cancel();var p=e.GetPosition(this);
-        if(e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        var action=e.KeyModifiers.HasFlag(KeyModifiers.Control)?Model.VideoCtrlScroll:e.KeyModifiers.HasFlag(KeyModifiers.Shift)?Model.VideoShiftScroll:Model.VideoScroll;
+        switch(action)
         {
-            var factor=1+.125*e.Delta.Y;var next=Model.VideoView!.ContentZoom*factor;
-            if(next>=.125&&next<=10)Model.ZoomVideoContent(factor,p.X,p.Y);
+            case VideoScrollAction.Resize:
+            case VideoScrollAction.ResizeReversed:
+                Model.Actions["video/presentation/zoom"].Execute((Math.Clamp(Model.VideoWindowZoom+.125*e.Delta.Y*(action==VideoScrollAction.Resize?1:-1),.125,10)*100).ToString(System.Globalization.CultureInfo.InvariantCulture));break;
+            case VideoScrollAction.Zoom:
+            case VideoScrollAction.ZoomReversed:
+                var factor=1+.125*e.Delta.Y*(action==VideoScrollAction.Zoom?1:-1);var next=Model.VideoView!.ContentZoom*factor;
+                if(next>=.125&&next<=10)Model.ZoomVideoContent(factor,p.X,p.Y);break;
+            case VideoScrollAction.Pan:Model.PanVideo(e.Delta.X*40,e.Delta.Y*40);break;
+            case VideoScrollAction.PanSwapped:Model.PanVideo(e.Delta.Y*40,e.Delta.X*40);break;
         }
-        else Model.Actions["video/presentation/zoom"].Execute((Math.Clamp(Model.VideoWindowZoom+.125*e.Delta.Y,.125,10)*100).ToString(System.Globalization.CultureInfo.InvariantCulture));
         e.Handled=true;
     }
     private void Fail(Exception exception){Model?.Registry.ReportFailure("video/visual-edit",exception);Cancel();}

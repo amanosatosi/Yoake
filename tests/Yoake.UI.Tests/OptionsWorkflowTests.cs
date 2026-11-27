@@ -22,6 +22,8 @@ public sealed partial class EditorWorkflowTests
         hotkeys.Set(HotkeyContext.Default,CommandIds.SubtitleNew,["Ctrl-Alt-K"]);
         var edited=baseline with { UiFontFamily="Noto Sans Myanmar",UiFontSize=17, Theme=ThemePreference.Dark,
             VideoAutoSeek=false,VideoFastJumpStep=25,AudioAutoCommit=true,AudioAutoNext=false,
+            AudioSnap=true,AudioSnapDistance=12,AudioLabelFont="Verdana",
+            SpectrumQuality=SpectrumQualityMode.High,SpectrumFrequency=SpectrumFrequencyMode.Medium,SpectrumCacheMiB=32,VideoSliderKeyframes=false,VideoVisualAutohide=true,VideoScroll=VideoScrollAction.Pan,
             AudioDefaultDuration=2500,AudioLeadIn=80,AudioLeadOut=200,AudioSpectrum=true,AudioAutoScroll=false,
             ShowOriginal=true,BetterView=false,GridTagDisplay=GridTagDisplayMode.Hidden,
             AutosaveEnabled=false,AutosaveIntervalSeconds=120,RecoveryDirectory="recovery-two",
@@ -32,6 +34,9 @@ public sealed partial class EditorWorkflowTests
         var saved=new SettingsStore(Path.Combine(_root,"settings.json")).Load();
         Assert.Equal("Noto Sans Myanmar",saved.UiFontFamily);Assert.Equal(17,saved.UiFontSize);
         Assert.Equal(ThemePreference.Dark,saved.Theme);Assert.False(saved.VideoAutoSeek);
+        Assert.True(_model.AudioSnap);Assert.Equal(12,saved.AudioSnapDistance);Assert.Equal("Verdana",_model.AudioLabelFont);
+        Assert.Equal(SpectrumQualityMode.High,saved.SpectrumQuality);Assert.Equal(SpectrumFrequencyMode.Medium,_model.SpectrumFrequency);Assert.Equal(32,saved.SpectrumCacheMiB);
+        Assert.False(_model.VideoSliderKeyframes);Assert.True(_model.VideoVisualAutohide);Assert.Equal(VideoScrollAction.Pan,_model.VideoScroll);
         Assert.Equal(25,saved.VideoFastJumpStep);Assert.Equal(2500,saved.AudioDefaultDuration);
         Assert.Equal(80,saved.AudioLeadIn);Assert.Equal(200,saved.AudioLeadOut);
         Assert.True(_model.AudioAutoCommit);Assert.False(_model.AudioAutoNext);Assert.True(_model.IsAudioSpectrum);

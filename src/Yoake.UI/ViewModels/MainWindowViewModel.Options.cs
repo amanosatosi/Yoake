@@ -8,6 +8,17 @@ namespace Yoake.UI.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private bool _publishingOptions;
+    public bool AudioSnap=>_settings.AudioSnap??false;
+    public int AudioSnapDistance=>_settings.AudioSnapDistance??8;
+    public string AudioLabelFont=>_settings.AudioLabelFont??"Verdana";
+    public SpectrumQualityMode SpectrumQuality=>_settings.SpectrumQuality??SpectrumQualityMode.Better;
+    public SpectrumFrequencyMode SpectrumFrequency=>_settings.SpectrumFrequency??SpectrumFrequencyMode.Linear;
+    public int SpectrumCacheMiB=>_settings.SpectrumCacheMiB??128;
+    public bool VideoSliderKeyframes=>_settings.VideoSliderKeyframes??true;
+    public bool VideoVisualAutohide=>_settings.VideoVisualAutohide??false;
+    public VideoScrollAction VideoScroll=>_settings.VideoScroll??VideoScrollAction.Resize;
+    public VideoScrollAction VideoCtrlScroll=>_settings.VideoCtrlScroll??VideoScrollAction.Zoom;
+    public VideoScrollAction VideoShiftScroll=>_settings.VideoShiftScroll??VideoScrollAction.Resize;
     public bool AudioWheelZoom=>_settings.AudioWheelZoom??false;
     public bool AudioLockScroll=>_settings.AudioLockScroll??false;
     public bool AudioAutoFocus=>_settings.AudioAutoFocus??false;
@@ -42,6 +53,17 @@ public sealed partial class MainWindowViewModel
             ShowOriginal=Pick(baseline.ShowOriginal, edited.ShowOriginal, _settings.ShowOriginal),
             GridTagDisplay=Pick(baseline.GridTagDisplay, edited.GridTagDisplay, _settings.GridTagDisplay),
             AudioSpectrum=Pick(baseline.AudioSpectrum, edited.AudioSpectrum, _settings.AudioSpectrum),
+            AudioSnap=Pick(baseline.AudioSnap,edited.AudioSnap,_settings.AudioSnap),
+            AudioSnapDistance=Pick(baseline.AudioSnapDistance,edited.AudioSnapDistance,_settings.AudioSnapDistance),
+            AudioLabelFont=Pick(baseline.AudioLabelFont,edited.AudioLabelFont,_settings.AudioLabelFont),
+            SpectrumQuality=Pick(baseline.SpectrumQuality,edited.SpectrumQuality,_settings.SpectrumQuality),
+            SpectrumFrequency=Pick(baseline.SpectrumFrequency,edited.SpectrumFrequency,_settings.SpectrumFrequency),
+            SpectrumCacheMiB=Pick(baseline.SpectrumCacheMiB,edited.SpectrumCacheMiB,_settings.SpectrumCacheMiB),
+            VideoSliderKeyframes=Pick(baseline.VideoSliderKeyframes,edited.VideoSliderKeyframes,_settings.VideoSliderKeyframes),
+            VideoVisualAutohide=Pick(baseline.VideoVisualAutohide,edited.VideoVisualAutohide,_settings.VideoVisualAutohide),
+            VideoScroll=Pick(baseline.VideoScroll,edited.VideoScroll,_settings.VideoScroll),
+            VideoCtrlScroll=Pick(baseline.VideoCtrlScroll,edited.VideoCtrlScroll,_settings.VideoCtrlScroll),
+            VideoShiftScroll=Pick(baseline.VideoShiftScroll,edited.VideoShiftScroll,_settings.VideoShiftScroll),
             AudioWheelZoom=Pick(baseline.AudioWheelZoom,edited.AudioWheelZoom,_settings.AudioWheelZoom),
             AudioLockScroll=Pick(baseline.AudioLockScroll,edited.AudioLockScroll,_settings.AudioLockScroll),
             AudioAutoFocus=Pick(baseline.AudioAutoFocus,edited.AudioAutoFocus,_settings.AudioAutoFocus),
@@ -100,6 +122,7 @@ public sealed partial class MainWindowViewModel
             nameof(BetterView), nameof(ShowOriginal), nameof(GridTagDisplay), nameof(IsAudioSpectrum), nameof(AudioDisplayModeIndex),
             nameof(AudioAutoScroll), nameof(AudioAutoCommit), nameof(AudioAutoNext), nameof(AudioTimingDefaultDuration),
             nameof(AudioVolumeLinked),nameof(IsVolumeIndependent),nameof(PlaybackVolume),nameof(PlaybackMuted),nameof(KaraokeAutoCut),
+            nameof(AudioSnap),nameof(AudioSnapDistance),nameof(AudioLabelFont),nameof(SpectrumQuality),nameof(SpectrumFrequency),nameof(SpectrumCacheMiB),nameof(VideoSliderKeyframes),nameof(VideoVisualAutohide),nameof(VideoScroll),nameof(VideoCtrlScroll),nameof(VideoShiftScroll),
             nameof(AudioWheelZoom),nameof(AudioLockScroll),nameof(AudioAutoFocus),nameof(AudioMarkerSensitivity),nameof(AudioBoundaryThickness),nameof(AudioInactiveLines),nameof(AudioInactiveComments),nameof(AudioDialogueKeyframes),nameof(AudioKaraokeKeyframes),nameof(AudioCursorTime),nameof(AudioVideoPosition),nameof(AudioSecondsBoundaries),nameof(AudioLabelSize),
             nameof(AudioTimingLeadIn), nameof(AudioTimingLeadOut), nameof(VideoAutoSeek), nameof(ShowVideoOverscan), nameof(VideoFastJumpStep),
             nameof(AutosaveEnabled), nameof(AutosaveIntervalSeconds), nameof(RecoveryDirectory),

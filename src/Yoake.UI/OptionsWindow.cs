@@ -83,6 +83,19 @@ public sealed class OptionsWindow : Window
         Toggle("Audio", "Video position", "Show the current video position when not playing.", "AudioVideoPosition", s=>s.AudioVideoPosition??true,(s,v)=>s with { AudioVideoPosition=v }, defaults);
         Toggle("Audio", "Seconds boundaries", "Draw full-second guides when there is enough space.", "AudioSecondsBoundaries", s=>s.AudioSecondsBoundaries??true,(s,v)=>s with { AudioSecondsBoundaries=v }, defaults);
         Number("Audio", "Karaoke label font size", "Font size of the syllable labels in the audio display.", "AudioLabelSize",9,48,s=>s.AudioLabelSize??9,(s,v)=>s with { AudioLabelSize=(int)v }, defaults);
+        Toggle("Audio", "Snap markers by default", "Snap dialogue boundaries to inactive markers, keyframes and seconds. Shift reverses snapping when dragging one marker.", "AudioSnap", s=>s.AudioSnap??false,(s,v)=>s with { AudioSnap=v }, defaults);
+        Number("Audio", "Maximum snap distance (px)", "Maximum distance from a candidate marker in logical pixels.", "AudioSnapDistance",0,25,s=>s.AudioSnapDistance??8,(s,v)=>s with { AudioSnapDistance=(int)v }, defaults);
+        var audioFont=new FontPicker{Name="AudioLabelFont"};
+        Add("Audio","Karaoke label font family","Independent font family for audio syllable labels.",audioFont,()=>audioFont.FontName=_draft.AudioLabelFont??"Verdana",()=>_draft=_draft with {AudioLabelFont=defaults.AudioLabelFont});
+        audioFont.PropertyChanged+=(_,change)=>{if(change.Property==FontPicker.FontNameProperty&&!_loading)_draft=_draft with {AudioLabelFont=audioFont.FontName};};
+        ChoiceSetting("Advanced audio", "Spectrum quality", "Controls FFT size and viewport resolution.", "SpectrumQuality",Enum.GetValues<SpectrumQualityMode>(),s=>s.SpectrumQuality??SpectrumQualityMode.Better,(s,v)=>s with { SpectrumQuality=v }, defaults);
+        ChoiceSetting("Advanced audio", "Frequency mapping", "Controls frequency distribution vertically.", "SpectrumFrequency",Enum.GetValues<SpectrumFrequencyMode>(),s=>s.SpectrumFrequency??SpectrumFrequencyMode.Linear,(s,v)=>s with { SpectrumFrequency=v }, defaults);
+        Number("Advanced audio", "Spectrum cache memory max (MiB)", "Maximum retained spectrum tile pixel data.", "SpectrumCacheMiB",2,1024,s=>s.SpectrumCacheMiB??128,(s,v)=>s with { SpectrumCacheMiB=(int)v }, defaults);
+        Toggle("Video", "Show keyframes in slider", "Show markers without changing keyframe navigation.", "VideoSliderKeyframes", s=>s.VideoSliderKeyframes??true,(s,v)=>s with { VideoSliderKeyframes=v }, defaults);
+        Toggle("Video", "Only show visual tools when mouse is over video", "Hide tool overlays when the pointer leaves; active gestures stay visible.", "VideoVisualAutohide", s=>s.VideoVisualAutohide??false,(s,v)=>s with { VideoVisualAutohide=v }, defaults);
+        ChoiceSetting("Video", "Scrolling on video display", "Select the ordinary wheel action.", "VideoScroll",Enum.GetValues<VideoScrollAction>(),s=>s.VideoScroll??VideoScrollAction.Resize,(s,v)=>s with { VideoScroll=v }, defaults);
+        ChoiceSetting("Video", "Ctrl+scrolling on video display", "Select the Control-wheel action.", "VideoCtrlScroll",Enum.GetValues<VideoScrollAction>(),s=>s.VideoCtrlScroll??VideoScrollAction.Zoom,(s,v)=>s with { VideoCtrlScroll=v }, defaults);
+        ChoiceSetting("Video", "Shift+scrolling on video display", "Select the Shift-wheel action.", "VideoShiftScroll",Enum.GetValues<VideoScrollAction>(),s=>s.VideoShiftScroll??VideoScrollAction.Resize,(s,v)=>s with { VideoShiftScroll=v }, defaults);
         Toggle("Audio", "Spectrogram", "Display the spectrum instead of the waveform.", "AudioSpectrum", s=>s.AudioSpectrum==true,(s,v)=>s with { AudioSpectrum=v }, defaults);
         Toggle("Audio", "Autoscroll", "Follow the selected subtitle in the audio display.", "AudioAutoScroll", s=>s.AudioAutoScroll==true,(s,v)=>s with { AudioAutoScroll=v }, defaults);
         Toggle("Audio", "Link amplitude and volume", "Changing display intensity also changes playback volume; disables independent volume.", "AudioLinkVolume", s=>s.AudioVolumeLinked,(s,v)=>s with { AudioVolumeLinked=v }, defaults);
@@ -131,7 +144,7 @@ public sealed class OptionsWindow : Window
             _status.Text=matches==0&&matchingShortcuts==0&&!shortcuts.IsVisible?"No matching settings.":query.Length>0?$"{matches} matching settings · {matchingShortcuts} matching shortcut commands":"Changes take effect only after Apply or OK.";
             scroll.Offset=default;
         }
-        _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Video", "Automation", "Keyboard shortcuts", "Recovery" };
+        _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Video", "Automation", "Keyboard shortcuts", "Recovery", "Advanced audio" };
         _navigation.SelectionChanged+=(_,_)=>{ if(!string.IsNullOrEmpty(_search.Text)) _search.Text=""; Filter(); };
         _search.TextChanged+=(_,_)=>Filter();
         var body=new Grid { ColumnDefinitions=new("Auto,*"), ColumnSpacing=6, Margin=new Thickness(8,0) }; body.Children.Add(_navigation); Grid.SetColumn(content,1); body.Children.Add(content);
@@ -189,12 +202,13 @@ public sealed class OptionsWindow : Window
             {
                 "Link amplitude and volume" or "Mute playback"=>"Playback",
                 "Keyframes in dialogue mode" or "Keyframes in karaoke mode" or "Cursor time" or "Video position" or "Seconds boundaries" or "Spectrogram"=>"Display visual options",
-                "Toshiki K-Timing auto cut" or "Karaoke label font size"=>"Audio labels",
+                "Toshiki K-Timing auto cut" or "Karaoke label font size" or "Karaoke label font family"=>"Audio labels",
                 "Default line duration" or "Lead-in" or "Lead-out"=>"Timing defaults (ms)",
                 _=>"Options"
             },
             "Timing"=>label=="Toshiki K-Timing auto cut"?"Karaoke":label is "Auto-commit timing" or "Advance after commit"?"Timing behavior":"Timing defaults (ms)",
-            "Video"=>label=="Fast jump (frames)"?"Navigation":"Video display",
+            "Video"=>label=="Fast jump (frames)"||label.Contains("scrolling",StringComparison.OrdinalIgnoreCase)?"Navigation":"Video display",
+            "Advanced audio"=>"Spectrum",
             "Recovery"=>"Automatic recovery",
             "General"=>"General",
             "Editor"=>"Edit box",

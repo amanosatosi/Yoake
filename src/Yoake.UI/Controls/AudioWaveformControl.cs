@@ -29,6 +29,7 @@ public sealed class AudioWaveformControl : Control
     private WaveformData? _detail;
     private readonly HashSet<int> _boundaryPixels=[];
     private double _pointerTime;
+    private AudioClipInterval? _dragRange;
     private double? _hoverTime;
     private int _part;
     private bool _drag;
@@ -76,7 +77,7 @@ public sealed class AudioWaveformControl : Control
         if(!model.ShowKaraoke||!model.ShowAudio)ContextMenu?.Close();
         if(e.PropertyName==nameof(MainWindowViewModel.IsAudioSpectrum)){_spectrum?.Dispose();_spectrum=null;_primarySpectrum?.Dispose();_primarySpectrum=null;RequestSpectrum();}
         if(e.PropertyName==nameof(MainWindowViewModel.AudioViewport)){var viewport=model.AudioViewport;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;}
-        if(e.PropertyName==nameof(MainWindowViewModel.AudioIntensity))RequestSpectrum();
+        if(e.PropertyName is nameof(MainWindowViewModel.AudioIntensity) or nameof(MainWindowViewModel.SpectrumQuality) or nameof(MainWindowViewModel.SpectrumFrequency))RequestSpectrum();
         if(e.PropertyName==nameof(MainWindowViewModel.CanPlayMedia)){var viewport=model.AudioViewport;_spectrum?.Dispose();_spectrum=null;_primarySpectrum?.Dispose();_primarySpectrum=null;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;_lastLine=model.SelectedEvent;_restoringDocument=false;RequestSpectrum();}
         if(!_restoringDocument&&_lastLine!=model.SelectedEvent)
         {
@@ -160,7 +161,7 @@ public sealed class AudioWaveformControl : Control
             {
                 var left=X(slot.Start/1000d);var right=X(slot.End/1000d);
                 if(right>left)context.FillRectangle(new SolidColorBrush(Color.FromArgb(slot.Current?(byte)65:(byte)30,slot.Assigned?(byte)75:(byte)180,170,220)),new Rect(left,0,right-left,Bounds.Height));
-                var label=new FormattedText(slot.Text.Length==0?"rest":slot.Text,System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,Typeface.Default,model.AudioLabelSize,slot.Current?Brushes.Gold:Brushes.White);
+                var label=new FormattedText(slot.Text.Length==0?"rest":slot.Text,System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,new Typeface(new FontFamily(model.AudioLabelFont)),model.AudioLabelSize,slot.Current?Brushes.Gold:Brushes.White);
                 if(right-left>label.Width+4)context.DrawText(label,new(left+2,RulerHeight+2));
             }
             foreach(var boundary in karaoke.Boundaries){var x=X(boundary/1000d);context.DrawLine(new Pen(Brushes.Gold,1),new(x,0),new(x,Bounds.Height));}
@@ -264,7 +265,7 @@ public sealed class AudioWaveformControl : Control
             e.Handled=true;return;
         }
         if(!point.Properties.IsLeftButtonPressed)return;
-        _pointerTime=Time(point.Position.X);
+        _pointerTime=Time(point.Position.X);_dragRange= model.PrimaryAudioRange;
         var line=model.SelectedEvent;var range=model.PrimaryAudioRange;var start=(range?.StartMilliseconds??0)/1000d;var end=(range?.EndMilliseconds??0)/1000d;
         var nearStart=Math.Abs(X(start)-point.Position.X)<=model.AudioMarkerSensitivity;var nearEnd=Math.Abs(X(end)-point.Position.X)<=model.AudioMarkerSensitivity;
         if(line is not null && (nearStart||nearEnd||e.KeyModifiers.HasFlag(KeyModifiers.Shift)&&_pointerTime>=start&&_pointerTime<=end))
@@ -278,8 +279,39 @@ public sealed class AudioWaveformControl : Control
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);_hoverTime=Time(e.GetPosition(this).X);if(!_drag){if(Model?.AudioCursorTime==true)InvalidateVisual();return;}
-        try{if(_karaokeDrag)Model?.MoveKaraokePointer((long)Math.Round(Time(e.GetPosition(this).X)*1000));else Model?.UpdateAudioTimingGesture(_part,Time(e.GetPosition(this).X)-_pointerTime);InvalidateVisual();}
+        try
+        {
+            if(Model is {} model)
+            {
+                var time=Time(e.GetPosition(this).X);
+                if(_karaokeDrag)model.MoveKaraokePointer((long)Math.Round(time*1000));
+                else if(_dragRange is {} range&&_part!=2)
+                {
+                    var original=(_part==0?range.StartMilliseconds:range.EndMilliseconds)/1000d;
+                    var target=Snap(model,original+time-_pointerTime,e.KeyModifiers);
+                    model.UpdateAudioTimingGesture(_part,target-original);
+                }
+                else model.UpdateAudioTimingGesture(_part,time-_pointerTime);
+            }
+            InvalidateVisual();
+        }
         catch(Exception exception){Model?.Registry.ReportFailure("timing/drag",exception);Cancel();}
+    }
+    private double Snap(MainWindowViewModel model,double target,KeyModifiers modifiers)
+    {
+        if(model.AudioSnap==modifiers.HasFlag(KeyModifiers.Shift)||model.AudioSnapDistance==0)return target;
+        IEnumerable<double> Candidates()
+        {
+            foreach(var line in InactiveLines(model))
+            {
+                if(line.StartMilliseconds is {} start)yield return start/1000d;
+                if(line.EndMilliseconds is {} end)yield return end/1000d;
+            }
+            if(model.AudioDialogueKeyframes)
+                foreach(var key in model.Keyframes)if(key>=0&&key<model.FrameTimes.Count)yield return model.FrameTimes[key];
+            if(model.AudioSecondsBoundaries&&Bounds.Width/VisibleSeconds>=4)yield return Math.Round(target);
+        }
+        return AudioViewportMath.SnapTime(target,model.AudioSnapDistance*VisibleSeconds/Math.Max(1,Bounds.Width),Candidates());
     }
     protected override void OnPointerReleased(PointerReleasedEventArgs e){base.OnPointerReleased(e);if(_drag){_drag=false;_timingPointer=null;if(_karaokeDrag)Model?.EndKaraokePointer();else Model?.EndAudioTimingGesture();_karaokeDrag=false;e.Pointer.Capture(null);e.Handled=true;}}
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e){base.OnPointerCaptureLost(e);Cancel();}

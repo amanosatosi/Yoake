@@ -35,7 +35,7 @@ public sealed class VideoFrameSlider : Control
         var track=new Pen(Brushes.Gray,1);context.DrawLine(track,new(5,Bounds.Height/2),new(Math.Max(5,Bounds.Width-5),Bounds.Height/2));
         RenderedKeyframeMarks=0;
         if(Model is not {} model||model.FrameTimes.Count==0)return;var last=-1;
-        foreach(var key in model.Keyframes){var pixel=(int)X(key);if(pixel==last)continue;last=pixel;RenderedKeyframeMarks++;context.DrawLine(new Pen(accent,1),new(pixel,2),new(pixel,8));}
+        if(model.VideoSliderKeyframes)foreach(var key in model.Keyframes){var pixel=(int)X(key);if(pixel==last)continue;last=pixel;RenderedKeyframeMarks++;context.DrawLine(new Pen(accent,1),new(pixel,2),new(pixel,8));}
         context.DrawRectangle(accent,null,new Rect(X(model.CurrentFrame)-3,Math.Max(2,Bounds.Height/2-5),6,Math.Min(12,Math.Max(4,Bounds.Height-4))));
         if(IsFocused)context.DrawRectangle(null,new Pen(accent,1),new Rect(Bounds.Size).Deflate(1));
     }

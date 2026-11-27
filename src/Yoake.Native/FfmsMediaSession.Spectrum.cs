@@ -8,10 +8,10 @@ public sealed partial class FfmsMediaSession
 {
     // Bounded viewport analysis, independent of waveform peak storage. No giant
     // whole-film spectrogram allocation; callers cache a few tiles per document.
-    public AudioSpectrumTile BuildSpectrum(double start, double duration, int columns, CancellationToken token,double intensity=1)
+    public AudioSpectrumTile BuildSpectrum(double start, double duration, int columns, CancellationToken token,double intensity=1,int quality=1,int frequency=0)
     {
-        const int size=512, bands=128;
-        columns=Math.Clamp(columns,32,512);
+        var size=256<<Math.Clamp(quality,0,3);var bands=size/4;
+        columns=Math.Clamp(columns,32,1024);
         var pixels=new byte[columns*bands*4];var primary=new byte[pixels.Length];
         var normalPalette=IcyBluePalette(false);var primaryPalette=IcyBluePalette(true);
         var fft=new Complex[size];
@@ -30,7 +30,9 @@ public sealed partial class FfmsMediaSession
             for(var y=0;y<bands;y++)
             {
                 // Linear 0..Nyquist, with decibel brightness. Black at silence.
-                var bin=1+y*(size/2-1)/(bands-1);
+                var fraction=y/(double)(bands-1);
+                var mapped=frequency switch {1=>Math.Pow(fraction,1.3),2=>Math.Pow(fraction,1.7),3=>fraction*fraction,4=>(Math.Pow(size/2d,fraction)-1)/(size/2d-1),_=>fraction};
+                var bin=1+(int)Math.Round(mapped*(size/2-1));
                 var db=20*Math.Log10(Math.Max(1e-7,fft[bin].Magnitude/(size/2)));
                 var value=Math.Clamp((db+80+20*Math.Log10(Math.Clamp(intensity,0.1,8)))/80,0,1);
                 var offset=((bands-1-y)*columns+x)*4;

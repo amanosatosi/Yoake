@@ -4,6 +4,13 @@ namespace Yoake.Core.Tests;
 
 public sealed class AudioViewportTests
 {
+    [Fact] public void SnappingChoosesNearestBoundaryWithinTolerance()
+    {
+        Assert.Equal(1.02,AudioViewportMath.SnapTime(1.01,.03,[1.02,1.035]));
+        Assert.Equal(1.01,AudioViewportMath.SnapTime(1.01,.001,[1.02]));
+        Assert.Equal(1.01,AudioViewportMath.SnapTime(1.01,0,[1.01]));
+        Assert.Equal(1,AudioViewportMath.SnapTime(1.125,.25,[1.25,1]));
+    }
     [Fact] public void ScrollingUsesReleasePixelDistanceAndCurrentZoomWithoutChangingTheRange()
     {
         Assert.Equal(12,AudioViewportMath.ScrollPixels(10,10,640,128,100));

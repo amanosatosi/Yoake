@@ -22,6 +22,10 @@ public enum WorkspaceViewMode
 
 public enum AudioInactiveLineMode { None, Previous, PreviousAndNext, All }
 
+public enum SpectrumQualityMode { Regular, Better, High, Insane }
+public enum SpectrumFrequencyMode { Linear, Extended, Medium, Compressed, Logarithmic }
+public enum VideoScrollAction { Resize, ResizeReversed, Zoom, ZoomReversed, Pan, PanSwapped, None }
+
 public sealed record AppSettings
 {
     public SubtitlePostprocessOptions? PostprocessPreferences { get; init; }
@@ -79,6 +83,17 @@ public sealed record AppSettings
     public bool? AudioVideoPosition {get;init;}
     public bool? AudioSecondsBoundaries {get;init;}
     public int? AudioLabelSize {get;init;}
+    public bool? AudioSnap {get;init;}
+    public int? AudioSnapDistance {get;init;}
+    public string? AudioLabelFont {get;init;}
+    public SpectrumQualityMode? SpectrumQuality {get;init;}
+    public SpectrumFrequencyMode? SpectrumFrequency {get;init;}
+    public int? SpectrumCacheMiB {get;init;}
+    public bool? VideoSliderKeyframes {get;init;}
+    public bool? VideoVisualAutohide {get;init;}
+    public VideoScrollAction? VideoScroll {get;init;}
+    public VideoScrollAction? VideoCtrlScroll {get;init;}
+    public VideoScrollAction? VideoShiftScroll {get;init;}
     public bool? AudioAutoScroll {get;init;}
     public bool? AudioAutoCommit {get;init;}
     public bool? AudioAutoNext {get;init;}
@@ -150,6 +165,17 @@ public sealed record AppSettings
             AudioVideoPosition=AudioVideoPosition??true,
             AudioSecondsBoundaries=AudioSecondsBoundaries??true,
             AudioLabelSize=AudioLabelSize is >=9 and <=48?AudioLabelSize:9,
+            AudioSnap=AudioSnap??false,
+            AudioSnapDistance=AudioSnapDistance is >=0 and <=25?AudioSnapDistance:8,
+            AudioLabelFont=string.IsNullOrWhiteSpace(AudioLabelFont)?"Verdana":AudioLabelFont.Trim(),
+            SpectrumQuality=SpectrumQuality is {} valueSpectrumQuality&&Enum.IsDefined(valueSpectrumQuality)?valueSpectrumQuality:SpectrumQualityMode.Better,
+            SpectrumFrequency=SpectrumFrequency is {} valueSpectrumFrequency&&Enum.IsDefined(valueSpectrumFrequency)?valueSpectrumFrequency:SpectrumFrequencyMode.Linear,
+            SpectrumCacheMiB=SpectrumCacheMiB is >=2 and <=1024?SpectrumCacheMiB:128,
+            VideoSliderKeyframes=VideoSliderKeyframes??true,
+            VideoVisualAutohide=VideoVisualAutohide??false,
+            VideoScroll=VideoScroll is {} valueVideoScroll&&Enum.IsDefined(valueVideoScroll)?valueVideoScroll:VideoScrollAction.Resize,
+            VideoCtrlScroll=VideoCtrlScroll is {} valueVideoCtrlScroll&&Enum.IsDefined(valueVideoCtrlScroll)?valueVideoCtrlScroll:VideoScrollAction.Zoom,
+            VideoShiftScroll=VideoShiftScroll is {} valueVideoShiftScroll&&Enum.IsDefined(valueVideoShiftScroll)?valueVideoShiftScroll:VideoScrollAction.Resize,
             AudioAutoCommit=AudioAutoCommit??false,AudioAutoNext=AudioAutoNext??true,
             AudioDefaultDuration=AudioDefaultDuration is >=10 and <=600000?AudioDefaultDuration:3000,
             AudioLeadIn=AudioLeadIn is >=0 and <=60000?AudioLeadIn:100,
