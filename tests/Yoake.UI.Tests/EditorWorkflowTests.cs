@@ -532,6 +532,26 @@ public sealed partial class EditorWorkflowTests : IDisposable
         _dialogs.Choice=UnsavedChoice.Cancel;Assert.False(await _model.CloseDocumentAsync(id));Assert.Contains(_workspace.Documents,d=>d.Id==id);
         _dialogs.Choice=UnsavedChoice.Discard;Assert.True(await _model.CloseDocumentAsync(id));Assert.DoesNotContain(_workspace.Documents,d=>d.Id==id);
     }
+    [Fact] public async Task ClosingBackgroundTabKeepsActiveEditorAndUncommittedDraft()
+    {
+        var first=_model.ActiveDocumentId!.Value;
+        await Command(CommandIds.SubtitleNew);var second=_model.ActiveDocumentId!.Value;
+        var editor=_model.ActiveEditor;var draft=_model.Draft!;
+        draft.Text="unsaved current tab";
+        Assert.True(await _model.CloseDocumentAsync(first));
+        Assert.Equal(second,_model.ActiveDocumentId);Assert.Same(editor,_model.ActiveEditor);
+        Assert.Same(draft,_model.Draft);Assert.Equal("unsaved current tab",draft.Text);
+        Assert.Equal("",_model.Events[0].Text);Assert.Single(_model.Tabs);
+    }
+    [Fact] public async Task ClosingLastTabCreatesUsableBlankDocument()
+    {
+        var first=_model.ActiveDocumentId!.Value;
+        Assert.True(await _model.CloseDocumentAsync(first));
+        Assert.NotEqual(first,_model.ActiveDocumentId);Assert.Single(_model.Tabs);
+        Assert.Single(_model.Events);Assert.NotNull(_model.Draft);
+        Assert.True(_model.NewDocumentCommand.CanExecute(null));
+    }
+
     [Fact] public async Task ClosingActiveTabDisablesMediaCommandsDuringTabRemoval()
     {
         await Command(CommandIds.SubtitleNew);var closing=_model.ActiveDocumentId!.Value;var observed=false;

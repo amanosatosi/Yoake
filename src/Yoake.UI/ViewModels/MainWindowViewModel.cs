@@ -496,22 +496,38 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public async Task<bool> CloseDocumentAsync(Guid id)
     {
         if (!_documents.TryGetValue(id,out var state)) return true;
-        CancelGesture();
-        if (!CommitDraft()) return false;
-        if (!_workspace.Activate(id)) return false;
-        if (state.Editor.IsDirty||state.UnsavedSource||state.Karaoke.Values.Any(e=>e.Plan.Changed))
+        var previous=_workspace.ActiveDocumentId;
+        var closingActive=previous==id;
+        if(closingActive){CancelGesture();if(!CommitDraft())return false;}
+        try
         {
-            var choice=Dialogs is null ? UnsavedChoice.Cancel : await Dialogs.ConfirmUnsavedAsync(_workspace.ActiveDocument!.Title);
-            if (choice==UnsavedChoice.Cancel) return false;
-            if(choice==UnsavedChoice.Save&&state.Karaoke.Values.Any(e=>e.Plan.Changed)){SubtitleStatus="Commit or cancel pending karaoke slots before saving and closing this document.";return false;}
-            if(choice==UnsavedChoice.Save&&!await SaveAsync())return false;
+            if(state.Editor.IsDirty||state.UnsavedSource||(!closingActive&&state.RetainedDraft?.IsChanged==true)||state.Karaoke.Values.Any(e=>e.Plan.Changed))
+            {
+                var title=_workspace.Documents.First(s=>s.Id==id).Title;
+                var choice=Dialogs is null ? UnsavedChoice.Cancel : await Dialogs.ConfirmUnsavedAsync(title);
+                if(choice==UnsavedChoice.Cancel)return false;
+                if(choice==UnsavedChoice.Save)
+                {
+                    if(state.Karaoke.Values.Any(e=>e.Plan.Changed)){SubtitleStatus="Commit or cancel pending karaoke slots before saving and closing this document.";return false;}
+                    if(!closingActive){CancelGesture();if(!CommitDraft()||!_workspace.Activate(id))return false;}
+                    if(!await SaveAsync())return false;
+                }
+            }
+            InvalidateRecovery(id);
+            CancelAttachmentWork(id);
+            if(_workspace.ActiveDocumentId==id){CancelGesture();StopPlayback();}
+            CancelFontWork(id);state.FrameExtraction?.Cancel(); ResetAudioAnalysis(state); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
+            var media=state.Media; state.Media=null; if (media is not null) _=Task.Run(media.Dispose);
+            SearchWindowCloseRequested?.Invoke(this,new(id));
+            CloseAutomationDocument(id); _documents.Remove(id); _workspace.Close(id);
+            if(_workspace.Documents.Count==0)CreateNewDocument();
+            return true;
         }
-        InvalidateRecovery(id);
-        CancelAttachmentWork(id);
-        CancelGesture(); StopPlayback(); CancelFontWork(id);state.FrameExtraction?.Cancel(); ResetAudioAnalysis(state); state.AudioExport?.Cancel();state.Editing?.Cancel();state.TimecodeLoading?.Cancel();state.KeyframeLoading?.Cancel();state.VideoLoading?.Cancel();state.AudioLoading?.Cancel();state.Loading?.Cancel(); state.Loading?.Dispose();
-        var media=state.Media; state.Media=null; if (media is not null) _=Task.Run(media.Dispose);
-        SearchWindowCloseRequested?.Invoke(this,new(id));
-        CloseAutomationDocument(id); _documents.Remove(id); _workspace.Close(id); if (_workspace.Documents.Count==0) CreateNewDocument(); return true;
+        finally
+        {
+            // Saving a background tab may temporarily activate that document.
+            if(!closingActive&&previous is {} owner&&_workspace.ActiveDocumentId!=owner)_workspace.Activate(owner);
+        }
     }
     public async Task<bool> CloseWindowAsync()
     {

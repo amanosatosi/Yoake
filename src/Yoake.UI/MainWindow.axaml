@@ -15,38 +15,43 @@
     <Style Selector="TextBox"><Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" /></Style>
     <Style Selector="ComboBox"><Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" /></Style>
     <Style Selector="CheckBox"><Setter Property="MinHeight" Value="24" /></Style>
+    <Style Selector="Border.document-tab"><Setter Property="Background" Value="{DynamicResource TabBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" /></Style>
+    <Style Selector="Border.document-tab.active"><Setter Property="Background" Value="{DynamicResource ActiveTabBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource TabAccentBrush}" /></Style>
+    <Style Selector="Border.document-tab TextBlock.tab-title"><Setter Property="Foreground" Value="{DynamicResource InactiveTabTextBrush}" /></Style>
+    <Style Selector="Border.document-tab.active TextBlock.tab-title"><Setter Property="Foreground" Value="{DynamicResource ActiveTabTextBrush}" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
   </Window.Styles>
   <Grid>
     <!-- Reserve 140 DIP for actual rows, plus the 24-DIP header, borders and margins. -->
     <Grid.RowDefinitions><RowDefinition Height="Auto" MinHeight="36" /><RowDefinition Height="Auto" MinHeight="24" /><RowDefinition Height="3*" MinHeight="444" /><RowDefinition Height="4" /><RowDefinition Height="2*" MinHeight="178" /></Grid.RowDefinitions>
     <Border Grid.Row="0" Name="TitleTabStrip" Background="{DynamicResource TabStripBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="0,0,0,1">
-      <Grid ColumnDefinitions="Auto,*,Auto">
-        <ScrollViewer Name="TabScroll" Grid.Column="0" MaxWidth="980" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-          <ItemsControl ItemsSource="{Binding Tabs}">
+      <Grid ColumnDefinitions="Auto,Auto,*">
+        <ScrollViewer Name="TabScroll" Grid.Column="0" MaxWidth="760" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+          <ItemsControl Name="DocumentTabs" ItemsSource="{Binding Tabs}">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:DocumentTabViewModel">
-                <Border Margin="2,3,0,2" CornerRadius="4" Background="{DynamicResource TabBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1">
-                  <Grid ColumnDefinitions="Auto,*,Auto" Width="230" Height="{DynamicResource YoakeUiTabContentHeight}">
-                    <TextBlock Grid.Column="0" Margin="7,0,4,0" VerticalAlignment="Center" Text="●" FontSize="7" IsVisible="{Binding IsActive}" />
-                    <Button Grid.Column="1" Padding="4,2" HorizontalContentAlignment="Left" Command="{Binding ActivateCommand}">
-                      <TextBlock Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
+                <Border Classes="document-tab" Classes.active="{Binding IsActive}" Margin="2,3,0,2" CornerRadius="5" BorderThickness="1">
+                  <Grid Width="190" Height="{DynamicResource YoakeUiTabContentHeight}" ColumnDefinitions="*,Auto,Auto">
+                    <Button Name="ActivateDocumentTab" Grid.Column="0" Padding="9,2" Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Command="{Binding ActivateCommand}" ToolTip.Tip="{Binding DisplayTitle}">
+                      <TextBlock Classes="tab-title" Text="{Binding DisplayTitle}" TextTrimming="CharacterEllipsis" />
                     </Button>
-                    <Button Grid.Column="2" Width="28" Padding="6" Command="{Binding CloseCommand}" ToolTip.Tip="Close tab">
+                    <TextBlock Grid.Column="1" Text="*" FontWeight="Bold" VerticalAlignment="Center" IsVisible="{Binding IsDirty}" ToolTip.Tip="Unsaved changes" Foreground="{DynamicResource TabAccentBrush}" />
+                    <Button Name="CloseDocumentTab" Grid.Column="2" Width="28" Padding="6" Background="Transparent" BorderThickness="0" Command="{Binding CloseCommand}" ToolTip.Tip="Close tab">
                       <PathIcon Width="11" Height="11" Data="{x:Static icons:IconGeometries.Close}" Foreground="{DynamicResource IconForegroundBrush}" />
                     </Button>
+                    <Border Grid.ColumnSpan="3" Height="3" Margin="7,0" VerticalAlignment="Bottom" CornerRadius="2" Background="{DynamicResource TabAccentBrush}" IsVisible="{Binding IsActive}" IsHitTestVisible="False" />
                   </Grid>
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
-        <Border Grid.Column="1" WindowDecorationProperties.ElementRole="TitleBar" Background="Transparent" />
-        <Button Grid.Column="2" Width="34" Height="30" Margin="3" Command="{Binding NewDocumentCommand}" ToolTip.Tip="New subtitle">
-          <PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.New}" Foreground="{DynamicResource IconForegroundBrush}" />
+        <Button Name="NewDocumentTab" Grid.Column="1" Width="34" Height="30" Margin="4,2" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Command="{Binding NewDocumentCommand}" ToolTip.Tip="New subtitle tab" AutomationProperties.Name="New subtitle tab">
+          <TextBlock Text="+" FontSize="22" FontWeight="SemiBold" VerticalAlignment="Center" />
         </Button>
+        <Border Grid.Column="2" WindowDecorationProperties.ElementRole="TitleBar" Background="Transparent" />
       </Grid>
     </Border>
 

@@ -28,6 +28,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private bool _videoSplitterOverride;
     private bool _compactSubtitleLayout;
     private double _uiColumnScale=1;
+    private Guid? _revealedDocumentTab;
     private GridLength _mediaWorkspaceHeight = new(3, GridUnitType.Star);
     private GridLength _subtitleWorkspaceHeight = new(300);
     private Key _fastActorModifier;
@@ -397,6 +398,7 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
+        if(e.PropertyName==nameof(MainWindowViewModel.Events))RevealActiveDocumentTab();
         if(e.PropertyName==nameof(MainWindowViewModel.FastActorEnabled))Dispatcher.UIThread.Post(UpdateFastActorPopup);
         if(e.PropertyName is nameof(MainWindowViewModel.RecentVideoItems) or nameof(MainWindowViewModel.RecentAudioItems))Dispatcher.UIThread.Post(RefreshRecentMedia);
         if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();
@@ -604,15 +606,37 @@ public partial class MainWindow : Window, IEditorDialogs
             foreach(var button in panel.Children.OfType<Button>())
                 if(Math.Abs(button.Height-panel.Bounds.Height)>0.1 || double.IsNaN(button.Height))button.Height=panel.Bounds.Height;
         double inset=0;
-        if(buttons is {IsVisible:true}&&buttons.Bounds.Width>0&&buttons.TranslatePoint(default,this) is {} top)
-            inset=Math.Max(0,ClientSize.Width-top.X);
-        else if(TryGetPlatformHandle() is {} handle)
+        if(TryGetPlatformHandle() is {} handle)
             inset=Yoake.Native.WindowsChrome.CaptionWidth(handle.Handle,RenderScaling);
+        if(buttons is {IsVisible:true}&&buttons.Bounds.Width>0&&buttons.TranslatePoint(default,this) is {} top)
+            inset=Math.Max(inset,Math.Max(0,ClientSize.Width-top.X));
         var padding=new Thickness(0,0,inset,0);
         if(TitleTabStrip.Padding!=padding)TitleTabStrip.Padding=padding;
         UpdateTabLimit();
     }
-    private void UpdateTabLimit()=>TabScroll.MaxWidth=Math.Max(0,TitleTabStrip.Bounds.Width-TitleTabStrip.Padding.Right-80);
+    // Keep the + outside the scrolling region, with room for the caption
+    // buttons and a small draggable title-bar gap even when many tabs exist.
+    private void UpdateTabLimit()=>TabScroll.MaxWidth=Math.Max(0,TitleTabStrip.Bounds.Width-TitleTabStrip.Padding.Right-110);
+    private void RevealActiveDocumentTab()
+    {
+        var id=_model?.ActiveDocumentId;
+        if(id is null||id==_revealedDocumentTab)return;
+        _revealedDocumentTab=id;
+        Dispatcher.UIThread.Post(()=>
+        {
+            if(_model?.ActiveDocumentId!=id)return;
+            TabScroll.UpdateLayout();
+            var button=DocumentTabs.GetVisualDescendants().OfType<Button>()
+                .FirstOrDefault(b=>b.Name=="ActivateDocumentTab"&&b.DataContext is DocumentTabViewModel tab&&tab.Id==id);
+            if(button is null||button.TranslatePoint(default,TabScroll) is not {} point)return;
+            var offset=TabScroll.Offset;
+            var left=point.X-3;
+            var right=point.X+button.Bounds.Width+42;
+            var width=TabScroll.Viewport.Width;
+            var target=left<0?offset.X+left:right>width?offset.X+right-width:offset.X;
+            TabScroll.Offset=new Vector(Math.Clamp(target,0,Math.Max(0,TabScroll.Extent.Width-width)),offset.Y);
+        },DispatcherPriority.Background);
+    }
 
     private async void RecentFileClick(object? sender,RoutedEventArgs e){if(_model is not null&&sender is Control{DataContext:string path})await _model.Registry.InvokeAsync(CommandIds.SubtitleOpen,new(),path);}
     private static string? LocalPath(IStorageItem item)=>item.Path is{IsAbsoluteUri:true,IsFile:true} uri?uri.LocalPath:null;

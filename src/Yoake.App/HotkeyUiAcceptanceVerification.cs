@@ -63,6 +63,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                         "No-media keyboard acceptance must start in subtitles-only view.");
                     Require(!model.Actions[CommandIds.ViewAudioVideo].CanExecute(null),
                         "Audio + Video must not be selectable until both tracks are loaded.");
+                    await VerifyDocumentTabsAsync();
                     return;
                 case 1:
                     Press(Grid,Key.O,KeyModifiers.Alt);return;
@@ -280,7 +281,7 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
                     TapModifier(nanashi,Key.LeftAlt,KeyModifiers.Alt);Require(ReferenceEquals(model.SelectedEvent,model.Events[0]),"A standalone Alt tap must return to the previous line.");return;
                 case 38:
                     Require(StartupDiagnostics.BindingWarningCount==0&&StartupDiagnostics.FrameworkErrorCount==0,"Hotkey/settings workflow must produce no binding warnings or Avalonia errors.");
-                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source; exact migrated Ctrl-D/Ctrl-Shift-D real keyboard frame splits with VFR-derived boundaries and complete one-step undo; persisted autoseek; real Ctrl-H and F3 in the modeless search window and grid, actual source highlighting without focus theft, protected-text replacement and exact undo.\n");
+                    _timer.Stop();options.FinishVerification("PASS: separate real-window keyboard acceptance; visible new/activate/close document tab controls, distinct active tab styling and independent source; exact contexts; live capture/change/add/remove/clear/reset; conflict ownership and atomic rejection; effective menu shortcuts; persisted profile restored across launches; removed/new gestures through shipping router; F2 saves unknown tagged Unicode; native word deletion/typing and IME Enter isolation; edit-box commit/stay/next; Grid/Video/Audio focus precedence and real native media frame navigation; provider retention through view changes; real toolbar visibility/geometry/checked state and actual log viewer; cancellable background sorting through a real remapped grid gesture, multi-selection and exact undo/redo, radio tag-display projections preserving Mangetsu source; exact migrated Ctrl-D/Ctrl-Shift-D real keyboard frame splits with VFR-derived boundaries and complete one-step undo; persisted autoseek; real Ctrl-H and F3 in the modeless search window and grid, actual source highlighting without focus theft, protected-text replacement and exact undo.\n");
                     StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
@@ -310,6 +311,42 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
         Press(InOptions<Button>(name),Key.Enter);
         if(name!="OptionsApply")Press(InOptions<Button>("OptionsApply"),Key.Enter);
     }
+    private async Task VerifyDocumentTabsAsync()
+    {
+        async Task Layout()=>await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
+        Button TabButton(Guid id,string name)=>window.GetVisualDescendants().OfType<Button>()
+            .Single(b=>b.Name==name&&b.DataContext is DocumentTabViewModel tab&&tab.Id==id);
+        Border TabBorder(Guid id)=>TabButton(id,"ActivateDocumentTab").GetVisualAncestors().OfType<Border>()
+            .First(b=>b.Classes.Contains("document-tab"));
+        var original=model.ActiveDocumentId!.Value;var editor=model.ActiveEditor!;var source=editor.Document.Serialize();
+        var count=model.Tabs.Count;
+        await Layout();
+        var plus=window.FindControl<Button>("NewDocumentTab")??throw new InvalidOperationException("Missing visible + new tab button.");
+        var strip=window.FindControl<Border>("TitleTabStrip")!;
+        var position=plus.TranslatePoint(default,strip);
+        Require(plus.IsEffectivelyVisible&&plus.IsEnabled&&plus.Bounds.Width>=28&&position is {} point&&
+            point.X>=0&&point.X+plus.Bounds.Width<=strip.Bounds.Width-strip.Padding.Right+1,
+            "New tab button must be visible and clear of the native caption buttons.");
+        Press(plus,Key.Enter);await Layout();
+        Require(model.Tabs.Count==count+1&&model.ActiveDocumentId!=original&&model.ActiveEditor!=editor&&model.Events.Count==1,
+            "Real + button creates an independent document without closing the current one.");
+        var second=model.ActiveDocumentId!.Value;
+        Require(TabBorder(second).Classes.Contains("active")&&!TabBorder(original).Classes.Contains("active")&&
+            !Equals(TabBorder(second).Background,TabBorder(original).Background),"Active and inactive document tabs must have distinct backgrounds.");
+        Press(TabButton(original,"ActivateDocumentTab"),Key.Enter);await Layout();
+        Require(model.ActiveDocumentId==original&&ReferenceEquals(model.ActiveEditor,editor)&&editor.Document.Serialize()==source&&
+            TabBorder(original).Classes.Contains("active")&&!TabBorder(second).Classes.Contains("active"),
+            "Real tab button switches back to the original source, editor and selected appearance.");
+        Press(TabButton(second,"CloseDocumentTab"),Key.Enter);await Layout();
+        Require(model.Tabs.Count==count&&model.ActiveDocumentId==original&&ReferenceEquals(model.ActiveEditor,editor)&&editor.Document.Serialize()==source,
+            "Closing a background tab preserves the current document.");
+        Press(plus,Key.Enter);await Layout();var third=model.ActiveDocumentId!.Value;
+        Require(third!=original&&model.Tabs.Count==count+1,"New tab remains available after closing a tab.");
+        Press(TabButton(third,"CloseDocumentTab"),Key.Enter);await Layout();
+        Require(model.Tabs.Count==count&&model.ActiveDocumentId==original&&ReferenceEquals(model.ActiveEditor,editor)&&editor.Document.Serialize()==source,
+            "Closing the active tab returns to the surviving document.");
+    }
+
     private static void Press(Control control,Key key,KeyModifiers modifiers=KeyModifiers.None)
     {
         if(control is ListBox list)
