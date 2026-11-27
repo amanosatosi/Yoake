@@ -11,6 +11,7 @@ using Yoake.Core.Hotkeys;
 using Yoake.Core.Logging;
 using Yoake.Core.Subtitles;
 using Yoake.UI;
+using Yoake.UI.Controls;
 using Yoake.UI.ViewModels;
 
 namespace Yoake.App;
@@ -130,6 +131,24 @@ internal sealed class SelectionUiAcceptanceVerification(IClassicDesktopStyleAppl
     }
     private static void Within(Control control,Window owner)
     {var origin=control.TranslatePoint(new Point(0,0),owner);Require(origin is {} point&&control.Bounds.Width>0&&control.Bounds.Height>0&&point.X>=-1&&point.Y>=-1&&point.X+control.Bounds.Width<=owner.ClientSize.Width+1&&point.Y+control.Bounds.Height<=owner.ClientSize.Height+1,"Select Lines control must remain usable inside its native dialog: "+control.Name);}
+    private Size[]? _gridRowSizes;
+    private void VerifyGridPaint()
+    {
+        window.UpdateLayout();
+        var grids=Enumerable.Range(0,_rows.Length).Select(i=>((ListBoxItem)Grid.ContainerFromIndex(i)!).GetVisualDescendants().OfType<Grid>().Single(g=>Equals(g.Tag,"SubtitleRow"))).ToArray();
+        var sizes=grids.Select(g=>g.Bounds.Size).ToArray();
+        if(_gridRowSizes is null)_gridRowSizes=sizes;
+        else Require(sizes.SequenceEqual(_gridRowSizes),"Selection and current outline must not change row bounds.");
+        for(var i=0;i<grids.Length;i++)
+        {
+            var g=grids[i];var outline=g.Children.OfType<SubtitleRowOutline>().Single();
+            var overlay=g.Children.OfType<Border>().Single(b=>b.Classes.Contains("selection-overlay"));
+            Require(!outline.IsHitTestVisible&&!overlay.IsHitTestVisible,"Row paint must never intercept selection input.");
+            Require(outline.IsVisible==ReferenceEquals(model.SelectedEvent,_rows[i]),"Exactly the current editing row receives an outline.");
+            Require(overlay.Opacity==(model.SelectedEvents.Contains(_rows[i])?.25:0),"Selection must use one 25% overlay on every base color.");
+            if(outline.IsVisible)Require(outline.DesiredSize==default&&outline.Bounds.Size==g.Bounds.Size,"Outline must paint the entire row without participating in its measured size.");
+        }
+    }
     private bool VerifyGridPointerSelection()
     {
         switch(_gridClickStage++)
@@ -137,14 +156,14 @@ internal sealed class SelectionUiAcceptanceVerification(IClassicDesktopStyleAppl
             case 0: ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
             case 1:
                 Require(model.SelectedEvents.SequenceEqual(new[]{_rows[0]}),"A plain grid click selects one row.");
-                ClickRow(2,Avalonia.Input.KeyModifiers.Control);return false;
+                VerifyGridPaint();ClickRow(2,Avalonia.Input.KeyModifiers.Control);return false;
             case 2:
                 Require(model.SelectedEvents.ToHashSet().SetEquals(new[]{_rows[0],_rows[2]})&&Grid.SelectedItems!.Cast<AssEvent>().ToHashSet().SetEquals(new[]{_rows[0],_rows[2]}),"Ctrl-click must retain both non-adjacent rows in the actual grid and document selection.");
-                ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
+                VerifyGridPaint();ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
             case 3: ClickRow(2,Avalonia.Input.KeyModifiers.Shift);return false;
             case 4:
                 Require(model.SelectedEvents.ToHashSet().SetEquals(_rows)&&Grid.SelectedItems!.Cast<AssEvent>().ToHashSet().SetEquals(_rows),"Shift-click must select the full contiguous range in the actual grid and document selection.");
-                ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
+                VerifyGridPaint();ClickRow(0,Avalonia.Input.KeyModifiers.None);return false;
             default:
                 Require(model.SelectedEvents.SequenceEqual(new[]{_rows[0]})&&ReferenceEquals(model.SelectedEvent,_rows[0]),"Plain click must restore single-row selection and activate the clicked row.");return true;
         }
