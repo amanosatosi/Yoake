@@ -7,7 +7,6 @@ using Avalonia.VisualTree;
 using Yoake.Core.Commands;
 using Yoake.Core.Logging;
 using Yoake.Core.Media;
-using System.Globalization;
 using Yoake.Core.Subtitles;
 using Yoake.UI;
 using Yoake.UI.ViewModels;
@@ -39,33 +38,14 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private Task<int?>? _audioTrackResult;
     private CancellationTokenSource? _formattingCancellation;
     private string _before="",_translated="";
-    // Session saving may legitimately update grid-view metadata. Construct
-    // the exact expected source independently of the save and permit no
-    // other changes to event order, payload, formatting or unknown fields.
     private async Task VerifyViewAwareRoundTrip(string path,string before,string message)
     {
-        var expected=AssDocument.Parse(before);
-        var row=Math.Max(0,model.Events.ToList().IndexOf(model.SelectedEvent!));
-        var scroll=window.GetSubtitleGridScrollRow();
-        Require(model.SaveActiveSubtitle(path),"Save round-trip fixture: "+message);
-        var saved=model.ActiveEditor!.Document;
-        var view=SubtitleProjectView.Read(saved);
-        var previous=SubtitleProjectView.Read(expected);
-        if(view.ActiveLine!=previous.ActiveLine||view.ScrollPosition!=previous.ScrollPosition)
-        {
-            Require(view.ActiveLine==row&&view.ScrollPosition is >=0&&
-                (scroll is null||view.ScrollPosition==scroll),"Save must capture the actual grid view.");
-            new SubtitleEditor(expected).SetProjectProperties(new Dictionary<string,string>
-            {
-                ["Active Line"]=row.ToString(CultureInfo.InvariantCulture),
-                ["Scroll Position"]=view.ScrollPosition!.Value.ToString(CultureInfo.InvariantCulture)
-            });
-        }
-        var exact=expected.Serialize();
-        Require(saved.Serialize()==exact,"Saving changed source outside the permitted grid fields: "+message);
-        Require(AssDocument.Load(path).Serialize()==exact,"Saved file differs from expected source: "+message);
+        var verification=GridSaveVerification.Capture(window,model,before);
+        Require(model.SaveActiveSubtitle(path),"Save round-trip fixture: "+message+" · "+model.SubtitleStatus);
+        var exact=verification.VerifySaved(model,path,message);
         await Invoke("subtitle/close");
-        Require(model.OpenSubtitle(path)&&model.ActiveEditor!.Document.Serialize()==exact,message);
+        Require(model.OpenSubtitle(path),"Reopen saved fixture: "+message);
+        GridSaveVerification.RequireExact(exact,model.ActiveEditor!.Document.Serialize(),path,message+" (reopened)");
     }
 
     private T Get<T>(string name) where T:Control=>_assistant!.FindControl<T>(name)??throw new InvalidOperationException("Missing Assistant control: "+name);

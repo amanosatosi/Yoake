@@ -41,12 +41,21 @@ internal static class MultilineFormattingUiVerification
         var start=model.Draft!.Text.IndexOf("日本語",StringComparison.Ordinal);
         input.CaretIndex=input.DisplayIndex(start+3);input.SelectionStart=input.DisplayIndex(start);input.SelectionEnd=input.DisplayIndex(start+3);
         var before=model.ActiveEditor!.Document.Serialize();var protectedRows=model.Events.Take(3).Select(e=>e.FieldNames.Select(e.Get).ToArray()).ToArray();
+        var nonTextFields=model.Events.Select(e=>e.FieldNames.Where(f=>!f.Equals("Text",StringComparison.OrdinalIgnoreCase)).Select(e.Get).ToArray()).ToArray();
+        Require(model.Events.Select(e=>e.Get("Unknown")).SequenceEqual(new[] { "style-extra","actor-extra","inherit-extra","first-extra","second-extra" }),"Fixture must load all five unknown columns.");
+        void VerifyNonTextFields()
+        {
+            Require(model.Events.Count==nonTextFields.Length,"Formatting must retain all records.");
+            for(var i=0;i<nonTextFields.Length;i++)
+                Require(model.Events[i].FieldNames.Where(f=>!f.Equals("Text",StringComparison.OrdinalIgnoreCase)).Select(model.Events[i].Get).SequenceEqual(nonTextFields[i]),"Formatting changed non-text fields in row "+i);
+        }
         var fontTask=model.Registry.InvokeAsync(CommandIds.FormatFont,new(model.ActiveDocumentId));await Layout();
         var font=window.OwnedWindows.Single(w=>w.Name=="SubtitleFontDialog");
         font.FindControl<FontPicker>("SubtitleFontPicker")!.FontName="Subtitle 日本語";font.FindControl<NumericUpDown>("SubtitleFontSize")!.Value=31;
         Press(font.FindControl<Button>("ApplySubtitleFont")!);Require(await fontTask,"Actual font dialog applies across the selected lines.");await Layout();
         Require(model.Events.Skip(3).All(line=>line.Text.Contains(@"\fnSubtitle 日本語",StringComparison.Ordinal)&&line.Text.Contains(@"\fs31",StringComparison.Ordinal)),"Every ordinary selected line receives the font despite different override lengths.");
         for(var i=0;i<3;i++)Require(model.Events[i].FieldNames.Select(model.Events[i].Get).SequenceEqual(protectedRows[i]),"Bulk formatting preserves exact renderer metadata and Effect inheritance.");
+        VerifyNonTextFields();
         await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==before,"One undo restores the complete font batch.");
         var colorTask=model.Registry.InvokeAsync(CommandIds.FormatPrimary,new(model.ActiveDocumentId));await Layout();
         var color=window.OwnedWindows.OfType<AssColorDialog>().Single();
@@ -56,9 +65,14 @@ internal static class MultilineFormattingUiVerification
         Require(await colorTask,"Actual color dialog applies the batch.");
         Require(model.Events.Skip(3).All(line=>line.Text.Contains(@"\1c&H332211&",StringComparison.Ordinal)&&line.Text.Contains(@"\1a&H44&",StringComparison.Ordinal)),"Every ordinary selected line receives exact RGB and alpha.");
         for(var i=0;i<3;i++)Require(model.Events[i].FieldNames.Select(model.Events[i].Get).SequenceEqual(protectedRows[i]),"Color application preserves metadata order and properties.");
+        VerifyNonTextFields();
         var after=model.ActiveEditor.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==before,"One undo restores the complete color batch.");
         await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==after,"One redo restores every selected line.");
-        await Invoke(CommandIds.SubtitleSave);Require(File.ReadAllText(path)==after,"Bulk formatting save preserves all unknown columns and metadata.");
+        await Layout();
+        var verification=GridSaveVerification.Capture(window,model,after);
+        await Invoke(CommandIds.SubtitleSave);
+        verification.VerifySaved(model,path,"Bulk formatting save preserves all unknown columns and metadata.");
+        VerifyNonTextFields();
         Console.WriteLine("PASS: real grid multi-selection, native font/color dialogs, mapped Unicode selections, all selected ordinary lines, protected metadata/inheritance, exact alpha and one-step batch undo/redo/save.");
     }
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}

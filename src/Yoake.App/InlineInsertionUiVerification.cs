@@ -75,8 +75,12 @@ internal static class InlineInsertionUiVerification
             var ruby=new DecodedVideoFrame(640,360,2560,new byte[640*360*4]);renderer.Composite(ruby,2);
             Require(plain.Pixels.Any(value=>value!=0)&&ruby.Pixels.Any(value=>value!=0)&&!plain.Pixels.SequenceEqual(ruby.Pixels),"Actual Mangetsu must render the authored double-sided furigana differently from plain base text.");
         });
-        await Invoke(CommandIds.SubtitleSave);Require(File.ReadAllText(path)==after,"Save preserves the exact generated ASS and Unicode.");
-        var owner=model.ActiveDocumentId!.Value;Require(await model.CloseDocumentAsync(owner)&&model.OpenSubtitle(path)&&model.ActiveEditor!.Document.Serialize()==after,"Close/reopen preserves the authored reading and every other ASS property.");
+        await Layout();
+        var verification=GridSaveVerification.Capture(window,model,after);
+        await Invoke(CommandIds.SubtitleSave);
+        var exact=verification.VerifySaved(model,path,"Save preserves the exact generated ASS and Unicode.");
+        var owner=model.ActiveDocumentId!.Value;Require(await model.CloseDocumentAsync(owner)&&model.OpenSubtitle(path),"Close/reopen inline authoring fixture.");
+        GridSaveVerification.RequireExact(exact,model.ActiveEditor!.Document.Serialize(),path,"Close/reopen preserves the authored reading and every other ASS property.");
         Console.WriteLine("PASS: native Japanese bracket popup/selection/undo and furigana focus, IME Enter, literal preview, Cancel, Insert, one-step undo/redo and exact ASS save/reopen; Windows also verifies actual Mangetsu ruby pixels.");
     }
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
