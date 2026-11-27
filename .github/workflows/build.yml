@@ -30,6 +30,17 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Validate portable packaging PowerShell syntax
+        shell: pwsh
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          $script = (Resolve-Path ci/package_windows.ps1).Path
+          $null = [System.Management.Automation.Language.Parser]::ParseFile($script, [ref]$tokens, [ref]$parseErrors)
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Host $_.ToString() }
+            throw 'Portable packaging script contains PowerShell syntax errors.'
+          }
       - name: Check hosted desktop supports default workspace verification
         run: .\ci\set_ui_verification_display.ps1
       - uses: actions/setup-dotnet@v6

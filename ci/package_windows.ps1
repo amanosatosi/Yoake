@@ -211,12 +211,7 @@ Expand-Archive -LiteralPath $zip -DestinationPath $OutputRoot
 $archive = [IO.Compression.ZipFile]::OpenRead($zip)
 try {
   if (@($archive.Entries | Where-Object { $_.FullName -notmatch '^Yoake[\\/]' }).Count -gt 0) { throw 'Portable archive contains files outside Yoake/.' }
-  if (@($archive.Entries | Where-Object { $_.FullName -match '\.pdb
-if (-not (Test-Path -LiteralPath (Join-Path $portable 'Yoake.exe'))) { throw 'Portable archive is missing Yoake.exe.' }
-Write-Host 'Portable archive extracted for native closure, hash and GUI acceptance.'
-Write-Host "Staged $($selected.Count) native runtime DLL(s) in native/win-x64."
-Write-Host "Created $zip"
- }).Count -gt 0) { throw 'Portable archive contains debug symbols.' }
+  if (@($archive.Entries | Where-Object { $_.FullName -match '\.pdb$' }).Count -gt 0) { throw 'Portable archive contains debug symbols.' }
   $entries = @($archive.Entries | Where-Object { $_.Name } | ForEach-Object {
     [ordered]@{ path = $_.FullName; bytes = $_.Length; compressed_bytes = $_.CompressedLength }
   } | Sort-Object { $_.compressed_bytes } -Descending)
