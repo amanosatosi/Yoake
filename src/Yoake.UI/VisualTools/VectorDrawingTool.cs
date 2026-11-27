@@ -9,7 +9,7 @@ namespace Yoake.UI.VisualTools;
 
 public sealed class VectorDrawingTool : VisualTool
 {
-    private sealed record Source(AssDrawingRun? Run, AssVectorPath Path, string Serialized);
+    private sealed record Source(AssDrawingRun? Run, AssVectorPath Path, string Serialized, string PreparedText);
 
     private string? _cachedText;
     private Source? _cachedSource;
@@ -34,11 +34,12 @@ public sealed class VectorDrawingTool : VisualTool
         if (_cachedText == text) return _cachedSource;
         _cachedText = text;
         var (run, insert) = AssDrawingEditing.FindIsolatedRun(text);
+        var prepared=run is not null||insert?text:AssDrawingEditing.PrepareNewDrawing(text);
         var path = run is {} r ? AssVectorPath.Parse(text.Substring(r.Start, r.Length), r.Scale) :
-            insert ? new AssVectorPath() : null;
+            prepared is not null ? new AssVectorPath() : null;
         var scale = run?.Scale ?? 1;
         return _cachedSource = path is not null && ValidCoordinates(path, Math.ScaleB(1, scale - 1))
-            ? new(run, path, path.Serialize(scale)) : null;
+            ? new(run, path, path.Serialize(scale), prepared!) : null;
     }
 
     private static bool ValidCoordinates(AssVectorPath path, double factor) =>
@@ -359,7 +360,7 @@ public sealed class VectorDrawingTool : VisualTool
             context.Apply(l => l.Text);
             return;
         }
-        var edited = source.Run is {} run ? run.Replace(line.Text, serialized) : AssDrawingEditing.Insert(line.Text, serialized);
+        var edited = source.Run is {} run ? run.Replace(line.Text, serialized) : AssDrawingEditing.Insert(source.PreparedText, serialized);
         if (source.Run is null && AssVisualTags.Move(line.Text) is null && AssVisualTags.Position(line.Text) is null)
             edited = AssVisualTags.SetPosition(edited, _placement);
         context.Apply(l => ReferenceEquals(l.Line, line.Line) ? edited : l.Text);

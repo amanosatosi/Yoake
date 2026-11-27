@@ -409,7 +409,7 @@
       </Border.Styles>
       <!-- All modes remain visible. Individual contextual controls wrap instead
            of being clipped or hidden behind a horizontal scrollbar. -->
-      <WrapPanel Name="VisualToolGroups" Orientation="Horizontal">
+      <controls:VisualToolbarLayout Name="VisualToolGroups">
         <WrapPanel Name="VisualPrimaryTools" Orientation="Horizontal" Margin="0,0,4,0">
         <ToggleButton Name="VisualToolCrosshair" Classes="visualTool" IsChecked="{Binding Actions[video/tool/crosshair].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" ToolTip.Tip="Crosshair" AutomationProperties.Name="Crosshair"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Crosshair" Accent="{DynamicResource AssSyntaxTag}" Detail="{DynamicResource IconTimingEndBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
         <ToggleButton Name="VisualToolPosition" Classes="visualTool" IsChecked="{Binding Actions[video/tool/position].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/position]}" ToolTip.Tip="Position / timed movement" AutomationProperties.Name="Position / timed movement"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Position" Accent="{DynamicResource AssSyntaxTag}" Detail="{DynamicResource IconTimingStartBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
@@ -425,6 +425,7 @@
         <ToggleButton Name="VisualToolShift" Classes="visualTool" IsChecked="{Binding Actions[video/tool/shift].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/shift]}" ToolTip.Tip="Shift position, origin and clip" AutomationProperties.Name="Shift position, origin and clip"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Shift" Accent="{DynamicResource AssSyntaxTag}" Detail="{DynamicResource AssSyntaxKaraoke}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
         <ToggleButton Name="VisualToolTags" Classes="visualTool" IsChecked="{Binding Actions[video/tool/tags].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/tags]}" ToolTip.Tip="Numeric tags" AutomationProperties.Name="Numeric tags"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Tags" Accent="{DynamicResource AssSyntaxKaraoke}" Detail="{DynamicResource AssSyntaxTag}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
         </WrapPanel>
+        <WrapPanel Name="VisualContextTools" Orientation="Horizontal" HorizontalAlignment="Right">
       <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,2,0" Spacing="1"><ComboBox ItemsSource="{Binding PositionModes}" SelectedItem="{Binding PositionMode, Mode=TwoWay}" Width="112" Padding="4,1" ToolTip.Tip="Choose how to set position, movement endpoints or rotation origin" /><Button Name="MoveToggle" Classes="visualTool" Command="{Binding Actions[video/position/toggle-move]}" ToolTip.Tip="Toggle position / movement" AutomationProperties.Name="Toggle position / movement"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="MoveToggle" Accent="{DynamicResource AssSyntaxTag}" Detail="{DynamicResource AssSyntaxKaraoke}" Outline="{DynamicResource AppBackgroundBrush}" /></Button></StackPanel>
       <ComboBox IsVisible="{Binding IsRotateZTool}" ItemsSource="{Binding RotateZModes}" SelectedItem="{Binding RotateZMode, Mode=TwoWay}" Width="114" Padding="4,1" ToolTip.Tip="Rotate with the angle ring or a guide drawn along the video" />
       <ComboBox IsVisible="{Binding IsScaleTool}" ItemsSource="{Binding ScaleModes}" SelectedItem="{Binding ScaleMode, Mode=TwoWay}" Width="126" Padding="4,1" ToolTip.Tip="Choose a scale axis, lock proportions or fit a rectangle" />
@@ -460,7 +461,8 @@
         <ComboBox ItemsSource="{Binding VisualNumericTags}" SelectedItem="{Binding VisualNumericTag, Mode=TwoWay}" Width="105" Padding="4,1" ToolTip.Tip="Choose the numeric ASS tag to change" />
         <ComboBox ItemsSource="{Binding VisualTagOperations}" SelectedItem="{Binding VisualTagOperation, Mode=TwoWay}" Width="105" Padding="4,1" ToolTip.Tip="Adjust, set, or distribute a value across visible selected lines" />
       </StackPanel>
-      </WrapPanel>
+        </WrapPanel>
+      </controls:VisualToolbarLayout>
     </Border>
       </Grid>
     </Border>

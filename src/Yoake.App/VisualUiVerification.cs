@@ -361,6 +361,19 @@ internal sealed class VisualUiVerification(MainWindow window,MainWindowViewModel
             "Click and drag creates a non-collinear Bézier tangent on a new drawing.");
         Invoke(CommandIds.EditUndo);Invoke(CommandIds.EditUndo);
         Require(_line.Text==blank,"New Bézier construction must undo to the exact blank event.");
+        const string dialogue=@"{\an7\bord0\shad0}日本語 မြန်မာ";
+        Fixture(dialogue);
+        var selected=model.SelectedEvent;var count=model.Events.Count;
+        model.DrawingPreset="Rectangle";Press(a);Move(c);Release(c);
+        Require(model.Events.Count==count&&ReferenceEquals(selected,model.SelectedEvent)&&ReadDrawing().PointCount==4,
+            "Preset creation edits the current dialogue without adding a new event.");
+        Require(_line.Text.Contains("{日本語 မြန်မာ}",StringComparison.Ordinal),"Previous visible dialogue is retained as a comment.");
+        Invoke(CommandIds.EditUndo);Require(_line.Text==dialogue,"Drawing creation undoes to the original dialogue exactly.");
+        DrawingModeButton("Line");Click(a);Click(b);Click(c);
+        Require(model.Events.Count==count&&ReferenceEquals(selected,model.SelectedEvent)&&ReadDrawing().PointCount==3,
+            "Free polygon creation also works directly on a nonempty dialogue.");
+        for(var i=0;i<3;i++)Invoke(CommandIds.EditUndo);
+        Require(_line.Text==dialogue,"Polygon creation restores the original dialogue on undo.");
         DrawingModeButton("Select");
     }
 

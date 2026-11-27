@@ -43,6 +43,19 @@ public sealed class AssDrawingEditingTests
     }
 
     [Fact]
+    public void OrdinaryDialogueCanBecomeDrawingWithoutLosingItsTextOrTags()
+    {
+        const string source=@"{\an7\bord0}日本語\Nမြန်မာ";
+        var prepared=AssDrawingEditing.PrepareNewDrawing(source);
+        Assert.Equal(@"{\an7\bord0}{日本語\Nမြန်မာ}",prepared);
+        var drawing=AssDrawingEditing.Insert(prepared!,"m 0 0 l 20 0 l 20 20");
+        Assert.NotNull(AssDrawingEditing.FindIsolatedRun(drawing).Run);
+        Assert.Contains(@"{日本語\Nမြန်မာ}",drawing);
+        Assert.Null(AssDrawingEditing.PrepareNewDrawing(@"text{\p1}m 0 0 l 10 10{\p0}"));
+        Assert.Null(AssDrawingEditing.PrepareNewDrawing(@"literal \bord5"));
+    }
+
+    [Fact]
     public void NumericAxisTagWinsOverUniformWithoutRewritingTheTransform()
     {
         const string source = @"{\xbord2\bord5\t(0,100,\xbord7)\unknown(keep)}sign{\xbord8}next";

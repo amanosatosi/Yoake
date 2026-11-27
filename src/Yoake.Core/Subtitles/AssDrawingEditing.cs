@@ -47,6 +47,45 @@ public static class AssDrawingEditing
         return (run, run is null);
     }
 
+    /// <summary>Prepare an ordinary dialogue for drawing in the same event.
+    /// Existing override blocks are retained and visible text becomes a
+    /// non-rendered comment. Mixed existing vector/text runs remain protected.</summary>
+    public static string? PrepareNewDrawing(string source)
+    {
+        var isolated=FindIsolatedRun(source);
+        if(isolated.Run is not null)return null;
+        if(isolated.CanInsert)return source;
+        var output=new System.Text.StringBuilder(source.Length+16);
+        var cursor=0;
+        bool Comment(int end)
+        {
+            var content=source[cursor..end];
+            if(content.Length==0)return true;
+            // Braces and literal override-like escapes cannot safely be
+            // embedded in a comment without potentially changing rendering.
+            if(content.Contains('{')||content.Contains('}'))return false;
+            for(var i=0;i<content.Length;i++)
+                if(content[i]=='\\')
+                {
+                    if(i+1>=content.Length||content[i+1] is not ('N' or 'n' or 'h'))return false;
+                    i++;
+                }
+            output.Append('{').Append(content).Append('}');
+            return true;
+        }
+        foreach(var block in AssTextOperations.Blocks(source))
+        {
+            if(!block.Closed||!Comment(block.Start))return null;
+            var raw=source[block.Start..block.End];
+            foreach(var tag in AssSyntax.Tags(raw))
+                if(tag.Name=="p"&&(!int.TryParse(raw.AsSpan(tag.ValueStart,tag.End-tag.ValueStart),
+                    NumberStyles.Integer,CultureInfo.InvariantCulture,out var scale)||scale!=0))return null;
+            output.Append(raw);cursor=block.End;
+        }
+        if(!Comment(source.Length))return null;
+        return FindIsolatedRun(output.ToString()).CanInsert?output.ToString():null;
+    }
+
     public static string Insert(string source, string drawing) =>
         source + @"{\p1}" + drawing + @"{\p0}";
 

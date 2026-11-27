@@ -89,9 +89,9 @@ public sealed partial class MainWindowViewModel
         "Clip"=>"Drag: new rectangle · corners: resize · Shift+drag / inside: move clip",
         "VectorClip"=>VectorMode+" · Ctrl: toggle points · empty drag: box select · Esc: cancel",
         "Drawing" when DrawingPreset!="No preset"=>"Drag a shape onto the video · Shift: constrain proportions",
-        "Drawing" when DrawingMode=="Line"=>"Click successive vertices · drag to start a line · use New drawing event for text lines",
+        "Drawing" when DrawingMode=="Line"=>"Click successive vertices · draw directly on the selected event",
         "Drawing" when DrawingMode=="Bicubic"=>"Click an endpoint; drag to set its tangent · first click starts the contour",
-        "Drawing"=>DrawingMode+" · select an existing drawing or use New drawing event",
+        "Drawing"=>DrawingMode+" · draw or edit the selected event",
         "Shear"=>"Drag horizontally for fax, vertically for fay · Shift: one axis",
         "Shift"=>"Shift "+ShiftMode.ToLowerInvariant()+" by dragging · Shift: one axis",
         "Tags"=>"Drag horizontally to edit "+VisualNumericTag+" · Shift: fine adjustment",
@@ -146,7 +146,7 @@ public sealed partial class MainWindowViewModel
         try { SelectedEvent=line; return ReferenceEquals(SelectedEvent,line); }
         finally { _suppressSelectionSeek=suppress; }
     }
-    internal void ReportUnsupportedDrawing()=>SubtitleStatus="Use New drawing event to draw without replacing dialogue, or select an isolated drawing. Animated geometry and advanced layout tags need the text editor.";
+    internal void ReportUnsupportedDrawing()=>SubtitleStatus="This event contains mixed drawing/text, unsupported escapes or advanced geometry. Select a supported event or edit its source.";
     public void UpdateVisualGesture(Func<VisualLine,string> edit)=>InvokeGesture("video/visual/update",edit);
     private void UpdateVisualGestureCore(Func<VisualLine,string> edit)
     {
@@ -163,7 +163,7 @@ public sealed partial class MainWindowViewModel
     private void SelectVisualTool(string tool)
     {
         CancelGesture();ActiveVisualTool=tool;
-        if(tool=="Drawing"&&HasSelectedEvent&&DrawingMode=="Select"&&DrawingPreset=="No preset"&&AssDrawingEditing.FindIsolatedRun(VisualText).CanInsert)
+        if(tool=="Drawing"&&HasSelectedEvent&&DrawingMode=="Select"&&DrawingPreset=="No preset"&&AssDrawingEditing.PrepareNewDrawing(VisualText) is not null)
             DrawingMode="Line";
         NotifyVisualToolState();
     }
