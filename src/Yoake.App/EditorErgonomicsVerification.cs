@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -46,6 +48,7 @@ internal static class EditorErgonomicsVerification
             Require(color.Bounds.Width<=48&&color.Bounds.Height<=compact+2,"Color buttons keep desktop toolbar density: "+color.Bounds);
             Require(color.GetVisualDescendants().OfType<PathIcon>().All(icon=>icon.Bounds.Width==24&&icon.Bounds.Height==24),"Original Aegisub color artwork must render at its legible native size.");
         }
+        await VerifyStableFocusAsync(window,edit,original);
         Require(model.ActiveEditor.Document.Serialize()==source&&model.ActiveEditor.Undo.NextUndoName==undo,"Editor presentation must not change ASS or undo history.");
         using(var bitmap=new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width,(int)window.Bounds.Height),new Vector(96,96)))
         {bitmap.Render(window);bitmap.Save(Path.Combine(options.ProfileDirectory!,"editor-original-and-colors.png"));}
@@ -54,6 +57,43 @@ internal static class EditorErgonomicsVerification
         await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
         Require(!original.IsEffectivelyVisible&&!window.FindControl<StackPanel>("OriginalActions")!.IsEffectivelyVisible&&Math.Abs(edit.Bounds.Width-editors.Bounds.Width)<=1,"Hiding Original returns the entire width to the main editor.");
         if(originalShown)Require(await model.Registry.InvokeAsync("edit/show_original",new(model.ActiveDocumentId)),"Restore the Original visibility preference.");
+    }
+    private sealed record EditorGeometry(Rect Outer,Rect Border,Rect Presenter,Thickness BorderThickness,Thickness Padding,IBrush? Background,IBrush? BorderBrush);
+    private static EditorGeometry CaptureGeometry(TextBox box,Control root)
+    {
+        var border=box.GetVisualDescendants().OfType<Border>().Single(b=>b.Name=="PART_BorderElement");
+        var presenter=box.GetVisualDescendants().OfType<TextPresenter>().Single(p=>p.Name=="PART_TextPresenter");
+        Rect Position(Control c)=>new(c.TranslatePoint(default,root)!.Value,c.Bounds.Size);
+        return new(Position(box),Position(border),Position(presenter),border.BorderThickness,box.Padding,border.Background,border.BorderBrush);
+    }
+    private static async Task VerifyStableFocusAsync(MainWindow window,TextBox edit,TextBox original)
+    {
+        async Task Focus(TextBox box)
+        {
+            window.Activate();
+            Require(box.Focus(),"Editor must accept keyboard focus: "+box.Name);
+            await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
+            await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
+            Require(box.IsKeyboardFocusWithin,"Focus must reach the actual editor: "+box.Name);
+        }
+        await Focus(original);
+        var editNormal=CaptureGeometry(edit,window);var originalFocused=CaptureGeometry(original,window);
+        await Focus(edit);
+        var editFocused=CaptureGeometry(edit,window);var originalNormal=CaptureGeometry(original,window);
+        Check(editNormal,editFocused,"Translation");
+        Check(originalNormal,originalFocused,"Original");
+        await Focus(original);
+        Check(editNormal,CaptureGeometry(edit,window),"Translation after losing focus",false);
+        await Focus(edit);
+        Check(originalNormal,CaptureGeometry(original,window),"Original after losing focus",false);
+        static void Check(EditorGeometry normal,EditorGeometry actual,string label,bool focused=true)
+        {
+            Require(normal.Outer==actual.Outer&&normal.Border==actual.Border&&normal.Presenter==actual.Presenter&&
+                normal.BorderThickness==new Thickness(1)&&actual.BorderThickness==normal.BorderThickness&&normal.Padding==actual.Padding,
+                label+" focus changed editor geometry: "+normal+" / "+actual);
+            Require(Equals(normal.Background,actual.Background),label+" focus must not change the background.");
+            Require(Equals(normal.BorderBrush,actual.BorderBrush)!=focused,label+" focus must change only the border color and restore it on blur.");
+        }
     }
     private static double UiFontSize(MainWindowViewModel model)=>model.UiFontSize??12;
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}

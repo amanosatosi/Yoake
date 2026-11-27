@@ -625,7 +625,7 @@
               <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Delete}" Foreground="{DynamicResource VisualToolWarningBrush}" />
             </Button>
           </StackPanel>
-          <TextBox Name="OriginalText" Grid.Column="2" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" FontSize="{DynamicResource YoakeUiEditorFontSize}" VerticalContentAlignment="Top" Watermark="Original" ToolTip.Tip="Original text captured when this line became active" />
+          <TextBox Name="OriginalText" Theme="{StaticResource StableOriginalTextBox}" Grid.Column="2" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" FontSize="{DynamicResource YoakeUiEditorFontSize}" VerticalContentAlignment="Top" Watermark="Original" ToolTip.Tip="Original text captured when this line became active" />
         </Grid>
       </Grid>
     </Border>

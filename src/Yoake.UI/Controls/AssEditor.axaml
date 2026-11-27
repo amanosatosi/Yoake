@@ -3,6 +3,9 @@
     <ControlTheme x:Key="{x:Type controls:AssTextBox}" TargetType="controls:AssTextBox" BasedOn="{StaticResource {x:Type TextBox}}">
       <Setter Property="MinHeight" Value="26" />
       <Setter Property="Padding" Value="5,3" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource SubtitleEditorBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SubtitleEditorBorderBrush}" />
       <Setter Property="Template">
         <ControlTemplate>
           <DataValidationErrors>
@@ -14,6 +17,51 @@
           </DataValidationErrors>
         </ControlTemplate>
       </Setter>
+      <!-- Focus changes paint only, never the editor's measure/arrange geometry. -->
+      <Style Selector="^ /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource SubtitleEditorBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SubtitleEditorBorderBrush}" />
+      </Style>
+      <Style Selector="^:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource SubtitleEditorBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SubtitleEditorBorderBrush}" />
+      </Style>
+      <Style Selector="^:focus /template/ Border#PART_BorderElement, ^:focus-within /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource SubtitleEditorBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource VisualToolPrimaryBrush}" />
+      </Style>
+      <Style Selector="^:error /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource VisualToolWarningBrush}" />
+      </Style>
+    </ControlTheme>
+    <!-- The read-only original keeps the native TextBox template and input behavior. -->
+    <ControlTheme x:Key="StableOriginalTextBox" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+      <Setter Property="Padding" Value="5,3" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource SubtitleEditorBackgroundBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource SubtitleEditorBorderBrush}" />
+      <!-- Focus changes paint only, never the editor's measure/arrange geometry. -->
+      <Style Selector="^ /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource SubtitleEditorBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SubtitleEditorBorderBrush}" />
+      </Style>
+      <Style Selector="^:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource SubtitleEditorBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SubtitleEditorBorderBrush}" />
+      </Style>
+      <Style Selector="^:focus /template/ Border#PART_BorderElement, ^:focus-within /template/ Border#PART_BorderElement">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Background" Value="{DynamicResource SubtitleEditorBackgroundBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource VisualToolPrimaryBrush}" />
+      </Style>
+      <Style Selector="^:error /template/ Border#PART_BorderElement">
+        <Setter Property="BorderBrush" Value="{DynamicResource VisualToolWarningBrush}" />
+      </Style>
     </ControlTheme>
     <!-- Only numeric presentation changes; native named parts retain parsing,
          validation, spin events, keyboard/wheel handling and exact text entry. -->

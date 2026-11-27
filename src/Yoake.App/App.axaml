@@ -33,6 +33,8 @@
 
           <SolidColorBrush x:Key="AppBackgroundBrush">#F3F4F6</SolidColorBrush>
           <SolidColorBrush x:Key="PanelBrush">#FFFFFF</SolidColorBrush>
+          <SolidColorBrush x:Key="SubtitleEditorBackgroundBrush">#FFFFFF</SolidColorBrush>
+          <SolidColorBrush x:Key="SubtitleEditorBorderBrush">#9299A4</SolidColorBrush>
           <SolidColorBrush x:Key="TabStripBrush">#EAECF0</SolidColorBrush>
           <SolidColorBrush x:Key="TabBrush">#E1E4E9</SolidColorBrush>
           <SolidColorBrush x:Key="ActiveTabBrush">#FFF0DF</SolidColorBrush>
@@ -70,6 +72,8 @@
 
           <SolidColorBrush x:Key="AppBackgroundBrush">#17191D</SolidColorBrush>
           <SolidColorBrush x:Key="PanelBrush">#202329</SolidColorBrush>
+          <SolidColorBrush x:Key="SubtitleEditorBackgroundBrush">#15171B</SolidColorBrush>
+          <SolidColorBrush x:Key="SubtitleEditorBorderBrush">#717780</SolidColorBrush>
           <SolidColorBrush x:Key="TabStripBrush">#14161A</SolidColorBrush>
           <SolidColorBrush x:Key="TabBrush">#252830</SolidColorBrush>
           <SolidColorBrush x:Key="ActiveTabBrush">#413126</SolidColorBrush>
