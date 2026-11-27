@@ -200,26 +200,34 @@ public partial class MainWindow
                 UpperWorkspace.Parent is not Grid workspace||workspace.Bounds.Height<=0||UpperWorkspace.Bounds.Width<=0)return;
             var columns=UpperWorkspace.ColumnDefinitions;
             var chromeWidth=VideoRegion.Margin.Left+VideoRegion.Margin.Right;
-            var chromeHeight=VideoRegion.Margin.Top+VideoRegion.Margin.Bottom+
-                VideoRegion.RowDefinitions.Skip(1).Sum(row=>row.ActualHeight)+VideoRegion.RowSpacing*3+
-                Math.Max(0,VisualColumn.Bounds.Height-VideoDock.Bounds.Height);
             var scale=TopLevel.GetTopLevel(VideoCanvasHost)?.RenderScaling??1;
             var requestedHeight=video.Height*model.VideoWindowZoom/scale;
             var maximumWidth=Math.Max(columns[0].MinWidth,UpperWorkspace.Bounds.Width-columns[2].MinWidth-columns[1].ActualWidth);
             var width=Math.Clamp(requestedHeight*model.VideoAspectRatio+chromeWidth,columns[0].MinWidth,maximumWidth);
-            var upper=workspace.RowDefinitions[2];
-            var height=Math.Clamp(requestedHeight+chromeHeight,
-                upper.MinHeight,MaximumEmbeddedWorkspaceHeight(workspace));
-            // Both dividers belong to an explicit window-zoom request. The
-            // remaining editor/grid tracks must stretch even after a manual
-            // splitter gesture converted their previous sizes to pixels.
+            // Width determines the responsive toolbar rows and editor minimum.
+            // Arrange that width before calculating the requested upper height.
             columns[0].Width=new GridLength(width);columns[2].Width=new GridLength(1,GridUnitType.Star);
-            upper.Height=new GridLength(height);workspace.RowDefinitions[4].Height=new GridLength(1,GridUnitType.Star);
+            workspace.RowDefinitions[4].Height=new GridLength(1,GridUnitType.Star);
+            UpdateLayout();
+            if(request!=_embeddedZoomRequest||_movingVideo||DetachedVideoWindow is not null||
+                !ReferenceEquals(_model,model)||model.ActiveDocumentId!=owner||!ReferenceEquals(model.VideoView,state))return;
+            var upper=workspace.RowDefinitions[2];
+            var chromeHeight=VideoRegion.Margin.Top+VideoRegion.Margin.Bottom+
+                VideoRegion.RowDefinitions.Skip(1).Sum(row=>row.ActualHeight)+VideoRegion.RowSpacing*3+
+                Math.Max(0,VisualColumn.Bounds.Height-VideoDock.Bounds.Height);
+            var height=Math.Clamp(requestedHeight+chromeHeight,upper.MinHeight,MaximumEmbeddedWorkspaceHeight(workspace));
+            upper.Height=new GridLength(height);
             _mediaWorkspaceHeight=upper.Height;
+            UpdateLayout();
             UpdateEmbeddedVideoHost();
             Dispatcher.UIThread.Post(()=>
             {
-                if(request==_embeddedZoomRequest&&ReferenceEquals(_model,model)&&model.ActiveDocumentId==owner&&DetachedVideoWindow is null)ClampAudioBounds();
+                if(request==_embeddedZoomRequest&&ReferenceEquals(_model,model)&&model.ActiveDocumentId==owner&&DetachedVideoWindow is null)
+                {
+                    UpdateAudioBounds();
+                    UpdateLayout();
+                    UpdateEmbeddedVideoHost();
+                }
             },DispatcherPriority.Background);
         },DispatcherPriority.Background);
     }
