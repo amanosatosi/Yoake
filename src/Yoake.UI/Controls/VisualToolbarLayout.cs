@@ -4,7 +4,7 @@ using Avalonia.Controls;
 namespace Yoake.UI.Controls;
 
 /// <summary>Keep primary tools and their context on the same stable baseline.
-/// Context sits immediately after primary tools; only genuine width overflow
+/// Context stays aligned to the right edge; only genuine width overflow
 /// needs a second row. Switching ordinary tools must not resize the viewport.</summary>
 public sealed class VisualToolbarLayout : Panel
 {
@@ -35,7 +35,7 @@ public sealed class VisualToolbarLayout : Panel
         // dropdown. It never follows the active tool's content size.
         primary.Arrange(new Rect(0,0,Math.Min(a.Width,finalSize.Width),primaryHeight));
         var width=Math.Min(b.Width,finalSize.Width);
-        var x=separate?0:Math.Min(a.Width+gap,Math.Max(0,finalSize.Width-width));
+        var x=Math.Max(0,finalSize.Width-width);
         var y=separate?baseline:Math.Max(0,(primaryHeight-b.Height)/2);
         context.Arrange(new Rect(x,y,width,b.Height));
         return finalSize;

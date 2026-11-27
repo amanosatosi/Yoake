@@ -85,6 +85,9 @@ internal static class EmbeddedVideoWorkspaceVerification
             Require(Bounds(Get<Border>("VideoCanvasHost"))==stableCanvas&&Bounds(Get<Grid>("VideoPlaybackControls"))==stablePlayback&&
                 Bounds(Get<WrapPanel>("VisualPrimaryTools"))==stablePrimary&&Bounds(Get<Border>("VisualToolsBar"))==stableToolbar,
                 "Switching a one-row visual tool must not shift the canvas, playback or primary toolbar: "+tool);
+            var context=Get<WrapPanel>("VisualContextTools");
+            if(context.Bounds.Width>0)Require(Math.Abs(Bounds(context).Right-Bounds(Get<Control>("VisualToolGroups")).Right)<=1,
+                "Contextual tools must remain right-aligned and visually separated from the primary tools: "+tool);
         }
         small=Read();
         await Zoom("50%");var large=Read();
