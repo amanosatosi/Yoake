@@ -56,6 +56,7 @@ internal sealed class AudioDisplayUiAcceptanceVerification(IClassicDesktopStyleA
                 case 4:Press(window.FindControl<MenuItem>("AudioSpectrumMenu")!,Key.Enter);return;
                 case 5:
                     if(!Audio.SpectrumTileReady){_stage--;return;}
+                    Require(AudioWaveformControl.RulerHeight==18&&AudioWaveformControl.StartBoundaryColor.R>AudioWaveformControl.StartBoundaryColor.B&&AudioWaveformControl.EndBoundaryColor.B>AudioWaveformControl.EndBoundaryColor.R,"Audio uses a top ruler and orange/blue timing markers.");
                     Require(Audio.Spectrogram&&model.IsAudioSpectrum&&window.FindControl<ComboBox>("AudioMode")!.SelectedIndex==1&&window.FindControl<MenuItem>("AudioSpectrumMenu")!.IsChecked&&!window.FindControl<MenuItem>("AudioWaveformMenu")!.IsChecked,"Native spectrum menu must generate a real tile and synchronize radio state and the existing selector.");
                     Near(.4,Audio.ViewportStart,"Changing display type must retain viewport.");Preserved();window.FindControl<MenuItem>("AudioMenu")!.IsSubMenuOpen=true;return;
                 case 6:Press(window.FindControl<MenuItem>("AudioWaveformMenu")!,Key.Enter);return;

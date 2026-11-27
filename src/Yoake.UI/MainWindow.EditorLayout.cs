@@ -19,7 +19,7 @@ public partial class MainWindow
     private void UpdateEditorMinimumHeight()
     {
         if(_model is null||EventEditorRegion.Bounds.Width<=0)return;
-        var chrome=EventEditorRegion.RowDefinitions.Take(3).Sum(row=>row.ActualHeight)+EventEditorRegion.RowSpacing*3+
+        var chrome=EventEditorRegion.RowDefinitions.Where((row,index)=>index!=1).Sum(row=>row.ActualHeight)+EventEditorRegion.RowSpacing*2+
             EventEditorRegion.Margin.Top+EventEditorRegion.Margin.Bottom;
         // The original and edit fields share their height rather than stacking
         // two independent minimum heights and a separate action row.

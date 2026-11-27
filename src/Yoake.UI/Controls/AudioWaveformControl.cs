@@ -34,7 +34,10 @@ public sealed class AudioWaveformControl : Control
     private IPointer? _timingPointer;
     private AssEvent? _lastLine;
     private Guid? _lastDocument;private bool _restoringDocument;
-    private WriteableBitmap? _spectrum;
+    private WriteableBitmap? _spectrum,_primarySpectrum;
+    public const double RulerHeight=18;
+    public static Color StartBoundaryColor=>Color.FromRgb(245,173,98);
+    public static Color EndBoundaryColor=>Color.FromRgb(0,100,255);
     private CancellationTokenSource? _analysis;
 
     public bool Spectrogram=>Model?.IsAudioSpectrum==true;
@@ -52,7 +55,7 @@ public sealed class AudioWaveformControl : Control
                 // Closing the native window must detach observers and stop pending
                 // audio reads before MainWindowViewModel releases its media providers.
                 _analysis?.Cancel();_analysis?.Dispose();_analysis=null;
-                _detail=null;_spectrum?.Dispose();_spectrum=null;
+                _detail=null;_spectrum?.Dispose();_spectrum=null;_primarySpectrum?.Dispose();_primarySpectrum=null;
                 _lastDocument=null;_lastLine=null;
             }
         }
@@ -66,13 +69,13 @@ public sealed class AudioWaveformControl : Control
     {
         if(Model is not {} model)return;
         if(e.PropertyName==nameof(MainWindowViewModel.HasAudio))
-        { _analysis?.Cancel(); _detail=null; _spectrum?.Dispose(); _spectrum=null; RequestSpectrum(); }
+        { _analysis?.Cancel(); _detail=null; _spectrum?.Dispose(); _spectrum=null;_primarySpectrum?.Dispose();_primarySpectrum=null; RequestSpectrum(); }
         if(_lastDocument!=model.ActiveDocumentId){ContextMenu?.Close();_lastDocument=model.ActiveDocumentId;_restoringDocument=true;}
         if(!model.ShowKaraoke||!model.ShowAudio)ContextMenu?.Close();
-        if(e.PropertyName==nameof(MainWindowViewModel.IsAudioSpectrum)){_spectrum?.Dispose();_spectrum=null;RequestSpectrum();}
+        if(e.PropertyName==nameof(MainWindowViewModel.IsAudioSpectrum)){_spectrum?.Dispose();_spectrum=null;_primarySpectrum?.Dispose();_primarySpectrum=null;RequestSpectrum();}
         if(e.PropertyName==nameof(MainWindowViewModel.AudioViewport)){var viewport=model.AudioViewport;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;}
         if(e.PropertyName==nameof(MainWindowViewModel.AudioIntensity))RequestSpectrum();
-        if(e.PropertyName==nameof(MainWindowViewModel.CanPlayMedia)){var viewport=model.AudioViewport;_spectrum?.Dispose();_spectrum=null;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;_lastLine=model.SelectedEvent;_restoringDocument=false;RequestSpectrum();}
+        if(e.PropertyName==nameof(MainWindowViewModel.CanPlayMedia)){var viewport=model.AudioViewport;_spectrum?.Dispose();_spectrum=null;_primarySpectrum?.Dispose();_primarySpectrum=null;VisibleSeconds=viewport.Span;ViewportStart=viewport.Start;_lastLine=model.SelectedEvent;_restoringDocument=false;RequestSpectrum();}
         if(!_restoringDocument&&_lastLine!=model.SelectedEvent)
         {
             ContextMenu?.Close();
@@ -98,15 +101,26 @@ public sealed class AudioWaveformControl : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);var model=Model;if(model is null||Bounds.Width<=1||Bounds.Height<=1)return;
-        var area=new Rect(0,0,Bounds.Width,Bounds.Height);context.FillRectangle(new SolidColorBrush(Color.FromRgb(20,23,29)),area);
-        if(Spectrogram&&_spectrum is not null)context.DrawImage(_spectrum,new Rect(_spectrum.Size),area);
+        var area=new Rect(0,RulerHeight,Bounds.Width,Math.Max(0,Bounds.Height-RulerHeight));if(area.Height<1)return;
+        context.FillRectangle(Brushes.Black,area);
+        using(var plot=context.PushClip(area))
+        {
+        if(Spectrogram&&_spectrum is not null)
+        {
+            context.DrawImage(_spectrum,new Rect(_spectrum.Size),area);
+            if(_primarySpectrum is not null&&model.PrimaryAudioRange is {} selectedSpectrum)
+            {
+                var l=Math.Clamp(X(selectedSpectrum.StartMilliseconds/1000d),0,Bounds.Width);var r=Math.Clamp(X(selectedSpectrum.EndMilliseconds/1000d),0,Bounds.Width);
+                if(r>l){using var selectedClip=context.PushClip(new Rect(l,RulerHeight,r-l,area.Height));context.DrawImage(_primarySpectrum,new Rect(_primarySpectrum.Size),area);}
+            }
+        }
         else if((_detail??Samples) is {Count:>0} samples && model.MediaDurationSeconds>0)
         {
-            var pen=new Pen(Stroke??Brushes.DodgerBlue,1);var mid=Bounds.Height/2;
+            var pen=new Pen(Brushes.LimeGreen,1);var mid=RulerHeight+area.Height/2;
             for(var x=0;x<(int)Bounds.Width;x++)
             {
                 var envelope=samples.Range(Time(x),Time(x+1));var gain=model.AudioIntensity;
-                context.DrawLine(pen,new(x+0.5,mid-Math.Clamp(envelope.Maximum*gain,-1,1)*(mid-3)),new(x+0.5,mid-Math.Clamp(envelope.Minimum*gain,-1,1)*(mid-3)));
+                context.DrawLine(pen,new(x+0.5,mid-Math.Clamp(envelope.Maximum*gain,-1,1)*(area.Height/2-3)),new(x+0.5,mid-Math.Clamp(envelope.Minimum*gain,-1,1)*(area.Height/2-3)));
             }
         }
         var neighbor=new Pen(new SolidColorBrush(Color.FromArgb(90,180,180,180)),1);
@@ -136,21 +150,42 @@ public sealed class AudioWaveformControl : Control
         if(model.PrimaryAudioRange is {} selected)
         {
             var left=X(selected.StartMilliseconds/1000d);var right=X(selected.EndMilliseconds/1000d);
-            if(right>left)context.FillRectangle(new SolidColorBrush(Color.FromArgb(45,80,180,255)),new Rect(left,0,right-left,Bounds.Height));
-            context.DrawLine(new Pen(Brushes.LimeGreen,2),new(left,0),new(left,Bounds.Height));context.DrawLine(new Pen(Brushes.OrangeRed,2),new(right,0),new(right,Bounds.Height));
+            if(right>left&&(!Spectrogram||_primarySpectrum is null))context.FillRectangle(new SolidColorBrush(Color.FromArgb(48,65,34,103)),new Rect(left,RulerHeight,right-left,area.Height));
+            DrawBoundary(left,true);DrawBoundary(right,false);
+            void DrawBoundary(double x,bool start)
+            {
+                var brush=new SolidColorBrush(start?StartBoundaryColor:EndBoundaryColor);var direction=start?1:-1;
+                context.DrawLine(new Pen(brush,1.5),new(x,RulerHeight),new(x,Bounds.Height));
+                context.DrawGeometry(brush,null,Geometry.Parse(FormattableString.Invariant($"M{x},{RulerHeight} L{x+direction*6},{RulerHeight} L{x},{RulerHeight+6} Z M{x},{Bounds.Height} L{x+direction*6},{Bounds.Height} L{x},{Bounds.Height-6} Z")));
+            }
         }
-        var cursor=X(model.CurrentTimeSeconds);context.DrawLine(new Pen(Brushes.White,1),new(cursor,0),new(cursor,Bounds.Height));
+        foreach(var key in model.Keyframes)
+            if(key>=0&&key<model.FrameTimes.Count)
+            {
+                var x=X(model.FrameTimes[key]);if(x>=0&&x<=Bounds.Width)context.DrawLine(new Pen(Brushes.Magenta,1),new(x,RulerHeight),new(x,Bounds.Height));
+            }
+        var cursor=X(model.CurrentTimeSeconds);context.DrawLine(new Pen(Brushes.White,1),new(cursor,RulerHeight),new(cursor,Bounds.Height));
+        }
+        context.FillRectangle(new SolidColorBrush(Color.FromRgb(8,4,13)),new Rect(0,0,Bounds.Width,RulerHeight));
+        var rulerBrush=new SolidColorBrush(Color.FromRgb(89,145,220));var rulerPen=new Pen(rulerBrush,1);
+        context.DrawLine(rulerPen,new Point(0,RulerHeight-1),new Point(Bounds.Width,RulerHeight-1));
         // Keep complete time labels readable as the audio pane is resized.
         // Prefer familiar 1/2/5 intervals and avoid drawing overlapping labels.
-        var target=Math.Max(0.1,VisibleSeconds*64/Bounds.Width);
+        var target=Math.Max(0.01,VisibleSeconds*35/Bounds.Width);
         var magnitude=Math.Pow(10,Math.Floor(Math.Log10(target)));
         var fraction=target/magnitude;
         var step=magnitude*(fraction<=1?1:fraction<=2?2:fraction<=5?5:10);
-        for(var t=Math.Ceiling(ViewportStart/step)*step;t<ViewportStart+VisibleSeconds;t+=step)
+        var minor=step/5;var lastLabelRight=-1d;
+        for(var t=Math.Ceiling(ViewportStart/minor)*minor;t<ViewportStart+VisibleSeconds;t+=minor)
         {
-            var x=X(t);context.DrawLine(neighbor,new(x,Bounds.Height-5),new(x,Bounds.Height));
-            var label=new FormattedText(AssTime.Format((long)(t*1000)),System.Globalization.CultureInfo.InvariantCulture,FlowDirection.LeftToRight,Typeface.Default,9,Brushes.LightGray);
-            if(x+2+label.Width<=Bounds.Width)context.DrawText(label,new Point(x+2,Bounds.Height-14));
+            var x=X(t);var major=Math.Abs(t/step-Math.Round(t/step))<.001;
+            context.DrawLine(rulerPen,new(x,RulerHeight-(major?7:3)),new(x,RulerHeight));
+            if(!major)continue;
+            var ms=(long)Math.Round(t*1000);var ts=TimeSpan.FromMilliseconds(ms);
+            var full=lastLabelRight<0||Math.Abs(t-Math.Round(t))<.001;
+            var text=full?ts.ToString(step>=1?@"h\:mm\:ss":@"h\:mm\:ss\.f",System.Globalization.CultureInfo.InvariantCulture):ts.ToString(step<.1?@"ss\.ff":@"ss\.f",System.Globalization.CultureInfo.InvariantCulture);
+            var label=new FormattedText(text,System.Globalization.CultureInfo.InvariantCulture,FlowDirection.LeftToRight,Typeface.Default,10,rulerBrush);
+            if(x+2>=lastLabelRight&&x+2+label.Width<=Bounds.Width){context.DrawText(label,new Point(x+2,0));lastLabelRight=x+label.Width+5;}
         }
     }
     protected override void OnPointerPressed(PointerPressedEventArgs e)
@@ -214,9 +249,17 @@ public sealed class AudioWaveformControl : Control
         try {
             await Task.Delay(25,cancellation.Token);
             if(!Spectrogram){var detail=await model.CreateWaveformViewportAsync(ViewportStart,VisibleSeconds,(int)Math.Clamp(Bounds.Width,1,4096),cancellation.Token);if(!cancellation.IsCancellationRequested){_detail=detail;InvalidateVisual();}return;}
-            var bitmap=await model.CreateSpectrumAsync(ViewportStart,VisibleSeconds,cancellation.Token);if(cancellation.IsCancellationRequested){bitmap?.Dispose();return;}var old=_spectrum;_spectrum=bitmap;old?.Dispose();InvalidateVisual(); }
+            var start=ViewportStart;var span=VisibleSeconds;
+            var bitmap=await model.CreateSpectrumAsync(start,span,cancellation.Token);WriteableBitmap? primary=null;
+            try
+            {
+                primary=await model.CreateSpectrumAsync(start,span,cancellation.Token,true);
+                if(cancellation.IsCancellationRequested)return;
+                var old=_spectrum;var oldPrimary=_primarySpectrum;_spectrum=bitmap;_primarySpectrum=primary;bitmap=null;primary=null;old?.Dispose();oldPrimary?.Dispose();InvalidateVisual();
+            }
+            finally{bitmap?.Dispose();primary?.Dispose();} }
         catch(OperationCanceledException) { }
         catch(Exception e){if(!cancellation.IsCancellationRequested)model.Registry.ReportFailure("audio/spectrogram",e);}
     }
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e){Cancel();_analysis?.Cancel();_spectrum?.Dispose();_spectrum=null;base.OnDetachedFromVisualTree(e);}
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e){Cancel();_analysis?.Cancel();_spectrum?.Dispose();_spectrum=null;_primarySpectrum?.Dispose();_primarySpectrum=null;base.OnDetachedFromVisualTree(e);}
 }

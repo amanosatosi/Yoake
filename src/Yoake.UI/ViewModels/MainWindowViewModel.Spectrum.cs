@@ -11,7 +11,7 @@ public sealed partial class MainWindowViewModel
         T result=default!;var job=_jobs.Run(name,ct=>{result=work(ct);return Task.CompletedTask;},token);await job.Completion;return result;
     }
     private readonly Dictionary<(FfmsMediaSession Media,double Start,double Duration,double Intensity),AudioSpectrumTile> _spectrumCache=[];
-    public async Task<WriteableBitmap?> CreateSpectrumAsync(double start,double duration,CancellationToken token)
+    public async Task<WriteableBitmap?> CreateSpectrumAsync(double start,double duration,CancellationToken token,bool primary=false)
     {
         var media=_media?.AudioProvider;if(media is null)return null;
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, _documents[_activeId!.Value].AudioAnalysis.Token);
@@ -25,6 +25,6 @@ public sealed partial class MainWindowViewModel
             tile=result!;if(_spectrumCache.Count>=4)_spectrumCache.Remove(_spectrumCache.Keys.First());_spectrumCache[key]=tile;
         }
         var bitmap=new WriteableBitmap(new PixelSize(tile.Width,tile.Height),new Vector(96,96),PixelFormat.Bgra8888,AlphaFormat.Opaque);
-        using var buffer=bitmap.Lock();for(var y=0;y<tile.Height;y++)Marshal.Copy(tile.Bgra,y*tile.Width*4,buffer.Address+y*buffer.RowBytes,tile.Width*4);return bitmap;
+        using var buffer=bitmap.Lock();for(var y=0;y<tile.Height;y++)Marshal.Copy(primary?tile.PrimaryBgra??tile.Bgra:tile.Bgra,y*tile.Width*4,buffer.Address+y*buffer.RowBytes,tile.Width*4);return bitmap;
     }
 }

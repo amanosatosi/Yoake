@@ -290,16 +290,21 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private void CheckMainFields()
     {
         foreach(var name in new[]{"LineLayer","MarginLeft","MarginRight","MarginVertical"})
-            CheckNumber(window.FindControl<NumericUpDown>(name)!);
+            CheckNumber(window.FindControl<NumericUpDown>(name)!,true);
         foreach(var name in new[]{"LineStart","LineEnd"})
             Require(window.FindControl<TextBox>(name)!.Bounds.Width>=90,$"{name} must retain its time value width.");
         var text=window.FindControl<AssTextBox>("SubtitleText")!;
         Require(text.Bounds.Width>=300&&text.Bounds.Height>=64,"ASS editor must retain useful text space after timing groups reflow.");
+        var metadata=window.FindControl<WrapPanel>("MetadataFields")!;
+        Require(metadata.TranslatePoint(default,window)!.Value.Y>=text.TranslatePoint(new Point(0,text.Bounds.Height),window)!.Value.Y-1,"Event properties belong below the text editor.");
+        if(metadata.Bounds.Width>=1050)
+            Require(metadata.Bounds.Height<=window.FindControl<TextBox>("LineStart")!.Bounds.Height+4,"At desktop widths the property strip must occupy a single row.");
         Require(window.GetVisualDescendants().OfType<AssColorButton>().Count(b=>b.Bounds.Width>=30&&b.Bounds.Height>=24&&b.Command is not null)==4,"All four command-backed color swatches must be realized.");
         var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
         if (model.ShowAudio)
         {
         Require(window.FindControl<ScrollViewer>("AudioActionScroll")!.Viewport.Height>=24,"Audio toolbar scrolling must leave the full command buttons visible.");
+        Require(window.FindControl<ScrollViewer>("AudioActionScroll")!.TranslatePoint(default,window)!.Value.Y>=window.FindControl<AudioWaveformControl>("AudioDisplay")!.TranslatePoint(new Point(0,window.FindControl<AudioWaveformControl>("AudioDisplay")!.Bounds.Height),window)!.Value.Y,"Audio toolbar belongs below the visualization.");
         Require(audio.TranslatePoint(default,window)!.Value.Y<editor.TranslatePoint(default,window)!.Value.Y,"Audio must remain above the edit panel.");
         Require(window.FindControl<Slider>("AudioVolume")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioIntensity")!.Bounds.Height>=55&&window.FindControl<Slider>("AudioHorizontalZoom")!.Bounds.Height>=55,"Horizontal zoom, display amplitude and playback volume need usable vertical travel at the default panel height.");
         Require(window.FindControl<Slider>("AudioSize") is null,"No vertical audio-height slider may remain.");
@@ -340,7 +345,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(rows.Bounds.Height>window.FindControl<Grid>("UpperWorkspace")!.Bounds.Height,
             "Subtitles-only mode must give the grid more room than the compact editor, as in Aegisub.");
         var fields=window.FindControl<Grid>("MetadataOtherFields")!;
-        Require(fields.ColumnSpacing>=10,"Actor, Effect and Layer require distinct group gaps.");
+        Require(fields.ColumnSpacing>=2,"Actor input and fast-actor toggle remain separated.");
     }
 
     private void FocusSelectedStyle(string name)
@@ -351,11 +356,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(row.Focus(),$"{name}: the selected style row must accept keyboard focus.");
     }
 
-    private static void CheckNumber(NumericUpDown input)
+    private static void CheckNumber(NumericUpDown input,bool compact=false)
     {
         var entry=input.GetVisualDescendants().OfType<TextBox>().Single(t=>t.Name=="PART_TextBox");
-        Require(entry.Bounds.Width>=48&&entry.Bounds.Height>=20,$"{input.Name}: editable numeric area collapsed to {entry.Bounds}.");
-        Require(input.Bounds.Width>=86,$"{input.Name}: numeric field width must be usable.");
+        Require(entry.Bounds.Width>=(compact?24:48)&&entry.Bounds.Height>=20,$"{input.Name}: editable numeric area collapsed to {entry.Bounds}.");
+        Require(input.Bounds.Width>=(compact?52:86),$"{input.Name}: numeric field width must be usable.");
         Require(input.Bounds.Height<=30,$"{input.Name}: compact numeric field must not retain a tall inner Fluent control (field {input.Bounds}, entry {entry.Bounds}).");
     }
 

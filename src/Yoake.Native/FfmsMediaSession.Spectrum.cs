@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace Yoake.Native;
 
-public sealed record AudioSpectrumTile(int Width, int Height, byte[] Bgra);
+public sealed record AudioSpectrumTile(int Width, int Height, byte[] Bgra, byte[]? PrimaryBgra=null);
 
 public sealed partial class FfmsMediaSession
 {
@@ -12,7 +12,8 @@ public sealed partial class FfmsMediaSession
     {
         const int size=512, bands=128;
         columns=Math.Clamp(columns,32,512);
-        var pixels=new byte[columns*bands*4];
+        var pixels=new byte[columns*bands*4];var primary=new byte[pixels.Length];
+        var normalPalette=IcyBluePalette(false);var primaryPalette=IcyBluePalette(true);
         var fft=new Complex[size];
         for(var x=0;x<columns;x++)
         {
@@ -33,13 +34,27 @@ public sealed partial class FfmsMediaSession
                 var db=20*Math.Log10(Math.Max(1e-7,fft[bin].Magnitude/(size/2)));
                 var value=Math.Clamp((db+80+20*Math.Log10(Math.Clamp(intensity,0.1,8)))/80,0,1);
                 var offset=((bands-1-y)*columns+x)*4;
-                pixels[offset]=(byte)(Math.Min(1,value*2)*180);
-                pixels[offset+1]=(byte)(value*value*255);
-                pixels[offset+2]=(byte)(Math.Pow(value,3)*255);
-                pixels[offset+3]=255;
+                var index=(int)Math.Round(value*255)*4;
+                normalPalette.AsSpan(index,4).CopyTo(pixels.AsSpan(offset,4));
+                primaryPalette.AsSpan(index,4).CopyTo(primary.AsSpan(offset,4));
             }
         }
-        return new(columns,bands,pixels);
+        return new(columns,bands,pixels,primary);
+    }
+    // Icy Blue scheme parameters from Aegisub's default audio color configuration.
+    // Generate both palettes once per tile; changing the selected line never reruns FFT.
+    private static byte[] IcyBluePalette(bool primary)
+    {
+        var result=new byte[256*4];
+        for(int i=0;i<256;i++)
+        {
+            var t=i/255d;var h=(191-128*t)/255d*6;var s=(127+128*t)/255d;
+            var l=Math.Clamp((primary?64+192*t:255*t)/255d,0,1);
+            var c=(1-Math.Abs(2*l-1))*s;var x=c*(1-Math.Abs(h%2-1));var m=l-c/2;
+            var (r,g,b)=h switch{<1=>(c,x,0d),<2=>(x,c,0d),<3=>(0d,c,x),<4=>(0d,x,c),<5=>(x,0d,c),_=>(c,0d,x)};
+            result[i*4]=(byte)Math.Round((b+m)*255);result[i*4+1]=(byte)Math.Round((g+m)*255);result[i*4+2]=(byte)Math.Round((r+m)*255);result[i*4+3]=255;
+        }
+        return result;
     }
     private static void Transform(Complex[] data)
     {
