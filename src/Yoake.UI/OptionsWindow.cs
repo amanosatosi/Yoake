@@ -42,7 +42,7 @@ public sealed class OptionsWindow : Window
     private HotkeyContext Context => (HotkeyContext)(_context.SelectedItem ?? HotkeyContext.Default);
     private CommandChoice? Choice => _commands.SelectedItem as CommandChoice;
 
-    public OptionsWindow(MainWindowViewModel model, bool externalTools = false)
+    public OptionsWindow(MainWindowViewModel model)
     {
         _model = model; _baseline = _draft = model.CaptureOptions();
         _hotkeys = new(model.HotkeyProfile.Defaults, _draft.HotkeyOverrides);
@@ -82,15 +82,6 @@ public sealed class OptionsWindow : Window
         Toggle("Recovery", "Automatically save recovery snapshots", "Retain up to ten versions per document within a 512 MiB profile budget.", "AutosaveEnabled",s=>s.AutosaveEnabled==true,(s,v)=>s with { AutosaveEnabled=v }, defaults);
         Number("Recovery", "Autosave interval", "Seconds between recovery snapshots. Does not overwrite the original subtitle file.", "AutosaveInterval",1,86400,s=>s.AutosaveIntervalSeconds!.Value,(s,v)=>s with { AutosaveIntervalSeconds=(int)v }, defaults);
         TextSetting("Recovery", "Recovery directory", "Blank uses this profile's recovery directory. Relative paths are resolved from the profile.", "RecoveryDirectory",s=>s.RecoveryDirectory??"",(s,v)=>s with { RecoveryDirectory=v }, defaults);
-        var assDraw=TextSetting("External tools", "ASSDraw executable", "Blank uses the bundled ASSDraw fork. Choose an existing executable to override it.", "AssDrawExecutablePath",s=>s.AssDrawExecutable??"",(s,v)=>s with { AssDrawExecutable=v }, defaults);
-        var browse=new Button { Name="AssDrawBrowse", Content="Choose executable…" };
-        browse.Click += async (_,_) =>
-        {
-            try { var files=await StorageProvider.OpenFilePickerAsync(new() { Title="Choose ASSDraw executable", AllowMultiple=false }); if(files.FirstOrDefault() is {} file) assDraw.Text=file.Path.LocalPath; }
-            catch(Exception error) { _status.Text=error.Message; }
-        };
-        Add("External tools", "Choose ASSDraw", "Select an external drawing tool.",browse,()=>{},()=>{});
-
         var shortcutSearch=new Button { Name="OptionsShortcutSearch",HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Left };
         ToolTip.SetTip(shortcutSearch,"Open matching commands in the keyboard shortcut editor. Pending settings stay in this draft.");Register(shortcutSearch);_form.Children.Add(shortcutSearch);
         shortcutSearch.Click+=(_,_)=>
@@ -119,7 +110,7 @@ public sealed class OptionsWindow : Window
             _status.Text=matches==0&&matchingShortcuts==0&&!shortcuts.IsVisible?"No matching settings.":query.Length>0?$"{matches} matching settings · {matchingShortcuts} matching shortcut commands":"Changes take effect only after Apply or OK.";
             scroll.Offset=default;
         }
-        _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Timing", "Video", "Automation", "Keyboard shortcuts", "Recovery", "External tools" };
+        _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Timing", "Video", "Automation", "Keyboard shortcuts", "Recovery" };
         _navigation.SelectionChanged+=(_,_)=>{ if(!string.IsNullOrEmpty(_search.Text)) _search.Text=""; Filter(); };
         _search.TextChanged+=(_,_)=>Filter();
         var body=new Grid { ColumnDefinitions=new("Auto,*"), ColumnSpacing=1 }; body.Children.Add(_navigation); Grid.SetColumn(content,1); body.Children.Add(content);
@@ -149,7 +140,7 @@ public sealed class OptionsWindow : Window
         Opened+=(_,_)=>ScheduleWorkingAreaFit();ScalingChanged+=(_,_)=>ScheduleWorkingAreaFit();
         Closing+=(_,e)=> { if(_applying)e.Cancel=true; };
         Closed+=(_,_)=>{_closed=true;UiFontResources.Apply(_model.UiFontFamily,_model.UiFontSize);};
-        Reload();_navigation.SelectedItem=externalTools?"External tools":"General";Filter();_names.Complete();
+        Reload();_navigation.SelectedItem="General";Filter();_names.Complete();
     }
 
     private void ScheduleWorkingAreaFit()=>Avalonia.Threading.Dispatcher.UIThread.Post(()=>

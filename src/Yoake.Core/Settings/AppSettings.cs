@@ -25,7 +25,6 @@ public sealed record AppSettings
     public SubtitlePostprocessOptions? PostprocessPreferences { get; init; }
     public string? UiFontFamily { get; init; }
     public double? UiFontSize { get; init; }
-    public string? AssDrawExecutable {get;init;}
     public bool? KaraokeAutoCut { get; init; }
     public double[] GridColumnWidths { get; init; } = [40,65,48,92,92,110,100,90];
     public string[] RecentFiles { get; init; } = [];
@@ -102,7 +101,8 @@ public sealed record AppSettings
         if (theme != Theme || ratio != MainSplitRatio || height != GridHeight)
             report?.Invoke("Invalid theme or workspace dimensions normalized.");
         return this with { PostprocessPreferences=PostprocessPreferences?.Normalize(), UiFontFamily=string.IsNullOrWhiteSpace(UiFontFamily)?null:UiFontFamily.Trim(), UiFontSize=UiFontSize is {} fontSize && double.IsFinite(fontSize) && fontSize >= 9 && fontSize <= 24 ? fontSize : null, GridColumnWidths = widths, RecentFiles = recent, RecentKeyframes=(NormalizePaths(RecentKeyframes)??[]).Take(12).ToArray(), RecentTimecodes=(NormalizePaths(RecentTimecodes)??[]).Take(12).ToArray(), RecentVideo=(NormalizePaths(RecentVideo)??[]).Take(12).ToArray(), RecentAudio=(NormalizePaths(RecentAudio)??[]).Take(12).ToArray(), Theme = theme, ViewMode = viewMode,
-            HotkeyOverrides=HotkeyProfile.Normalize(AudioStopHotkeysMigrated?HotkeyOverrides:AegisubHotkeyDefaults.MigrateAudioStopOverrides(HotkeyOverrides), report),
+            HotkeyOverrides=HotkeyProfile.Normalize((AudioStopHotkeysMigrated?HotkeyOverrides:AegisubHotkeyDefaults.MigrateAudioStopOverrides(HotkeyOverrides))?.Where(h=>h is not null&&h.CommandId!="tool/assdraw"&&h.CommandId!="settings/assdraw/path").ToArray(), report),
+            FutureSettings=FutureSettings?.Where(p=>!p.Key.Equals("assDrawExecutable",StringComparison.OrdinalIgnoreCase)).ToDictionary(p=>p.Key,p=>p.Value),
             AudioStopHotkeysMigrated=true,
             ToolbarVisible=ToolbarVisible??true,
             AutosaveEnabled=AutosaveEnabled??true,

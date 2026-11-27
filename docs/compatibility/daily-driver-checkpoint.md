@@ -141,3 +141,7 @@ The source oracle is Aegisub 3.2.2 `src/command/edit.cpp` at `f743d1411e09cbb2bd
 
 
 Windows run 43946726468 at 5ed6ffe passed managed/source/Automation/ASSDraw jobs and all native startup profiles, then failed the new in-gesture pixel-change assertion. Its renderer fixture omitted the style section; an independent native libass parser probe rejects that exact sparse file and accepts/renders the complete style-bearing version. Rendering fixtures now use Yoake's complete ASS template. The pixel-change assertion is retained and strengthened with a visible-composition precondition against the raw dummy frame, plus revision/pixel/status diagnostics. The Japanese ruby pixel fixture uses the same complete template. Windows verification of the fix and the Japanese/bulk workflows follows the next push; the last fully green build remains 53b5069.
+
+## Standalone drawing application removal
+
+Standalone ASSDraw integration is intentionally removed from the current branch: no launcher, settings page, bundled executable, dedicated build or acceptance job. Native ASS drawing and visual vector tools remain supported. Earlier checkpoints and corresponding source artifact references describe historical builds only.

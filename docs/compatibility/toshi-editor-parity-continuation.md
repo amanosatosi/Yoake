@@ -2,7 +2,7 @@
 
 Scope: compare the whole editor with the local `Aegisub_Toshi-ban-codex-39-mode` source, preserving Yoake's tabs, independent document/media/undo lifetimes, Mangetsu behavior and Toshiki-only K-Timing. Do not remove Yoake workflows to match the reference. The supplied source is an archive without Git metadata; do not invent a source commit.
 
-The existing `aegisub-command-feature-status.json` is a starting inventory, not proof of current behavior: for example, it still lists ASSDraw as missing although Yoake now has a packaged launcher. Re-audit commands and their actual workflows before changing status. Do not mark parity complete without the corresponding full GitHub Actions and packaged UI evidence.
+The existing `aegisub-command-feature-status.json` is a starting inventory, not proof of current behavior: standalone ASSDraw is now deliberately excluded. Re-audit commands and their actual workflows before changing status. Do not mark parity complete without the corresponding full GitHub Actions and packaged UI evidence.
 
 A source scan of literal `CMD_NAME` declarations in the local fork found 289 distinct names, 64 absent from that older ledger. This is a discovery list, not a count of missing features: some are aliases, dynamic recent-menu prefixes, or workflows already implemented under different Yoake IDs. It includes fork additions for folding, text sorting, reload, playback speed, OCR, curved text, perspective, chat styling and gradient editing. `audio/karaoke/39` is intentionally excluded by the user's Toshiki-only requirement. Each group needs source and behavior review, including licensing and native/provider implications before any dependency is considered.
 

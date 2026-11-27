@@ -40,6 +40,8 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     _source=model.ActiveEditor!.Document.Serialize();
                     Open();return;
                 case 1:
+                    Require(!Get<ListBox>("OptionsCategories").Items.Cast<object>().Any(item=>Equals(item,"External tools")),"Retired external tools category must not appear.");
+                    Require(!model.Actions.ContainsKey("tool/assdraw"),"Retired standalone drawing command must not be registered.");
                     if(!_shortcutSearchChecked){Get<TextBox>("OptionsSearch").Text="assistant translation";_stage=11;return;}
                     Require(_dialog!.TryGetPlatformHandle() is { Handle:not 0 },"Options needs a real native window.");
                     Get<ListBox>("OptionsCategories").SelectedItem="Appearance";

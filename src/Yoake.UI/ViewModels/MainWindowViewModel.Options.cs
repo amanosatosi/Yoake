@@ -41,7 +41,6 @@ public sealed partial class MainWindowViewModel
             AutosaveEnabled=Pick(baseline.AutosaveEnabled, edited.AutosaveEnabled, _settings.AutosaveEnabled),
             AutosaveIntervalSeconds=Pick(baseline.AutosaveIntervalSeconds, edited.AutosaveIntervalSeconds, _settings.AutosaveIntervalSeconds),
             RecoveryDirectory=Pick(baseline.RecoveryDirectory, edited.RecoveryDirectory, _settings.RecoveryDirectory),
-            AssDrawExecutable=Pick(baseline.AssDrawExecutable, edited.AssDrawExecutable, _settings.AssDrawExecutable),
             GlobalTimingHotkeys=Pick(baseline.GlobalTimingHotkeys, edited.GlobalTimingHotkeys, _settings.GlobalTimingHotkeys),
             HotkeyOverrides=Pick(baseline.HotkeyOverrides, edited.HotkeyOverrides, _settings.HotkeyOverrides),
             AutomationAutoloadDirectories=Pick(baseline.AutomationAutoloadDirectories, edited.AutomationAutoloadDirectories, _settings.AutomationAutoloadDirectories),
@@ -70,7 +69,7 @@ public sealed partial class MainWindowViewModel
             nameof(BetterView), nameof(ShowOriginal), nameof(GridTagDisplay), nameof(IsAudioSpectrum), nameof(AudioDisplayModeIndex),
             nameof(AudioAutoScroll), nameof(AudioAutoCommit), nameof(AudioAutoNext), nameof(AudioTimingDefaultDuration),
             nameof(AudioTimingLeadIn), nameof(AudioTimingLeadOut), nameof(VideoAutoSeek), nameof(ShowVideoOverscan), nameof(VideoFastJumpStep),
-            nameof(AutosaveEnabled), nameof(AutosaveIntervalSeconds), nameof(RecoveryDirectory), nameof(AssDrawExecutable),
+            nameof(AutosaveEnabled), nameof(AutosaveIntervalSeconds), nameof(RecoveryDirectory),
             nameof(GlobalTimingHotkeys), nameof(AutomationMacros), nameof(AutomationAutoloadDirectories), nameof(AutomationIncludeDirectories) }) OnPropertyChanged(name);
         _registry.NotifyStateChanged();
         if (pathsChanged)

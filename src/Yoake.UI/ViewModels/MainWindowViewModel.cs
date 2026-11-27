@@ -289,7 +289,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         RegisterAttachmentCommands();
         RegisterResampleCommands();
         RegisterFontCollectorCommands();
-        RegisterAssDrawCommands();
         RegisterMotionTrackingCommands();
         InitializeAutomationCommands();
         _registry.CommandFailed+=(_,e)=>SubtitleStatus=e.Exception.Message;

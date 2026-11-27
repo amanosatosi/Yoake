@@ -85,6 +85,18 @@ public sealed class SettingsCompatibilityTests : IDisposable
         Assert.Equal("မြန်မာ", json.RootElement.GetProperty("futureFeature").GetProperty("name").GetString());
         Assert.Equal(ThemePreference.Light, new SettingsStore(SettingsPath).Load().Theme);
     }
+    [Fact] public void RetiredExternalDrawingSettingsDoNotSurviveSave()
+    {
+        var settings = Read("""{"theme":1,"assDrawExecutable":"old.exe","futureFlag":true}""");
+        var hotkeys = new[] { new Yoake.Core.Hotkeys.HotkeyOverride(Yoake.Core.Hotkeys.HotkeyContext.Default,"tool/assdraw",new[]{"F9"}) };
+        settings = (settings with { HotkeyOverrides=hotkeys }).Normalize();
+        Assert.DoesNotContain(settings.HotkeyOverrides!, h=>h.CommandId=="tool/assdraw");
+        new SettingsStore(SettingsPath).Save(settings);
+        using var json = JsonDocument.Parse(File.ReadAllText(SettingsPath));
+        Assert.False(json.RootElement.TryGetProperty("assDrawExecutable",out _));
+        Assert.True(json.RootElement.GetProperty("futureFlag").GetBoolean());
+        Assert.Equal(ThemePreference.Light,new SettingsStore(SettingsPath).Load().Theme);
+    }
     [Theory]
     [InlineData("{broken")]
     [InlineData("null")]

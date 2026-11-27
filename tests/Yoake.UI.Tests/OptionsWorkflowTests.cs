@@ -25,7 +25,7 @@ public sealed partial class EditorWorkflowTests
             AudioDefaultDuration=2500,AudioLeadIn=80,AudioLeadOut=200,AudioSpectrum=true,AudioAutoScroll=false,
             ShowOriginal=true,BetterView=false,GridTagDisplay=GridTagDisplayMode.Hidden,
             AutosaveEnabled=false,AutosaveIntervalSeconds=120,RecoveryDirectory="recovery-two",
-            AssDrawExecutable="custom ASSDraw.exe",HotkeyOverrides=hotkeys.Overrides,GlobalTimingHotkeys=true };
+            HotkeyOverrides=hotkeys.Overrides,GlobalTimingHotkeys=true };
         Assert.NotEqual(edited.UiFontFamily,_model.UiFontFamily);Assert.True(_model.VideoAutoSeek);
         Assert.Equal("Ctrl-N",_model.Actions[CommandIds.SubtitleNew].Shortcut);
         await _model.ApplyOptionsAsync(baseline,edited);

@@ -3303,17 +3303,13 @@
     },
     {
       "id": "tool/assdraw",
-      "yoake_command": "tool/assdraw",
-      "status": "partially implemented",
-      "backend": "Deferred external ASSDraw3.exe launcher; no bundling, compilation or CI build of ASSDraw.",
+      "yoake_command": null,
+      "status": "deliberately not applicable",
+      "backend": "Standalone external ASSDraw integration intentionally removed from Yoake.",
       "exposure": [],
       "tests": [],
-      "notes": "Implementation already exists; the former missing state was stale. See daily-driver-checkpoint and continuation documents for verification limits.",
-      "yoake_default_hotkeys": {
-        "Video": [
-          "J"
-        ]
-      }
+      "notes": "Native drawing and vector clipping remain supported.",
+      "yoake_default_hotkeys": {}
     },
     {
       "id": "tool/export",

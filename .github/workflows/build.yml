@@ -16,23 +16,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  assdraw-fork:
-    name: Build pinned standalone ASSDraw fork
-    runs-on: windows-2022
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ilammy/msvc-dev-cmd@v1
-      - name: Build test and verify pinned ASSDraw with corresponding source
-        shell: pwsh
-        run: .\ci\build_assdraw.ps1 -OutputRoot artifacts\assdraw
-      - uses: actions/upload-artifact@v7
-        with:
-          name: ASSDraw-pinned-tested-distribution
-          path: artifacts/assdraw
-          if-no-files-found: error
-          compression-level: 0
-
   source-policy:
     runs-on: ubuntu-latest
     steps:
@@ -193,7 +176,7 @@ jobs:
   windows-nativeaot:
     runs-on: windows-latest
     timeout-minutes: 180
-    needs: [source-policy, managed-tests, automation-provider-tests, assdraw-fork]
+    needs: [source-policy, managed-tests, automation-provider-tests]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -313,21 +296,10 @@ jobs:
         run: dotnet restore src/Yoake.App/Yoake.App.csproj -r win-x64
       - name: Publish Windows NativeAOT
         run: dotnet publish src/Yoake.App/Yoake.App.csproj -c Release -r win-x64 --self-contained true --no-restore -p:PublishAot=true -p:SourceRevisionId=${{ github.event.pull_request.head.sha || github.sha }} -o artifacts/publish
-      - name: Package portable application
-        # Only a tested build from this exact workflow is accepted. Every run
-        # has a pinned source rebuild path; no durable-release/artifact assumption.
-        uses: actions/download-artifact@v8
-        with:
-          name: ASSDraw-pinned-tested-distribution
-          path: artifacts/assdraw
-      - name: Stage portable application and bundled ASSDraw
+      - name: Stage portable application
         id: portable_package
         shell: pwsh
-        run: .\ci\package_windows.ps1 -PublishRoot artifacts\publish -NativeRoot .ci-cache\native -AssDrawRoot artifacts\assdraw -OutputRoot artifacts
-      - name: Verify actual bundled ASSDraw identity standalone window and dependencies
-        id: portable_assdraw
-        shell: pwsh
-        run: .\ci\verify_assdraw_package.ps1 -PortableRoot artifacts\Yoake -AssDrawRoot artifacts\assdraw
+        run: .\ci\package_windows.ps1 -PublishRoot artifacts\publish -NativeRoot .ci-cache\native -OutputRoot artifacts
       - name: Verify staged native runtime closure
         id: portable_native
         shell: pwsh
@@ -369,18 +341,8 @@ jobs:
           path: artifacts/ui-keyboard-acceptance
           if-no-files-found: warn
       # Retain the built package for debugging a failed GUI check; the job still fails.
-      - name: Publish corresponding ASSDraw source beside the portable build
-        if: ${{ always() && steps.portable_package.conclusion == 'success' && steps.portable_assdraw.conclusion == 'success' && steps.portable_native.conclusion == 'success' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: Yoake-ASSDraw-corresponding-source
-          path: |
-            artifacts/assdraw/sources/**
-            artifacts/assdraw/assdraw-manifest.json
-          if-no-files-found: error
-          compression-level: 0
       - uses: actions/upload-artifact@v7
-        if: ${{ always() && steps.portable_package.conclusion == 'success' && steps.portable_assdraw.conclusion == 'success' && steps.portable_native.conclusion == 'success' }}
+        if: ${{ always() && steps.portable_package.conclusion == 'success' && steps.portable_native.conclusion == 'success' }}
         with:
           name: Yoake-Windows-x64-NativeAOT-portable
           path: artifacts/Yoake-Windows-x64-portable.zip

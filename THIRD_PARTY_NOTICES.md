@@ -149,28 +149,6 @@ foregrounds, and selection/line playback uses blue/red, to retain their
 functional distinctions. Source-to-command
 mappings and exceptions are recorded in `docs/architecture/aegisub-icon-migration.md`.
 
-## Bundled ASSDraw fork
-
-The independent ASSDraw3.exe is built from https://github.com/amanosatosi/assdraw
-at dda58f913e16743d63ef13bef1beeea0323bd653, without source changes. It preserves
-ai-chan's historical BSD attribution and the GPL-2.0-or-later notices in
-src/agg_bcspline.*, src/agg_conv_bcspline.h and src/agg_vcgen_bcspline.*.
-The executable is not described as BSD-only. Its static dependencies are
-wxWidgets 3.2.11 (wxWindows Library Licence plus bundled component notices) and
-AGG c4f36b4432142f22c0bf82c6fbdb41567a236be2 (historical permissive AGG copying notice).
-
-Full license texts and notices ship under licenses/assdraw. Complete corresponding
-source archives, dependency sources and build instructions are published as the
-separate `Yoake-ASSDraw-corresponding-source` artifact alongside the portable
-build in the same Actions run. The portable package records the run link and
-source hashes. Release and redistribution processes must provide the matching
-source alongside the executable for as long as they provide the binary. No
-upstream license header is removed or reassigned.
-This aggregate distribution adds no restriction to users' source modification or
-redistribution rights under the applicable ASSDraw licenses. Yoake does not link
-to ASSDraw, embed its code or introduce IPC; its established Copy ASS clipboard
-workflow is unchanged.
-
 ## Automation Lua runtime
 
 LuaJIT 2.1, https://github.com/LuaJIT/LuaJIT,
