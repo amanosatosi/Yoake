@@ -47,6 +47,15 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     // Use a known sorted external key list; command fallback remains the
                     // video's EOF, including a native provider with no later cut.
                     var keys=Path.Combine(options.ProfileDirectory!,"navigation-keys.txt");File.WriteAllText(keys,"# keyframe format v1\nfps 0\n0\n4\n8\n");await Invoke("keyframe/open",keys);
+                    var positionBox=window.FindControl<Border>("VideoPositionBox")!;
+                    var offsetBox=window.FindControl<Border>("VideoOffsetBox")!;
+                    await Seek(1);window.UpdateLayout();
+                    Require(!model.IsCurrentVideoKeyframe&&!positionBox.Classes.Contains("keyframe"),"An ordinary frame must not highlight the time/frame readout.");
+                    var normalBackground=positionBox.Background;var offsetBackground=offsetBox.Background;
+                    await Seek(4);window.UpdateLayout();
+                    Require(model.IsCurrentVideoKeyframe&&positionBox.Classes.Contains("keyframe")&&!Equals(normalBackground,positionBox.Background)&&Equals(offsetBackground,offsetBox.Background),"Only the time/frame readout highlights on an exact keyframe.");
+                    await Seek(5);window.UpdateLayout();
+                    Require(!model.IsCurrentVideoKeyframe&&!positionBox.Classes.Contains("keyframe")&&Equals(normalBackground,positionBox.Background),"The keyframe highlight clears on the next ordinary frame.");
                     await Seek(4);Press(Video,Key.Right,KeyModifiers.Shift);Require(model.CurrentFrame==8,"Actual Video Shift-Right reaches the strictly next keyframe.");
                     Press(Video,Key.Right,KeyModifiers.Shift);Require(model.CurrentFrame==model.FrameTimes.Count-1,"Next keyframe after the final cut reaches EOF.");
                     Press(Video,Key.Left,KeyModifiers.Shift);Require(model.CurrentFrame==8,"Actual Video Shift-Left chooses the preceding cut.");
@@ -74,6 +83,11 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     var startReadout=window.FindControl<Button>("VideoStartOffset")!;var endReadout=window.FindControl<Button>("VideoEndOffset")!;
                     Require(startReadout.ContextMenu is not null&&endReadout.ContextMenu is not null,"Both relative timing readouts expose fade menus.");
                     Require(window.FindControl<TextBox>("ExactTime") is null&&window.FindControl<Button>("VideoPlayButton")!.Content is Grid,"Video toolbar uses icon-only playback and no permanent seek input.");
+                    var transport=window.FindControl<StackPanel>("VideoTransportButtons")!;
+                    Require(transport.Children.Count==4&&transport.Children.OfType<Button>().All(b=>!ReferenceEquals(b.Command,model.Actions["video/frame/previous"])&&!ReferenceEquals(b.Command,model.Actions["video/frame/next"])),"Video transport must not contain previous/next frame buttons.");
+                    var playLine=window.FindControl<Button>("VideoPlayLineButton")!;
+                    Require(playLine.Content is Viewbox {Child:Canvas glyph}&&glyph.Children.OfType<Avalonia.Controls.Shapes.Path>().Count()==2&&
+                        !Equals(glyph.Children.OfType<Avalonia.Controls.Shapes.Path>().First().Fill,glyph.Children.OfType<Avalonia.Controls.Shapes.Path>().Last().Fill),"Play-line must have independently colored timing brackets and playback triangle.");
                     _frame=model.CurrentFrame;Press(Video,Key.G,KeyModifiers.Control);return;
                 case 2:
                     var jump=window.OwnedWindows.OfType<VideoJumpWindow>().Single();var input=jump.FindControl<TextBox>("JumpFrame")!;

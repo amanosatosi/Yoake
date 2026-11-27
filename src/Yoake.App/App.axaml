@@ -36,6 +36,7 @@
           <SolidColorBrush x:Key="TabStripBrush">#EAECF0</SolidColorBrush>
           <SolidColorBrush x:Key="TabBrush">#E1E4E9</SolidColorBrush>
           <SolidColorBrush x:Key="ActiveTabBrush">#FFF0DF</SolidColorBrush>
+          <SolidColorBrush x:Key="VideoKeyframeReadoutBrush">#D9EBDF</SolidColorBrush>
           <SolidColorBrush x:Key="TabAccentBrush">#B65B15</SolidColorBrush>
           <SolidColorBrush x:Key="ActiveTabTextBrush">#43270F</SolidColorBrush>
           <SolidColorBrush x:Key="InactiveTabTextBrush">#535C68</SolidColorBrush>
@@ -72,6 +73,7 @@
           <SolidColorBrush x:Key="TabStripBrush">#14161A</SolidColorBrush>
           <SolidColorBrush x:Key="TabBrush">#252830</SolidColorBrush>
           <SolidColorBrush x:Key="ActiveTabBrush">#413126</SolidColorBrush>
+          <SolidColorBrush x:Key="VideoKeyframeReadoutBrush">#294537</SolidColorBrush>
           <SolidColorBrush x:Key="TabAccentBrush">#F5AD62</SolidColorBrush>
           <SolidColorBrush x:Key="ActiveTabTextBrush">#FFF1E3</SolidColorBrush>
           <SolidColorBrush x:Key="InactiveTabTextBrush">#AEB5C0</SolidColorBrush>
