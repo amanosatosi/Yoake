@@ -10,7 +10,37 @@
         Width="1440" Height="900"
         MinWidth="1040" MinHeight="728"
         Background="{DynamicResource AppBackgroundBrush}">
+  <Window.Resources>
+    <ControlTheme x:Key="AudioTrackButton" TargetType="RepeatButton">
+      <Setter Property="Template"><ControlTemplate><Grid Background="Transparent"><Border Width="3" HorizontalAlignment="Center" Background="{TemplateBinding Background}" /></Grid></ControlTemplate></Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="AudioTrackThumb" TargetType="Thumb">
+      <Setter Property="Template"><ControlTemplate><Border Background="{TemplateBinding Background}" /></ControlTemplate></Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="AudioVerticalSlider" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="Width" Value="24" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Style Selector="^:vertical">
+        <Setter Property="Template"><ControlTemplate>
+          <Grid Name="SliderContainer" Background="Transparent" Margin="0,2">
+            <Border Width="3" HorizontalAlignment="Center" Background="{DynamicResource IconForegroundBrush}" IsHitTestVisible="False" />
+            <Track Name="PART_Track" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value, Mode=TwoWay}" IsDirectionReversed="{TemplateBinding IsDirectionReversed}" Orientation="Vertical">
+              <Track.DecreaseButton><RepeatButton Name="PART_DecreaseButton" Theme="{StaticResource AudioTrackButton}" Background="{DynamicResource IconForegroundBrush}" Focusable="False" /></Track.DecreaseButton>
+              <Track.IncreaseButton><RepeatButton Name="PART_IncreaseButton" Theme="{StaticResource AudioTrackButton}" Background="{DynamicResource IconForegroundBrush}" Focusable="False" /></Track.IncreaseButton>
+              <Thumb Name="SliderThumb" Width="18" Height="10" Theme="{StaticResource AudioTrackThumb}" Background="{DynamicResource VisualToolDetailBrush}" />
+            </Track>
+          </Grid>
+        </ControlTemplate></Setter>
+      </Style>
+      <Style Selector="^:pointerover /template/ Thumb#SliderThumb"><Setter Property="Background" Value="{DynamicResource VisualToolPrimaryBrush}" /></Style>
+      <Style Selector="^:disabled /template/ Grid#SliderContainer"><Setter Property="Opacity" Value="0.45" /></Style>
+      <Style Selector="^:focus-visible /template/ Thumb#SliderThumb"><Setter Property="Background" Value="{DynamicResource VisualToolPrimaryBrush}" /></Style>
+    </ControlTheme>
+  </Window.Resources>
   <Window.Styles>
+    <Style Selector="ToggleButton.audioLink:checked /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource VisualToolWarningBrush}" /></Style>
     <Style Selector="Button"><Setter Property="MinHeight" Value="24" /></Style>
     <Style Selector="TextBox"><Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" /></Style>
     <Style Selector="ComboBox"><Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" /></Style>
@@ -73,6 +103,8 @@
 <MenuItem Header="Close tab" InputGesture="{Binding Actions[subtitle/close].InputGesture}" Command="{Binding Actions[subtitle/close]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Close}" /></MenuItem.Icon></MenuItem>
 </MenuItem>
 <MenuItem Name="EditMenu" Header="Edit">
+<MenuItem Header="Join Next (translator mode)" Command="{Binding Actions[edit/line/join/next/translatormode]}" InputGesture="{Binding Actions[edit/line/join/next/translatormode].InputGesture}" />
+<MenuItem Header="Join Last" Command="{Binding Actions[edit/line/join/last]}" InputGesture="{Binding Actions[edit/line/join/last].InputGesture}" />
 <MenuItem Name="OptionsMenu" Header="Options…" InputGesture="{Binding Actions[app/options].InputGesture}" Command="{Binding Actions[app/options]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Options}" /></MenuItem.Icon></MenuItem>
 <MenuItem Name="UndoMenu" Header="{Binding Actions[edit/undo].Label}" InputGesture="{Binding Actions[edit/undo].InputGesture}" Command="{Binding Actions[edit/undo]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Undo}" /></MenuItem.Icon></MenuItem>
 <MenuItem Name="RedoMenu" Header="{Binding Actions[edit/redo].Label}" InputGesture="{Binding Actions[edit/redo].InputGesture}" Command="{Binding Actions[edit/redo]}" ><MenuItem.Icon><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Redo}" /></MenuItem.Icon></MenuItem>
@@ -528,18 +560,15 @@
 <ToggleButton Classes="authoring" Content="Mute" IsChecked="{Binding PlaybackMuted, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Mute editor playback" />
 <ComboBox Name="AudioMode" Margin="4,0,0,0" SelectedIndex="{Binding AudioDisplayModeIndex, Mode=TwoWay}" Padding="5,0"><ComboBoxItem Content="Waveform" /><ComboBoxItem Content="Spectrogram" /></ComboBox>
 </StackPanel></ScrollViewer><TextBlock Grid.Column="1" MaxWidth="100" Name="AudioStatus" Text="{Binding MediaStatus}" ToolTip.Tip="{Binding MediaStatus}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" FontSize="{DynamicResource YoakeUiFontSizeTiny}" /></Grid>
-        <controls:AudioWaveformControl Grid.Row="0" Margin="0,0,106,0" Name="AudioDisplay" ToolTip.Tip="Click: seek · Orange/blue: drag start/end · Shift+drag inside line: move timing · Wheel: pan · Ctrl+wheel: zoom · Shift+wheel: amplitude" Model="{Binding}" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
-        <Border Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Right" Width="1" Margin="0,0,102,0" Background="{DynamicResource DividerBrush}" />
-        <Grid Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Right" ColumnDefinitions="28,28,28" RowDefinitions="12,*,18" ColumnSpacing="4" RowSpacing="1">
-          <TextBlock Grid.Column="0" Text="Time" FontSize="{DynamicResource YoakeUiFontSizeTiny}" HorizontalAlignment="Center" ToolTip.Tip="Horizontal zoom" />
-          <TextBlock Grid.Column="1" Text="Amp" FontSize="{DynamicResource YoakeUiFontSizeTiny}" HorizontalAlignment="Center" ToolTip.Tip="Vertical zoom / display amplitude" />
-          <TextBlock Grid.Column="2" Text="Vol" FontSize="{DynamicResource YoakeUiFontSizeTiny}" HorizontalAlignment="Center" ToolTip.Tip="Playback volume" />
-          <Slider Grid.Row="1" Grid.Column="0" Name="AudioHorizontalZoom" Orientation="Vertical" Minimum="0" Maximum="100" Value="{Binding AudioHorizontalZoom, Mode=TwoWay}" ToolTip.Tip="Horizontal zoom · time per pixel" />
-          <Slider Grid.Row="1" Grid.Column="1" Name="AudioIntensity" Orientation="Vertical" Minimum="10" Maximum="100" Value="{Binding AudioAmplitude, Mode=TwoWay}" ToolTip.Tip="Display amplitude / spectral intensity (independent of volume)" />
-          <Slider Grid.Row="1" Grid.Column="2" Name="AudioVolume" IsEnabled="{Binding IsVolumeIndependent}" Orientation="Vertical" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding PlaybackVolume, Mode=TwoWay}" ToolTip.Tip="Playback volume · 0–100%" />
-          <ToggleButton Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" Name="AudioVolumeLink" Classes="authoring" HorizontalAlignment="Stretch" MinWidth="44" FontSize="{DynamicResource YoakeUiFontSizeTiny}" MinHeight="16" Padding="2,0" IsChecked="{Binding Actions[audio/opt/vertical_link].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/vertical_link]}" ToolTip.Tip="Link display amplitude to playback level"><StackPanel Orientation="Horizontal" Spacing="2"><PathIcon Width="13" Height="13" Data="{x:Static icons:IconGeometries.AudioLink}" /><TextBlock Text="Link" /></StackPanel></ToggleButton>
+        <controls:AudioWaveformControl Grid.Row="0" Margin="0,0,84,0" Name="AudioDisplay" ToolTip.Tip="Click: seek · Orange/blue: drag start/end · Shift+drag inside line: move timing · Wheel: pan · Ctrl+wheel: zoom · Shift+wheel: amplitude" Model="{Binding}" Samples="{Binding WaveformSamples}" Stroke="{DynamicResource IconAccentBrush}" />
+        <Border Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Right" Width="1" Margin="0,0,82,0" Background="{DynamicResource DividerBrush}" />
+        <Grid Grid.Row="0" Grid.RowSpan="2" HorizontalAlignment="Right" ColumnDefinitions="24,24,24" RowDefinitions="*,18" ColumnSpacing="2" RowSpacing="2" Margin="0,5,3,0">
+          <Slider Grid.Row="0" Grid.Column="0" Name="AudioHorizontalZoom" Theme="{StaticResource AudioVerticalSlider}" AutomationProperties.Name="Horizontal audio zoom" Orientation="Vertical" Minimum="0" Maximum="100" Value="{Binding AudioHorizontalZoom, Mode=TwoWay}" ToolTip.Tip="Horizontal zoom · time per pixel" />
+          <Slider Grid.Row="0" Grid.Column="1" Name="AudioIntensity" Theme="{StaticResource AudioVerticalSlider}" AutomationProperties.Name="Display amplitude" Orientation="Vertical" Minimum="10" Maximum="100" Value="{Binding AudioAmplitude, Mode=TwoWay}" ToolTip.Tip="Display amplitude / spectral intensity (independent of volume)" />
+          <Slider Grid.Row="0" Grid.Column="2" Name="AudioVolume" Theme="{StaticResource AudioVerticalSlider}" AutomationProperties.Name="Playback volume" IsEnabled="{Binding IsVolumeIndependent}" Orientation="Vertical" Minimum="0" Maximum="1" SmallChange="0.05" LargeChange="0.1" Value="{Binding PlaybackVolume, Mode=TwoWay}" ToolTip.Tip="Playback volume · 0–100%" />
+          <ToggleButton Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" Name="AudioVolumeLink" Classes="audioLink" HorizontalAlignment="Stretch" MinWidth="0" Height="16" MinHeight="16" Padding="0" HorizontalContentAlignment="Center" AutomationProperties.Name="Link amplitude and volume" IsChecked="{Binding Actions[audio/opt/vertical_link].IsChecked, Mode=OneWay}" Command="{Binding Actions[audio/opt/vertical_link]}" ToolTip.Tip="Link display amplitude to playback level"><PathIcon Width="15" Height="12" Data="{x:Static icons:IconGeometries.AudioLink}" Foreground="{DynamicResource IconForegroundBrush}" /></ToggleButton>
         </Grid>
-        <ScrollBar Grid.Row="1" Name="AudioPanner" Orientation="Horizontal" Minimum="0" Maximum="{Binding #AudioDisplay.MaximumPan}" ViewportSize="{Binding #AudioDisplay.VisibleSeconds}" Value="{Binding #AudioDisplay.ViewportStart, Mode=TwoWay}" SmallChange="0.5" LargeChange="5" Margin="0,0,106,0" ToolTip.Tip="Pan the visible audio time range" />
+        <ScrollBar Grid.Row="1" Name="AudioPanner" Orientation="Horizontal" Minimum="0" Maximum="{Binding #AudioDisplay.MaximumPan}" ViewportSize="{Binding #AudioDisplay.VisibleSeconds}" Value="{Binding #AudioDisplay.ViewportStart, Mode=TwoWay}" SmallChange="0.5" LargeChange="5" Margin="0,0,84,0" ToolTip.Tip="Pan the visible audio time range" />
       </Grid>
       <controls:KaraokeSlotsControl Grid.Row="1" Name="KaraokeSlots" Model="{Binding}" IsVisible="{Binding ShowKaraoke}" Margin="6,0,6,4" />
       </Grid>
@@ -598,8 +627,20 @@
             <Button Name="OriginalClear" Command="{Binding Actions[edit/clear]}" Width="28" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Clear entire translation, including tags" AutomationProperties.Name="Clear All">
               <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Delete}" Foreground="{DynamicResource VisualToolWarningBrush}" />
             </Button>
+            <Button Name="OriginalJoinLast" Command="{Binding Actions[edit/line/join/last]}" Width="28" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Join previous line into current translation" AutomationProperties.Name="Join Last">
+              <Viewbox Width="18" Height="18"><Canvas Width="24" Height="24" IsHitTestVisible="False">
+                <Path Data="M2,15 H12 V17 H2 Z M2,19 H12 V21 H2 Z" Fill="{DynamicResource VisualToolDetailBrush}" />
+                <Path Data="M2,3 H12 V5 H2 Z M2,7 H12 V9 H2 Z M15,5 H18 V16 H14 L19,22 L24,16 H21 V2 H15 Z" Fill="{DynamicResource VisualToolPrimaryBrush}" />
+              </Canvas></Viewbox>
+            </Button>
+            <Button Name="OriginalJoinNext" Command="{Binding Actions[edit/line/join/next/translatormode]}" Width="28" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Join next line timing and original text; keep translation" AutomationProperties.Name="Join Next">
+              <Viewbox Width="18" Height="18"><Canvas Width="24" Height="24" IsHitTestVisible="False">
+                <Path Data="M2,3 H12 V5 H2 Z M2,7 H12 V9 H2 Z" Fill="{DynamicResource VisualToolDetailBrush}" />
+                <Path Data="M2,15 H12 V17 H2 Z M2,19 H12 V21 H2 Z M15,19 H18 V8 H14 L19,2 L24,8 H21 V22 H15 Z" Fill="{DynamicResource VisualToolPrimaryBrush}" />
+              </Canvas></Viewbox>
+            </Button>
           </StackPanel>
-          <TextBox Name="OriginalText" Theme="{StaticResource StableOriginalTextBox}" Grid.Column="2" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" FontSize="{DynamicResource YoakeUiEditorFontSize}" VerticalContentAlignment="Top" Watermark="Original" ToolTip.Tip="Original text captured when this line became active" />
+          <controls:AssTextBox Name="OriginalText" Grid.Column="2" IsVisible="{Binding ShowOriginal}" SourceText="{Binding OriginalText, Mode=OneWay}" BetterView="{Binding BetterView}" ShowMotionData="True" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" FontSize="{DynamicResource YoakeUiEditorFontSize}" VerticalContentAlignment="Top" Watermark="Original" ToolTip.Tip="Original text captured when this line became active" />
         </Grid>
 
         <!-- Single property strip at desktop widths; wrap only when the window is genuinely narrow. -->

@@ -22,6 +22,25 @@ public sealed partial class EditorWorkflowTests
         var active=_model.SelectedEvent;_model.SelectedEvent=_model.Events[1];Assert.Same(active,_model.SelectedEvent);Assert.Equal(original,_model.OriginalText);
         await Command(CommandIds.EditCancel);await Command(CommandIds.GridLineNext);Assert.Equal("",_model.OriginalText);await Command(CommandIds.GridLinePrevious);Assert.Equal("translated",_model.OriginalText);
     }
+    [Fact] public async Task TranslatorJoinNextAndJoinLastPreserveActiveRowAndUndoOriginalSnapshot()
+    {
+        await SeedOriginal();var active=_model.SelectedEvent!;var original=_model.OriginalText;
+        _model.Draft!.Text="translation";await Command(CommandIds.EditCommit);
+        var next=_model.Events[1];var editor=_model.ActiveEditor!;
+        editor.SetField(next,"Text",@"next\Nsource","Seed");
+        editor.SetTiming(next,1000,2000);
+        var source=editor.Document.Serialize();
+        await Command("edit/line/join/next/translatormode");
+        Assert.Same(active,_model.SelectedEvent);Assert.Single(_model.Events);
+        Assert.Equal("translation",active.Text);Assert.Equal(original+@" next\Nsource",_model.OriginalText);
+        Assert.Equal(2000,active.EndMilliseconds);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(original,_model.OriginalText);
+        await Command(CommandIds.EditRedo);Assert.Equal(original+@" next\Nsource",_model.OriginalText);
+        await Command(CommandIds.EditUndo);_model.SelectedEvent=next;
+        await Command("edit/line/join/last");Assert.Same(next,_model.SelectedEvent);Assert.Single(_model.Events);
+        Assert.Equal(@"translation next\Nsource",next.Text);Assert.Equal(next.Text,_model.OriginalText);
+        await Command(CommandIds.EditUndo);Assert.Equal(source,editor.Document.Serialize());Assert.Equal(@"next\Nsource",_model.OriginalText);
+    }
     [Fact] public async Task InsertRevertClearAndClearTextUseOriginalAndCurrentCaret()
     {
         await SeedOriginal();var original=_model.OriginalText;_model.Draft!.Text="prefix selection suffix";

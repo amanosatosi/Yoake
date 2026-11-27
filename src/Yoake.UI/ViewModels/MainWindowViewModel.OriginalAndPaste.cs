@@ -1,4 +1,5 @@
 using Yoake.Core.Commands;
+using Yoake.Core.Undo;
 using Yoake.Core.Subtitles;
 using Yoake.UI.Commands;
 
@@ -44,7 +45,53 @@ public sealed partial class MainWindowViewModel
                 return new(text[..first]+OriginalText+text[last..],first,first+OriginalText.Length);
             });return ValueTask.CompletedTask;
         },HasLine);
+        R("edit/line/join/next","Join Next (normal)",_=>{JoinAdjacent(1,false);return ValueTask.CompletedTask;},()=>HasLine()&&!HasPendingAudioTiming&&AdjacentJoinLine(1) is not null);
+        R("edit/line/join/next/translatormode","Join Next",_=>{JoinAdjacent(1,true);return ValueTask.CompletedTask;},()=>HasLine()&&!HasPendingAudioTiming&&AdjacentJoinLine(1) is not null);
+        R("edit/line/join/last","Join Last",_=>{JoinAdjacent(-1,false);return ValueTask.CompletedTask;},()=>HasLine()&&!HasPendingAudioTiming&&AdjacentJoinLine(-1) is not null);
         R("edit/line/paste/over","Paste Lines Over…",PasteOverAsync,()=>HasLine()&&!_pasteOverBusy&&SelectedEvents.Any(Events.Contains)&&Dialogs is not null);
+    }
+    private AssEvent? AdjacentJoinLine(int direction)
+    {
+        if(SelectedEvent is not {} active||MangetsuMetadata.Kind(active)!=MangetsuMetadataKind.None||MangetsuMetadata.IsInherited(active))return null;
+        var index=Events.ToList().IndexOf(active);
+        if(index<0)return null;
+        for(var i=index+direction;i>=0&&i<Events.Count;i+=direction)
+        {
+            var line=Events[i];
+            if(MangetsuMetadata.Kind(line)==MangetsuMetadataKind.None&&!MangetsuMetadata.IsInherited(line))return line;
+        }
+        return null;
+    }
+    private static string JoinedText(string first,string second)
+    {
+        first=first.Trim();second=second.Trim();return first.Length==0?second:second.Length==0?first:first+" "+second;
+    }
+    private void JoinAdjacent(int direction,bool translator)
+    {
+        if(!CommitDraft()||HasGesture||HasPendingAudioTiming||SelectedEvent is not {} active||AdjacentJoinLine(direction) is not {} neighbor||
+            _activeId is not {} id||!_documents.TryGetValue(id,out var state))return;
+        if(active.StartMilliseconds is not {} start||active.EndMilliseconds is not {} end||neighbor.StartMilliseconds is not {} otherStart||neighbor.EndMilliseconds is not {} otherEnd||
+            start<0||end<start||otherStart<0||otherEnd<otherStart)return;
+        var before=state.OriginalText;
+        var current=active.Text;var other=neighbor.Text;
+        var joined=direction>0?JoinedText(current,other):JoinedText(other,current);
+        var original=direction>0?JoinedText(string.IsNullOrEmpty(before)?current:before,other):joined;
+        void Snapshot(string value)
+        {
+            if(!ReferenceEquals(state.OriginalLine,active))return;
+            state.OriginalText=value;
+            if(_activeId==id)OnPropertyChanged(nameof(OriginalText));
+        }
+        RunEdit(editor=>
+        {
+            using var transaction=editor.Undo.BeginTransaction(direction>0?"Join next":"Join last");
+            editor.SetTiming(active,Math.Min(start,otherStart),Math.Max(end,otherEnd));
+            if(!translator)editor.SetField(active,"Text",joined,"Join lines");
+            editor.Delete([neighbor]);
+            editor.Undo.Execute(new DelegateUndoOperation("Join original snapshot",()=>Snapshot(before),()=>Snapshot(original)));
+            transaction.Commit();
+            Select(active);
+        });
     }
     private static int OriginalInsertionBoundary(string text,int index)
     {
