@@ -18,7 +18,7 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
 {
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(100) };
     private int _ticks, _layouts;
-    private bool _opened, _loaded, _inserted, _editorVerified, _iconsVerified;
+    private bool _opened, _loaded, _inserted, _editorVerified, _iconsVerified, _gridVerified;
     private StylesWindow? _styles;
     private AuthoringUiVerification? _authoring;
     private AutomationUiVerification? _automation;
@@ -55,8 +55,11 @@ internal sealed class UiStartupVerification(IClassicDesktopStyleApplicationLifet
             Require(window.IsVisible && window.IsLoaded && window.ClientSize.Width > 0 && window.ClientSize.Height > 0, "Window must be visible, loaded and have a nonzero client area.");
             Require(window.TryGetPlatformHandle() is not null, "Native window platform must exist.");
             Require(ReferenceEquals(window.DataContext, model) && model.ActiveEditor is not null, "Real document model must be attached.");
-            var header = window.FindControl<Grid>("ColumnHeader")!;
-            Require(header.ColumnDefinitions.Count == 8 && header.ColumnDefinitions.Take(7).All(c => c.ActualWidth > 0 && double.IsFinite(c.ActualWidth)), "Column headers must finish valid layout.");
+            if (!_gridVerified)
+            {
+                GridLayoutVerification.Verify(window, model.Events);
+                _gridVerified = true;
+            }
             var rows = window.FindControl<ListBox>("SubtitleRows")!;
             Require(ReferenceEquals(rows.ItemsSource, model.Events) && (_authoring is null?model.Events.Count==1:model.Events.Count>=1), "Real grid ItemsSource must be bound.");
             Require(rows.SelectedItems?.Contains(model.SelectedEvent!) == true, $"Grid selection must contain the current row (events {model.Events.Count}, model selected {model.SelectedEvents.Count}, view selected {rows.SelectedItems?.Count}, current index {model.Events.ToList().IndexOf(model.SelectedEvent!)}).");

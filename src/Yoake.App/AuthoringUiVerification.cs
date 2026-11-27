@@ -47,6 +47,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 foreach(var gridSample in new[]{"日本語", "မြန်မာ", "Latin é", "العربية", "👩‍👩‍👧‍👦"})
                 {var line=model.ActiveEditor!.Insert(null,false);model.ActiveEditor.SetField(line,"Text",gridSample,"Mixed-script UI fixture");}
                 model.ActiveEditor!.ToggleComment([model.Events.Last()]);
+                // A non-current row must reveal all optional columns, even when
+                // the active editing line has default metadata.
+                var metadataRow=model.Events.Last();
+                foreach(var (field,value) in new[]{("Layer","2"),("Name","Grid actor"),("Effect","grid-fx"),("MarginL","12"),("MarginR","34"),("MarginV","56")})
+                    model.ActiveEditor.SetField(metadataRow,field,value,"Grid column fixture");
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Dark;
                 text.SetCurrentValue(TextBox.TextProperty,Sample);
                 Invoke(model.Registry,CommandIds.EditCommit);
@@ -60,12 +65,16 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 Capture(styles,"styles-dark-normal",1);
                 CheckMainFields();CheckSyntax(text);CheckLayerAndCommentControls();
                 var font=Named<FontPicker>(styles,"StyleFont");Require(font.InstalledFamilies.Count>0,"Installed font browser must load actual families.");font.OpenBrowser();Require(font.IsBrowserOpen,"Font dropdown must open immediately without requiring a typed search.");
+                var restoreMetadata=model.Events.Last();
+                foreach(var (field,value) in new[]{("Layer","0"),("Name",""),("Effect",""),("MarginL","0"),("MarginR","0"),("MarginV","0")})
+                    model.ActiveEditor!.SetField(restoreMetadata,field,value,"Restore grid fixture");
                 _normalEditorWidth=window.FindControl<Grid>("EventEditorRegion")!.Bounds.Width;
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Light;
                 return false;
             case 2:
                 _input??=new(window,model,Capture);if(!_input.Tick()){_stage--;return false;}
                 Named<FontPicker>(styles,"StyleFont").CloseBrowser();
+                GridLayoutVerification.Verify(window,model.Events);
                 Capture(window,"editor-light-normal",1);Capture(styles,"styles-light-normal",1);CheckSyntax(text);
                 window.Width=1040;window.Height=760;styles.Width=940;styles.Height=650;
                 // Hosted Windows may constrain both requested window sizes to
@@ -264,14 +273,15 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         var containers=rows.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
         Require(containers.Length>=6,"Mixed-script grid fixture must realize all ordinary scripts.");
         Require(containers.All(r=>Math.Abs(r.Bounds.Height-26)<0.1),"Japanese/Burmese/Arabic/Latin/emoji/comment/selected rows must all be exactly 26 DIP.");
-        foreach(var label in containers.SelectMany(r=>r.GetVisualDescendants().OfType<TextBlock>()))
+        foreach(var label in containers.SelectMany(r=>r.GetVisualDescendants().OfType<TextBlock>()).Where(label=>label.IsEffectivelyVisible))
         {
             Require(label.TextLayout.Height<=26,$"Grid shaped text must fit 26 DIP: {label.Text}, height {label.TextLayout.Height}.");
             var row=label.GetVisualAncestors().OfType<ListBoxItem>().First();var top=label.TranslatePoint(default,row)!.Value.Y;
             Require(top>=-.1&&top+label.Bounds.Height<=26.1,"Mixed-script marks must fit inside their centered fixed row.");
         }
-        var header=window.FindControl<Grid>("ColumnHeader")!;var labels=header.Children.OfType<TextBlock>().Select(t=>t.Text).ToArray();
-        Require(labels.SequenceEqual(new[]{"#","L","Start","End","Style","Actor","Effect","Text"}),"Compact grid must omit Type and label layer L.");
+        GridLayoutVerification.Verify(window,model.Events);
+        var header=window.FindControl<Grid>("ColumnHeader")!;
+        Require(header.Children.OfType<TextBlock>().All(t=>t.IsVisible),"Populated metadata fixture must expose every grid column.");
         Require(!window.FindControl<Border>("SubtitleGridRegion")!.GetVisualDescendants().OfType<Button>().Any(),"Grid must not have a permanent button toolbar.");
         Require(rows.GetVisualDescendants().OfType<Grid>().Any(g=>g.Classes.Contains("comment")),"Comment state must reach the theme-aware row class.");
     }
