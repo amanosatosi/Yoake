@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Styling;
+using Avalonia.Controls;
+using Avalonia.Media;
 using Yoake.Core.Settings;
 
 namespace Yoake.UI.Services;
@@ -14,6 +16,21 @@ public interface IThemeService
 public sealed class ThemeService : IThemeService
 {
     public ThemePreference Current { get; private set; } = ThemePreference.System;
+
+    public void LoadVisualPalette(string profileDirectory,Action<string>? warning=null)
+    {
+        if(Application.Current is not {} app)return;
+        var palettes=VisualPaletteFile.Load(profileDirectory,warning);
+        ApplyPalette(ThemeVariant.Light,palettes.Light);
+        ApplyPalette(ThemeVariant.Dark,palettes.Dark);
+        void ApplyPalette(ThemeVariant variant,VisualPalette palette)
+        {
+            if(!app.Resources.ThemeDictionaries.TryGetValue(variant,out var provider)||provider is not IResourceDictionary resources)return;
+            resources["VisualToolPrimaryBrush"]=new SolidColorBrush(Color.Parse(palette.Primary));
+            resources["VisualToolDetailBrush"]=new SolidColorBrush(Color.Parse(palette.Detail));
+            resources["VisualToolWarningBrush"]=new SolidColorBrush(Color.Parse(palette.Warning));
+        }
+    }
 
     public void Apply(ThemePreference preference)
     {

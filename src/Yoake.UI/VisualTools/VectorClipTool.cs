@@ -65,22 +65,22 @@ public sealed class VectorClipTool : VisualTool
             }
             var transform=AssVisualTags.ClipTransform(source,line.RelativeTime,line.Duration);
             Point Map(AssPoint p)=>c.Screen(transform.Map(p));
-            var geometry=Geometry(path,Map);if(line.Active)c.ShadeGeometry(geometry,clip?.Inverse??c.Context.Model.InverseClip);c.Path(geometry,line.Active?Brushes.Cyan:Brushes.Gray);
-            foreach(var curve in path.Curves())if(curve.Cubic){c.ScreenLine(Map(curve.Start),Map(curve.Control1),Brushes.Gray,true);c.ScreenLine(Map(curve.Control2),Map(curve.End),Brushes.Gray,true);}
+            var geometry=Geometry(path,Map);if(line.Active)c.ShadeGeometry(geometry,clip?.Inverse??c.Context.Model.InverseClip);c.Path(geometry,line.Active?c.Primary:Brushes.Gray);
+            foreach(var curve in path.Curves())if(curve.Cubic){c.ScreenLine(Map(curve.Start),Map(curve.Control1),c.Detail,true);c.ScreenLine(Map(curve.Control2),Map(curve.End),c.Detail,true);}
             foreach(var h in path.Handles())c.Handle(transform.Map(h.Point),h.Control?HandleShape.Square:HandleShape.Circle,line.Active&&_selected.Contains(h.Index),line.Active);
             if(!line.Active||!c.Inside)continue;
             var mode=c.Context.Model.VectorMode;
             if(mode is "Insert" or "Convert"&&transform.Scale>0&&path.Nearest(transform.Unmap(c.Pointer.Script)) is {} nearest)
             {
-                var highlight=new StreamGeometry();using(var g=highlight.Open()){var curve=nearest.Curve;g.BeginFigure(Map(curve.Start),false);if(curve.Cubic)g.CubicBezierTo(Map(curve.Control1),Map(curve.Control2),Map(curve.End));else g.LineTo(Map(curve.End));g.EndFigure(false);}c.Path(highlight,Brushes.Yellow);
+                var highlight=new StreamGeometry();using(var g=highlight.Open()){var curve=nearest.Curve;g.BeginFigure(Map(curve.Start),false);if(curve.Cubic)g.CubicBezierTo(Map(curve.Control1),Map(curve.Control2),Map(curve.End));else g.LineTo(Map(curve.End));g.EndFigure(false);}c.Path(highlight,c.Warning);
                 if(mode=="Insert")c.Handle(transform.Map(nearest.Curve.At(nearest.T)),HandleShape.Circle,true);
             }
             if(prospective&&path.Commands.Count>1)
             {
                 var curve=path.Curves().Last();var addition=new StreamGeometry();
                 using(var g=addition.Open()){g.BeginFigure(Map(curve.Start),false);if(curve.Cubic)g.CubicBezierTo(Map(curve.Control1),Map(curve.Control2),Map(curve.End));else g.LineTo(Map(curve.End));g.EndFigure(false);}
-                c.Path(addition,Brushes.Yellow);
-                var closing=path.Curves(true).Last();c.ScreenLine(Map(closing.Start),Map(closing.End),Brushes.Yellow,true);
+                c.Path(addition,c.Warning);
+                var closing=path.Curves(true).Last();c.ScreenLine(Map(closing.Start),Map(closing.End),c.Warning,true);
             }
         }
         if(_box)c.Rectangle(Anchor.Script,_boxEnd,false,false);

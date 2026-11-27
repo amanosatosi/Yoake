@@ -75,7 +75,7 @@ public sealed class PositionTool : VisualTool
         foreach(var l in c.Context.Lines)
         {
             if(AssVisualTags.Move(l.Text) is {} move){c.Arrow(move.Start,move.End);c.Handle(l.Position,HandleShape.Circle,false,false);}
-            if(AssVisualTags.Origin(l.Text) is {} origin)c.Line(l.Position,origin,Brushes.Orange,true);
+            if(AssVisualTags.Origin(l.Text) is {} origin)c.Line(l.Position,origin,c.Detail,true);
             foreach(var f in Features(l))c.Handle(f.Point,f.Id==2?HandleShape.Triangle:f.Id==1?HandleShape.Circle:HandleShape.Square,Initial is not null&&f.Id==_feature,l.Active);
         }
     }

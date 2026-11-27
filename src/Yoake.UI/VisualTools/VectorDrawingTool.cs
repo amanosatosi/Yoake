@@ -109,14 +109,14 @@ public sealed class VectorDrawingTool : VisualTool
                 foreach (var curve in source.Path.Curves())
                     if (curve.Cubic)
                     {
-                        canvas.ScreenLine(Screen(curve.Start), Screen(curve.Control1), Brushes.Gold, true);
-                        canvas.ScreenLine(Screen(curve.Control2), Screen(curve.End), Brushes.Gold, true);
+                        canvas.ScreenLine(Screen(curve.Start), Screen(curve.Control1), canvas.Detail, true);
+                        canvas.ScreenLine(Screen(curve.Control2), Screen(curve.End), canvas.Detail, true);
                     }
                 foreach (var handle in source.Path.Handles())
                     canvas.Handle(map.Map(handle.Point), handle.Control ? HandleShape.Square : HandleShape.Circle,
                         ReferenceEquals(_selectionOwner, line.Line) && _selected.Contains(handle.Index), primary: !handle.Control);
                 if (_baseline is null && canvas.Inside && canvas.Context.Model.DrawingPreset == "No preset" && mode is ("Line" or "Bicubic"))
-                    canvas.Line(map.Map(source.Path.Commands[^1].Points[^1]), canvas.Pointer.Script, Brushes.Gold, true);
+                    canvas.Line(map.Map(source.Path.Commands[^1].Points[^1]), canvas.Pointer.Script, canvas.Detail, true);
             }
         }
 

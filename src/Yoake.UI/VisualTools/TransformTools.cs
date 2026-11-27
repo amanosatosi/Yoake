@@ -19,7 +19,7 @@ public abstract class OriginTool : VisualTool
     }
     protected static void Origin(VisualCanvas c)
     {
-        if(c.Context.Active is not {} l)return;c.Line(l.Position,l.Origin,Brushes.Orange,true);c.Handle(l.Origin,HandleShape.Triangle);
+        if(c.Context.Active is not {} l)return;c.Line(l.Position,l.Origin,c.Detail,true);c.Handle(l.Origin,HandleShape.Triangle);
     }
     public override StandardCursorType Cursor(VisualToolContext? c,VisualPointer p)=>c?.Active is {} l&&c.Near(l.Origin,p.Screen)?StandardCursorType.SizeAll:StandardCursorType.Cross;
 }
@@ -29,7 +29,7 @@ public sealed class RotateZTool : OriginTool
     public override void Render(VisualCanvas c)
     {
         if(c.Context.Active is not {} l)return;
-        if(_guideEnd is {} end)c.Line(Anchor.Script,end,Brushes.Yellow,true);
+        if(_guideEnd is {} end)c.Line(Anchor.Script,end,c.Warning,true);
         Origin(c);var o=c.Screen(l.Origin);var radius=Math.Max(50,VisualToolContext.Distance(c.Screen(l.Position),o));c.Ring(l.Origin,radius);
         for(var angle=0;angle<360;angle+=30)
         {
@@ -78,8 +78,8 @@ public sealed class RotateXYTool : OriginTool
         AssPoint Project(double x,double y)=>VisualGeometry.Project(new(x,y),l.Origin,l.Transform,scale);
         for(var i=-5;i<=5;i++)
         {
-            c.Line(Project(i*unit,-5*unit),Project(i*unit,5*unit),i==0?Brushes.Lime:Brushes.Gray);
-            c.Line(Project(-5*unit,i*unit),Project(5*unit,i*unit),i==0?Brushes.OrangeRed:Brushes.Gray);
+            c.Line(Project(i*unit,-5*unit),Project(i*unit,5*unit),i==0?c.Detail:Brushes.Gray);
+            c.Line(Project(-5*unit,i*unit),Project(5*unit,i*unit),i==0?c.Primary:Brushes.Gray);
         }
         c.Arrow(Project(0,0),Project(3.25*unit,0));c.Arrow(Project(0,0),Project(0,3.25*unit));Origin(c);
         c.Label(FormattableString.Invariant($"X {l.Transform.X:0.#}°  Y {l.Transform.Y:0.#}°"),c.Screen(l.Origin)+new Vector(10,10));

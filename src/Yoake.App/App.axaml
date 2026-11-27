@@ -14,6 +14,9 @@
     <ResourceDictionary>
       <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
+          <SolidColorBrush x:Key="VisualToolPrimaryBrush">#B65B15</SolidColorBrush>
+          <SolidColorBrush x:Key="VisualToolDetailBrush">#2379B3</SolidColorBrush>
+          <SolidColorBrush x:Key="VisualToolWarningBrush">#C43D47</SolidColorBrush>
           <SolidColorBrush x:Key="AssSyntaxText">#252A32</SolidColorBrush>
           <SolidColorBrush x:Key="AssSyntaxBrace">#6C7280</SolidColorBrush>
           <SolidColorBrush x:Key="AssSyntaxTag">#175EAD</SolidColorBrush>
@@ -43,6 +46,9 @@
           <SolidColorBrush x:Key="IconAudioLineBrush">#A03749</SolidColorBrush>
         </ResourceDictionary>
         <ResourceDictionary x:Key="Dark">
+          <SolidColorBrush x:Key="VisualToolPrimaryBrush">#F5AD62</SolidColorBrush>
+          <SolidColorBrush x:Key="VisualToolDetailBrush">#62B5EF</SolidColorBrush>
+          <SolidColorBrush x:Key="VisualToolWarningBrush">#EE7272</SolidColorBrush>
           <SolidColorBrush x:Key="AssSyntaxText">#F0F2F6</SolidColorBrush>
           <SolidColorBrush x:Key="AssSyntaxBrace">#808B9C</SolidColorBrush>
           <SolidColorBrush x:Key="AssSyntaxTag">#8CB9EE</SolidColorBrush>

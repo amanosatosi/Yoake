@@ -57,16 +57,19 @@ public sealed class VisualCanvas(DrawingContext drawing,VisualToolContext contex
     public VisualToolContext Context {get;}=context;
     public VisualPointer Pointer {get;}=pointer;
     public bool Inside {get;}=inside;
+    public IBrush Primary {get;init;}=Brushes.Orange;
+    public IBrush Detail {get;init;}=Brushes.DeepSkyBlue;
+    public IBrush Warning {get;init;}=Brushes.IndianRed;
     public int HandleCount {get;private set;}
     public Point Screen(AssPoint p)=>Context.Screen(p);
     public void Line(AssPoint a,AssPoint b,IBrush? color=null,bool dashed=false)=>ScreenLine(Screen(a),Screen(b),color,dashed);
     public void ScreenLine(Point a,Point b,IBrush? color=null,bool dashed=false)
     {
-        drawing.DrawLine(Outline,a,b);drawing.DrawLine(new Pen(color??Brushes.Cyan,1.25,dashed?DashStyle.Dash:null),a,b);
+        drawing.DrawLine(Outline,a,b);drawing.DrawLine(new Pen(color??Primary,1.25,dashed?DashStyle.Dash:null),a,b);
     }
     public void Handle(AssPoint p,HandleShape shape=HandleShape.Square,bool selected=false,bool primary=true)
     {
-        HandleCount++;var point=Screen(p);var hover=Context.Near(p,Pointer.Screen);var brush=hover?Brushes.Yellow:selected?Brushes.Orange:primary?Brushes.Cyan:Brushes.LightGray;
+        HandleCount++;var point=Screen(p);var hover=Context.Near(p,Pointer.Screen);var brush=hover?Warning:selected?Warning:primary?Primary:Detail;
         if(shape==HandleShape.Circle){drawing.DrawEllipse(Brushes.Black,new Pen(brush,1.5),point,4,4);return;}
         if(shape==HandleShape.Triangle)
         {
@@ -76,7 +79,7 @@ public sealed class VisualCanvas(DrawingContext drawing,VisualToolContext contex
     }
     public void Ring(AssPoint origin,double radius)
     {
-        var point=Screen(origin);drawing.DrawEllipse(null,Outline,point,radius,radius);drawing.DrawEllipse(null,new Pen(Brushes.Cyan,1.25),point,radius,radius);
+        var point=Screen(origin);drawing.DrawEllipse(null,Outline,point,radius,radius);drawing.DrawEllipse(null,new Pen(Primary,1.25),point,radius,radius);
     }
     public void Arrow(AssPoint a,AssPoint b)
     {
@@ -92,8 +95,8 @@ public sealed class VisualCanvas(DrawingContext drawing,VisualToolContext contex
     public void Rectangle(AssPoint a,AssPoint b,bool inverse,bool shade=true)
     {
         var rect=new Rect(Screen(a),Screen(b));if(shade)ShadeGeometry(new RectangleGeometry(rect),inverse);
-        drawing.DrawRectangle(null,Outline,rect);drawing.DrawRectangle(null,new Pen(Brushes.Cyan,1.25),rect);
+        drawing.DrawRectangle(null,Outline,rect);drawing.DrawRectangle(null,new Pen(Primary,1.25),rect);
     }
     public void ShadeGeometry(Geometry geometry,bool inverse)=>drawing.DrawGeometry(Shade,null,inverse?geometry:new CombinedGeometry(GeometryCombineMode.Exclude,new RectangleGeometry(Context.Video),geometry));
-    public void Path(Geometry geometry,IBrush? color=null){drawing.DrawGeometry(null,Outline,geometry);drawing.DrawGeometry(null,new Pen(color??Brushes.Cyan,1.25),geometry);}
+    public void Path(Geometry geometry,IBrush? color=null){drawing.DrawGeometry(null,Outline,geometry);drawing.DrawGeometry(null,new Pen(color??Primary,1.25),geometry);}
 }

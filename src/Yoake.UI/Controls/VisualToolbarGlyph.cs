@@ -66,7 +66,7 @@ public sealed class VisualToolbarGlyph : Control
             context.DrawGeometry(null,new Pen(outline,width+1.1,lineCap:PenLineCap.Round,lineJoin:PenLineJoin.Round),geometry);
             context.DrawGeometry(null,new Pen(color,width,lineCap:PenLineCap.Round,lineJoin:PenLineJoin.Round),geometry);
         }
-        Stroke(shape.Main,Accent??Brushes.DeepSkyBlue,1.45);
-        Stroke(shape.Detail,Detail??Brushes.Gold,1.25);
+        Stroke(shape.Main,Accent??Brushes.Orange,1.45);
+        Stroke(shape.Detail,Detail??Brushes.DeepSkyBlue,1.25);
     }
 }

@@ -40,7 +40,7 @@ public sealed class VisualOverlayControl : Control
     public int RenderedHandles {get;private set;}
     public string? VectorPreviewDrawing=>(_tool as VectorClipTool)?.PreviewDrawing;
     public string? RenderedTool {get;private set;}
-    public VisualOverlayControl(){Focusable=true;ClipToBounds=true;LostFocus+=(_,_)=>Cancel();}
+    public VisualOverlayControl(){Focusable=true;ClipToBounds=true;LostFocus+=(_,_)=>Cancel();ActualThemeVariantChanged+=(_,_)=>InvalidateVisual();}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -96,7 +96,13 @@ public sealed class VisualOverlayControl : Control
         context.FillRectangle(Brushes.Transparent,new Rect(Bounds.Size));
         base.Render(context);RenderedHandles=0;RenderedTool=null;
         if(Model?.IsPlaying==true||_context is not {} state||_tool is null||state.Video.Width<=0||state.Video.Height<=0)return;
-        var canvas=new VisualCanvas(context,state,_pointer,_inside);using(context.PushClip(state.Video))_tool.Render(canvas);
+        IBrush ColorResource(string key,IBrush fallback)=>this.TryFindResource(key,ActualThemeVariant,out var value)&&value is IBrush brush?brush:fallback;
+        var canvas=new VisualCanvas(context,state,_pointer,_inside)
+        {
+            Primary=ColorResource("VisualToolPrimaryBrush",Brushes.Orange),
+            Detail=ColorResource("VisualToolDetailBrush",Brushes.DeepSkyBlue),
+            Warning=ColorResource("VisualToolWarningBrush",Brushes.IndianRed)
+        };using(context.PushClip(state.Video))_tool.Render(canvas);
         RenderedHandles=canvas.HandleCount;RenderedTool=Model?.ActiveVisualTool;
     }
     private VisualPointer Pointer(PointerEventArgs e)=>new(e.GetPosition(this),_context?.Script(e.GetPosition(this))??default,e.KeyModifiers,e is PointerPressedEventArgs press?press.ClickCount:0);

@@ -58,6 +58,7 @@ public partial class App : Application
             StartupDiagnostics.Checkpoint("Undo constructed");
             _backgroundJobs = new BackgroundJobService();
             var theme = new ThemeService();
+            theme.LoadVisualPalette(System.IO.Path.GetDirectoryName(settingsPath) ?? AppContext.BaseDirectory, log.Info);
             theme.Apply(settings.Theme);
             StartupDiagnostics.Checkpoint($"Theme applied: {settings.Theme}");
 
