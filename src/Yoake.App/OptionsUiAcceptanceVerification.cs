@@ -43,7 +43,7 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Require(!Get<ListBox>("OptionsCategories").Items.Cast<object>().Any(item=>Equals(item,"External tools")),"Retired external tools category must not appear.");
                     Require(!model.Actions.ContainsKey("tool/assdraw"),"Retired standalone drawing command must not be registered.");
                     if(!_shortcutSearchChecked){Get<TextBox>("OptionsSearch").Text="assistant translation";_stage=11;return;}
-                    Require(_dialog!.TryGetPlatformHandle() is { Handle:not 0 },"Options needs a real native window.");
+                    Require(_dialog!.TryGetPlatformHandle() is { Handle:not 0 }&&!_dialog.ShowInTaskbar,"Options must be a real owned native window without a separate taskbar entry.");
                     Get<ListBox>("OptionsCategories").SelectedItem="Appearance";
                     Get<NumericUpDown>("UiFontSize").Value=24;Get<FontPicker>("UiFontFamily").OpenBrowser();return;
                 case 2:
@@ -85,6 +85,9 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Require(Get<CheckBox>("GlobalTimingHotkeys").IsChecked==true,"The searchable setting must share the shortcut workspace draft.");
                     Get<TextBox>("OptionsSearch").Text="";Get<ListBox>("OptionsCategories").SelectedItem="Recovery";
                     Get<NumericUpDown>("AutosaveInterval").Value=90;
+                    Get<ListBox>("OptionsCategories").SelectedItem="Audio";
+                    Require(Get<CheckBox>("AudioLinkVolume").IsEffectivelyVisible,"Audio options expose the amplitude/volume link.");
+                    Get<CheckBox>("AudioLinkVolume").IsChecked=true;
                     Get<ListBox>("OptionsCategories").SelectedItem="Appearance";
                     Get<NumericUpDown>("UiFontSize").Value=null;Press(Get<Button>("OptionsApply"));
                     Require(model.UiFontSize==_initialSize,"An incomplete numeric setting must not partially save any category.");
@@ -92,7 +95,7 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Get<FontPicker>("UiFontFamily").FontName="Yoake missing test font 日本語";
                     Press(Get<Button>("OptionsApply"));return;
                 case 7:
-                    Require(model.UiFontSize==15&&model.AutosaveIntervalSeconds==90&&model.GlobalTimingHotkeys,"Apply must publish all categories together.");
+                    Require(model.UiFontSize==15&&model.AutosaveIntervalSeconds==90&&model.GlobalTimingHotkeys&&model.AudioVolumeLinked&&!model.IsVolumeIndependent,"Apply must publish all categories together, including linked volume.");
                     Require(Application.Current!.ActualThemeVariant==Avalonia.Styling.ThemeVariant.Dark,"Applying dark appearance must update the real native window theme.");
                     Require(model.UiFontFamily=="Yoake missing test font 日本語","Missing families must retain the requested name with fallback rendering.");
                     var saved=new SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();

@@ -25,11 +25,12 @@ public sealed class OptionsWindow : Window
     private AppSettings _baseline, _draft;
     private HotkeyProfile _hotkeys;
     private readonly List<PreferenceRow> _rows = [];
+    private readonly Dictionary<(string Category,string Group),(Border Frame,StackPanel Rows)> _groups = new();
     private readonly NameScope _names = new();
     private readonly ListBox _navigation = new() { Name = "OptionsCategories", MinWidth = 155 };
     private readonly TextBox _search = new() { Name = "OptionsSearch", PlaceholderText = "Search all settings…" };
     private readonly TextBlock _status = new() { Name = "OptionsStatus", TextWrapping = TextWrapping.Wrap };
-    private readonly StackPanel _form = new() { Spacing = 14, Margin = new Thickness(18, 12) };
+    private readonly StackPanel _form = new() { Spacing = 8, Margin = new Thickness(10, 8) };
     private readonly ComboBox _context = new() { Name = "HotkeyContext", MinWidth = 140 };
     private readonly TextBox _filter = new() { Name = "HotkeyFilter", PlaceholderText = "Filter commands…" };
     private readonly ListBox _commands = new() { Name = "HotkeyCommands" };
@@ -46,7 +47,10 @@ public sealed class OptionsWindow : Window
     {
         _model = model; _baseline = _draft = model.CaptureOptions();
         _hotkeys = new(model.HotkeyProfile.Defaults, _draft.HotkeyOverrides);
-        Name = "OptionsDialog"; Title = "Options"; Width = 900; Height = 650; MinWidth = 620; MinHeight = 360;
+        Name = "OptionsDialog"; Title = "Options"; Width = 820; Height = 580; MinWidth = 620; MinHeight = 360;
+        ShowInTaskbar=false;
+        this.Bind(BackgroundProperty,this.GetResourceObservable("AppBackgroundBrush"));
+        _navigation.Bind(BackgroundProperty,this.GetResourceObservable("PanelBrush"));
         WindowStartupLocation = WindowStartupLocation.CenterOwner;
         NameScope.SetNameScope(this, _names);
         Register(_navigation); Register(_search); Register(_status);
@@ -68,6 +72,9 @@ public sealed class OptionsWindow : Window
         ChoiceSetting("Subtitle grid", "Override tag display", "Show full tags, simplified tags or hide tags in the grid. Source is preserved.", "GridTagDisplay", Enum.GetValues<GridTagDisplayMode>(),s=>s.GridTagDisplay!.Value,(s,v)=>s with { GridTagDisplay=v }, defaults);
         Toggle("Audio", "Spectrogram", "Display the spectrum instead of the waveform.", "AudioSpectrum", s=>s.AudioSpectrum==true,(s,v)=>s with { AudioSpectrum=v }, defaults);
         Toggle("Audio", "Autoscroll", "Follow the selected subtitle in the audio display.", "AudioAutoScroll", s=>s.AudioAutoScroll==true,(s,v)=>s with { AudioAutoScroll=v }, defaults);
+        Toggle("Audio", "Link amplitude and volume", "Changing display intensity also changes playback volume; disables independent volume.", "AudioLinkVolume", s=>s.AudioVolumeLinked,(s,v)=>s with { AudioVolumeLinked=v }, defaults);
+        Toggle("Audio", "Mute playback", "Mute audio output without changing the display.", "AudioMutePlayback", s=>s.PlaybackMuted,(s,v)=>s with { PlaybackMuted=v }, defaults);
+        Toggle("Timing", "Toshiki K-Timing auto cut", "Automatically split text into timing slots when beginning a karaoke plan.", "KaraokeAutoCutOption", s=>s.KaraokeAutoCut??true,(s,v)=>s with { KaraokeAutoCut=v }, defaults);
         Toggle("Timing", "Auto-commit timing", "Commit audio marker adjustments automatically.", "AudioAutoCommit", s=>s.AudioAutoCommit==true,(s,v)=>s with { AudioAutoCommit=v }, defaults);
         Toggle("Timing", "Advance after commit", "Move to the next line after committing audio timing.", "AudioAutoNext", s=>s.AudioAutoNext==true,(s,v)=>s with { AudioAutoNext=v }, defaults);
         Number("Timing", "Default line duration", "Duration for a new audio timing range, in milliseconds.", "AudioDefaultDuration",10,600000,s=>s.AudioDefaultDuration!.Value,(s,v)=>s with { AudioDefaultDuration=(int)v }, defaults);
@@ -99,9 +106,10 @@ public sealed class OptionsWindow : Window
             var matches=0;
             foreach(var row in _rows)
             {
-                row.View.IsVisible=query.Length==0 ? row.Category==category : terms.All(term=>row.Search.Contains(term,StringComparison.CurrentCultureIgnoreCase));
+                row.View.IsVisible=query.Length==0 ? row.Category==category || category=="General" && row.Category is "Appearance" or "Editor" or "Subtitle grid" : terms.All(term=>row.Search.Contains(term,StringComparison.CurrentCultureIgnoreCase));
                 if(row.View.IsVisible)matches++;
             }
+            foreach(var group in _groups.Values)group.Frame.IsVisible=group.Rows.Children.Any(c=>c.IsVisible);
             var matchingShortcuts=query.Length==0?0:ShortcutChoices().Count(choice=>ShortcutMatches(choice,terms));
             shortcutSearch.IsVisible=matchingShortcuts>0;shortcutSearch.Content=new TextBlock { Text=$"Keyboard shortcuts · {matchingShortcuts} matching commands",TextWrapping=TextWrapping.Wrap };
             shortcuts.IsVisible=query.Length==0&&category=="Keyboard shortcuts";
@@ -113,10 +121,10 @@ public sealed class OptionsWindow : Window
         _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Timing", "Video", "Automation", "Keyboard shortcuts", "Recovery" };
         _navigation.SelectionChanged+=(_,_)=>{ if(!string.IsNullOrEmpty(_search.Text)) _search.Text=""; Filter(); };
         _search.TextChanged+=(_,_)=>Filter();
-        var body=new Grid { ColumnDefinitions=new("Auto,*"), ColumnSpacing=1 }; body.Children.Add(_navigation); Grid.SetColumn(content,1); body.Children.Add(content);
+        var body=new Grid { ColumnDefinitions=new("Auto,*"), ColumnSpacing=6, Margin=new Thickness(8,0) }; body.Children.Add(_navigation); Grid.SetColumn(content,1); body.Children.Add(content);
         var footer=new Grid { ColumnDefinitions=new("*,Auto"), Margin=new Thickness(12,8), ColumnSpacing=12 };
         var restore=new Button { Name="RestoreOptionsDefaults", Content="Restore section defaults", HorizontalAlignment=HorizontalAlignment.Left };
-        ToolTip.SetTip(restore,"Reset only the selected category. Apply or OK saves the result; Cancel discards it."); Register(restore);
+        ToolTip.SetTip(restore,"Reset only the selected category (General resets General, not the other overview sections). Apply or OK saves the result; Cancel discards it."); Register(restore);
         restore.Click+=(_,_)=>
         {
             foreach(var row in _rows.Where(r=>r.Category==_navigation.SelectedItem as string))row.Reset();
@@ -125,7 +133,7 @@ public sealed class OptionsWindow : Window
         };
         footer.Children.Add(restore);
         var actions=new StackPanel { Orientation=Orientation.Horizontal, Spacing=8 }; Grid.SetColumn(actions,1);footer.Children.Add(actions);
-        foreach(var (label,name) in new[] { ("Apply","OptionsApply"),("OK","OptionsOk"),("Cancel","OptionsCancel") })
+        foreach(var (label,name) in new[] { ("OK","OptionsOk"),("Cancel","OptionsCancel"),("Apply","OptionsApply") })
         {
             var button=new Button { Content=label, Name=name, MinWidth=72, IsCancel=label=="Cancel", IsDefault=label=="OK" }; Register(button);actions.Children.Add(button);
             button.Click+=async (_,_)=>{ if(label=="Cancel")Close(); else if(await SaveAsync()&&label=="OK")Close(); };
@@ -161,12 +169,53 @@ public sealed class OptionsWindow : Window
     private void Add(string category,string label,string description,Control control,Action reload,Action reset)
     {
         Register(control);ToolTip.SetTip(control,description);
-        var row=new StackPanel { Spacing=4 };
-        row.Children.Add(new TextBlock { Text=category+"  /  "+label, FontWeight=FontWeight.SemiBold,TextWrapping=TextWrapping.Wrap });
-        row.Children.Add(control);
-        row.Children.Add(new TextBlock { Text=description, TextWrapping=TextWrapping.Wrap, Opacity=0.75 });
-        _form.Children.Add(row);_rows.Add(new(category,category+" "+label+" "+description,row,reload,reset));
+        var group=category switch
+        {
+            "Appearance"=>label=="Theme"?"Appearance":"Interface font",
+            "Audio"=>label is "Link amplitude and volume" or "Mute playback"?"Playback":"Audio display",
+            "Timing"=>label=="Toshiki K-Timing auto cut"?"Karaoke":label is "Auto-commit timing" or "Advance after commit"?"Timing behavior":"Timing defaults (ms)",
+            "Video"=>label=="Fast jump (frames)"?"Navigation":"Video display",
+            "Recovery"=>"Automatic recovery",
+            "General"=>"General",
+            "Editor"=>"Edit box",
+            "Subtitle grid"=>"Subtitle grid",
+            "Automation"=>"Script paths",
+            _=>category
+        };
+        var key=(category,group);
+        if(!_groups.TryGetValue(key,out var section))
+        {
+            var rows=new StackPanel{Spacing=5};
+            var inner=new StackPanel{Spacing=6};
+            inner.Children.Add(new TextBlock{Text=group,FontWeight=FontWeight.SemiBold,TextWrapping=TextWrapping.Wrap});
+            inner.Children.Add(rows);
+            var frame=new Border{BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(4),Padding=new Thickness(10,7),Child=inner};
+            frame.Bind(Border.BackgroundProperty,frame.GetResourceObservable("PanelBrush"));
+            frame.Bind(Border.BorderBrushProperty,frame.GetResourceObservable("DividerBrush"));
+            section=(frame,rows);_groups.Add(key,section);_form.Children.Add(frame);
+        }
+        Control row;
+        if(control is CheckBox)
+        {
+            // The native checkbox already carries its own label.
+            control.HorizontalAlignment=HorizontalAlignment.Left;
+            row=control;
+        }
+        else if(control is TextBox || control is TextBlock)
+        {
+            var stack=new StackPanel{Spacing=3};
+            stack.Children.Add(new TextBlock{Text=label,TextWrapping=TextWrapping.Wrap});stack.Children.Add(control);row=stack;
+        }
+        else
+        {
+            var grid=new Grid{ColumnDefinitions=new("*,*"),ColumnSpacing=8};
+            grid.Children.Add(new TextBlock{Text=label,TextWrapping=TextWrapping.Wrap,VerticalAlignment=VerticalAlignment.Center});
+            Grid.SetColumn(control,1);grid.Children.Add(control);row=grid;
+        }
+        ToolTip.SetTip(row,description);section.Rows.Children.Add(row);
+        _rows.Add(new(category,category+" "+group+" "+label+" "+description,row,reload,reset));
     }
+
     private void Toggle(string category,string label,string description,string name,Func<AppSettings,bool> get,Func<AppSettings,bool,AppSettings> set,AppSettings defaults)
     {
         var control=new CheckBox { Name=name,Content=label };
@@ -201,7 +250,7 @@ public sealed class OptionsWindow : Window
     private async Task<bool> SaveAsync()
     {
         if(_applying)return false;
-        var invalid=_rows.FirstOrDefault(row=>row.View.GetVisualDescendants().OfType<NumericUpDown>().Any(control=>control.Value is null||control.GetValue(DataValidationErrors.HasErrorsProperty)));
+        var invalid=_rows.FirstOrDefault(row=>row.View.GetVisualDescendants().Prepend(row.View).OfType<NumericUpDown>().Any(control=>control.Value is null||control.GetValue(DataValidationErrors.HasErrorsProperty)));
         if(invalid is not null) { _status.Text="Enter a valid numeric value before applying settings.";return false; }
         _applying=true;IsEnabled=false;_status.Text="Applying settings…";
         try

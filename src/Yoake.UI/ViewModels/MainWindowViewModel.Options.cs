@@ -30,6 +30,9 @@ public sealed partial class MainWindowViewModel
             GridTagDisplay=Pick(baseline.GridTagDisplay, edited.GridTagDisplay, _settings.GridTagDisplay),
             AudioSpectrum=Pick(baseline.AudioSpectrum, edited.AudioSpectrum, _settings.AudioSpectrum),
             AudioAutoScroll=Pick(baseline.AudioAutoScroll, edited.AudioAutoScroll, _settings.AudioAutoScroll),
+            AudioVolumeLinked=Pick(baseline.AudioVolumeLinked, edited.AudioVolumeLinked, _settings.AudioVolumeLinked),
+            PlaybackMuted=Pick(baseline.PlaybackMuted, edited.PlaybackMuted, _settings.PlaybackMuted),
+            KaraokeAutoCut=Pick(baseline.KaraokeAutoCut, edited.KaraokeAutoCut, _settings.KaraokeAutoCut),
             AudioAutoCommit=Pick(baseline.AudioAutoCommit, edited.AudioAutoCommit, _settings.AudioAutoCommit),
             AudioAutoNext=Pick(baseline.AudioAutoNext, edited.AudioAutoNext, _settings.AudioAutoNext),
             AudioDefaultDuration=Pick(baseline.AudioDefaultDuration, edited.AudioDefaultDuration, _settings.AudioDefaultDuration),
@@ -46,6 +49,7 @@ public sealed partial class MainWindowViewModel
             AutomationAutoloadDirectories=Pick(baseline.AutomationAutoloadDirectories, edited.AutomationAutoloadDirectories, _settings.AutomationAutoloadDirectories),
             AutomationIncludeDirectories=Pick(baseline.AutomationIncludeDirectories, edited.AutomationIncludeDirectories, _settings.AutomationIncludeDirectories)
         }).Normalize();
+        if(candidate.AudioVolumeLinked)candidate=candidate with {PlaybackVolume=Yoake.Core.Audio.AudioViewportMath.LinkedVolume(candidate.AudioIntensity??1)};
         // Validate before writing or publishing any preference.
         var profile = new HotkeyProfile(AegisubHotkeyDefaults.ForYoake(), candidate.HotkeyOverrides);
         var recoveryDirectory = Path.GetFullPath(candidate.RecoveryDirectory ?? "recovery", Path.GetDirectoryName(Path.GetFullPath(_settingsStore.Path))!);
@@ -54,6 +58,7 @@ public sealed partial class MainWindowViewModel
         var recoveryChanged = AutosaveEnabled != candidate.AutosaveEnabled || AutosaveIntervalSeconds != candidate.AutosaveIntervalSeconds || RecoveryDirectory != recoveryDirectory;
         _settingsStore.Save(candidate); // Atomic disk replace succeeds before any live state changes.
         _settings = candidate;
+        _audioPlayer?.SetVolume(PlaybackVolume,PlaybackMuted);
         _publishingOptions = true;
         try { HotkeyProfile.ReplaceOverrides(profile.Overrides); }
         finally { _publishingOptions = false; }
@@ -68,6 +73,7 @@ public sealed partial class MainWindowViewModel
         foreach (var name in new[] { nameof(UiFontFamily), nameof(UiFontSize), nameof(ToolbarVisible), nameof(ToolbarRowHeight),
             nameof(BetterView), nameof(ShowOriginal), nameof(GridTagDisplay), nameof(IsAudioSpectrum), nameof(AudioDisplayModeIndex),
             nameof(AudioAutoScroll), nameof(AudioAutoCommit), nameof(AudioAutoNext), nameof(AudioTimingDefaultDuration),
+            nameof(AudioVolumeLinked),nameof(IsVolumeIndependent),nameof(PlaybackVolume),nameof(PlaybackMuted),nameof(KaraokeAutoCut),
             nameof(AudioTimingLeadIn), nameof(AudioTimingLeadOut), nameof(VideoAutoSeek), nameof(ShowVideoOverscan), nameof(VideoFastJumpStep),
             nameof(AutosaveEnabled), nameof(AutosaveIntervalSeconds), nameof(RecoveryDirectory),
             nameof(GlobalTimingHotkeys), nameof(AutomationMacros), nameof(AutomationAutoloadDirectories), nameof(AutomationIncludeDirectories) }) OnPropertyChanged(name);
