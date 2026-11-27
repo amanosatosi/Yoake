@@ -340,6 +340,18 @@ jobs:
           name: Yoake-ui-keyboard-acceptance-diagnostics
           path: artifacts/ui-keyboard-acceptance
           if-no-files-found: warn
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() && steps.portable_package.conclusion == 'success' }}
+        with:
+          name: Yoake-Windows-x64-NativeAOT-symbols
+          path: artifacts/Yoake-Windows-x64-symbols/
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v7
+        if: ${{ always() && steps.portable_package.conclusion == 'success' }}
+        with:
+          name: Yoake-Windows-x64-package-size
+          path: artifacts/Yoake-Windows-x64-package-size.json
+          if-no-files-found: error
       # Retain the built package for debugging a failed GUI check; the job still fails.
       - uses: actions/upload-artifact@v7
         if: ${{ always() && steps.portable_package.conclusion == 'success' && steps.portable_native.conclusion == 'success' }}

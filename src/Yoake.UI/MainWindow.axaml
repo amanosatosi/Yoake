@@ -610,7 +610,7 @@
                           AutomationProperties.Name="Comment / hide subtitle line" ToolTip.Tip="Toggle comment: open eye = dialogue, crossed eye = comment">
               <Viewbox Width="18" Height="18">
                 <Canvas Width="24" Height="24" IsHitTestVisible="False">
-                  <Path Name="DialogueEye" IsVisible="{Binding !SelectedIsComment}" Data="M2 12 C7 3 17 3 22 12 C17 21 7 21 2 12 Z M12 9 A3 3 0 1 0 12 15 A3 3 0 1 0 12 9" Stroke="{DynamicResource IconForegroundBrush}" StrokeThickness="1.7" StrokeLineJoin="Round" />
+                  <Path Name="DialogueEye" IsVisible="{Binding !SelectedIsComment}" Data="M2 12 C7 3 17 3 22 12 C17 21 7 21 2 12 Z M12 9 A3 3 0 1 0 12 15 A3 3 0 1 0 12 9" Stroke="{DynamicResource IconForegroundBrush}" StrokeThickness="1.7" StrokeJoin="Round" />
                   <Path Name="CommentEye" IsVisible="{Binding SelectedIsComment}" Data="M2 12 C3.6 9.1 5.8 7.2 8.2 6.3 M12.5 5.5 C16.3 5.5 19.7 7.8 22 12 C20.9 14 19.6 15.6 18 16.7 M14.5 18 C9.3 19.5 4.5 16.5 2 12 M10 10 A3 3 0 0 0 14 14" Stroke="{DynamicResource IconForegroundBrush}" StrokeThickness="1.7" StrokeLineCap="Round" />
                   <Path Name="CommentEyeSlash" IsVisible="{Binding SelectedIsComment}" Data="M3 3 L21 21" Stroke="{DynamicResource VisualToolPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" />
                 </Canvas>

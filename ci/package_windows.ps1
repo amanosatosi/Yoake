@@ -184,6 +184,22 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'THIRD_PARTY_NOTICES.md') -Destinati
 Copy-Item -LiteralPath (Join-Path $repoRoot 'automation') -Destination $portable -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $repoRoot 'automation-3.5-above') -Destination $portable -Recurse -Force
 
+# Keep the exact published symbols for crash diagnosis, but never ship
+# them in the user-facing ZIP. Preserve their relative paths for lookup.
+$symbolsRoot = Join-Path $OutputRoot 'Yoake-Windows-x64-symbols'
+if (Test-Path -LiteralPath $symbolsRoot) { Remove-Item -LiteralPath $symbolsRoot -Recurse -Force }
+New-Item -ItemType Directory -Force -Path $symbolsRoot | Out-Null
+$symbolFiles = @(Get-ChildItem -LiteralPath $portable -Recurse -Force -File -Filter '*.pdb')
+$symbolBytes = [long]0
+foreach ($file in $symbolFiles) {
+  $relative = [IO.Path]::GetRelativePath($portable, $file.FullName)
+  $target = Join-Path $symbolsRoot $relative
+  New-Item -ItemType Directory -Force -Path ([IO.Path]::GetDirectoryName($target)) | Out-Null
+  $symbolBytes += $file.Length
+  Move-Item -LiteralPath $file.FullName -Destination $target -Force
+}
+Write-Host ("Separated {0} PDB files ({1:N2} MiB) from portable runtime." -f $symbolFiles.Count, ($symbolBytes / 1MB))
+
 $zip = Join-Path $OutputRoot 'Yoake-Windows-x64-portable.zip'
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 Compress-Archive -LiteralPath $portable -DestinationPath $zip -CompressionLevel Optimal
@@ -195,6 +211,39 @@ Expand-Archive -LiteralPath $zip -DestinationPath $OutputRoot
 $archive = [IO.Compression.ZipFile]::OpenRead($zip)
 try {
   if (@($archive.Entries | Where-Object { $_.FullName -notmatch '^Yoake[\\/]' }).Count -gt 0) { throw 'Portable archive contains files outside Yoake/.' }
+  if (@($archive.Entries | Where-Object { $_.FullName -match '\.pdb
+if (-not (Test-Path -LiteralPath (Join-Path $portable 'Yoake.exe'))) { throw 'Portable archive is missing Yoake.exe.' }
+Write-Host 'Portable archive extracted for native closure, hash and GUI acceptance.'
+Write-Host "Staged $($selected.Count) native runtime DLL(s) in native/win-x64."
+Write-Host "Created $zip"
+ }).Count -gt 0) { throw 'Portable archive contains debug symbols.' }
+  $entries = @($archive.Entries | Where-Object { $_.Name } | ForEach-Object {
+    [ordered]@{ path = $_.FullName; bytes = $_.Length; compressed_bytes = $_.CompressedLength }
+  } | Sort-Object { $_.compressed_bytes } -Descending)
+  $report = [ordered]@{
+    portable_zip_bytes = (Get-Item -LiteralPath $zip).Length
+    portable_extracted_bytes = [long](($entries | ForEach-Object { $_.bytes } | Measure-Object -Sum).Sum)
+    excluded_symbol_count = $symbolFiles.Count
+    excluded_symbol_bytes = $symbolBytes
+    files = $entries
+  }
+  $report | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $OutputRoot 'Yoake-Windows-x64-package-size.json') -Encoding utf8
+  Write-Host ("Portable ZIP: {0:N2} MiB; extracted: {1:N2} MiB" -f ($report.portable_zip_bytes / 1MB), ($report.portable_extracted_bytes / 1MB))
+  Write-Host 'Largest compressed entries:'
+  $entries | Select-Object -First 15 | ForEach-Object { Write-Host ("  {0,8:N2} MiB  {1}" -f ($_.compressed_bytes / 1MB), $_.path) }
+  if ($env:GITHUB_STEP_SUMMARY) {
+    @(
+      '### Yoake Windows package size'
+      ''
+      ("- Portable ZIP: {0:N2} MiB" -f ($report.portable_zip_bytes / 1MB))
+      ("- Extracted runtime: {0:N2} MiB" -f ($report.portable_extracted_bytes / 1MB))
+      ("- Separate debug symbols: {0:N2} MiB ({1} files)" -f ($symbolBytes / 1MB), $symbolFiles.Count)
+      ''
+      '| File | Compressed (MiB) | Extracted (MiB) |'
+      '|---|---:|---:|'
+      $($entries | Select-Object -First 15 | ForEach-Object { "| $($_.path) | {0:N2} | {1:N2} |" -f ($_.compressed_bytes / 1MB), ($_.bytes / 1MB) })
+    ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8
+  }
 } finally { $archive.Dispose() }
 if (-not (Test-Path -LiteralPath (Join-Path $portable 'Yoake.exe'))) { throw 'Portable archive is missing Yoake.exe.' }
 Write-Host 'Portable archive extracted for native closure, hash and GUI acceptance.'
