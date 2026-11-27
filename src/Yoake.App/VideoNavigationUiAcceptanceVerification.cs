@@ -75,11 +75,29 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     await Invoke("settings/hotkeys/set",new HotkeyChange(HotkeyContext.Default,"video/focus_seek",["F10"]));
                     Press(Grid,Key.F10);Require(window.FindControl<VideoFrameSlider>("VideoSeekBar")!.IsKeyboardFocusWithin,"Focus-seek enters the actual video slider.");
                     Press(window.FindControl<VideoFrameSlider>("VideoSeekBar")!,Key.F10);Require(Grid.IsKeyboardFocusWithin,"Focus-seek returns to the previously focused input.");
-                    var timingSource=model.ActiveEditor!.Document.Serialize();
-                    Press(window.FindControl<RadioButton>("TimingByFrame")!,Key.Space);
-                    Require(model.TimingByFrames&&model.Draft!.TimingStart==_map!.FrameAtMilliseconds(_rows[0].StartMilliseconds!.Value,FrameTimeKind.Start).ToString(),"Frame radio shows VFR start boundary.");
-                    Press(window.FindControl<RadioButton>("TimingByTime")!,Key.Space);
-                    Require(!model.TimingByFrames&&model.ActiveEditor.Document.Serialize()==timingSource,"Switching timing units must not mutate source.");
+                    var timingSource=model.ActiveEditor!.Document.Serialize();var timingUndo=model.ActiveEditor.Undo.NextUndoName;
+                    var timingLine=model.SelectedEvent!;var startText=timingLine.Start;var endText=timingLine.End;
+                    var timeRadio=window.FindControl<RadioButton>("TimingByTime")!;
+                    var frameRadio=window.FindControl<RadioButton>("TimingByFrame")!;
+                    var startField=window.FindControl<TextBox>("LineStart")!;
+                    var endField=window.FindControl<TextBox>("LineEnd")!;
+                    var durationField=window.FindControl<TextBox>("LineDuration")!;
+                    Require(frameRadio.IsEnabled&&frameRadio.IsEffectivelyVisible&&timeRadio.IsEffectivelyVisible,"Real time/frame controls must be available with loaded media.");
+                    Press(frameRadio,Key.Space);
+                    await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
+                    var first=_map!.FrameAtMilliseconds(timingLine.StartMilliseconds!.Value,FrameTimeKind.Start);
+                    var last=_map.FrameAtMilliseconds(timingLine.EndMilliseconds!.Value,FrameTimeKind.End);
+                    Require(model.TimingByFrames&&frameRadio.IsChecked==true&&timeRadio.IsChecked==false&&
+                        model.Draft!.TimingStart==first.ToString()&&startField.Text==first.ToString()&&
+                        endField.Text==last.ToString()&&durationField.Text==Math.Max(0L,(long)last-first+1).ToString(),
+                        $"Frame radio must project all actual VFR fields: mode={model.TimingByFrames}, checked={frameRadio.IsChecked}, draft={model.Draft?.TimingStart}, start={startField.Text}, end={endField.Text}, duration={durationField.Text}, expected={first}/{last}.");
+                    Require(model.ActiveEditor.Document.Serialize()==timingSource&&model.ActiveEditor.Undo.NextUndoName==timingUndo&&model.Draft?.IsChanged==false,"Frame projection must not modify source, draft or undo.");
+                    Press(timeRadio,Key.Space);
+                    await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
+                    Require(!model.TimingByFrames&&timeRadio.IsChecked==true&&frameRadio.IsChecked==false&&
+                        startField.Text==startText&&endField.Text==endText&&model.Draft?.IsChanged==false&&
+                        model.ActiveEditor.Document.Serialize()==timingSource&&model.ActiveEditor.Undo.NextUndoName==timingUndo,
+                        $"Time radio restores exact ASS timing without mutation: {startField.Text}/{endField.Text}, expected {startText}/{endText}.");
                     var startReadout=window.FindControl<Button>("VideoStartOffset")!;var endReadout=window.FindControl<Button>("VideoEndOffset")!;
                     Require(startReadout.ContextMenu is not null&&endReadout.ContextMenu is not null,"Both relative timing readouts expose fade menus.");
                     Require(window.FindControl<TextBox>("ExactTime") is null&&window.FindControl<Button>("VideoPlayButton")!.Content is Grid,"Video toolbar uses icon-only playback and no permanent seek input.");
@@ -164,6 +182,9 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
             var row=list.ContainerFromIndex(Math.Max(0,list.SelectedIndex)) as Control;
             Require(row is {Bounds.Height:>0},"A realized interactive subtitle row must exist before keyboard input.");control=row!;
         }
-        (TopLevel.GetTopLevel(control) as Window)?.Activate();Require(control.Focus()&&control.IsKeyboardFocusWithin,"Actual navigation control must own focus: "+control.Name);control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});}
+        (TopLevel.GetTopLevel(control) as Window)?.Activate();Require(control.Focus()&&control.IsKeyboardFocusWithin,"Actual navigation control must own focus: "+control.Name);control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=control,Key=key,KeyModifiers=modifiers});
+        if(key==Key.Space&&control is Button)
+            control.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyUpEvent,Source=control,Key=key,KeyModifiers=modifiers});
+    }
     private static void Require(bool condition,string message){if(!condition)throw new InvalidOperationException(message);}
 }
