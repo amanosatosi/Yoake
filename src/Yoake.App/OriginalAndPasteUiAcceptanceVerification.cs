@@ -56,12 +56,12 @@ internal sealed class OriginalAndPasteUiAcceptanceVerification(IClassicDesktopSt
                     Require(model.ShowOriginal&&original.IsReadOnly&&original.IsVisible&&original.Text==_original,"Visible read-only Original snapshot.");
                     Require(original.Bounds.Height>=64&&Math.Abs(original.Bounds.Height-Text.Bounds.Height)<=1&&Math.Abs(original.Bounds.Width-Text.Bounds.Width)<=1,"Original and edit inputs must share the available editor area equally.");
                     var editors=window.FindControl<Grid>("SubtitleTextEditors")!;
-                    var left=original.TranslatePoint(default,editors)!.Value;var right=Text.TranslatePoint(default,editors)!.Value;
-                    Require(Math.Abs(left.Y-right.Y)<=1&&right.X>=left.X+original.Bounds.Width,"Original is left of the translation, on the same row.");
+                    var left=Text.TranslatePoint(default,editors)!.Value;var right=original.TranslatePoint(default,editors)!.Value;
+                    Require(Math.Abs(left.Y-right.Y)<=1&&right.X>=left.X+Text.Bounds.Width-1,"Editable translation is on the left and read-only original is on the right.");
                     foreach(var name in new[]{"OriginalInsert","OriginalRevert","OriginalClearText","OriginalClear"})
                     {
                         var button=window.FindControl<Button>(name)!;var point=button.TranslatePoint(default,editors)!.Value;
-                        Require(point.X>=left.X+original.Bounds.Width-1&&point.X+button.Bounds.Width<=right.X+1&&button.Content is PathIcon,"Original actions must be icon buttons between the equal-width inputs.");
+                        Require(point.X>=left.X+Text.Bounds.Width-1&&point.X+button.Bounds.Width<=right.X+1&&(name=="OriginalClearText"?button.Content is Grid:button.Content is PathIcon),"Original actions must be icon buttons between the equal-width inputs.");
                         Within(button,window);
                     }
                     Within(original,window);Within(Text,window);Within(window.FindControl<Button>("OriginalInsert")!,window);

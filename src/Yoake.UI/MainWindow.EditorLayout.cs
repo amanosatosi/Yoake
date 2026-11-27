@@ -11,9 +11,9 @@ public partial class MainWindow
     {
         var visible=_model?.ShowOriginal==true;
         var columns=SubtitleTextEditors.ColumnDefinitions;
-        columns[0].Width=visible?new GridLength(1,GridUnitType.Star):new GridLength(0);
+        columns[0].Width=new GridLength(1,GridUnitType.Star);
         columns[1].Width=new GridLength(visible?OriginalActionStripWidth:0);
-        columns[2].Width=new GridLength(1,GridUnitType.Star);
+        columns[2].Width=visible?new GridLength(1,GridUnitType.Star):new GridLength(0);
         UpdateEditorMinimumHeight();
     }
     private void UpdateEditorMinimumHeight()

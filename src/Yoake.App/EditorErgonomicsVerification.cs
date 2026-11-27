@@ -22,15 +22,23 @@ internal static class EditorErgonomicsVerification
             Math.Abs(original.Bounds.Height-edit.Bounds.Height)<=1&&Math.Abs(original.Bounds.Width-edit.Bounds.Width)<=1,
             $"Original and edit inputs must have equal real dimensions: {original.Bounds} / {edit.Bounds}.");
         var editors=window.FindControl<Grid>("SubtitleTextEditors")!;
-        var left=original.TranslatePoint(default,editors)!.Value;var right=edit.TranslatePoint(default,editors)!.Value;
-        Require(Math.Abs(left.Y-right.Y)<=1&&left.X+original.Bounds.Width<=right.X,"The original and translation must be horizontally aligned, not stacked.");
+        var left=edit.TranslatePoint(default,editors)!.Value;var right=original.TranslatePoint(default,editors)!.Value;
+        Require(Math.Abs(left.Y-right.Y)<=1&&left.X+edit.Bounds.Width<=right.X+1,"Translation must be left of the original, with both horizontally aligned.");
         var minimum=UiFontSize(model)*1.6;var compact=Math.Max(24,Math.Ceiling(minimum));
         foreach(var name in new[]{"OriginalRevert","OriginalClear","OriginalClearText","OriginalInsert"})
         {
             var button=window.FindControl<Button>(name)!;
             var point=button.TranslatePoint(default,editors)!.Value;
-            Require(button.IsEffectivelyVisible&&button.Content is PathIcon&&button.Bounds.Height>=24&&button.Bounds.Height<=compact+2&&button.Bounds.Width<=32&&point.X>=left.X+original.Bounds.Width-1&&point.X+button.Bounds.Width<=right.X+1,"Original action icons must fit between the inputs: "+name+" "+button.Bounds);
+            Require(button.IsEffectivelyVisible&&(name=="OriginalClearText"?button.Content is Grid:button.Content is PathIcon)&&button.Bounds.Height>=24&&button.Bounds.Height<=compact+2&&button.Bounds.Width<=32&&point.X>=left.X+edit.Bounds.Width-1&&point.X+button.Bounds.Width<=right.X+1,"Original action icons must fit between the inputs: "+name+" "+button.Bounds);
         }
+        var insert=(PathIcon)window.FindControl<Button>("OriginalInsert")!.Content!;
+        var revert=(PathIcon)window.FindControl<Button>("OriginalRevert")!.Content!;
+        var clear=(PathIcon)window.FindControl<Button>("OriginalClear")!.Content!;
+        var glyph=window.FindControl<PathIcon>("OriginalClearTextGlyph")!;
+        var cross=window.FindControl<PathIcon>("OriginalClearTextCross")!;
+        Require(Equals(insert.Foreground,revert.Foreground)&&Equals(insert.Foreground,glyph.Foreground)&&
+            Equals(clear.Foreground,cross.Foreground)&&!Equals(glyph.Foreground,cross.Foreground),
+            "Original action icons use the primary palette; delete uses warning, and Clear Text combines both.");
         var colors=window.FindControl<WrapPanel>("FormattingToolbar")!.GetVisualDescendants().OfType<AssColorButton>().ToArray();
         Require(colors.Length==4,"Four subtitle color channels remain available.");
         foreach(var color in colors)

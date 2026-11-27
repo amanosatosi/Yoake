@@ -586,23 +586,26 @@
           <CheckBox Name="BetterViewToggle" Content="Better View" IsChecked="{Binding Actions[edit/better-view].IsChecked, Mode=OneWay}" Command="{Binding Actions[edit/better-view]}" Height="24" MinHeight="24" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="8,0,0,4" ToolTip.Tip="Show hard line breaks and compact motion data" />
         </WrapPanel>
 
-        <Grid Grid.Row="3" Name="SubtitleTextEditors" ColumnDefinitions="0,0,*">
-          <TextBox Name="OriginalText" Grid.Column="0" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" FontSize="{DynamicResource YoakeUiEditorFontSize}" VerticalContentAlignment="Top" Watermark="Original" ToolTip.Tip="Original text captured when this line became active" />
-          <controls:AssTextBox Name="SubtitleText" Grid.Column="2" Watermark="Translation / subtitle text" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="{DynamicResource YoakeUiEditorFontSize}" SourceText="{Binding EventEditorText, Mode=TwoWay}" IsReadOnly="{Binding IsDrawingGesture}" BetterView="{Binding BetterView}" ShowMotionData="{Binding ShowMotionData}" MotionToggleCommand="{Binding Actions[edit/motion-block/toggle]}" MotionCopyCommand="{Binding Actions[edit/motion-block/copy]}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
+        <Grid Grid.Row="3" Name="SubtitleTextEditors" ColumnDefinitions="*,0,0">
+          <controls:AssTextBox Name="SubtitleText" Grid.Column="0" Watermark="Subtitle text" ToolTip.Tip="Edit ASS text · Shift+Enter inserts a hard line break" FontSize="{DynamicResource YoakeUiEditorFontSize}" SourceText="{Binding EventEditorText, Mode=TwoWay}" IsReadOnly="{Binding IsDrawingGesture}" BetterView="{Binding BetterView}" ShowMotionData="{Binding ShowMotionData}" MotionToggleCommand="{Binding Actions[edit/motion-block/toggle]}" MotionCopyCommand="{Binding Actions[edit/motion-block/copy]}" AcceptsReturn="True" ClearSelectionOnLostFocus="False" TextWrapping="Wrap" VerticalContentAlignment="Top" MinHeight="64" />
           <StackPanel Name="OriginalActions" Grid.Column="1" IsVisible="{Binding ShowOriginal}" Orientation="Vertical" Spacing="3" HorizontalAlignment="Center" VerticalAlignment="Center">
             <Button Name="OriginalInsert" Command="{Binding Actions[edit/insert_original]}" Width="28" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Insert original into translation" AutomationProperties.Name="Insert Original">
-              <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioGoTo}" Foreground="{DynamicResource VisualToolPrimaryBrush}" />
+              <PathIcon Width="16" Height="16" Data="M2,12 L11,3 L13,5 L7,11 H23 V13 H7 L13,19 L11,21 Z" Foreground="{DynamicResource VisualToolPrimaryBrush}" />
             </Button>
             <Button Name="OriginalRevert" Command="{Binding Actions[edit/revert]}" Width="28" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Revert translation to original" AutomationProperties.Name="Revert to Original">
-              <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Undo}" Foreground="{DynamicResource IconForegroundBrush}" />
+              <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Undo}" Foreground="{DynamicResource VisualToolPrimaryBrush}" />
             </Button>
             <Button Name="OriginalClearText" Command="{Binding Actions[edit/clear/text]}" Width="28" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Clear visible text; keep ASS tags and drawings" AutomationProperties.Name="Clear Text">
-              <PathIcon Width="16" Height="16" Data="M2,3 H16 V5 H10 V17 H8 V5 H2 Z M15,12 L17,10 L20,13 L23,10 L25,12 L22,15 L25,18 L23,20 L20,17 L17,20 L15,18 L18,15 Z" Foreground="{DynamicResource IconForegroundBrush}" />
+              <Grid Width="18" Height="18" IsHitTestVisible="False">
+                <PathIcon Name="OriginalClearTextGlyph" Width="13" Height="14" HorizontalAlignment="Left" VerticalAlignment="Top" Data="M1,1 H15 V4 H9.5 V18 H6.5 V4 H1 Z" Foreground="{DynamicResource VisualToolPrimaryBrush}" />
+                <PathIcon Name="OriginalClearTextCross" Width="9" Height="9" HorizontalAlignment="Right" VerticalAlignment="Bottom" Data="{x:Static icons:IconGeometries.Close}" Foreground="{DynamicResource VisualToolWarningBrush}" />
+              </Grid>
             </Button>
             <Button Name="OriginalClear" Command="{Binding Actions[edit/clear]}" Width="28" Height="24" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Clear entire translation, including tags" AutomationProperties.Name="Clear All">
-              <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Delete}" Foreground="{DynamicResource IconForegroundBrush}" />
+              <PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Delete}" Foreground="{DynamicResource VisualToolWarningBrush}" />
             </Button>
           </StackPanel>
+          <TextBox Name="OriginalText" Grid.Column="2" IsVisible="{Binding ShowOriginal}" Text="{Binding OriginalText}" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" FontSize="{DynamicResource YoakeUiEditorFontSize}" VerticalContentAlignment="Top" Watermark="Original" ToolTip.Tip="Original text captured when this line became active" />
         </Grid>
       </Grid>
     </Border>
