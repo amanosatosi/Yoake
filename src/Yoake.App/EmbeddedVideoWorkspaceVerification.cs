@@ -73,8 +73,11 @@ internal static class EmbeddedVideoWorkspaceVerification
         await Invoke(model.HasAudio?CommandIds.ViewAudioVideo:CommandIds.ViewVideo);await Layout();
         var source=model.ActiveEditor!.Document.Serialize();var undo=model.ActiveEditor.Undo.NextUndoName;
         var draft=model.Draft;var audio=model.AudioSourcePath;var samples=model.WaveformSamples;
-        await Zoom("37.5%");var small=Read();
+        // The calling acceptance suite may have left a document-local drawing
+        // tool with wrapped context controls. Establish the same toolbar state
+        // before the first zoom that will be used for the return zoom.
         await Invoke("video/tool/crosshair");await Layout();
+        await Zoom("37.5%");var small=Read();
         var stableCanvas=Bounds(Get<Border>("VideoCanvasHost"));
         var stablePlayback=Bounds(Get<Grid>("VideoPlaybackControls"));
         var stablePrimary=Bounds(Get<WrapPanel>("VisualPrimaryTools"));
@@ -89,7 +92,11 @@ internal static class EmbeddedVideoWorkspaceVerification
             if(context.Bounds.Width>0)Require(Math.Abs(Bounds(context).Right-Bounds(Get<Control>("VisualToolGroups")).Right)<=1,
                 "Contextual tools must remain right-aligned and visually separated from the primary tools: "+tool);
         }
-        small=Read();
+        Require(model.IsCrosshairTool,"The zoom round trip must compare identical visual tool state.");
+        // Exercise tool switching without silently accepting a shifted baseline.
+        var afterTools=Read();
+        Require(Math.Abs(afterTools.VideoWidth-small.VideoWidth)<2&&Math.Abs(afterTools.UpperHeight-small.UpperHeight)<2,
+            $"Switching one-row tools must preserve both workspace allocations: before={small}; after={afterTools}.");
         await Zoom("50%");var large=Read();
         Require(large.VideoWidth>small.VideoWidth+100&&large.VerticalDivider.X>small.VerticalDivider.X+100,"37.5% to 50% must move the vertical video/editor splitter and widen the workspace column.");
         Require(large.UpperHeight>small.UpperHeight+70&&large.HorizontalDivider.Y>small.HorizontalDivider.Y+70&&large.Grid.Height<small.Grid.Height-70,"37.5% to 50% must move the horizontal workspace/grid splitter and reallocate real panel height.");

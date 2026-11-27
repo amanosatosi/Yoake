@@ -70,7 +70,7 @@
                     <Button Name="CloseDocumentTab" Grid.Column="2" Width="28" Padding="6" Background="Transparent" BorderThickness="0" Command="{Binding CloseCommand}" ToolTip.Tip="Close tab">
                       <PathIcon Width="11" Height="11" Data="{x:Static icons:IconGeometries.Close}" Foreground="{DynamicResource IconForegroundBrush}" />
                     </Button>
-                    <Border Grid.ColumnSpan="3" Height="3" Margin="7,0" VerticalAlignment="Bottom" CornerRadius="2" Background="{DynamicResource TabAccentBrush}" IsVisible="{Binding IsActive}" IsHitTestVisible="False" />
+                    <Border Classes="tab-selection-underline" Grid.ColumnSpan="3" Height="3" Margin="7,0" VerticalAlignment="Bottom" CornerRadius="2" Background="{DynamicResource TabAccentBrush}" IsVisible="{Binding IsActive}" IsHitTestVisible="False" />
                   </Grid>
                 </Border>
               </DataTemplate>

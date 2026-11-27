@@ -319,6 +319,25 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
             .Single(b=>b.Name==name&&b.DataContext is DocumentTabViewModel tab&&tab.Id==id);
         Border TabBorder(Guid id)=>TabButton(id,"ActivateDocumentTab").GetVisualAncestors().OfType<Border>()
             .First(b=>b.Classes.Contains("document-tab"));
+        void VerifyTabAppearance(Guid active,Guid inactive)
+        {
+            var selected=TabBorder(active);var other=TabBorder(inactive);
+            Require(selected.Classes.Contains("active")&&!other.Classes.Contains("active"),
+                "Only the active document tab receives the active class.");
+            Require(Equals(selected.Background,other.Background)&&!Equals(selected.BorderBrush,other.BorderBrush)&&
+                selected.BorderThickness==other.BorderThickness&&selected.Bounds.Size==other.Bounds.Size,
+                "Tab selection changes the outline, not the fill or geometry.");
+            TextBlock Title(Guid id)=>TabButton(id,"ActivateDocumentTab").GetVisualDescendants().OfType<TextBlock>()
+                .Single(t=>t.Classes.Contains("tab-title"));
+            var selectedTitle=Title(active);var otherTitle=Title(inactive);
+            Require(Equals(selectedTitle.Foreground,otherTitle.Foreground)&&selectedTitle.FontWeight==otherTitle.FontWeight,
+                "Tab selection must not tint or embolden the title.");
+            Border Underline(Border tab)=>tab.GetVisualDescendants().OfType<Border>().Single(b=>b.Classes.Contains("tab-selection-underline"));
+            var line=Underline(selected);var inactiveLine=Underline(other);
+            Require(line.IsVisible&&line.Bounds.Height==3&&Equals(line.Background,selected.BorderBrush)&&
+                !inactiveLine.IsVisible&&!line.IsHitTestVisible,
+                "Only the active tab receives the non-interactive three-DIP accent underline matching its outline.");
+        }
         var original=model.ActiveDocumentId!.Value;var editor=model.ActiveEditor!;var source=editor.Document.Serialize();
         var count=model.Tabs.Count;
         await Layout();
@@ -332,12 +351,12 @@ internal sealed class HotkeyUiAcceptanceVerification(IClassicDesktopStyleApplica
         Require(model.Tabs.Count==count+1&&model.ActiveDocumentId!=original&&model.ActiveEditor!=editor&&model.Events.Count==1,
             "Real + button creates an independent document without closing the current one.");
         var second=model.ActiveDocumentId!.Value;
-        Require(TabBorder(second).Classes.Contains("active")&&!TabBorder(original).Classes.Contains("active")&&
-            !Equals(TabBorder(second).Background,TabBorder(original).Background),"Active and inactive document tabs must have distinct backgrounds.");
+        VerifyTabAppearance(second,original);
         Press(TabButton(original,"ActivateDocumentTab"),Key.Enter);await Layout();
         Require(model.ActiveDocumentId==original&&ReferenceEquals(model.ActiveEditor,editor)&&editor.Document.Serialize()==source&&
             TabBorder(original).Classes.Contains("active")&&!TabBorder(second).Classes.Contains("active"),
             "Real tab button switches back to the original source, editor and selected appearance.");
+        VerifyTabAppearance(original,second);
         Press(TabButton(second,"CloseDocumentTab"),Key.Enter);await Layout();
         Require(model.Tabs.Count==count&&model.ActiveDocumentId==original&&ReferenceEquals(model.ActiveEditor,editor)&&editor.Document.Serialize()==source,
             "Closing a background tab preserves the current document.");
