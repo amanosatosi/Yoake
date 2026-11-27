@@ -340,8 +340,23 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(text.Bounds.Width>=300&&text.Bounds.Height>=64,"ASS editor must retain useful text space after timing groups reflow.");
         var metadata=window.FindControl<WrapPanel>("MetadataFields")!;
         Require(metadata.TranslatePoint(default,window)!.Value.Y>=text.TranslatePoint(new Point(0,text.Bounds.Height),window)!.Value.Y-1,"Event properties belong below the text editor.");
-        if(metadata.Bounds.Width>=1050)
-            Require(metadata.Bounds.Height<=window.FindControl<TextBox>("LineStart")!.Bounds.Height+4,"At desktop widths the property strip must occupy a single row.");
+        var groups=metadata.Children.Where(c=>c.IsVisible).ToArray();
+        var requiredWidth=groups.Sum(c=>c.DesiredSize.Width);
+        foreach(var group in groups)
+        {
+            var origin=group.TranslatePoint(default,metadata)!.Value;
+            Require(origin.X>=-1&&origin.Y>=-1&&origin.X+group.Bounds.Width<=metadata.Bounds.Width+1&&origin.Y+group.Bounds.Height<=metadata.Bounds.Height+1,
+                "Property strip must keep every group within its allocated area: "+group.Name+" "+group.Bounds);
+        }
+        // Different native controls have slightly different heights. Test
+        // whether the groups actually share one row rather than comparing
+        // the entire strip to the height of just one timing TextBox.
+        if(metadata.Bounds.Width>=requiredWidth+1)
+        {
+            var top=groups.Max(c=>c.TranslatePoint(default,metadata)!.Value.Y);
+            var bottom=groups.Min(c=>c.TranslatePoint(default,metadata)!.Value.Y+c.Bounds.Height);
+            Require(bottom>top,"Property groups must occupy one row whenever their measured widths fit.");
+        }
         Require(window.GetVisualDescendants().OfType<AssColorButton>().Count(b=>b.Bounds.Width>=30&&b.Bounds.Height>=24&&b.Command is not null)==4,"All four command-backed color swatches must be realized.");
         var audio=window.FindControl<Grid>("AudioRegion")!;var editor=window.FindControl<Grid>("EventEditorRegion")!;
         if (model.ShowAudio)
@@ -382,7 +397,11 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(!window.FindControl<Grid>("VideoRegion")!.IsEffectivelyVisible &&
                 !window.FindControl<Grid>("AudioRegion")!.IsEffectivelyVisible,
             "Unloaded media must not reserve visible workspace.");
-        Require(window.FindControl<Grid>("AudioRegion")!.RowDefinitions.Count==3,"Audio status must share the playback row rather than consume waveform space.");
+        Require(window.FindControl<Grid>("AudioRegion")!.RowDefinitions.Count==3&&
+            Grid.GetRow(window.FindControl<AudioWaveformControl>("AudioDisplay")!)==0&&
+            Grid.GetRow(window.FindControl<Avalonia.Controls.Primitives.ScrollBar>("AudioPanner")!)==1&&
+            Grid.GetRow((Control)window.FindControl<ScrollViewer>("AudioActionScroll")!.Parent!)==2,
+            "Audio visualization, panner and command/status row must keep the new Aegisub-style order.");
         Require(text.Bounds.Width>=600&&text.Bounds.Height>=140,"Default ASS editor must retain room for tag-heavy multiline editing.");
         Require(rows.Bounds.Height>=270,"Default subtitle grid must retain at least nine dense rows of space.");
         Require(rows.Bounds.Height>window.FindControl<Grid>("UpperWorkspace")!.Bounds.Height,

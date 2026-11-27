@@ -143,7 +143,7 @@ public sealed class AudioWaveformControl : Control
                 var left=X(slot.Start/1000d);var right=X(slot.End/1000d);
                 if(right>left)context.FillRectangle(new SolidColorBrush(Color.FromArgb(slot.Current?(byte)65:(byte)30,slot.Assigned?(byte)75:(byte)180,170,220)),new Rect(left,0,right-left,Bounds.Height));
                 var label=new FormattedText(slot.Text.Length==0?"rest":slot.Text,System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,Typeface.Default,11,slot.Current?Brushes.Gold:Brushes.White);
-                if(right-left>label.Width+4)context.DrawText(label,new(left+2,2));
+                if(right-left>label.Width+4)context.DrawText(label,new(left+2,RulerHeight+2));
             }
             foreach(var boundary in karaoke.Boundaries){var x=X(boundary/1000d);context.DrawLine(new Pen(Brushes.Gold,1),new(x,0),new(x,Bounds.Height));}
         }

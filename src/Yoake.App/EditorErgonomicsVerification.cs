@@ -45,8 +45,13 @@ internal static class EditorErgonomicsVerification
         Require(colors.Length==4,"Four subtitle color channels remain available.");
         foreach(var color in colors)
         {
-            Require(color.Bounds.Width<=48&&color.Bounds.Height<=compact+2,"Color buttons keep desktop toolbar density: "+color.Bounds);
-            Require(color.GetVisualDescendants().OfType<PathIcon>().All(icon=>icon.Bounds.Width==24&&icon.Bounds.Height==24),"Original Aegisub color artwork must render at its legible native size.");
+            var button=color.GetVisualDescendants().OfType<Button>().Single();
+            Require(color.IsEffectivelyVisible&&color.Bounds.Width>=30&&color.Bounds.Width<=48&&color.Bounds.Height>=24&&color.Bounds.Height<=compact+2&&
+                button.Bounds.Height<=compact+2&&button.Command is not null,"Color buttons keep desktop toolbar density: "+color.Bounds+"; inner button "+button.Bounds);
+            var icons=color.GetVisualDescendants().OfType<PathIcon>().ToArray();
+            Require(icons.Length==2&&icons.All(icon=>icon.IsEffectivelyVisible&&icon.Bounds.Width==24&&icon.Bounds.Height==24&&
+                icon.TranslatePoint(default,color) is {} p&&p.Y>=-0.5&&p.Y+icon.Bounds.Height<=color.Bounds.Height+0.5),
+                "Original Aegisub color artwork must render at its legible native size inside the compact button.");
         }
         await VerifyStableFocusAsync(window,edit,original);
         Require(model.ActiveEditor.Document.Serialize()==source&&model.ActiveEditor.Undo.NextUndoName==undo,"Editor presentation must not change ASS or undo history.");

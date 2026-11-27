@@ -19,12 +19,15 @@ public sealed class AssColorButton : UserControl
     private readonly TextBlock _unknown = new(){Text="?",FontSize=11,Foreground=Brushes.Black,FontWeight=FontWeight.SemiBold,HorizontalAlignment=HorizontalAlignment.Center,VerticalAlignment=VerticalAlignment.Center};
     private readonly PathIcon _iconAccent = new(){Width=24,Height=24};
     private readonly PathIcon _iconForeground = new(){Width=24,Height=24};
-    private readonly Button _button = new(){Padding=new Thickness(2,0)};
+    // Keep the 24-DIP artwork intact, with one DIP of border on each side.
+    // Fluent's default button height is larger than the editor toolbar.
+    private readonly Button _button = new(){Height=26,MinHeight=26,MinWidth=0,Padding=new Thickness(2,0),BorderThickness=new Thickness(1),VerticalContentAlignment=VerticalAlignment.Center};
     public AssColor? Value { get=>GetValue(ValueProperty); set=>SetValue(ValueProperty,value); }
     public string Label { get=>GetValue(LabelProperty); set=>SetValue(LabelProperty,value); }
     public ICommand? Command { get=>GetValue(CommandProperty); set=>SetValue(CommandProperty,value); }
     public AssColorButton()
     {
+        Height=26;MinHeight=26;VerticalAlignment=VerticalAlignment.Center;
         var swatch = new Grid{Width=10,Height=18};
         swatch.Children.Add(new CheckerboardControl());swatch.Children.Add(_swatch);swatch.Children.Add(_unknown);
         _iconAccent.Bind(PathIcon.ForegroundProperty,this.GetResourceObservable("IconAccentBrush"));
