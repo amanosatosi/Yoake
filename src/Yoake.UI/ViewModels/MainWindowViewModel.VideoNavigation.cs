@@ -15,8 +15,17 @@ public sealed partial class MainWindowViewModel
         _activeId is {} id&&_documents.TryGetValue(id,out var state)?state.ExternalKeyframes??Array.Empty<int>():Array.Empty<int>();
     public double VideoDurationSeconds=>_media?.VideoDurationSeconds??0;
     public int CurrentFrame=>FrameNavigation.AtTime(FrameTimes,CurrentTimeSeconds);
-    public string FramePositionDisplay=>FrameTimes.Count==0?TimeDisplay:$"#{CurrentFrame} · {TimeSpan.FromSeconds(FrameTimes[CurrentFrame]):hh\\:mm\\:ss\\.fff} / {DurationDisplay} "+(Keyframes.Contains(CurrentFrame)?"· keyframe":"");
-    public string RelativeTimingDisplay=>SelectedEvent is {} line?FrameNavigation.Relative(FrameTimes.Count>0?FrameTimes[CurrentFrame]:CurrentTimeSeconds,line.StartMilliseconds??0,line.EndMilliseconds??0):"";
+    private long VideoReadoutMilliseconds=>FrameTimes.Count>0?(long)Math.Round(FrameTimes[CurrentFrame]*1000):(long)Math.Round(CurrentTimeSeconds*1000);
+    public string FramePositionDisplay=>FrameTimes.Count==0?TimeDisplay:$"{TimeSpan.FromMilliseconds(VideoReadoutMilliseconds):h\\:mm\\:ss\\.fff} - {CurrentFrame}";
+    public bool IsCurrentVideoKeyframe=>FrameTimes.Count>0&&Keyframes.Contains(CurrentFrame);
+    private long? ReadoutOffset(bool fromStart)
+    {
+        if(FrameTimes.Count==0||Draft is null)return null;
+        return AssTime.TryParse(fromStart?Draft.Start:Draft.End,out var time)?VideoReadoutMilliseconds-time:null;
+    }
+    public string VideoStartOffsetDisplay=>ReadoutOffset(true) is {} offset?$"{offset:+0;-0;+0}ms":"";
+    public string VideoEndOffsetDisplay=>ReadoutOffset(false) is {} offset?$"{offset:+0;-0;+0}ms":"";
+    public string RelativeTimingDisplay=>VideoStartOffsetDisplay.Length==0?"":VideoStartOffsetDisplay+"; "+VideoEndOffsetDisplay;
     public event EventHandler<VideoSeekFocusEventArgs>? VideoSeekFocusRequested;
     public decimal? VideoFastJumpStep
     {get=>_settings.VideoFastJumpStep??10;set{if(value is {} step)Actions["video/preferences/fast-step"].Execute((int)step);}}
@@ -57,6 +66,7 @@ public sealed partial class MainWindowViewModel
             _registry.Register(new(new(id,label,label,"Video navigation"),action,c=>Applies(c)&&(available?.Invoke()??true),isChecked:check is null?null:c=>Applies(c)&&check()));
             Actions[id]=new RegistryCommand(_registry,id,CurrentContext,hotkeys:()=>HotkeyProfile);
         }
+        RegisterVideoReadoutCommands();
         Register(CommandIds.VideoPlay,"Play / Pause",(invocation,token)=>{token.ThrowIfCancellationRequested();if(IsPlaying)StopPlayback();else{CurrentTimeSeconds=FrameTimes[CurrentFrame];_=StartPlaybackAsync();}return ValueTask.CompletedTask;},check:()=>IsPlaying);
         Register(CommandIds.VideoStop,"Stop video",(invocation,token)=>{token.ThrowIfCancellationRequested();StopPlayback();return ValueTask.CompletedTask;});
         Register("video/play/line","Play current line",(invocation,token)=>

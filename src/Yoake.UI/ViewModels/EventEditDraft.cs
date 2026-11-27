@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using Yoake.Core.Subtitles;
+using Yoake.Core.Media;
+using System.Globalization;
 
 namespace Yoake.UI.ViewModels;
 
@@ -27,10 +29,10 @@ public sealed class EventEditDraft : INotifyPropertyChanged
     {
         _values["Start"]=_line.Start;_values["End"]=_line.End;
         PropertyChanged?.Invoke(this,new(nameof(Start)));PropertyChanged?.Invoke(this,new(nameof(End)));
-        PropertyChanged?.Invoke(this,new(nameof(Duration)));PropertyChanged?.Invoke(this,new(nameof(IsChanged)));
+        PropertyChanged?.Invoke(this,new(nameof(Duration)));PropertyChanged?.Invoke(this,new(nameof(IsChanged)));NotifyTimingDisplay();
     }
     private string Read(string name) => _values.GetValueOrDefault(name, "");
-    private void Write(string value, string name, [CallerMemberName] string? property = null) { if (!_values.ContainsKey(name) || Read(name) == value) return; _values[name] = value; PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(property)); PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(IsChanged))); if(name is "Start" or "End")PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Duration))); }
+    private void Write(string value, string name, [CallerMemberName] string? property = null) { if (!_values.ContainsKey(name) || Read(name) == value) return; _values[name] = value; PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(property)); PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(IsChanged))); if(name is "Start" or "End"){PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(nameof(Duration)));NotifyTimingDisplay();} }
     public string Layer { get => Read(_line.FieldNames.Any(n=>n.Equals("Layer",StringComparison.OrdinalIgnoreCase)) ? "Layer" : "Marked"); set => Write(value,_line.FieldNames.Any(n=>n.Equals("Layer",StringComparison.OrdinalIgnoreCase)) ? "Layer" : "Marked"); }
     public string Start { get => Read("Start"); set => Write(value,"Start"); }
     public string End { get => Read("End"); set => Write(value,"End"); }
@@ -46,5 +48,51 @@ public sealed class EventEditDraft : INotifyPropertyChanged
     public decimal? RightMargin {get=>Number(MarginR);set{if(value is {} n)MarginR=n.ToString(System.Globalization.CultureInfo.InvariantCulture);}}
     public decimal? VerticalMargin {get=>Number(MarginV);set{if(value is {} n)MarginV=n.ToString(System.Globalization.CultureInfo.InvariantCulture);}}
     public string Duration => AssTime.TryParse(Start,out var start)&&AssTime.TryParse(End,out var end)?AssTime.Format(end-start):"—";
+    private FrameTiming? _frameTiming;
+    internal void SetTimingProjection(FrameTiming? timing)
+    {
+        if(ReferenceEquals(_frameTiming,timing))return;_frameTiming=timing;NotifyTimingDisplay();
+    }
+    private void NotifyTimingDisplay()
+    {
+        PropertyChanged?.Invoke(this,new(nameof(TimingStart)));PropertyChanged?.Invoke(this,new(nameof(TimingEnd)));PropertyChanged?.Invoke(this,new(nameof(TimingDuration)));
+    }
+    private string DisplayBoundary(string time,FrameTimeKind kind)
+        =>_frameTiming is {} map&&AssTime.TryParse(time,out var ms)?map.FrameAtMilliseconds(ms,kind).ToString(CultureInfo.InvariantCulture):time;
+    private string ParseBoundary(string value,FrameTimeKind kind)
+    {
+        if(_frameTiming is not {} map)return value;
+        if(int.TryParse(value,NumberStyles.None,CultureInfo.InvariantCulture,out var frame))
+        {
+            try{return AssTime.Format(map.SubtitleBoundary(frame,kind));}catch(OverflowException){return "invalid frame";}
+        }
+        // Invalid frame input remains invalid instead of publishing an old timing.
+        return value.Contains(':')?"invalid frame":value;
+    }
+    public string TimingStart{get=>DisplayBoundary(Start,FrameTimeKind.Start);set=>Start=ParseBoundary(value,FrameTimeKind.Start);}
+    public string TimingEnd{get=>DisplayBoundary(End,FrameTimeKind.End);set=>End=ParseBoundary(value,FrameTimeKind.End);}
+    public string TimingDuration
+    {
+        get
+        {
+            if(_frameTiming is not {} map)return Duration;
+            if(!AssTime.TryParse(Start,out var start)||!AssTime.TryParse(End,out var end))return "";
+            return Math.Max(0L,(long)map.FrameAtMilliseconds(end,FrameTimeKind.End)-map.FrameAtMilliseconds(start,FrameTimeKind.Start)+1).ToString(CultureInfo.InvariantCulture);
+        }
+        set
+        {
+            if(!AssTime.TryParse(Start,out var start))return;
+            if(_frameTiming is {} map)
+            {
+                if(int.TryParse(value,NumberStyles.None,CultureInfo.InvariantCulture,out var duration)&&duration>0)
+                {
+                    var last=(long)map.FrameAtMilliseconds(start,FrameTimeKind.Start)+duration-1;
+                    if(last is >=0 and <=int.MaxValue)
+                    {try{End=AssTime.Format(map.SubtitleBoundary((int)last,FrameTimeKind.End));}catch(OverflowException){return;}}
+                }
+            }
+            else if(AssTime.TryParse(value,out var timeDuration))End=AssTime.Format(start+timeDuration);
+        }
+    }
     private static decimal? Number(string text)=>decimal.TryParse(text,System.Globalization.NumberStyles.Integer,System.Globalization.CultureInfo.InvariantCulture,out var n)?n:null;
 }

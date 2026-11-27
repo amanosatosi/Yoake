@@ -378,14 +378,29 @@
   <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
   <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn" IsVisible="{Binding ShowEmbeddedVideo}">
     <Border Name="VideoDock" Grid.Row="0" Background="{DynamicResource PanelBrush}">
-      <Grid Name="VideoRegion" Margin="6" VerticalAlignment="Top" RowDefinitions="Auto,22,26,Auto" RowSpacing="4">
+      <Grid Name="VideoRegion" Margin="6" VerticalAlignment="Top" RowDefinitions="Auto,22,Auto,Auto" RowSpacing="3">
         <Border Name="VideoCanvasHost" Background="Black" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Top"><Grid><controls:VideoPresentationControl Name="VideoImage" Model="{Binding}" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border>
         <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="1" Model="{Binding}" />
-        <Grid Name="VideoPlaybackControls" Grid.Row="2" ColumnDefinitions="Auto,*" ColumnSpacing="8">        <StackPanel Orientation="Horizontal" Spacing="4">
-          <Button Command="{Binding Actions[video/play]}" Padding="5,1" ToolTip.Tip="Play or pause video"><StackPanel Orientation="Horizontal" Spacing="3"><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.VideoPlay}" IsVisible="{Binding !IsPlaying}" /><PathIcon Width="15" Height="15" Data="{x:Static icons:IconGeometries.VideoPause}" IsVisible="{Binding IsPlaying}" /><TextBlock Text="{Binding PlayPauseText}" /></StackPanel></Button><Button Command="{Binding Actions[video/stop]}" Padding="4,2" ToolTip.Tip="Stop video playback"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoPause}" /></Button><Button Command="{Binding Actions[video/play/line]}" Padding="4,2" ToolTip.Tip="Play current subtitle line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayLine}" Foreground="{DynamicResource IconAudioLineBrush}" /></Button><ToggleButton Classes="authoring" IsChecked="{Binding Actions[video/autoseek].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/autoseek]}" Padding="4,2" ToolTip.Tip="Automatically seek video to the selected line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoAutoseek}" /></ToggleButton>
-          <Button Command="{Binding Actions[video/frame/previous]}" Padding="4,0" ToolTip.Tip="Previous decoded frame"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.FramePrevious}" /></Button><Button Command="{Binding Actions[video/frame/next]}" Padding="4,0" ToolTip.Tip="Next decoded frame"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.FrameNext}" /></Button>
-          <TextBox Margin="4,0,0,0" Name="ExactTime" Width="92" Padding="4,0" PlaceholderText="h:mm:ss.cc" /><Button Content="Seek" Command="{Binding Actions[video/seek]}" CommandParameter="{Binding #ExactTime.Text}" Padding="4,0" />
-        </StackPanel>        <Grid Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="4"><controls:VideoZoomControl Name="VideoZoom" Grid.Column="1" /><TextBlock Text="{Binding FramePositionDisplay}" ToolTip.Tip="{Binding RelativeTimingDisplay}" VerticalAlignment="Center" FontSize="{DynamicResource YoakeUiFontSizeTiny}" TextTrimming="CharacterEllipsis" /></Grid></Grid>
+        <Grid Name="VideoPlaybackControls" Grid.Row="2" ColumnDefinitions="Auto,*,*,Auto,Auto" RowDefinitions="Auto,0" ColumnSpacing="4">
+          <StackPanel Orientation="Horizontal" Spacing="1">
+            <Button Name="VideoPlayButton" Command="{Binding Actions[video/play]}" Padding="3,1" ToolTip.Tip="Play or pause video" AutomationProperties.Name="Play or pause video"><Grid Width="16" Height="16"><PathIcon Data="{x:Static icons:IconGeometries.VideoPlay}" IsVisible="{Binding !IsPlaying}" /><PathIcon Data="{x:Static icons:IconGeometries.VideoPause}" IsVisible="{Binding IsPlaying}" /></Grid></Button>
+            <Button Name="VideoPlayLineButton" Command="{Binding Actions[video/play/line]}" Padding="3,1" ToolTip.Tip="Play current subtitle line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.AudioPlayLine}" Foreground="{DynamicResource IconAudioLineBrush}" /></Button>
+            <Button Name="VideoStopButton" Command="{Binding Actions[video/stop]}" Padding="3,1" ToolTip.Tip="Stop video playback"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.Stop}" /></Button>
+            <ToggleButton Classes="authoring" IsChecked="{Binding Actions[video/autoseek].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/autoseek]}" Padding="3,1" ToolTip.Tip="Automatically seek video to the selected line"><PathIcon Width="16" Height="16" Data="{x:Static icons:IconGeometries.VideoAutoseek}" /></ToggleButton>
+          </StackPanel>
+          <Border Name="VideoPositionBox" Grid.Column="1" Classes="video-position" Classes.keyframe="{Binding IsCurrentVideoKeyframe}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="2">
+            <Border.Styles><Style Selector="Border.video-position.keyframe"><Setter Property="Background" Value="{DynamicResource ActiveTabBrush}" /></Style></Border.Styles>
+            <TextBox Name="VideoPosition" Text="{Binding FramePositionDisplay, Mode=OneWay}" IsReadOnly="True" Padding="3,0" BorderThickness="0" Background="Transparent" FontSize="{DynamicResource YoakeUiFontSizeSmall}" ToolTip.Tip="Current frame time and number; Ctrl+G jumps to frame or time" />
+          </Border>
+          <Border Name="VideoOffsetBox" Grid.Column="2" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" CornerRadius="2">
+            <Grid ColumnDefinitions="*,*" ColumnSpacing="1">
+              <Button Name="VideoStartOffset" Content="{Binding VideoStartOffsetDisplay}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Padding="2,0" BorderThickness="0" Background="Transparent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" ToolTip.Tip="Milliseconds from subtitle start. Click to copy; right-click for fade in and insert." />
+              <Button Name="VideoEndOffset" Grid.Column="1" Content="{Binding VideoEndOffsetDisplay}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Padding="2,0" BorderThickness="0" Background="Transparent" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" ToolTip.Tip="Milliseconds from subtitle end. Click to copy; right-click for fade out and insert." />
+            </Grid>
+          </Border>
+          <ComboBox Name="VideoPlaybackSpeed" Grid.Column="3" Width="76" Padding="3,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" ItemsSource="{Binding VideoPlaybackSpeedChoices}" SelectedItem="{Binding VideoPlaybackSpeedText, Mode=TwoWay}" ToolTip.Tip="Video playback speed (audio pitch changes)" />
+          <controls:VideoZoomControl Name="VideoZoom" Grid.Column="4" />
+        </Grid>
 
     <Border Grid.Row="3" Name="VisualToolsBar" ToolTip.Tip="{Binding VisualHint}">
       <!-- Scoped styles stay with the shared video host when it is detached. -->
@@ -551,9 +566,9 @@
         <WrapPanel Grid.Row="1" Name="TimingFields">
           <Grid Name="LineTimingGroup" ColumnSpacing="3" Margin="0,0,12,8">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="{DynamicResource YoakeUiTimeFieldWidth}" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="{DynamicResource YoakeUiTimeFieldWidth}" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="{DynamicResource YoakeUiDurationFieldWidth}" /></Grid.ColumnDefinitions>
-            <TextBlock Text="Start" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineStart" Grid.Column="1" Text="{Binding EditorDraft.Start, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start h:mm:ss.cc" />
-            <TextBlock Grid.Column="2" Text="End" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineEnd" Grid.Column="3" Text="{Binding EditorDraft.End, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End h:mm:ss.cc" />
-            <TextBlock Grid.Column="4" Text="Dur." FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBlock Grid.Column="5" Text="{Binding EditorDraft.Duration}" FontSize="{DynamicResource YoakeUiFontSizeSmall}" VerticalAlignment="Center" />
+            <TextBlock Text="Start" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineStart" Grid.Column="1" Text="{Binding EditorDraft.TimingStart, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Start time or first frame" />
+            <TextBlock Grid.Column="2" Text="End" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineEnd" Grid.Column="3" Text="{Binding EditorDraft.TimingEnd, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="End time or last frame" />
+            <TextBlock Grid.Column="4" Text="Dur." FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><TextBox Name="LineDuration" Grid.Column="5" Text="{Binding EditorDraft.TimingDuration, Mode=TwoWay}" Padding="3,0" ToolTip.Tip="Duration in time or inclusive frame count" />
           </Grid>
           <Grid Name="LineMarginGroup" ColumnDefinitions="Auto,86,Auto,86,Auto,86" ColumnSpacing="3" Margin="0,0,0,8">
             <TextBlock Text="L" FontSize="{DynamicResource YoakeUiFontSizeTiny}" VerticalAlignment="Center" /><NumericUpDown Name="MarginLeft" Grid.Column="1" Text="{Binding EditorDraft.MarginL, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Left margin (script pixels)" />
@@ -582,6 +597,8 @@
             <Button Name="FuriganaButton" Content="Furigana…" Padding="5,0" Command="{Binding Actions[text/insert/furigana]}" ToolTip.Tip="Add reading and opposite-side reading to selected base text (Mangetsu)" />
             <Button Content="Reset" Command="{Binding Actions[text/format/reset]}" Padding="5,0" FontSize="{DynamicResource YoakeUiFontSizeSmall}" ToolTip.Tip="Reset to line style at caret / selection" />
           </StackPanel>
+          <RadioButton Name="TimingByTime" GroupName="EditorTimingUnit" Content="Time" IsChecked="{Binding !TimingByFrames, Mode=OneWay}" Click="TimingUnitClick" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="4,0" />
+          <RadioButton Name="TimingByFrame" GroupName="EditorTimingUnit" Content="Frame" IsChecked="{Binding TimingByFrames, Mode=OneWay}" IsEnabled="{Binding CanShiftByFrames}" Click="TimingUnitClick" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="4,0" />
           <CheckBox Name="ShowOriginalToggle" Content="Show Original" IsChecked="{Binding ShowOriginal, Mode=OneWay}" Command="{Binding Actions[edit/show_original]}" Height="24" MinHeight="24" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="8,0,0,4" />
           <CheckBox Name="BetterViewToggle" Content="Better View" IsChecked="{Binding Actions[edit/better-view].IsChecked, Mode=OneWay}" Command="{Binding Actions[edit/better-view]}" Height="24" MinHeight="24" FontSize="{DynamicResource YoakeUiFontSizeSmall}" Margin="8,0,0,4" ToolTip.Tip="Show hard line breaks and compact motion data" />
         </WrapPanel>

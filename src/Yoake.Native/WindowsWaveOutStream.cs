@@ -33,9 +33,10 @@ public sealed partial class WindowsWaveOutStream : IDisposable
         double startSeconds,
         Action<double>? progress,
         CancellationToken cancellationToken,
-        AudioPlaybackPlan? range=null)
+        AudioPlaybackPlan? range=null,double playbackSpeed=1)
     {
         ArgumentNullException.ThrowIfNull(media);
+        if(!double.IsFinite(playbackSpeed)||playbackSpeed<.25||playbackSpeed>4)throw new ArgumentOutOfRangeException(nameof(playbackSpeed));
         cancellationToken.ThrowIfCancellationRequested();
         if (!OperatingSystem.IsWindows())
             throw new PlatformNotSupportedException("Yoake's initial audio output backend uses Windows waveOut.");
@@ -54,7 +55,7 @@ public sealed partial class WindowsWaveOutStream : IDisposable
         var lastPosition=startFrame;
         try
         {
-            StartDevice(media.Info.SampleRate, media.Info.Channels, startFrame);
+            StartDevice(media.Info.SampleRate, media.Info.Channels, startFrame, playbackSpeed);
             cancellationToken.ThrowIfCancellationRequested();
             for (var i = 0; i < QueueDepth && nextFrame < media.Info.AudioSamples; i++)
             {
@@ -150,7 +151,7 @@ public sealed partial class WindowsWaveOutStream : IDisposable
         Stop();
     }
 
-    private void StartDevice(int sampleRate, int channels, long mediaStartFrame)
+    private void StartDevice(int sampleRate, int channels, long mediaStartFrame,double playbackSpeed)
     {
         if (channels <= 0 || channels > ushort.MaxValue)
             throw new InvalidOperationException($"Unsupported waveOut channel count: {channels}.");
@@ -168,7 +169,7 @@ public sealed partial class WindowsWaveOutStream : IDisposable
             {
                 FormatTag = WaveFormatPcm,
                 Channels = checked((ushort)channels),
-                SamplesPerSec = checked((uint)sampleRate),
+                SamplesPerSec = checked((uint)Math.Round(sampleRate*playbackSpeed)),
                 BitsPerSample = 16,
                 BlockAlign = checked((ushort)(channels * sizeof(short))),
             };

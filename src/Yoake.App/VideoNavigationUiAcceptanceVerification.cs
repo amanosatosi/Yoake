@@ -66,6 +66,14 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     await Invoke("settings/hotkeys/set",new HotkeyChange(HotkeyContext.Default,"video/focus_seek",["F10"]));
                     Press(Grid,Key.F10);Require(window.FindControl<VideoFrameSlider>("VideoSeekBar")!.IsKeyboardFocusWithin,"Focus-seek enters the actual video slider.");
                     Press(window.FindControl<VideoFrameSlider>("VideoSeekBar")!,Key.F10);Require(Grid.IsKeyboardFocusWithin,"Focus-seek returns to the previously focused input.");
+                    var timingSource=model.ActiveEditor!.Document.Serialize();
+                    Press(window.FindControl<RadioButton>("TimingByFrame")!,Key.Space);
+                    Require(model.TimingByFrames&&model.Draft!.TimingStart==_map!.FrameAtMilliseconds(_rows[0].StartMilliseconds!.Value,FrameTimeKind.Start).ToString(),"Frame radio shows VFR start boundary.");
+                    Press(window.FindControl<RadioButton>("TimingByTime")!,Key.Space);
+                    Require(!model.TimingByFrames&&model.ActiveEditor.Document.Serialize()==timingSource,"Switching timing units must not mutate source.");
+                    var startReadout=window.FindControl<Button>("VideoStartOffset")!;var endReadout=window.FindControl<Button>("VideoEndOffset")!;
+                    Require(startReadout.ContextMenu is not null&&endReadout.ContextMenu is not null,"Both relative timing readouts expose fade menus.");
+                    Require(window.FindControl<TextBox>("ExactTime") is null&&window.FindControl<Button>("VideoPlayButton")!.Content is Grid,"Video toolbar uses icon-only playback and no permanent seek input.");
                     _frame=model.CurrentFrame;Press(Video,Key.G,KeyModifiers.Control);return;
                 case 2:
                     var jump=window.OwnedWindows.OfType<VideoJumpWindow>().Single();var input=jump.FindControl<TextBox>("JumpFrame")!;
@@ -93,7 +101,7 @@ internal sealed class VideoNavigationUiAcceptanceVerification(IClassicDesktopSty
                     Press(Video,Key.Escape);Require(!model.IsPlaying&&!model.Actions["video/play"].IsChecked,"Video Escape stops central AV playback.");
                     await Invoke("time/lead/out");var range=model.PrimaryAudioRange!.Value;
                     var expected=FrameNavigation.LineRange(_map!,model.FrameTimes,range.StartMilliseconds,range.EndMilliseconds,model.VideoDurationSeconds)!.Value;
-                    Press(window.FindControl<TextBox>("ExactTime")!,Key.Space,KeyModifiers.Shift);
+                    Press(window.FindControl<TextBox>("VideoPosition")!,Key.Space,KeyModifiers.Shift);
                     Require(!model.IsPlaying,"Space typing in a focused Video text input must not invoke play-line.");
                     Press(Video,Key.Space,KeyModifiers.Shift);Require(model.IsPlaying&&model.ActiveVideoPlaybackEndSeconds==expected.End&&Math.Abs(model.CurrentTimeSeconds-expected.Start)<.000001,"Real Video Shift-Space play-line starts at the pending primary START frame.");
                     Press(Video,Key.Escape);Require(model.HasPendingAudioTiming&&model.ActiveEditor!.Document.Serialize()==_source,"Play-line and Stop preserve pending timing/source/undo.");

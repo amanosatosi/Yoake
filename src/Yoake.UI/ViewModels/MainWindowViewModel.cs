@@ -156,6 +156,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         {
             if (_draft is not null) _draft.PropertyChanged -= DraftChanged;
             SetField(ref _draft,value);OnPropertyChanged(nameof(EditorDraft));OnPropertyChanged(nameof(EventEditorText));
+            ConfigureTimingDraft();
             if (_draft is not null) _draft.PropertyChanged += DraftChanged;
             RefreshFormatting();
         }
@@ -163,6 +164,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private void DraftChanged(object? sender,PropertyChangedEventArgs e)
     {
         if(e.PropertyName==nameof(EventEditDraft.Text))OnPropertyChanged(nameof(EventEditorText));
+        if(e.PropertyName is nameof(EventEditDraft.TimingStart) or nameof(EventEditDraft.TimingEnd) or nameof(EventEditDraft.TimingDuration))return;
+        if(e.PropertyName is nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))OnPropertyChanged(nameof(RelativeTimingDisplay));
         if(_publishingAudioTiming)return;
         if(e.PropertyName is nameof(EventEditDraft.IsChanged) or nameof(EventEditDraft.Duration))return;
         if(e.PropertyName==nameof(EventEditDraft.Actor))FastActorDraftChanged();
@@ -650,6 +653,16 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         foreach(var tab in Tabs) tab.Dispose(); Tabs.Clear(); DisposeSubtitleRenderer(); VideoFrame=null;
     }
     private void SetField<T>(ref T field,T value,[CallerMemberName]string? name=null) { if(EqualityComparer<T>.Default.Equals(field,value))return; field=value; OnPropertyChanged(name); }
-    private void OnPropertyChanged([CallerMemberName]string? name=null)=>PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(name));
+    private void OnPropertyChanged([CallerMemberName]string? name=null)
+    {
+        PropertyChanged?.Invoke(this,new PropertyChangedEventArgs(name));
+        if(name is nameof(FramePositionDisplay) or nameof(Keyframes))PropertyChanged?.Invoke(this,new(nameof(IsCurrentVideoKeyframe)));
+        if(name is nameof(RelativeTimingDisplay) or nameof(FramePositionDisplay) or nameof(SelectedEvent) or nameof(Draft))
+        {
+            PropertyChanged?.Invoke(this,new(nameof(VideoStartOffsetDisplay)));
+            PropertyChanged?.Invoke(this,new(nameof(VideoEndOffsetDisplay)));
+        }
+        if(name is nameof(CanShiftByFrames) or nameof(FrameTimes)){ConfigureTimingDraft();PropertyChanged?.Invoke(this,new(nameof(TimingByFrames)));}
+    }
     public event PropertyChangedEventHandler? PropertyChanged;
 }

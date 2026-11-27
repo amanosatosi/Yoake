@@ -64,6 +64,7 @@ public sealed partial class MainWindowViewModel
         }
 
         var playbackInfo = session.Info; var hadVideo = session.HasVideo;
+        var speed=range is null&&hadVideo?_videoPlaybackSpeed:1d;
         StopPlayback();
         if(range is not null)CurrentTimeSeconds=range.StartSeconds;
         else if (CurrentTimeSeconds >= (endSeconds??MediaDurationSeconds) - 0.001)
@@ -103,7 +104,7 @@ public sealed partial class MainWindowViewModel
                         seconds => Interlocked.Exchange(
                             ref audioClockBits,
                             BitConverter.DoubleToInt64Bits(seconds)),
-                        token,range),
+                        token,range,speed),
                     token);
             }
 
@@ -130,9 +131,9 @@ public sealed partial class MainWindowViewModel
                     afterAudioAnchor=Math.Max(start,audioEnd);afterAudioElapsed=stopwatch.Elapsed.TotalSeconds;
                 }
 
-                var seconds = afterAudioAnchor is {} anchor?anchor+stopwatch.Elapsed.TotalSeconds-afterAudioElapsed:
+                var seconds = afterAudioAnchor is {} anchor?anchor+(stopwatch.Elapsed.TotalSeconds-afterAudioElapsed)*speed:
                     audio is not null?BitConverter.Int64BitsToDouble(Interlocked.Read(ref audioClockBits)):
-                    start + stopwatch.Elapsed.TotalSeconds;
+                    start + stopwatch.Elapsed.TotalSeconds*speed;
 
                 var stopAt=ActiveAudioPlayback?.EndSeconds??endSeconds;
                 if(stopAt is {} endAt&&seconds>=endAt){SetPlaybackTime(endAt);player?.Stop();break;}

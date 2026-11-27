@@ -45,6 +45,7 @@ public partial class MainWindow : Window, IEditorDialogs
         SubtitleRows.LayoutUpdated+=(_,_)=>ApplyRowWidths();
         SubtitleRows.PropertyChanged+=(_,e)=>{if(e.Property==ItemsControl.ItemsSourceProperty)Dispatcher.UIThread.Post(SyncSelection);};
         SubtitleRows.AddHandler(PointerPressedEvent,GridDoubleClick,RoutingStrategies.Bubble,handledEventsToo:true);
+        ConfigureVideoReadouts();
         DataContextChanged+=(_,_)=>AttachModel();
         AddHandler(KeyDownEvent,HandleKey,RoutingStrategies.Tunnel);
         AddHandler(KeyUpEvent,HandleFastActorKeyUp,RoutingStrategies.Tunnel);

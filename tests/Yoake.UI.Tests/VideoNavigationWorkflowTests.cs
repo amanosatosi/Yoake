@@ -73,6 +73,25 @@ public sealed partial class EditorWorkflowTests
         }
         Assert.Equal(source,_model.ActiveEditor.Document.Serialize());Assert.Same(draft,_model.Draft);Assert.Equal(range,_model.PrimaryAudioRange);Assert.False(_model.IsPlaying);
     }
+    [Fact] public async Task FrameEditorUsesBoundariesAndFadeReadoutIsUndoable()
+    {
+        var rows=await TimingRows();
+        Assert.True(await _model.OpenDummyVideoAsync(new(){Width=320,Height=180,FrameCount=100,FramesPerSecond=25}));
+        _model.SelectedEvent=rows[0];var map=new Yoake.Core.Media.FrameTiming(_model.FrameTimes,25);
+        var original=_model.ActiveEditor!.Document.Serialize();
+        _model.SetTimingByFrames(true);
+        Assert.Equal(map.FrameAtMilliseconds(rows[0].StartMilliseconds!.Value,Yoake.Core.Media.FrameTimeKind.Start).ToString(),_model.Draft!.TimingStart);
+        Assert.Equal(original,_model.ActiveEditor.Document.Serialize());
+        _model.Draft.TimingStart="10";_model.Draft.TimingDuration="5";await Command(CommandIds.EditCommit);
+        Assert.Equal(map.SubtitleBoundary(10,Yoake.Core.Media.FrameTimeKind.Start),rows[0].StartMilliseconds);
+        Assert.Equal(map.SubtitleBoundary(14,Yoake.Core.Media.FrameTimeKind.End),rows[0].EndMilliseconds);
+        _model.SetTimingByFrames(false);
+        await Command("video/seek/frame",12);var before=_model.ActiveEditor.Document.Serialize();
+        await Command("video/readout/action",new VideoReadoutRequest(true,"fade","&HFFFFFF&"));
+        Assert.Contains(@"\fad(",rows[0].Text);Assert.Contains("&HFFFFFF&",rows[0].Text);
+        await Command(CommandIds.EditUndo);Assert.Equal(before,_model.ActiveEditor.Document.Serialize());
+        _model.VideoPlaybackSpeedText="1.50x";Assert.Equal("1.50x",_model.VideoPlaybackSpeedText);
+    }
     [Fact] public void VideoLineShortcutUsesOnlyTheVideoContextAndDisplaysItsUsableBinding()
     {
         var gesture=Yoake.Core.Hotkeys.HotkeyGesture.Parse("Shift-Space");
