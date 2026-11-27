@@ -8,6 +8,19 @@ namespace Yoake.UI.ViewModels;
 public sealed partial class MainWindowViewModel
 {
     private bool _publishingOptions;
+    public bool AudioWheelZoom=>_settings.AudioWheelZoom??false;
+    public bool AudioLockScroll=>_settings.AudioLockScroll??false;
+    public bool AudioAutoFocus=>_settings.AudioAutoFocus??false;
+    public int AudioMarkerSensitivity=>_settings.AudioMarkerSensitivity??8;
+    public int AudioBoundaryThickness=>_settings.AudioBoundaryThickness??2;
+    public AudioInactiveLineMode AudioInactiveLines=>_settings.AudioInactiveLines??AudioInactiveLineMode.All;
+    public bool AudioInactiveComments=>_settings.AudioInactiveComments??false;
+    public bool AudioDialogueKeyframes=>_settings.AudioDialogueKeyframes??true;
+    public bool AudioKaraokeKeyframes=>_settings.AudioKaraokeKeyframes??true;
+    public bool AudioCursorTime=>_settings.AudioCursorTime??true;
+    public bool AudioVideoPosition=>_settings.AudioVideoPosition??true;
+    public bool AudioSecondsBoundaries=>_settings.AudioSecondsBoundaries??true;
+    public int AudioLabelSize=>_settings.AudioLabelSize??9;
     public AppSettings CaptureOptions() => _settings.Normalize();
 
     public async Task<string?> ApplyOptionsAsync(AppSettings baseline, AppSettings edited, CancellationToken token = default)
@@ -29,6 +42,19 @@ public sealed partial class MainWindowViewModel
             ShowOriginal=Pick(baseline.ShowOriginal, edited.ShowOriginal, _settings.ShowOriginal),
             GridTagDisplay=Pick(baseline.GridTagDisplay, edited.GridTagDisplay, _settings.GridTagDisplay),
             AudioSpectrum=Pick(baseline.AudioSpectrum, edited.AudioSpectrum, _settings.AudioSpectrum),
+            AudioWheelZoom=Pick(baseline.AudioWheelZoom,edited.AudioWheelZoom,_settings.AudioWheelZoom),
+            AudioLockScroll=Pick(baseline.AudioLockScroll,edited.AudioLockScroll,_settings.AudioLockScroll),
+            AudioAutoFocus=Pick(baseline.AudioAutoFocus,edited.AudioAutoFocus,_settings.AudioAutoFocus),
+            AudioMarkerSensitivity=Pick(baseline.AudioMarkerSensitivity,edited.AudioMarkerSensitivity,_settings.AudioMarkerSensitivity),
+            AudioBoundaryThickness=Pick(baseline.AudioBoundaryThickness,edited.AudioBoundaryThickness,_settings.AudioBoundaryThickness),
+            AudioInactiveLines=Pick(baseline.AudioInactiveLines,edited.AudioInactiveLines,_settings.AudioInactiveLines),
+            AudioInactiveComments=Pick(baseline.AudioInactiveComments,edited.AudioInactiveComments,_settings.AudioInactiveComments),
+            AudioDialogueKeyframes=Pick(baseline.AudioDialogueKeyframes,edited.AudioDialogueKeyframes,_settings.AudioDialogueKeyframes),
+            AudioKaraokeKeyframes=Pick(baseline.AudioKaraokeKeyframes,edited.AudioKaraokeKeyframes,_settings.AudioKaraokeKeyframes),
+            AudioCursorTime=Pick(baseline.AudioCursorTime,edited.AudioCursorTime,_settings.AudioCursorTime),
+            AudioVideoPosition=Pick(baseline.AudioVideoPosition,edited.AudioVideoPosition,_settings.AudioVideoPosition),
+            AudioSecondsBoundaries=Pick(baseline.AudioSecondsBoundaries,edited.AudioSecondsBoundaries,_settings.AudioSecondsBoundaries),
+            AudioLabelSize=Pick(baseline.AudioLabelSize,edited.AudioLabelSize,_settings.AudioLabelSize),
             AudioAutoScroll=Pick(baseline.AudioAutoScroll, edited.AudioAutoScroll, _settings.AudioAutoScroll),
             AudioVolumeLinked=Pick(baseline.AudioVolumeLinked, edited.AudioVolumeLinked, _settings.AudioVolumeLinked),
             PlaybackMuted=Pick(baseline.PlaybackMuted, edited.PlaybackMuted, _settings.PlaybackMuted),
@@ -74,6 +100,7 @@ public sealed partial class MainWindowViewModel
             nameof(BetterView), nameof(ShowOriginal), nameof(GridTagDisplay), nameof(IsAudioSpectrum), nameof(AudioDisplayModeIndex),
             nameof(AudioAutoScroll), nameof(AudioAutoCommit), nameof(AudioAutoNext), nameof(AudioTimingDefaultDuration),
             nameof(AudioVolumeLinked),nameof(IsVolumeIndependent),nameof(PlaybackVolume),nameof(PlaybackMuted),nameof(KaraokeAutoCut),
+            nameof(AudioWheelZoom),nameof(AudioLockScroll),nameof(AudioAutoFocus),nameof(AudioMarkerSensitivity),nameof(AudioBoundaryThickness),nameof(AudioInactiveLines),nameof(AudioInactiveComments),nameof(AudioDialogueKeyframes),nameof(AudioKaraokeKeyframes),nameof(AudioCursorTime),nameof(AudioVideoPosition),nameof(AudioSecondsBoundaries),nameof(AudioLabelSize),
             nameof(AudioTimingLeadIn), nameof(AudioTimingLeadOut), nameof(VideoAutoSeek), nameof(ShowVideoOverscan), nameof(VideoFastJumpStep),
             nameof(AutosaveEnabled), nameof(AutosaveIntervalSeconds), nameof(RecoveryDirectory),
             nameof(GlobalTimingHotkeys), nameof(AutomationMacros), nameof(AutomationAutoloadDirectories), nameof(AutomationIncludeDirectories) }) OnPropertyChanged(name);

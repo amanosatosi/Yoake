@@ -88,6 +88,10 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Get<ListBox>("OptionsCategories").SelectedItem="Audio";
                     Require(Get<CheckBox>("AudioLinkVolume").IsEffectivelyVisible,"Audio options expose the amplitude/volume link.");
                     Get<CheckBox>("AudioLinkVolume").IsChecked=true;
+                    Get<CheckBox>("AudioWheelZoom").IsChecked=true;
+                    Get<CheckBox>("AudioDialogueKeyframes").IsChecked=false;
+                    Get<NumericUpDown>("AudioBoundaryThickness").Value=4;
+                    Get<ComboBox>("AudioInactiveLines").SelectedItem=AudioInactiveLineMode.PreviousAndNext;
                     Get<ListBox>("OptionsCategories").SelectedItem="Appearance";
                     Get<NumericUpDown>("UiFontSize").Value=null;Press(Get<Button>("OptionsApply"));
                     Require(model.UiFontSize==_initialSize,"An incomplete numeric setting must not partially save any category.");
@@ -96,10 +100,12 @@ internal sealed class OptionsUiAcceptanceVerification(IClassicDesktopStyleApplic
                     Press(Get<Button>("OptionsApply"));return;
                 case 7:
                     Require(model.UiFontSize==15&&model.AutosaveIntervalSeconds==90&&model.GlobalTimingHotkeys&&model.AudioVolumeLinked&&!model.IsVolumeIndependent,"Apply must publish all categories together, including linked volume.");
+                    Require(model.AudioWheelZoom&&!model.AudioDialogueKeyframes&&model.AudioBoundaryThickness==4&&model.AudioInactiveLines==AudioInactiveLineMode.PreviousAndNext,"Aegisub audio preferences must publish to the live runtime.");
                     Require(Application.Current!.ActualThemeVariant==Avalonia.Styling.ThemeVariant.Dark,"Applying dark appearance must update the real native window theme.");
                     Require(model.UiFontFamily=="Yoake missing test font 日本語","Missing families must retain the requested name with fallback rendering.");
                     var saved=new SettingsStore(Path.Combine(options.ProfileDirectory!,"settings.json")).Load();
                     Require(saved.UiFontSize==15&&saved.AutosaveIntervalSeconds==90,"Apply must persist all categories.");
+                    Require(saved.AudioWheelZoom==true&&saved.AudioDialogueKeyframes==false&&saved.AudioBoundaryThickness==4&&saved.AudioInactiveLines==AudioInactiveLineMode.PreviousAndNext,"Audio preferences must persist.");
                     Press(Get<Button>("RestoreOptionsDefaults"));return;
                 case 8:
                     Require(Get<NumericUpDown>("UiFontSize").Value==12,"Restore category defaults resets appearance draft.");

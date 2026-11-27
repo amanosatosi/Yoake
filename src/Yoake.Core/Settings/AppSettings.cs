@@ -20,6 +20,8 @@ public enum WorkspaceViewMode
     AudioVideo,
 }
 
+public enum AudioInactiveLineMode { None, Previous, PreviousAndNext, All }
+
 public sealed record AppSettings
 {
     public SubtitlePostprocessOptions? PostprocessPreferences { get; init; }
@@ -64,6 +66,19 @@ public sealed record AppSettings
     public double? AudioWindowSeconds {get;init;}
     public bool AudioVolumeLinked {get;init;}
     public bool? AudioSpectrum {get;init;}
+    public bool? AudioWheelZoom {get;init;}
+    public bool? AudioLockScroll {get;init;}
+    public bool? AudioAutoFocus {get;init;}
+    public int? AudioMarkerSensitivity {get;init;}
+    public int? AudioBoundaryThickness {get;init;}
+    public AudioInactiveLineMode? AudioInactiveLines {get;init;}
+    public bool? AudioInactiveComments {get;init;}
+    public bool? AudioDialogueKeyframes {get;init;}
+    public bool? AudioKaraokeKeyframes {get;init;}
+    public bool? AudioCursorTime {get;init;}
+    public bool? AudioVideoPosition {get;init;}
+    public bool? AudioSecondsBoundaries {get;init;}
+    public int? AudioLabelSize {get;init;}
     public bool? AudioAutoScroll {get;init;}
     public bool? AudioAutoCommit {get;init;}
     public bool? AudioAutoNext {get;init;}
@@ -122,6 +137,19 @@ public sealed record AppSettings
             AudioIntensity=AudioIntensity is {} intensity&&double.IsFinite(intensity)?Math.Clamp(intensity,0.008,8):1,
             AudioWindowSeconds=AudioWindowSeconds is {} audioSpan&&double.IsFinite(audioSpan)?Math.Clamp(audioSpan,0.02,3600):20,
             AudioSpectrum=AudioSpectrum??false,AudioAutoScroll=AudioAutoScroll??true,
+            AudioWheelZoom=AudioWheelZoom??false,
+            AudioLockScroll=AudioLockScroll??false,
+            AudioAutoFocus=AudioAutoFocus??false,
+            AudioMarkerSensitivity=AudioMarkerSensitivity is >=1 and <=15?AudioMarkerSensitivity:8,
+            AudioBoundaryThickness=AudioBoundaryThickness is >=1 and <=5?AudioBoundaryThickness:2,
+            AudioInactiveLines=AudioInactiveLines is {} inactiveMode&&Enum.IsDefined(inactiveMode)?inactiveMode:AudioInactiveLineMode.All,
+            AudioInactiveComments=AudioInactiveComments??false,
+            AudioDialogueKeyframes=AudioDialogueKeyframes??true,
+            AudioKaraokeKeyframes=AudioKaraokeKeyframes??true,
+            AudioCursorTime=AudioCursorTime??true,
+            AudioVideoPosition=AudioVideoPosition??true,
+            AudioSecondsBoundaries=AudioSecondsBoundaries??true,
+            AudioLabelSize=AudioLabelSize is >=9 and <=48?AudioLabelSize:9,
             AudioAutoCommit=AudioAutoCommit??false,AudioAutoNext=AudioAutoNext??true,
             AudioDefaultDuration=AudioDefaultDuration is >=10 and <=600000?AudioDefaultDuration:3000,
             AudioLeadIn=AudioLeadIn is >=0 and <=60000?AudioLeadIn:100,

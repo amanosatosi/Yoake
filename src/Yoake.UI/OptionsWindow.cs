@@ -70,16 +70,29 @@ public sealed class OptionsWindow : Window
         Toggle("Editor", "Better View", "Show hard line breaks and compact motion data in the subtitle editor.", "BetterView", s=>s.BetterView==true,(s,v)=>s with { BetterView=v }, defaults);
         Toggle("Editor", "Show Original", "Display the original line text beside translation controls.", "ShowOriginal", s=>s.ShowOriginal,(s,v)=>s with { ShowOriginal=v }, defaults);
         ChoiceSetting("Subtitle grid", "Override tag display", "Show full tags, simplified tags or hide tags in the grid. Source is preserved.", "GridTagDisplay", Enum.GetValues<GridTagDisplayMode>(),s=>s.GridTagDisplay!.Value,(s,v)=>s with { GridTagDisplay=v }, defaults);
+        Toggle("Audio", "Default mouse wheel to zoom", "Zoom with the wheel; Control reverses the wheel action.", "AudioWheelZoom", s=>s.AudioWheelZoom??false,(s,v)=>s with { AudioWheelZoom=v }, defaults);
+        Toggle("Audio", "Lock scroll on cursor", "Follow the playback cursor near the display edges.", "AudioLockScroll", s=>s.AudioLockScroll??false,(s,v)=>s with { AudioLockScroll=v }, defaults);
+        Toggle("Audio", "Auto-focus on mouse over", "Give audio keyboard focus when the pointer enters.", "AudioAutoFocus", s=>s.AudioAutoFocus??false,(s,v)=>s with { AudioAutoFocus=v }, defaults);
+        Number("Audio", "Marker drag-start sensitivity (px)", "Distance in logical pixels at which a marker can be grabbed.", "AudioMarkerSensitivity",1,15,s=>s.AudioMarkerSensitivity??8,(s,v)=>s with { AudioMarkerSensitivity=(int)v }, defaults);
+        Number("Audio", "Line boundary thickness (px)", "Thickness of start and end markers in logical pixels.", "AudioBoundaryThickness",1,5,s=>s.AudioBoundaryThickness??2,(s,v)=>s with { AudioBoundaryThickness=(int)v }, defaults);
+        ChoiceSetting("Audio", "Show inactive lines", "Display no inactive lines, the previous line, the previous and next lines, or all lines.", "AudioInactiveLines",Enum.GetValues<AudioInactiveLineMode>(),s=>s.AudioInactiveLines??AudioInactiveLineMode.All,(s,v)=>s with { AudioInactiveLines=v }, defaults);
+        Toggle("Audio", "Include commented inactive lines", "Include comment events in inactive line markers.", "AudioInactiveComments", s=>s.AudioInactiveComments??false,(s,v)=>s with { AudioInactiveComments=v }, defaults);
+        Toggle("Audio", "Keyframes in dialogue mode", "Draw video keyframes during dialogue timing.", "AudioDialogueKeyframes", s=>s.AudioDialogueKeyframes??true,(s,v)=>s with { AudioDialogueKeyframes=v }, defaults);
+        Toggle("Audio", "Keyframes in karaoke mode", "Draw video keyframes during karaoke timing.", "AudioKaraokeKeyframes", s=>s.AudioKaraokeKeyframes??true,(s,v)=>s with { AudioKaraokeKeyframes=v }, defaults);
+        Toggle("Audio", "Cursor time", "Display the time under the mouse when not playing.", "AudioCursorTime", s=>s.AudioCursorTime??true,(s,v)=>s with { AudioCursorTime=v }, defaults);
+        Toggle("Audio", "Video position", "Show the current video position when not playing.", "AudioVideoPosition", s=>s.AudioVideoPosition??true,(s,v)=>s with { AudioVideoPosition=v }, defaults);
+        Toggle("Audio", "Seconds boundaries", "Draw full-second guides when there is enough space.", "AudioSecondsBoundaries", s=>s.AudioSecondsBoundaries??true,(s,v)=>s with { AudioSecondsBoundaries=v }, defaults);
+        Number("Audio", "Karaoke label font size", "Font size of the syllable labels in the audio display.", "AudioLabelSize",9,48,s=>s.AudioLabelSize??9,(s,v)=>s with { AudioLabelSize=(int)v }, defaults);
         Toggle("Audio", "Spectrogram", "Display the spectrum instead of the waveform.", "AudioSpectrum", s=>s.AudioSpectrum==true,(s,v)=>s with { AudioSpectrum=v }, defaults);
         Toggle("Audio", "Autoscroll", "Follow the selected subtitle in the audio display.", "AudioAutoScroll", s=>s.AudioAutoScroll==true,(s,v)=>s with { AudioAutoScroll=v }, defaults);
         Toggle("Audio", "Link amplitude and volume", "Changing display intensity also changes playback volume; disables independent volume.", "AudioLinkVolume", s=>s.AudioVolumeLinked,(s,v)=>s with { AudioVolumeLinked=v }, defaults);
         Toggle("Audio", "Mute playback", "Mute audio output without changing the display.", "AudioMutePlayback", s=>s.PlaybackMuted,(s,v)=>s with { PlaybackMuted=v }, defaults);
-        Toggle("Timing", "Toshiki K-Timing auto cut", "Automatically split text into timing slots when beginning a karaoke plan.", "KaraokeAutoCutOption", s=>s.KaraokeAutoCut??true,(s,v)=>s with { KaraokeAutoCut=v }, defaults);
-        Toggle("Timing", "Auto-commit timing", "Commit audio marker adjustments automatically.", "AudioAutoCommit", s=>s.AudioAutoCommit==true,(s,v)=>s with { AudioAutoCommit=v }, defaults);
-        Toggle("Timing", "Advance after commit", "Move to the next line after committing audio timing.", "AudioAutoNext", s=>s.AudioAutoNext==true,(s,v)=>s with { AudioAutoNext=v }, defaults);
-        Number("Timing", "Default line duration", "Duration for a new audio timing range, in milliseconds.", "AudioDefaultDuration",10,600000,s=>s.AudioDefaultDuration!.Value,(s,v)=>s with { AudioDefaultDuration=(int)v }, defaults);
-        Number("Timing", "Lead-in", "Time added before a line by the lead-in action, in milliseconds.", "AudioLeadIn",0,60000,s=>s.AudioLeadIn!.Value,(s,v)=>s with { AudioLeadIn=(int)v }, defaults);
-        Number("Timing", "Lead-out", "Time added after a line by the lead-out action, in milliseconds.", "AudioLeadOut",0,60000,s=>s.AudioLeadOut!.Value,(s,v)=>s with { AudioLeadOut=(int)v }, defaults);
+        Toggle("Audio", "Toshiki K-Timing auto cut", "Automatically split text into timing slots when beginning a karaoke plan.", "KaraokeAutoCutOption", s=>s.KaraokeAutoCut??true,(s,v)=>s with { KaraokeAutoCut=v }, defaults);
+        Toggle("Audio", "Auto-commit timing", "Commit audio marker adjustments automatically.", "AudioAutoCommit", s=>s.AudioAutoCommit==true,(s,v)=>s with { AudioAutoCommit=v }, defaults);
+        Toggle("Audio", "Advance after commit", "Move to the next line after committing audio timing.", "AudioAutoNext", s=>s.AudioAutoNext==true,(s,v)=>s with { AudioAutoNext=v }, defaults);
+        Number("Audio", "Default line duration", "Duration for a new audio timing range, in milliseconds.", "AudioDefaultDuration",10,600000,s=>s.AudioDefaultDuration!.Value,(s,v)=>s with { AudioDefaultDuration=(int)v }, defaults);
+        Number("Audio", "Lead-in", "Time added before a line by the lead-in action, in milliseconds.", "AudioLeadIn",0,60000,s=>s.AudioLeadIn!.Value,(s,v)=>s with { AudioLeadIn=(int)v }, defaults);
+        Number("Audio", "Lead-out", "Time added after a line by the lead-out action, in milliseconds.", "AudioLeadOut",0,60000,s=>s.AudioLeadOut!.Value,(s,v)=>s with { AudioLeadOut=(int)v }, defaults);
         Toggle("Video", "Seek to selected subtitle", "Jump to the first visible frame when selecting a line.", "VideoAutoSeekOption",s=>s.VideoAutoSeek==true,(s,v)=>s with { VideoAutoSeek=v }, defaults);
         Toggle("Video", "Overscan guides", "Show safe area guides over the video preview.", "VideoOverscan",s=>s.VideoOverscan,(s,v)=>s with { VideoOverscan=v }, defaults);
         Number("Video", "Fast jump (frames)", "Number of frames skipped by fast video navigation.", "VideoFastJumpStep",1,1000000,s=>s.VideoFastJumpStep!.Value,(s,v)=>s with { VideoFastJumpStep=(int)v }, defaults);
@@ -118,7 +131,7 @@ public sealed class OptionsWindow : Window
             _status.Text=matches==0&&matchingShortcuts==0&&!shortcuts.IsVisible?"No matching settings.":query.Length>0?$"{matches} matching settings · {matchingShortcuts} matching shortcut commands":"Changes take effect only after Apply or OK.";
             scroll.Offset=default;
         }
-        _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Timing", "Video", "Automation", "Keyboard shortcuts", "Recovery" };
+        _navigation.ItemsSource=new[] { "General", "Appearance", "Editor", "Subtitle grid", "Audio", "Video", "Automation", "Keyboard shortcuts", "Recovery" };
         _navigation.SelectionChanged+=(_,_)=>{ if(!string.IsNullOrEmpty(_search.Text)) _search.Text=""; Filter(); };
         _search.TextChanged+=(_,_)=>Filter();
         var body=new Grid { ColumnDefinitions=new("Auto,*"), ColumnSpacing=6, Margin=new Thickness(8,0) }; body.Children.Add(_navigation); Grid.SetColumn(content,1); body.Children.Add(content);
@@ -172,7 +185,14 @@ public sealed class OptionsWindow : Window
         var group=category switch
         {
             "Appearance"=>label=="Theme"?"Appearance":"Interface font",
-            "Audio"=>label is "Link amplitude and volume" or "Mute playback"?"Playback":"Audio display",
+            "Audio"=>label switch
+            {
+                "Link amplitude and volume" or "Mute playback"=>"Playback",
+                "Keyframes in dialogue mode" or "Keyframes in karaoke mode" or "Cursor time" or "Video position" or "Seconds boundaries" or "Spectrogram"=>"Display visual options",
+                "Toshiki K-Timing auto cut" or "Karaoke label font size"=>"Audio labels",
+                "Default line duration" or "Lead-in" or "Lead-out"=>"Timing defaults (ms)",
+                _=>"Options"
+            },
             "Timing"=>label=="Toshiki K-Timing auto cut"?"Karaoke":label is "Auto-commit timing" or "Advance after commit"?"Timing behavior":"Timing defaults (ms)",
             "Video"=>label=="Fast jump (frames)"?"Navigation":"Video display",
             "Recovery"=>"Automatic recovery",

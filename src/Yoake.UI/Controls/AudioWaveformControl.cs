@@ -1,4 +1,5 @@
 using Yoake.Core.Audio;
+using Yoake.Core.Settings;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -28,6 +29,7 @@ public sealed class AudioWaveformControl : Control
     private WaveformData? _detail;
     private readonly HashSet<int> _boundaryPixels=[];
     private double _pointerTime;
+    private double? _hoverTime;
     private int _part;
     private bool _drag;
     private bool _karaokeDrag;
@@ -82,7 +84,18 @@ public sealed class AudioWaveformControl : Control
             _lastLine=model.SelectedEvent;
             if(model.AudioAutoScroll)model.Actions["audio/go_to"].Execute(null);
         }
-        if(e.PropertyName==nameof(MainWindowViewModel.CurrentTimeSeconds) && model.IsPlaying && (model.CurrentTimeSeconds<ViewportStart||model.CurrentTimeSeconds>ViewportStart+VisibleSeconds)){ViewportStart=Math.Max(0,model.CurrentTimeSeconds-VisibleSeconds/5);RequestSpectrum();}
+        if(e.PropertyName==nameof(MainWindowViewModel.CurrentTimeSeconds)&&model.IsPlaying)
+        {
+            var cursor=model.CurrentTimeSeconds;
+            if(model.AudioLockScroll)
+            {
+                var edge=VisibleSeconds/20;
+                if(cursor<ViewportStart+edge)ViewportStart=Math.Clamp(cursor-edge,0,MaximumPan);
+                else if(cursor>ViewportStart+VisibleSeconds-edge)ViewportStart=Math.Clamp(cursor-VisibleSeconds+edge,0,MaximumPan);
+            }
+            else if(cursor<ViewportStart||cursor>ViewportStart+VisibleSeconds)
+                ViewportStart=Math.Clamp(cursor-VisibleSeconds/5,0,MaximumPan);
+        }
         InvalidateVisual();
     }
     private double? _zoomAnchor;
@@ -125,9 +138,14 @@ public sealed class AudioWaveformControl : Control
         }
         var neighbor=new Pen(new SolidColorBrush(Color.FromArgb(90,180,180,180)),1);
         _boundaryPixels.Clear();
-        foreach(var line in model.Events)
+        if(model.AudioSecondsBoundaries&&Bounds.Width/VisibleSeconds>=4)
         {
-            if(line==model.SelectedEvent)continue;
+            var secondsPen=new Pen(new SolidColorBrush(Color.FromArgb(60,130,145,175)),1);
+            for(var second=Math.Ceiling(ViewportStart);second<=ViewportStart+VisibleSeconds;second++)
+            {var x=X(second);context.DrawLine(secondsPen,new(x,RulerHeight),new(x,Bounds.Height));}
+        }
+        foreach(var line in InactiveLines(model))
+        {
             void Boundary(long? boundary){if(boundary is {} ms){var x=X(ms/1000d);if(x>=0&&x<=Bounds.Width&&_boundaryPixels.Add((int)x))context.DrawLine(neighbor,new(x,0),new(x,Bounds.Height));}}
             Boundary(line.StartMilliseconds);Boundary(line.EndMilliseconds);
         }
@@ -142,7 +160,7 @@ public sealed class AudioWaveformControl : Control
             {
                 var left=X(slot.Start/1000d);var right=X(slot.End/1000d);
                 if(right>left)context.FillRectangle(new SolidColorBrush(Color.FromArgb(slot.Current?(byte)65:(byte)30,slot.Assigned?(byte)75:(byte)180,170,220)),new Rect(left,0,right-left,Bounds.Height));
-                var label=new FormattedText(slot.Text.Length==0?"rest":slot.Text,System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,Typeface.Default,11,slot.Current?Brushes.Gold:Brushes.White);
+                var label=new FormattedText(slot.Text.Length==0?"rest":slot.Text,System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,Typeface.Default,model.AudioLabelSize,slot.Current?Brushes.Gold:Brushes.White);
                 if(right-left>label.Width+4)context.DrawText(label,new(left+2,RulerHeight+2));
             }
             foreach(var boundary in karaoke.Boundaries){var x=X(boundary/1000d);context.DrawLine(new Pen(Brushes.Gold,1),new(x,0),new(x,Bounds.Height));}
@@ -155,16 +173,31 @@ public sealed class AudioWaveformControl : Control
             void DrawBoundary(double x,bool start)
             {
                 var brush=new SolidColorBrush(start?StartBoundaryColor:EndBoundaryColor);var direction=start?1:-1;
-                context.DrawLine(new Pen(brush,1.5),new(x,RulerHeight),new(x,Bounds.Height));
+                context.DrawLine(new Pen(brush,model.AudioBoundaryThickness),new(x,RulerHeight),new(x,Bounds.Height));
                 context.DrawGeometry(brush,null,Geometry.Parse(FormattableString.Invariant($"M{x},{RulerHeight} L{x+direction*6},{RulerHeight} L{x},{RulerHeight+6} Z M{x},{Bounds.Height} L{x+direction*6},{Bounds.Height} L{x},{Bounds.Height-6} Z")));
             }
         }
+        if(model.ShowKaraoke?model.AudioKaraokeKeyframes:model.AudioDialogueKeyframes)
         foreach(var key in model.Keyframes)
             if(key>=0&&key<model.FrameTimes.Count)
             {
                 var x=X(model.FrameTimes[key]);if(x>=0&&x<=Bounds.Width)context.DrawLine(new Pen(Brushes.Magenta,1),new(x,RulerHeight),new(x,Bounds.Height));
             }
-        var cursor=X(model.CurrentTimeSeconds);context.DrawLine(new Pen(Brushes.White,1),new(cursor,RulerHeight),new(cursor,Bounds.Height));
+        if(model.IsPlaying||model.AudioVideoPosition&&model.CurrentVideoDetails is not null)
+        {
+            var cursor=X(model.CurrentTimeSeconds);context.DrawLine(new Pen(Brushes.White,1),new(cursor,RulerHeight),new(cursor,Bounds.Height));
+        }
+        if(!model.IsPlaying&&model.AudioCursorTime&&_hoverTime is {} hover)
+        {
+            var x=X(hover);if(x>=0&&x<=Bounds.Width)
+            {
+                context.DrawLine(new Pen(Brushes.LightGray,1),new(x,RulerHeight),new(x,Bounds.Height));
+                var label=new FormattedText(AssTime.Format((long)Math.Round(hover*1000)),System.Globalization.CultureInfo.InvariantCulture,FlowDirection.LeftToRight,Typeface.Default,11,Brushes.White);
+                var left=Math.Clamp(x+4,0,Math.Max(0,Bounds.Width-label.Width-6));
+                context.FillRectangle(new SolidColorBrush(Color.FromArgb(210,16,16,22)),new Rect(left,RulerHeight+2,label.Width+6,label.Height+4));
+                context.DrawText(label,new Point(left+3,RulerHeight+4));
+            }
+        }
         }
         context.FillRectangle(new SolidColorBrush(Color.FromRgb(8,4,13)),new Rect(0,0,Bounds.Width,RulerHeight));
         var rulerBrush=new SolidColorBrush(Color.FromRgb(89,145,220));var rulerPen=new Pen(rulerBrush,1);
@@ -188,6 +221,32 @@ public sealed class AudioWaveformControl : Control
             if(x+2>=lastLabelRight&&x+2+label.Width<=Bounds.Width){context.DrawText(label,new Point(x+2,0));lastLabelRight=x+label.Width+5;}
         }
     }
+    private static IEnumerable<AssEvent> InactiveLines(MainWindowViewModel model)
+    {
+        bool Eligible(AssEvent line)=>line!=model.SelectedEvent&&(model.AudioInactiveComments||!line.IsComment);
+        var events=model.Events;
+        if(model.AudioInactiveLines==AudioInactiveLineMode.None)yield break;
+        if(model.AudioInactiveLines==AudioInactiveLineMode.All)
+        {
+            foreach(var line in events)if(Eligible(line))yield return line;
+            yield break;
+        }
+        var index=-1;
+        for(var i=0;i<events.Count;i++)if(ReferenceEquals(events[i],model.SelectedEvent)){index=i;break;}
+        if(index<0)yield break;
+        for(var i=index-1;i>=0;i--)if(Eligible(events[i])){yield return events[i];break;}
+        if(model.AudioInactiveLines==AudioInactiveLineMode.PreviousAndNext)
+            for(var i=index+1;i<events.Count;i++)if(Eligible(events[i])){yield return events[i];break;}
+    }
+    protected override void OnPointerEntered(PointerEventArgs e)
+    {
+        base.OnPointerEntered(e);
+        if(Model?.AudioAutoFocus==true)Focus();
+    }
+    protected override void OnPointerExited(PointerEventArgs e)
+    {
+        base.OnPointerExited(e);_hoverTime=null;InvalidateVisual();
+    }
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);Focus();if(Model is not {} model)return;
@@ -195,7 +254,7 @@ public sealed class AudioWaveformControl : Control
         if(model.ShowKaraoke)
         {
             if(!point.Properties.IsLeftButtonPressed&&!point.Properties.IsRightButtonPressed)return;
-            var ms=(long)Math.Round(Time(point.Position.X)*1000);var sensitivity=(long)Math.Ceiling(7/Math.Max(1,Bounds.Width)*VisibleSeconds*1000);
+            var ms=(long)Math.Round(Time(point.Position.X)*1000);var sensitivity=(long)Math.Ceiling(model.AudioMarkerSensitivity/Math.Max(1,Bounds.Width)*VisibleSeconds*1000);
             if(model.BeginKaraokePointer(new(ms,sensitivity,point.Properties.IsRightButtonPressed,e.KeyModifiers.HasFlag(KeyModifiers.Control))))
             {_drag=true;_karaokeDrag=true;_timingPointer=e.Pointer;e.Pointer.Capture(this);}
             if(point.Properties.IsRightButtonPressed&&e.KeyModifiers.HasFlag(KeyModifiers.Control)&&model.KaraokePlan is not null)
@@ -207,7 +266,7 @@ public sealed class AudioWaveformControl : Control
         if(!point.Properties.IsLeftButtonPressed)return;
         _pointerTime=Time(point.Position.X);
         var line=model.SelectedEvent;var range=model.PrimaryAudioRange;var start=(range?.StartMilliseconds??0)/1000d;var end=(range?.EndMilliseconds??0)/1000d;
-        var nearStart=Math.Abs(X(start)-point.Position.X)<=7;var nearEnd=Math.Abs(X(end)-point.Position.X)<=7;
+        var nearStart=Math.Abs(X(start)-point.Position.X)<=model.AudioMarkerSensitivity;var nearEnd=Math.Abs(X(end)-point.Position.X)<=model.AudioMarkerSensitivity;
         if(line is not null && (nearStart||nearEnd||e.KeyModifiers.HasFlag(KeyModifiers.Shift)&&_pointerTime>=start&&_pointerTime<=end))
         {
             _part=nearStart?0:nearEnd?1:2;
@@ -218,7 +277,7 @@ public sealed class AudioWaveformControl : Control
     }
     protected override void OnPointerMoved(PointerEventArgs e)
     {
-        base.OnPointerMoved(e);if(!_drag)return;
+        base.OnPointerMoved(e);_hoverTime=Time(e.GetPosition(this).X);if(!_drag){if(Model?.AudioCursorTime==true)InvalidateVisual();return;}
         try{if(_karaokeDrag)Model?.MoveKaraokePointer((long)Math.Round(Time(e.GetPosition(this).X)*1000));else Model?.UpdateAudioTimingGesture(_part,Time(e.GetPosition(this).X)-_pointerTime);InvalidateVisual();}
         catch(Exception exception){Model?.Registry.ReportFailure("timing/drag",exception);Cancel();}
     }
@@ -231,7 +290,7 @@ public sealed class AudioWaveformControl : Control
         base.OnPointerWheelChanged(e);
         if(_drag){e.Handled=true;return;}
         if(e.KeyModifiers.HasFlag(KeyModifiers.Shift)&&Model is {} amplitudeModel)amplitudeModel.AudioAmplitude+=e.Delta.Y*3;
-        else if(e.KeyModifiers.HasFlag(KeyModifiers.Control)&&Model is {} model)
+        else if(Model is {} model&&(e.KeyModifiers.HasFlag(KeyModifiers.Control)!=model.AudioWheelZoom))
         {
             _zoomAnchor=Time(e.GetPosition(this).X);try{model.AudioWindowSeconds=Math.Clamp(VisibleSeconds*Math.Pow(1.25,-e.Delta.Y),0.02,3600);}finally{_zoomAnchor=null;}
         }
