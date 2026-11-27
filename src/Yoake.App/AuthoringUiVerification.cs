@@ -50,6 +50,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 // A non-current row must reveal all optional columns, even when
                 // the active editing line has default metadata.
                 var metadataRow=model.Events.Last();
+                model.ActiveEditor.SetField(model.Events[1],"Name","Dialogue actor","Actor dropdown fixture");
                 foreach(var (field,value) in new[]{("Layer","2"),("Name","Grid actor"),("Effect","grid-fx"),("MarginL","12"),("MarginR","34"),("MarginV","56")})
                     model.ActiveEditor.SetField(metadataRow,field,value,"Grid column fixture");
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Dark;
@@ -58,7 +59,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 text.CaretIndex=text.SelectionStart=text.SelectionEnd=Sample.Length;
                 return false;
             case 1:
-                CheckGrid();CheckNavigation(text);CheckStandardStyleVisibility();CheckChrome();
+                CheckGrid();CheckMetadataDropDowns();CheckNavigation(text);CheckStandardStyleVisibility();CheckChrome();
                 Capture(window,"editor-default-1440x900",1);
                 CheckDefaultWorkspace();
                 foreach(var scale in new[]{1d,1.25,1.5,2})Capture(window,$"editor-dark-{scale*100:0}",scale);
@@ -66,6 +67,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 CheckMainFields();CheckSyntax(text);CheckLayerAndCommentControls();
                 var font=Named<FontPicker>(styles,"StyleFont");Require(font.InstalledFamilies.Count>0,"Installed font browser must load actual families.");font.OpenBrowser();Require(font.IsBrowserOpen,"Font dropdown must open immediately without requiring a typed search.");
                 var restoreMetadata=model.Events.Last();
+                model.ActiveEditor!.SetField(model.Events[1],"Name","","Restore actor dropdown fixture");
                 foreach(var (field,value) in new[]{("Layer","0"),("Name",""),("Effect",""),("MarginL","0"),("MarginR","0"),("MarginV","0")})
                     model.ActiveEditor!.SetField(restoreMetadata,field,value,"Restore grid fixture");
                 _normalEditorWidth=window.FindControl<Grid>("EventEditorRegion")!.Bounds.Width;
@@ -339,6 +341,30 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         window.FindControl<AssTextBox>("SubtitleText")!.Focus();
     }
 
+    private void CheckMetadataDropDowns()
+    {
+        var source=model.ActiveEditor!.Document.Serialize();
+        foreach(var (field,arrow,expected) in new[]{("LineActor","ActorDropDown","Dialogue actor"),("LineEffect","EffectDropDown","grid-fx")})
+        {
+            var input=window.FindControl<AutoCompleteBox>(field)!;
+            var button=window.FindControl<Button>(arrow)!;
+            Require(button.IsEffectivelyVisible&&button.IsEnabled,"Metadata dropdown arrow must be visible: "+arrow);
+            var before=input.Text;string[] choices=[];
+            EventHandler<PopulatedEventArgs> populated=(_,e)=>choices=e.Data.Cast<string>().ToArray();
+            input.Populated+=populated;
+            try
+            {
+                button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+                Require(input.IsDropDownOpen&&choices.Contains(expected)&&input.Text==before,
+                    "Explicit metadata dropdown must show document values without changing the draft: "+field);
+                if(field=="LineActor")Require(!choices.Contains("Grid actor"),"Ordinary commented actors are not dialogue choices.");
+                input.IsDropDownOpen=false;
+                Require(input.FilterMode==AutoCompleteFilterMode.StartsWith&&input.MinimumPrefixLength==1,"Closing restores typing filter: "+field);
+            }
+            finally{input.Populated-=populated;input.IsDropDownOpen=false;}
+        }
+        Require(model.ActiveEditor.Document.Serialize()==source,"Opening metadata dropdowns must not edit subtitle source.");
+    }
     private void CheckMainFields()
     {
         Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("LineCommentToggle") is {Bounds.Width:<=30,Content:Viewbox},"Comment control must be a compact icon-only toggle.");

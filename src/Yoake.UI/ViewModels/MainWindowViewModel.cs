@@ -193,7 +193,15 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public event Action? GridColumnContentChanged;
     public IReadOnlyList<AssEvent> Events => _activeSubtitleDocument?.Events ?? (IReadOnlyList<AssEvent>)Array.Empty<AssEvent>();
     public IReadOnlyList<string> StyleNames => _activeId is {} id&&_documents.TryGetValue(id,out var state)?state.StyleNames:[];
-    public IReadOnlyList<string> ActorNames => Events.Where(line=>MangetsuMetadata.Kind(line)!=MangetsuMetadataKind.Actor||!MangetsuMetadata.IsAppliedStylesTarget(line.Actor)).Select(l=>l.Actor).Where(s=>s.Length>0).Distinct().Order().ToArray();
+    // Toshi-ban lists dialogue actors case-insensitively; retain Yoake's
+    // useful Mangetsu actor declarations but omit internal applied-style targets.
+    public IReadOnlyList<string> ActorNames => Events.Where(line=>!line.IsComment||MangetsuMetadata.Kind(line)==MangetsuMetadataKind.Actor)
+        .Where(line=>MangetsuMetadata.Kind(line)!=MangetsuMetadataKind.Actor||!MangetsuMetadata.IsAppliedStylesTarget(line.Actor))
+        .Select(line=>line.Actor.Trim()).Where(s=>s.Length>0)
+        .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.OrdinalIgnoreCase).ToArray();
+    public IReadOnlyList<string> EffectNames => Events.Select(line=>line.Effect).Where(s=>s.Length>0)
+        .Distinct(StringComparer.Ordinal).Order(StringComparer.CurrentCulture).ToArray();
+    public void RefreshMetadataChoices(bool actor)=>OnPropertyChanged(actor?nameof(ActorNames):nameof(EffectNames));
     public AssEvent? SelectedEvent
     {
         get => _selectedEvent;
@@ -561,7 +569,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             EnsureKaraokeSafe();NotifyKaraoke();
             VideoFrame=null; WaveformSamples=state?.Waveform; MediaDurationSeconds=_media?.Info.DurationSeconds ?? 0;
             _currentTimeSeconds=state?.Time ?? 0;
-            foreach(var name in new[]{nameof(VideoSourcePath),nameof(AudioSourcePath),nameof(AudioTracks),nameof(AudioTrackIndex),nameof(HasEditOperation),nameof(SelectionStatus),nameof(HasAudioExportOperation),nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(ExternalKeyframePath),nameof(HasKeyframeOperation),nameof(ExternalTimecodePath),nameof(HasTimecodeOperation),nameof(CanShiftByFrames),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds),nameof(IsKaraokeMode),nameof(ShowKaraoke),nameof(KaraokeSlots),nameof(KaraokeStatus),nameof(KaraokeTag)}) OnPropertyChanged(name);
+            foreach(var name in new[]{nameof(VideoSourcePath),nameof(AudioSourcePath),nameof(AudioTracks),nameof(AudioTrackIndex),nameof(HasEditOperation),nameof(SelectionStatus),nameof(HasAudioExportOperation),nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(EffectNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(ExternalKeyframePath),nameof(HasKeyframeOperation),nameof(ExternalTimecodePath),nameof(HasTimecodeOperation),nameof(CanShiftByFrames),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds),nameof(IsKaraokeMode),nameof(ShowKaraoke),nameof(KaraokeSlots),nameof(KaraokeStatus),nameof(KaraokeTag)}) OnPropertyChanged(name);
             MediaStatus=_media?.SourcePath ?? "Open video/audio"; InvalidateSubtitlePreview(true); _registry.NotifyStateChanged();
             OnPropertyChanged(nameof(ProjectScrollRow));
         }

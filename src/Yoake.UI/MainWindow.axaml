@@ -674,7 +674,10 @@
 <Button Grid.Column="1" Command="{Binding Actions[styles/manage]}" Padding="3,0" ToolTip.Tip="Edit selected style in Styles Manager" MinHeight="{DynamicResource YoakeUiRowHeight}"><PathIcon Width="14" Height="14" Data="{x:Static icons:IconGeometries.StylesManager}" /></Button>
 </Grid>
           <Grid Name="MetadataOtherFields" Width="146" ColumnDefinitions="*,24" ColumnSpacing="2" Margin="0,0,3,0">
-            <AutoCompleteBox Name="LineActor" VerticalAlignment="Center" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" MinHeight="{DynamicResource YoakeUiRowHeight}" />
+            <Grid ColumnDefinitions="*,20" VerticalAlignment="Center">
+              <AutoCompleteBox Name="LineActor" ItemsSource="{Binding ActorNames}" Text="{Binding EditorDraft.Actor, Mode=TwoWay}" MinimumPrefixLength="1" FilterMode="StartsWith" Padding="3,0" PlaceholderText="Actor" ToolTip.Tip="Actor / Name" MinHeight="{DynamicResource YoakeUiRowHeight}" />
+              <Button Name="ActorDropDown" Grid.Column="1" MinWidth="0" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" IsEnabled="{Binding !FastActorEnabled}" ToolTip.Tip="All actors (Alt+Down or F4)" AutomationProperties.Name="Show actor choices"><PathIcon Width="10" Height="10" Data="M1,3 L5,7 L9,3 L8,2 L5,5 L2,2 Z" /></Button>
+            </Grid>
             <ToggleButton Name="FastActorToggle" Grid.Column="1" Padding="2,0" Content="»" IsChecked="{Binding Actions[actor/fast/toggle].IsChecked, Mode=OneWay}" Command="{Binding Actions[actor/fast/toggle]}" ToolTip.Tip="Fast actor naming" MinHeight="{DynamicResource YoakeUiRowHeight}" />
             <Popup Name="FastActorPopup" PlacementTarget="{Binding #LineActor}" Placement="Bottom" IsLightDismissEnabled="False">
               <Border Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource DividerBrush}" BorderThickness="1" Padding="5" MinWidth="180">
@@ -688,7 +691,10 @@
 <NumericUpDown Name="MarginRight" Grid.Column="1" MinWidth="0" Text="{Binding EditorDraft.MarginR, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Right margin (script pixels)" />
 <NumericUpDown Name="MarginVertical" Grid.Column="2" MinWidth="0" Text="{Binding EditorDraft.MarginV, Mode=TwoWay}" Minimum="0" Maximum="2147483647" Increment="1" FormatString="0" ToolTip.Tip="Vertical margin (script pixels)" />
 </Grid>
-<TextBox Name="LineEffect" Width="102" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" Padding="3,0" PlaceholderText="Effect" MinHeight="{DynamicResource YoakeUiRowHeight}" />
+<Grid Name="EffectField" Width="122" ColumnDefinitions="*,20" VerticalAlignment="Center">
+  <AutoCompleteBox Name="LineEffect" ItemsSource="{Binding EffectNames}" Text="{Binding EditorDraft.Effect, Mode=TwoWay}" MinimumPrefixLength="1" FilterMode="StartsWith" Padding="3,0" PlaceholderText="Effect" MinHeight="{DynamicResource YoakeUiRowHeight}" ToolTip.Tip="Effect / automation metadata" />
+  <Button Name="EffectDropDown" Grid.Column="1" MinWidth="0" Padding="0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="All effects (Alt+Down or F4)" AutomationProperties.Name="Show effect choices"><PathIcon Width="10" Height="10" Data="M1,3 L5,7 L9,3 L8,2 L5,5 L2,2 Z" /></Button>
+</Grid>
         </WrapPanel>
       </Grid>
     </Border>

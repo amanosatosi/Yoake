@@ -66,6 +66,8 @@ public partial class MainWindow : Window, IEditorDialogs
         VideoSplitter.AddHandler(PointerReleasedEvent,(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();},RoutingStrategies.Bubble);
         VideoSplitter.KeyDown+=(_,_)=>_embeddedZoomRequest++;
         VideoSplitter.KeyUp+=(_,_)=>{_videoSplitterOverride=true;UpdateEmbeddedVideoHost();};
+        ConfigureMetadataDropDown(LineActor,ActorDropDown,true);
+        ConfigureMetadataDropDown(LineEffect,EffectDropDown,false);
         FastActorToggle.Click+=(_,_)=>Dispatcher.UIThread.Post(()=>{if(_model?.FastActorEnabled==true)LineActor.Focus();UpdateFastActorPopup();});
         FastActorPlayback.ItemsSource=new[]{"Video","Audio","Off"};
         FastActorMode.ItemsSource=new[]{"Nanashi","Normal"};
@@ -507,6 +509,14 @@ public partial class MainWindow : Window, IEditorDialogs
             if(input is TextBox textBox && textBox.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
             if(e.Key==Key.Enter&&(input is AutoCompleteBox {IsDropDownOpen:true}||input is ComboBox {IsDropDownOpen:true}))return;
         }
+        if((e.Key==Key.F4&&e.KeyModifiers==Avalonia.Input.KeyModifiers.None||
+            e.Key==Key.Down&&e.KeyModifiers==Avalonia.Input.KeyModifiers.Alt)&&
+            (LineActor.IsKeyboardFocusWithin||LineEffect.IsKeyboardFocusWithin))
+        {
+            if(LineActor.IsKeyboardFocusWithin&&_model.FastActorEnabled)return;
+            ToggleMetadataDropDown(LineActor.IsKeyboardFocusWithin?LineActor:LineEffect);
+            e.Handled=true;return;
+        }
         if(_model.FastActorEnabled && (LineActor.IsKeyboardFocusWithin||FastActorList.IsKeyboardFocusWithin) && e.KeyModifiers==Avalonia.Input.KeyModifiers.None && e.Key is Key.Up or Key.Down or Key.Enter)
         {
             if(LineActor.GetVisualDescendants().OfType<TextPresenter>().Any(p=>!string.IsNullOrEmpty(p.PreeditText)))return;
@@ -573,7 +583,7 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         var enabled=_model?.FastActorEnabled==true;
         LineActor.MinimumPrefixLength=enabled?int.MaxValue:1;
-        if(enabled)LineActor.IsDropDownOpen=false;
+        if(enabled){LineActor.IsDropDownOpen=false;LineActor.FilterMode=AutoCompleteFilterMode.StartsWith;}
         FastActorPopup.IsOpen=enabled&&(LineActor.IsKeyboardFocusWithin||FastActorList.IsKeyboardFocusWithin||FastActorPlayback.IsKeyboardFocusWithin||FastActorPlayback.IsDropDownOpen||FastActorMode.IsKeyboardFocusWithin||FastActorMode.IsDropDownOpen);
     }
     private async void HandleClosing(object? sender,WindowClosingEventArgs e)
