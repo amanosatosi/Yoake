@@ -227,12 +227,12 @@ public partial class MainWindow : Window, IEditorDialogs
     private void HeaderMoved(object? sender,PointerEventArgs e)
     {
         if(_resizeColumn<0)return;
-        ColumnHeader.ColumnDefinitions[_resizeColumn].Width=new GridLength(Math.Clamp(_resizeWidth+e.GetPosition(this).X-_resizeStart,24,600));ApplyRowWidths();e.Handled=true;
+        ColumnHeader.ColumnDefinitions[_resizeColumn].Width=new GridLength(Math.Clamp(_resizeWidth+e.GetPosition(this).X-_resizeStart,24*_uiColumnScale,600*_uiColumnScale));ApplyRowWidths();e.Handled=true;
     }
     private async void HeaderReleased(object? sender,PointerReleasedEventArgs e)
     {
         if(_resizeColumn<0)return;
-        _gridWidthOverrides[_resizeColumn]=ColumnHeader.ColumnDefinitions[_resizeColumn].Width.Value/_uiColumnScale;
+        _gridWidthOverrides[_resizeColumn]=Math.Clamp(ColumnHeader.ColumnDefinitions[_resizeColumn].Width.Value/_uiColumnScale,24,600);
         _resizeColumn=-1;e.Pointer.Capture(null);
         if(_model is not null)await _model.Registry.InvokeAsync(CommandIds.GridColumnWidths,new(),(double[])_gridWidthOverrides.Clone());
         QueueGridColumnLayout();
@@ -411,6 +411,7 @@ public partial class MainWindow : Window, IEditorDialogs
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
         if(e.PropertyName==nameof(MainWindowViewModel.Events)){RevealActiveDocumentTab();QueueGridColumnLayout();}
+        if(e.PropertyName is nameof(MainWindowViewModel.UiFontFamily) or nameof(MainWindowViewModel.UiFontSize))QueueGridColumnLayout();
         if(e.PropertyName==nameof(MainWindowViewModel.FastActorEnabled))Dispatcher.UIThread.Post(UpdateFastActorPopup);
         if(e.PropertyName is nameof(MainWindowViewModel.RecentVideoItems) or nameof(MainWindowViewModel.RecentAudioItems))Dispatcher.UIThread.Post(RefreshRecentMedia);
         if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();

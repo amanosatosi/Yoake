@@ -13,10 +13,14 @@ public static class SubtitleGridColumns
         var numericLengths=new int[10];
         var unique=new HashSet<string>?[10];
         for(var i=4;i<=6;i++)unique[i]=new(StringComparer.Ordinal);
+        var values=new string[10];
+        numericLengths[0]=events.Count.ToString(System.Globalization.CultureInfo.InvariantCulture).Length;
         foreach(var line in events)
         {
-            string[] values=[line.Number.ToString(System.Globalization.CultureInfo.InvariantCulture),line.DisplayLayer,line.DisplayStart,line.DisplayEnd,line.DisplayStyle,line.DisplayActor,line.DisplayEffect,line.DisplayMarginL,line.DisplayMarginR,line.DisplayMarginV];
-            for(var i=0;i<10;i++)
+            values[1]=line.DisplayLayer;values[2]=line.DisplayStart;values[3]=line.DisplayEnd;
+            values[4]=line.DisplayStyle;values[5]=line.DisplayActor;values[6]=line.DisplayEffect;
+            values[7]=line.DisplayMarginL;values[8]=line.DisplayMarginR;values[9]=line.DisplayMarginV;
+            for(var i=1;i<10;i++)
             {
                 if(i is 1 or 7 or 8 or 9)visible[i]|=NonZero(values[i]);
                 else if(i is 5 or 6)visible[i]|=!string.IsNullOrWhiteSpace(values[i]);
@@ -28,7 +32,7 @@ public static class SubtitleGridColumns
                 else numericLengths[i]=Math.Max(numericLengths[i],values[i].Length);
             }
         }
-        // Time and integer values use tabular-sized representative strings.
+        // Time and integer columns use a representative string of the longest length.
         for(var i=0;i<10;i++)
         {
             if(!visible[i]){widths[i]=0;continue;}

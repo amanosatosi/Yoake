@@ -67,7 +67,7 @@ public sealed class SettingsStore(string path)
         var globalTiming=false;bool? toolbar=null; List<HotkeyOverride> hotkeys=[];
         var audioStopMigrated=false;
         var ratio = defaults.MainSplitRatio; var height = defaults.GridHeight;
-        double? volume=null,audioHeight=null,intensity=null,audioSpan=null;var muted=false;var linked=false;double[]? compact=null,styleSplit=null;
+        double? volume=null,audioHeight=null,intensity=null,audioSpan=null;var muted=false;var linked=false;double[]? compact=null,styleSplit=null,gridOverrides=null;
         string[]? autoload=null,includes=null;string? uiFontFamily=null;double? uiFontSize=null;
         bool? audioSpectrum=null,audioAutoScroll=null;
         bool? audioAutoCommit=null,audioAutoNext=null;
@@ -129,6 +129,7 @@ public sealed class SettingsStore(string path)
                 case "automationAutoloadDirectories":autoload=ReadPaths(member.Value);break;
                 case "automationIncludeDirectories":includes=ReadPaths(member.Value);break;
                 case "styleSplitWeights":if(member.Value.ValueKind==JsonValueKind.Array)styleSplit=member.Value.EnumerateArray().Take(4).Select(ReadNumber).ToArray();break;
+                case "gridColumnWidthOverrides":if(member.Value.ValueKind==JsonValueKind.Array)gridOverrides=member.Value.EnumerateArray().Take(11).Select(ReadNumber).ToArray();break;
                 case "compactGridColumnWidths":if(member.Value.ValueKind==JsonValueKind.Array)compact=member.Value.EnumerateArray().Take(8).Select(ReadNumber).ToArray();break;
                 case "gridColumnWidths":
                     if (member.Value.ValueKind == JsonValueKind.Array) widths = member.Value.EnumerateArray().Take(9).Select(ReadNumber).ToArray();
@@ -149,7 +150,7 @@ public sealed class SettingsStore(string path)
             GridColumnWidths = widths!, RecentFiles = recent!, RecentKeyframes=recentKeyframes, RecentTimecodes=recentTimecodes, RecentVideo=recentVideo, RecentAudio=recentAudio, FutureSettings = future,ShowOriginal=showOriginal,BetterView=betterView,PasteOverFields=pasteOverFields,
             PlaybackVolume=volume,PlaybackMuted=muted,AudioDisplayHeight=audioHeight,AudioIntensity=intensity,AudioWindowSeconds=audioSpan,AudioVolumeLinked=linked,AudioSpectrum=audioSpectrum,AudioAutoScroll=audioAutoScroll,
             AudioAutoCommit=audioAutoCommit,AudioAutoNext=audioAutoNext,AudioDefaultDuration=audioDefaultDuration,AudioLeadIn=audioLeadIn,AudioLeadOut=audioLeadOut,
-            AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,StyleSplitWeights=styleSplit };
+            AutomationAutoloadDirectories=autoload,AutomationIncludeDirectories=includes,CompactGridColumnWidths=compact,GridColumnWidthOverrides=gridOverrides,StyleSplitWeights=styleSplit };
     }
 
     private static string[]? ReadPaths(JsonElement value) => value.ValueKind==JsonValueKind.Array

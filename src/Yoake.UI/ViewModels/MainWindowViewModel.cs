@@ -341,7 +341,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             else if(view.ActiveLine is {} active){state.GridScrollRow=Math.Clamp(active,0,Math.Max(0,document.Events.Count-1));}
         }
         session.PropertyChanged+=(_,args)=>{if(args.PropertyName is nameof(DocumentSession.Path) or nameof(DocumentSession.Title)){InvalidateRecovery(session.Id);CancelFontWork(session.Id);}};
-        document.Changed+=(_,_)=> { CancelFontWork(session.Id);if(!_publishingAttachments)CancelAttachmentWork(session.Id);state.AudioTiming.Reconcile();ReconcileKaraoke(state);state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
+        document.Changed+=(_,_)=> { CancelFontWork(session.Id);if(!_publishingAttachments)CancelAttachmentWork(session.Id);state.AudioTiming.Reconcile();ReconcileKaraoke(state);state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { GridColumnContentChanged?.Invoke();if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
         {
             session.IsDirty=state.Editor.IsDirty||state.UnsavedSource||state.Karaoke.Values.Any(e=>e.Plan.Changed)||(_activeId==session.Id&&Draft?.IsChanged==true);
@@ -349,7 +349,6 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if(namesChanged)state.StyleNames=names;
             if(_activeId==session.Id)
             {
-                GridColumnContentChanged?.Invoke();
                 // Refresh choices before the draft binding selects the renamed
                 // style. Otherwise ComboBox retains an absent/blank selection.
                 if(namesChanged)OnPropertyChanged(nameof(StyleNames));

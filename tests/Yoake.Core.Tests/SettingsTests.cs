@@ -5,6 +5,24 @@ namespace Yoake.Core.Tests;
 public sealed class SettingsTests
 {
     [Fact]
+    public void GridColumnOverridesRoundTripAndSurviveDamagedUnrelatedSetting()
+    {
+        var root=Path.Combine(Path.GetTempPath(),"yoake-grid-settings-"+Guid.NewGuid());
+        Directory.CreateDirectory(root);
+        var store=new SettingsStore(Path.Combine(root,"settings.json"));
+        try
+        {
+            double[] widths=[0,0,85,0,0,130,0,0,0,0];
+            store.Save(new AppSettings { GridColumnWidthOverrides=widths });
+            Assert.Equal(widths,store.Load().GridColumnWidthOverrides);
+            File.WriteAllText(store.Path,"{\"gridColumnWidthOverrides\":[0,0,85,0,0,130,0,0,0,0],\"viewMode\":{}}");
+            Assert.Equal(widths,store.Load().GridColumnWidthOverrides);
+            Assert.Null((new AppSettings { GridColumnWidthOverrides=[0,-1,0,0,0,0,0,0,0,0] }).Normalize().GridColumnWidthOverrides);
+        }
+        finally { Directory.Delete(root,true); }
+    }
+
+    [Fact]
     public void UiFontRoundTripsAndSurvivesDamagedUnrelatedSetting()
     {
         var root=Path.Combine(Path.GetTempPath(),"yoake-font-settings-"+Guid.NewGuid());
