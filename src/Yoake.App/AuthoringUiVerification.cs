@@ -58,7 +58,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
                 CheckDefaultWorkspace();
                 foreach(var scale in new[]{1d,1.25,1.5,2})Capture(window,$"editor-dark-{scale*100:0}",scale);
                 Capture(styles,"styles-dark-normal",1);
-                CheckMainFields();CheckSyntax(text);
+                CheckMainFields();CheckSyntax(text);CheckLayerAndCommentControls();
                 var font=Named<FontPicker>(styles,"StyleFont");Require(font.InstalledFamilies.Count>0,"Installed font browser must load actual families.");font.OpenBrowser();Require(font.IsBrowserOpen,"Font dropdown must open immediately without requiring a typed search.");
                 _normalEditorWidth=window.FindControl<Grid>("EventEditorRegion")!.Bounds.Width;
                 window.RequestedThemeVariant=styles.RequestedThemeVariant=ThemeVariant.Light;
@@ -287,8 +287,51 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
         Require(text.MoveAtVisualBoundary(Key.Down,KeyModifiers.Shift)&&text.SelectionStart==end-1&&text.SelectionEnd==end,"Shift+Down must extend selection to end.");
     }
 
+    private void CheckLayerAndCommentControls()
+    {
+        var layer=window.FindControl<NumericUpDown>("LineLayer")!;
+        var toggle=window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("LineCommentToggle")!;
+        var line=model.SelectedEvent!;var originalLayer=line.Get("Layer");var originalComment=line.IsComment;
+        var source=model.ActiveEditor!.Document.Serialize();
+        var up=layer.GetVisualDescendants().OfType<RepeatButton>().Single(b=>b.Name=="PART_IncreaseButton");
+        var down=layer.GetVisualDescendants().OfType<RepeatButton>().Single(b=>b.Name=="PART_DecreaseButton");
+        Require(layer.Minimum==int.MinValue&&layer.Maximum==int.MaxValue&&layer.Increment==1&&up.IsEffectivelyVisible&&down.IsEffectivelyVisible,
+            "Layer spinner must accept signed integers with exactly one unit per step.");
+        void TypeLayer(string value)
+        {
+            layer.SetCurrentValue(NumericUpDown.TextProperty,value);
+            Require(model.CommitDraft()&&line.Get("Layer")==value,"Direct signed layer input must commit: "+value);
+        }
+        void Spin(RepeatButton button,string expected)
+        {
+            Require(button.IsEnabled,"Layer arrow must remain enabled for signed values.");
+            button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Require(model.CommitDraft()&&line.Get("Layer")==expected,"One layer arrow click must commit exactly "+expected+"; got "+line.Get("Layer"));
+        }
+        TypeLayer("0");Spin(down,"-1");Spin(up,"0");Spin(up,"1");
+        TypeLayer("-12");Spin(up,"-11");Spin(down,"-12");TypeLayer(originalLayer);
+        void Toggle()
+        {
+            window.Activate();Require(toggle.Focus(),"Comment toggle must accept keyboard focus.");
+            toggle.RaiseEvent(new KeyEventArgs{RoutedEvent=InputElement.KeyDownEvent,Source=toggle,Key=Key.Enter});
+            window.UpdateLayout();
+        }
+        void CheckEye(bool comment)
+        {
+            Require(toggle.IsChecked==comment&&window.FindControl<Avalonia.Controls.Shapes.Path>("DialogueEye")!.IsVisible!=comment&&
+                window.FindControl<Avalonia.Controls.Shapes.Path>("CommentEye")!.IsVisible==comment&&
+                window.FindControl<Avalonia.Controls.Shapes.Path>("CommentEyeSlash")!.IsVisible==comment,
+                "Visibility glyph and checked state must follow the actual ASS event kind.");
+        }
+        CheckEye(originalComment);Toggle();Require(line.IsComment!=originalComment,"Eye toggle must change dialogue/comment kind.");CheckEye(!originalComment);
+        Toggle();Require(line.IsComment==originalComment,"Second eye toggle restores event kind.");CheckEye(originalComment);
+        Require(model.ActiveEditor.Document.Serialize()==source,"Layer and comment control round trip must preserve the original source.");
+        window.FindControl<AssTextBox>("SubtitleText")!.Focus();
+    }
+
     private void CheckMainFields()
     {
+        Require(window.FindControl<Avalonia.Controls.Primitives.ToggleButton>("LineCommentToggle") is {Bounds.Width:<=30,Content:Viewbox},"Comment control must be a compact icon-only toggle.");
         foreach(var name in new[]{"LineLayer","MarginLeft","MarginRight","MarginVertical"})
             CheckNumber(window.FindControl<NumericUpDown>(name)!,true);
         foreach(var name in new[]{"LineStart","LineEnd"})
