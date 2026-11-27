@@ -43,7 +43,7 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
             {
                 case 0:
                     foreach(var id in Seven)Require(!model.Actions[id].CanExecute(null),"No-video availability: "+id);
-                    var path=Path.Combine(options.ProfileDirectory!,"日本語 presentation.ass");File.WriteAllText(path,Fixture());
+                    var path=Path.Combine(options.ProfileDirectory!,"日本語 presentation.ass");File.WriteAllText(path,Fixture()+"\n[Aegisub Project Garbage]\nActive Line: 0\nScroll Position: 0\nVideo Position: 2\nVideo Zoom Percent: 0.375\nVideo AR Mode: 2\nVideo AR Value: 1.777778\n");
                     _audio=Path.Combine(options.VerificationMedia!,"av.avi");
                     // Send an actual bubbling file transfer through the
                     // shipping window from its subtitle grid, video first.
@@ -52,6 +52,14 @@ internal sealed class VideoPresentationUiAcceptanceVerification(IClassicDesktopS
                     if(_opening?.IsCompleted!=true){_stage--;return;}Require(await _opening,"Mixed file drop opens subtitle then native Audio/Video.");
                     Require(model.ActiveSubtitlePath==Path.Combine(options.ProfileDirectory!,"日本語 presentation.ass")&&model.VideoSourcePath==_audio&&model.AudioSourcePath==_audio,
                         "The combined drop must attach both media tracks to the dropped subtitle tab.");
+                    Require(model.CurrentFrame==2&&Math.Abs(model.VideoWindowZoom-.375)<.001&&model.VideoAspect.Kind==VideoAspectKind.Wide,
+                        "Mixed drop restores saved Aegisub frame, fractional zoom and aspect after the explicit media open.");
+                    var savedPath=Path.Combine(options.ProfileDirectory!,"presentation-saved.ass");
+                    Require(model.SaveActiveSubtitle(savedPath),"Save project view metadata.");
+                    var savedView=SubtitleProjectView.Read(AssDocument.Load(savedPath));
+                    Require(savedView.VideoPosition==2&&savedView.VideoZoom==.375&&savedView.Aspect?.Kind==VideoAspectKind.Wide,
+                        "Saved ASS contains the current Aegisub video view.");
+                    await model.SeekPlaybackAsync(0);
                     await Invoke(CommandIds.ViewAudioVideo);await Invoke("video/open/dummy",new DummyVideoOptions{Width=320,Height=180,FrameCount=600,FramesPerSecond=25,Checkerboard=true});
                     var keyPath=Path.Combine(options.ProfileDirectory!,"pan-keys.txt");File.WriteAllText(keyPath,"# keyframe format v1\nfps 0\n0\n5\n175\n");await Invoke("keyframe/open",keyPath);_keys=model.Keyframes;
                     await Invoke("time/lead/out");model.Draft!.Layer="unfinished";

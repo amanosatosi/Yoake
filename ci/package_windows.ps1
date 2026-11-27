@@ -9,7 +9,7 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $PublishRoot = [IO.Path]::GetFullPath($PublishRoot)
 $NativeRoot = [IO.Path]::GetFullPath($NativeRoot)
 $OutputRoot = [IO.Path]::GetFullPath($OutputRoot)
-$portable = Join-Path $OutputRoot 'Yoake-Windows-x64-portable'
+$portable = Join-Path $OutputRoot 'Yoake'
 if (Test-Path -LiteralPath $portable) { Remove-Item -LiteralPath $portable -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $portable | Out-Null
 Copy-Item (Join-Path $PublishRoot '*') $portable -Recurse -Force
@@ -207,11 +207,16 @@ Set-Content -LiteralPath (Join-Path $portable 'ASSDraw-source-availability.txt')
 
 $zip = Join-Path $OutputRoot 'Yoake-Windows-x64-portable.zip'
 if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
-Compress-Archive -Path (Join-Path $portable '*') -DestinationPath $zip -CompressionLevel Optimal
+Compress-Archive -LiteralPath $portable -DestinationPath $zip -CompressionLevel Optimal
 # Run subsequent loader and GUI acceptance against bytes extracted from the
 # exact distributable ZIP, rather than only its pre-compression staging tree.
 Remove-Item -LiteralPath $portable -Recurse -Force
-Expand-Archive -LiteralPath $zip -DestinationPath $portable
+Expand-Archive -LiteralPath $zip -DestinationPath $OutputRoot
+# Ensure the ZIP has exactly one top-level application directory.
+$archive = [IO.Compression.ZipFile]::OpenRead($zip)
+try {
+  if (@($archive.Entries | Where-Object { $_.FullName -notmatch '^Yoake[\\/]' }).Count -gt 0) { throw 'Portable archive contains files outside Yoake/.' }
+} finally { $archive.Dispose() }
 if (-not (Test-Path -LiteralPath (Join-Path $portable 'Yoake.exe'))) { throw 'Portable archive is missing Yoake.exe.' }
 Write-Host 'Portable archive extracted for native closure, hash and GUI acceptance.'
 Write-Host "Staged $($selected.Count) native runtime DLL(s) in native/win-x64."

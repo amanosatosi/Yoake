@@ -327,11 +327,11 @@ jobs:
       - name: Verify actual bundled ASSDraw identity standalone window and dependencies
         id: portable_assdraw
         shell: pwsh
-        run: .\ci\verify_assdraw_package.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable -AssDrawRoot artifacts\assdraw
+        run: .\ci\verify_assdraw_package.ps1 -PortableRoot artifacts\Yoake -AssDrawRoot artifacts\assdraw
       - name: Verify staged native runtime closure
         id: portable_native
         shell: pwsh
-        run: .\ci\verify_windows_runtime.ps1 -PortableRoot artifacts\Yoake-Windows-x64-portable
+        run: .\ci\verify_windows_runtime.ps1 -PortableRoot artifacts\Yoake
       - name: Generate deterministic editor media fixtures
         run: python ci/create_editor_media_fixtures.py artifacts/editor-fixtures
       - name: Generate pinned redistributable font acceptance fixtures
@@ -342,14 +342,14 @@ jobs:
         run: .\ci\set_ui_verification_display.ps1
       - name: Verify real MainWindow startup with clean, legacy and damaged profiles
         shell: pwsh
-        run: .\ci\smoke_windows.ps1 -Executable artifacts\Yoake-Windows-x64-portable\Yoake.exe -VerificationRoot artifacts\ui-startup-verification -MediaFixturesRoot artifacts\editor-fixtures
+        run: .\ci\smoke_windows.ps1 -Executable artifacts\Yoake\Yoake.exe -VerificationRoot artifacts\ui-startup-verification -MediaFixturesRoot artifacts\editor-fixtures
       - name: Verify separate packaged keyboard and settings acceptance
         shell: pwsh
-        run: .\ci\acceptance_windows.ps1 -Executable artifacts\Yoake-Windows-x64-portable\Yoake.exe -VerificationRoot artifacts\ui-keyboard-acceptance -MediaFixturesRoot artifacts\editor-fixtures
+        run: .\ci\acceptance_windows.ps1 -Executable artifacts\Yoake\Yoake.exe -VerificationRoot artifacts\ui-keyboard-acceptance -MediaFixturesRoot artifacts\editor-fixtures
       - name: Verify packaged editor domain and native media/rendering providers
         shell: pwsh
         run: |
-          $exe = (Resolve-Path artifacts/Yoake-Windows-x64-portable/Yoake.exe).Path
+          $exe = (Resolve-Path artifacts/Yoake/Yoake.exe).Path
           $fixtures = (Resolve-Path artifacts/editor-fixtures).Path
           $report = Join-Path $fixtures 'verification.txt'
           $process = Start-Process -FilePath $exe -ArgumentList @('--verify-editor', $fixtures, $report) -WindowStyle Hidden -PassThru

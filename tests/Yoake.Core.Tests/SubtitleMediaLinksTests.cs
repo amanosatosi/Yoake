@@ -6,6 +6,26 @@ namespace Yoake.Core.Tests;
 
 public sealed class SubtitleMediaLinksTests
 {
+    [Fact] public void AegisubViewMetadataRoundTripsWithoutChangingUnknownFields()
+    {
+        var document=AssDocument.Parse("[Aegisub Project Garbage]\nActive Line: 135\nScroll Position: 120\nVideo Position: 15382\nVideo Zoom Percent: 0.375000\nVideo AR Mode: 4\nVideo AR Value: 1.777778\nUnknown: keep\n");
+        var view=SubtitleProjectView.Read(document);
+        Assert.Equal(135,view.ActiveLine);Assert.Equal(120,view.ScrollPosition);Assert.Equal(15382,view.VideoPosition);
+        Assert.Equal(.375,view.VideoZoom);Assert.Equal(new VideoAspect(VideoAspectKind.Custom,1.777778),view.Aspect);
+        var editor=new SubtitleEditor(document);
+        editor.SetProjectProperties(SubtitleProjectView.Capture(7,3,42,.5,new(VideoAspectKind.Wide),16d/9));
+        var saved=SubtitleProjectView.Read(document);
+        Assert.Equal(7,saved.ActiveLine);Assert.Equal(3,saved.ScrollPosition);Assert.Equal(42,saved.VideoPosition);
+        Assert.Equal(.5,saved.VideoZoom);Assert.Equal(VideoAspectKind.Wide,saved.Aspect!.Kind);
+        Assert.Equal("keep",document.GetSectionValue(SubtitleMediaLinks.Section,"Unknown"));
+    }
+
+    [Fact] public void InvalidProjectViewValuesAreIgnoredIndependently()
+    {
+        var view=SubtitleProjectView.Read(AssDocument.Parse("[Aegisub Project Garbage]\nActive Line: -1\nScroll Position: 3\nVideo Position: bad\nVideo Zoom Percent: NaN\nVideo AR Mode: 4\nVideo AR Value: Infinity\n"));
+        Assert.Null(view.ActiveLine);Assert.Equal(3,view.ScrollPosition);Assert.Null(view.VideoPosition);Assert.Null(view.VideoZoom);Assert.Null(view.Aspect);
+    }
+
     [Fact] public void DuplicateProjectSectionsRetainFirstValuesAndResolveTimingLinks()
     {
         var path=Path.Combine(Path.GetTempPath(),"episode.ass");

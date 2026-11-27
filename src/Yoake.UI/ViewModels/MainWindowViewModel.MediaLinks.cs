@@ -4,6 +4,29 @@ namespace Yoake.UI.ViewModels;
 
 public sealed partial class MainWindowViewModel
 {
+    public int? ProjectScrollRow=>VisualState is {HasProjectScroll:true} state?state.GridScrollRow:null;
+    public async Task RestoreProjectVideoAsync(Guid? owner)
+    {
+        if(owner is not {} id||_activeId!=id||!_documents.TryGetValue(id,out var state)||
+            state.PendingProjectView is not {} view||_media?.HasVideo!=true)return;
+        state.PendingProjectView=null;
+        if(view.Aspect is {} aspect)
+        {
+            // Aegisub's default aspect uses the provider's display aspect
+            // (including sample aspect ratio), not necessarily storage width.
+            state.VideoAspect=aspect.Kind==VideoAspectKind.Default?InitialVideoAspect(_media.VideoProvider):aspect;
+            OnPropertyChanged(nameof(VideoAspectRatio));
+        }
+        if(view.VideoZoom is {} zoom)
+        {
+            state.VideoView.SetWindowZoom(zoom);
+            VideoWindowZoomRequested?.Invoke(this,EventArgs.Empty);
+        }
+        NotifyVideoPresentation();
+        if(view.VideoPosition is {} frame&&FrameTimes.Count>0)
+            await SeekFrameAsync(frame);
+        if(_activeId==id)OnPropertyChanged(nameof(ProjectScrollRow));
+    }
     private static IEnumerable<string> ProjectAssetReferences(Yoake.Core.Subtitles.AssDocument document,string? subtitlePath)
     {
         var links = SubtitleMediaLinks.Read(document,subtitlePath ?? "Untitled.ass");

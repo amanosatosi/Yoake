@@ -32,6 +32,7 @@ public interface IEditorDialogs
     Task<ulong?> ChooseSubtitleTrackAsync(IReadOnlyList<Yoake.Core.Media.MatroskaSubtitleTrack> tracks,CancellationToken token=default)=>Task.FromResult<ulong?>(null);
     Task<int?> ChooseAudioTrackAsync(IReadOnlyList<Yoake.Core.Media.AudioTrackInfo> tracks,int? current,CancellationToken token=default)=>Task.FromResult<int?>(null);
     Task<int?> ChooseSubtitleEncodingAsync()=>Task.FromResult<int?>(null);
+    int? GetSubtitleGridScrollRow()=>null;
     Task<string?> OpenSubtitleAsync();
     Task<string?> OpenMediaAsync();
     Task<string?> OpenVideoAsync()=>Task.FromResult<string?>(null);

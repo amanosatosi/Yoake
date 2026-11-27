@@ -53,6 +53,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         public WaveformData? Waveform;
         public double Time;
         public AssEvent? Selected;
+        public int GridScrollRow;
+        public bool HasProjectScroll;
+        public SubtitleProjectView? PendingProjectView;
         public AssEvent? OriginalLine;
         public string OriginalText="";
         public RecoveryLease RecoveryLease = new();
@@ -324,6 +327,15 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         if(_documents.TryGetValue(session.Id,out var previous)){CancelAttachmentWork(session.Id);CancelFontWork(session.Id);InvalidateRecovery(session.Id);previous.AudioExport?.Cancel();}
         var state=new DocumentState(new SubtitleEditor(document)){AudioSpan=AudioWindowSeconds,Search=new(_settings.SearchPreferences??new())}; _documents[session.Id]=state;
+        if(session.Path is not null)
+        {
+            var view=SubtitleProjectView.Read(document);
+            state.PendingProjectView=view;
+            if(view.ActiveLine is {} row && document.Events.Count>0)
+                state.Selected=document.Events[Math.Clamp(row,0,document.Events.Count-1)];
+            if(view.ScrollPosition is {} scroll){state.GridScrollRow=Math.Clamp(scroll,0,Math.Max(0,document.Events.Count-1));state.HasProjectScroll=true;}
+            else if(view.ActiveLine is {} active){state.GridScrollRow=Math.Clamp(active,0,Math.Max(0,document.Events.Count-1));}
+        }
         session.PropertyChanged+=(_,args)=>{if(args.PropertyName is nameof(DocumentSession.Path) or nameof(DocumentSession.Title)){InvalidateRecovery(session.Id);CancelFontWork(session.Id);}};
         document.Changed+=(_,_)=> { CancelFontWork(session.Id);if(!_publishingAttachments)CancelAttachmentWork(session.Id);state.AudioTiming.Reconcile();ReconcileKaraoke(state);state.Editing?.Cancel();session.IsDirty=true; ScheduleDocumentAutomationSync(session.Id); if (_activeId==session.Id) { if(!_publishingAudioTiming)FinishAudioTimingGesture(false);InvalidateSubtitlePreview(true); OnPropertyChanged(nameof(PreviewRevision));UpdateAudioPlaybackEnd();OnPropertyChanged(nameof(HasPendingAudioTiming)); ScheduleAutomationValidation(); } };
         state.Editor.Undo.Changed+=(_,_)=>
@@ -411,6 +423,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                 await OpenAssociatedMediaAsync(full,session.Id,cancellation.Token);
                 cancellation.Token.ThrowIfCancellationRequested();
             }
+            await RestoreProjectVideoAsync(session.Id);
+            cancellation.Token.ThrowIfCancellationRequested();
+            if(_activeId==session.Id)OnPropertyChanged(nameof(ProjectScrollRow));
             return true;
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { SubtitleStatus = "Opening canceled."; return false; }
@@ -453,6 +468,13 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                         mediaState.Media?.AudioSourcePath,mediaState.Media?.AudioProvider?.AudioTrackIndex)) mediaProperties[pair.Key] = pair.Value;
                 if (mediaState.TimecodeLinkChanged || mediaState.TimecodePath is not null) mediaProperties["Timecodes File"] = mediaState.TimecodePath ?? "";
                 if (mediaState.KeyframeLinkChanged || mediaState.KeyframePath is not null) mediaProperties["Keyframes File"] = mediaState.KeyframePath ?? "";
+                var row=Math.Max(0,Events.ToList().IndexOf(SelectedEvent!));
+                var scroll=Dialogs?.GetSubtitleGridScrollRow()??mediaState.GridScrollRow;
+                var hasVideo=mediaState.Media?.HasVideo==true;
+                var view=SubtitleProjectView.Read(ActiveEditor.Document);
+                if(hasVideo||row!=0||scroll!=0||view.ActiveLine is not null||view.ScrollPosition is not null)
+                    foreach(var pair in SubtitleProjectView.Capture(row,scroll,hasVideo?CurrentFrame:null,
+                        hasVideo?VideoWindowZoom:null,hasVideo?VideoAspect:null,VideoAspectRatio))mediaProperties[pair.Key]=pair.Value;
                 ActiveEditor.SetProjectProperties(mediaProperties);
                 if(utf8)ActiveEditor.Document.SaveUtf8(full);else ActiveEditor.Document.Save(full);
                 session.Path = full; session.Title = Path.GetFileName(full);
@@ -521,6 +543,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             _currentTimeSeconds=state?.Time ?? 0;
             foreach(var name in new[]{nameof(VideoSourcePath),nameof(AudioSourcePath),nameof(AudioTracks),nameof(AudioTrackIndex),nameof(HasEditOperation),nameof(SelectionStatus),nameof(HasAudioExportOperation),nameof(Events),nameof(SelectedEvent),nameof(HasSelectedEvent),nameof(StyleNames),nameof(ActorNames),nameof(ActiveSubtitlePath),nameof(SuggestedSubtitleFileName),nameof(CurrentTimeSeconds),nameof(TimeDisplay),nameof(CanPlayMedia),nameof(FramePositionDisplay),nameof(RelativeTimingDisplay),nameof(FrameTimes),nameof(Keyframes),nameof(ExternalKeyframePath),nameof(HasKeyframeOperation),nameof(ExternalTimecodePath),nameof(HasTimecodeOperation),nameof(CanShiftByFrames),nameof(AudioHorizontalZoom),nameof(AudioWindowSeconds),nameof(IsKaraokeMode),nameof(ShowKaraoke),nameof(KaraokeSlots),nameof(KaraokeStatus),nameof(KaraokeTag)}) OnPropertyChanged(name);
             MediaStatus=_media?.SourcePath ?? "Open video/audio"; InvalidateSubtitlePreview(true); _registry.NotifyStateChanged();
+            OnPropertyChanged(nameof(ProjectScrollRow));
         }
         finally{IsSynchronizingSelection=false;}
     }

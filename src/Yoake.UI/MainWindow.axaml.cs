@@ -178,6 +178,8 @@ public partial class MainWindow : Window, IEditorDialogs
                     owner=model.ActiveDocumentId;
                 }
                 else if(model.ActiveDocumentId!=owner)return false;
+                if(file.Type==DroppedFileType.Video && lastSubtitle is not null)
+                    await model.RestoreProjectVideoAsync(owner);
             }
             return true;
         }
@@ -405,7 +407,38 @@ public partial class MainWindow : Window, IEditorDialogs
         if(e.PropertyName==nameof(MainWindowViewModel.ViewMode)){VisualOverlay.CancelInput();_model?.NotifyVideoPresentation();UpdateWorkspaceView();}
         if(e.PropertyName is nameof(MainWindowViewModel.IsVideoDetached) or nameof(MainWindowViewModel.VideoSourcePath))SynchronizeVideoHost();
         if(e.PropertyName is nameof(MainWindowViewModel.VideoAspectRatio) or nameof(MainWindowViewModel.VideoSourcePath))UpdateEmbeddedVideoHost();
-        if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent)){SubtitleText.ResetMotionExpansions();Dispatcher.UIThread.Post(()=>{if(_model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}});}
+        if(e.PropertyName==nameof(MainWindowViewModel.SelectedEvent))
+        {
+            SubtitleText.ResetMotionExpansions();
+            var model=_model;var owner=model?.ActiveDocumentId;
+            Dispatcher.UIThread.Post(()=>
+            {
+                if(!ReferenceEquals(_model,model)||model?.ActiveDocumentId!=owner)return;
+                if(model?.SelectedEvent is {} line){SubtitleRows.ScrollIntoView(line);SyncSelection();}
+            });
+        }
+        if(e.PropertyName==nameof(MainWindowViewModel.ProjectScrollRow))QueueProjectScroll();
+    }
+    private ScrollViewer? SubtitleGridScroll()=>SubtitleRows.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+    private double SubtitleGridRowHeight()=>SubtitleRows.GetVisualDescendants().OfType<ListBoxItem>()
+        .Select(item=>item.Bounds.Height).FirstOrDefault(height=>height>0);
+    public int? GetSubtitleGridScrollRow()
+    {
+        var height=SubtitleGridRowHeight();var scroll=SubtitleGridScroll();
+        return scroll is not null&&height>0?(int)Math.Max(0,Math.Floor(scroll.Offset.Y/height+.001)):null;
+    }
+    private void QueueProjectScroll()
+    {
+        var model=_model;var owner=model?.ActiveDocumentId;var row=model?.ProjectScrollRow;
+        if(row is null)return;
+        Dispatcher.UIThread.Post(()=>
+        {
+            if(!ReferenceEquals(_model,model)||model?.ActiveDocumentId!=owner)return;
+            SyncSelection();SubtitleRows.UpdateLayout();
+            var height=SubtitleGridRowHeight();var scroll=SubtitleGridScroll();
+            if(scroll is not null&&height>0)
+                scroll.Offset=new Vector(scroll.Offset.X,Math.Clamp(row.Value*height,0,Math.Max(0,scroll.Extent.Height-scroll.Viewport.Height)));
+        },DispatcherPriority.Background);
     }
     private void SelectionChanged(object? sender,NotifyCollectionChangedEventArgs e) { if(!_selectionSync)SyncSelection(); }
     private void SyncSelection()
