@@ -64,6 +64,8 @@ public sealed partial class MainWindowViewModel
         }, Idle);
         Register("motion-track/reference", "Use current frame as reference", (_, _) => { MotionTracking!.Reset(); return ValueTask.CompletedTask; }, Idle);
         Register("motion-track/reset", "Reset tracking", (_, _) => { MotionTracking!.Reset(); return ValueTask.CompletedTask; }, Idle);
+        Register("motion-track/play", "Play tracking preview", async (_, _) => await MotionTracking!.PlayAsync(), Idle);
+        Register("motion-track/both", "Track motion in both directions", async (_, _) => await MotionTracking!.TrackBothAsync(), Idle);
         Register("motion-track/forward", "Track forward", async (_, _) => await MotionTracking!.TrackAsync(1), Idle);
         Register("motion-track/backward", "Track backward", async (_, _) => await MotionTracking!.TrackAsync(-1), Idle);
         Register("motion-track/backward-frame", "Track one frame backward", async (_, _) => await MotionTracking!.TrackAsync(-1, singleFrame: true), Idle);

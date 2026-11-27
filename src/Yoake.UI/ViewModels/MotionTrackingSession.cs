@@ -28,6 +28,8 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
     public double AspectRatio => _provider.DisplayAspectRatio > 0 ? _provider.DisplayAspectRatio : Width / (double)Height;
     public TrackingRegion Region { get; private set; }
     public bool Viewable { get; set; }
+    public double Threshold{get;set;}=.75;
+    public bool Normalize{get;set;}=true;
     public MotionModel Model { get; set; } = MotionModel.Position;
     public bool TrackClip { get; set; }
     public bool ApplyX { get; set; } = true;
@@ -74,13 +76,32 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
         _points.Clear(); _points[CurrentFrame] = new(CurrentFrame, Region.X, Region.Y);
         Status = "Reference set. Draw or adjust the pattern, then track forward and backward."; Notify();
     }
-    public Task TrackAsync(int direction, bool singleFrame = false) => RunAsync(async token =>
+    public Task PlayAsync()=>RunAsync(async token=>
+    {
+        var first=CurrentFrame>=LastFrame?FirstFrame:CurrentFrame;
+        for(int frame=first;frame<=LastFrame;frame++)
+        {
+            token.ThrowIfCancellationRequested();var index=frame;var image=await Task.Run(()=>_provider.GetFrame(index),token);
+            token.ThrowIfCancellationRequested();CurrentFrame=frame;Publish(image);Notify();
+            if(frame<LastFrame)await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(FrameTimes[frame+1]-FrameTimes[frame],.001,1)),token);
+        }
+    });
+    public Task TrackBothAsync()=>RunAsync(async token=>
+    {
+        var anchor=CurrentFrame;
+        await TrackCoreAsync(1,false,token);token.ThrowIfCancellationRequested();CurrentFrame=anchor;
+        await TrackCoreAsync(-1,false,token);token.ThrowIfCancellationRequested();
+        var image=await Task.Run(()=>_provider.GetFrame(anchor),token);
+        token.ThrowIfCancellationRequested();CurrentFrame=anchor;Publish(image);Notify();
+    });
+    public Task TrackAsync(int direction, bool singleFrame = false) => RunAsync(token=>TrackCoreAsync(direction,singleFrame,token));
+    private async Task TrackCoreAsync(int direction,bool singleFrame,CancellationToken token)
     {
         direction = Math.Sign(direction); if (direction == 0) return;
         var first = CurrentFrame;
         var region = CurrentPoint is {} point ? Region with { X = point.X, Y = point.Y } : Region;
         region.Validate(Width, Height);
-        var viewable = Viewable;
+        var viewable = Viewable;var threshold=Threshold;var normalize=Normalize;
         // Retain the opposite section; replace stale samples in this direction.
         foreach (var frame in _points.Keys.Where(f => direction > 0 ? f > first : f < first).ToArray()) _points.Remove(frame);
         var initial = CurrentPoint ?? new TrackingPoint(first, region.X, region.Y);
@@ -95,7 +116,7 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
             for (var frame = first + direction; frame >= FirstFrame && frame <= LastFrame; frame += direction)
             {
                 token.ThrowIfCancellationRequested(); var nextImage = _provider.GetFrame(frame); token.ThrowIfCancellationRequested();
-                var tracked = OpenCvMotionTracker.Track(image, nextImage, region, previous, frame, model, .75, token);
+                var tracked = OpenCvMotionTracker.Track(image, nextImage, region, previous, frame, model, threshold, token,normalize);
                 image = nextImage;
                 var show = singleFrame || viewable || elapsed.ElapsedMilliseconds >= 120 || tracked.Confidence < .65 || frame == FirstFrame || frame == LastFrame;
                 var captured = image;
@@ -118,7 +139,7 @@ public sealed class MotionTrackingSession : INotifyPropertyChanged
             }
         }, token);
         Notify();
-    });
+    }
     private Task RunAsync(Func<CancellationToken, Task> operation)
     {
         if (Busy || _closed) return Task.CompletedTask;

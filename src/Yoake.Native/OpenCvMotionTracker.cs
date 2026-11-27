@@ -14,7 +14,7 @@ public static partial class OpenCvMotionTracker
     private struct Result { public Marker Marker; public double Confidence; public int State; }
 
     public static unsafe TrackingPoint Track(DecodedVideoFrame from, DecodedVideoFrame to, TrackingRegion region,
-        TrackingPoint previous, int frame, MotionModel model, double threshold, CancellationToken token)
+        TrackingPoint previous, int frame, MotionModel model, double threshold, CancellationToken token,bool normalize=true)
     {
         token.ThrowIfCancellationRequested();
         if (from.Width != to.Width || from.Height != to.Height || from.Stride < from.Width * 4 || to.Stride < to.Width * 4 ||
@@ -26,7 +26,7 @@ public static partial class OpenCvMotionTracker
         fixed (byte* source = from.Pixels, destination = to.Pixels)
         {
             if (TrackNative(source, from.Stride, destination, to.Stride, from.Width, from.Height, &marker, &marker,
-                frame, (int)model, threshold, 1, 1, &result) == 0)
+                frame, (int)model, threshold, normalize?1:0, 1, &result) == 0)
                 throw new InvalidOperationException("OpenCV could not process the tracking frame.");
         }
         token.ThrowIfCancellationRequested();

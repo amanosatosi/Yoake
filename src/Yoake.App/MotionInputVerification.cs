@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -38,9 +39,13 @@ internal sealed class MotionInputVerification(MainWindow window, MainWindowViewM
                 if (model.MotionTracking is null || model.MotionTracking.Busy) { _stage--; return false; }
                 _dialog = window.OwnedWindows.OfType<MotionTrackingWindow>().Single();
                 Require(_dialog.IsVisible && Named<Control>("MotionTrackPreview") is { Bounds.Width: > 100, Bounds.Height: > 80 }, "Tracking must show a usable actual preview window.");
+                var preview=Named<Control>("MotionTrackPreview");var transport=Named<StackPanel>("MotionTrackTransport");var graph=Named<Control>("MotionTrackGraph");
+                Require(transport.TranslatePoint(default,_dialog)!.Value.Y<preview.TranslatePoint(default,_dialog)!.Value.Y&&graph.TranslatePoint(default,_dialog)!.Value.Y>preview.TranslatePoint(default,_dialog)!.Value.Y,"Tracking controls above preview; graph below preview.");
+                Require(Named<Button>("MotionTrackPlay").Content is Control&&Named<Button>("MotionTrack_forward").Content is Control&&
+                    !_dialog.GetVisualDescendants().OfType<Button>().Any(b=>b.Name=="MotionTrack_stop"),"Tracking transport uses icons and one shared play/stop control.");
                 Invoke("motion-track/pattern", new TrackingRegion(40, 45, 20, 20, 64, 64));
                 capture(_dialog, "motion-pattern-and-search", 1);
-                _tracking = model.Registry.InvokeAsync("motion-track/forward", new(model.ActiveDocumentId)).AsTask(); return false;
+                _tracking = model.Registry.InvokeAsync("motion-track/both", new(model.ActiveDocumentId)).AsTask(); return false;
             case 3:
                 if (!_tracking!.IsCompleted) { _stage--; return false; }
                 Require(_tracking.Result && model.MotionTracking!.CanApply, "Fast tracking must cover the actual video range.");
