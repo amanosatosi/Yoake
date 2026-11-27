@@ -378,7 +378,7 @@
   <Grid.ColumnDefinitions><ColumnDefinition Width="6*" MinWidth="340" /><ColumnDefinition Width="4" /><ColumnDefinition Width="7*" MinWidth="480" /></Grid.ColumnDefinitions>
   <Grid Grid.Column="0" RowDefinitions="*,Auto" Name="VisualColumn" IsVisible="{Binding ShowEmbeddedVideo}">
     <Border Name="VideoDock" Grid.Row="0" Background="{DynamicResource PanelBrush}">
-      <Grid Name="VideoRegion" Margin="6" VerticalAlignment="Top" RowDefinitions="Auto,22,Auto,Auto" RowSpacing="3">
+      <Grid Name="VideoRegion" Margin="3" VerticalAlignment="Top" RowDefinitions="Auto,16,Auto,Auto" RowSpacing="1">
         <Border Name="VideoCanvasHost" Background="Black" ClipToBounds="True" HorizontalAlignment="Left" VerticalAlignment="Top"><Grid><controls:VideoPresentationControl Name="VideoImage" Model="{Binding}" /><controls:VisualOverlayControl Name="VisualOverlay" Model="{Binding}" /></Grid></Border>
         <controls:VideoFrameSlider Name="VideoSeekBar" Grid.Row="1" Model="{Binding}" />
         <Grid Name="VideoPlaybackControls" Grid.Row="2" ColumnDefinitions="Auto,*,*,Auto,Auto" RowDefinitions="Auto,0" ColumnSpacing="4">
@@ -420,6 +420,12 @@
           <Setter Property="HorizontalContentAlignment" Value="Center" />
           <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
+        <Style Selector="ComboBox">
+          <Setter Property="Height" Value="{DynamicResource YoakeUiRowHeight}" />
+          <Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" />
+          <Setter Property="VerticalAlignment" Value="Center" />
+          <Setter Property="Padding" Value="3,0" />
+        </Style>
         <Style Selector="Button.visualTool:pointerover /template/ ContentPresenter#PART_ContentPresenter, ToggleButton.visualTool:pointerover /template/ ContentPresenter#PART_ContentPresenter">
           <Setter Property="Background" Value="{DynamicResource TabBrush}" />
           <Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" />
@@ -431,8 +437,8 @@
       </Border.Styles>
       <!-- All modes remain visible. Individual contextual controls wrap instead
            of being clipped or hidden behind a horizontal scrollbar. -->
-      <controls:VisualToolbarLayout Name="VisualToolGroups">
-        <WrapPanel Name="VisualPrimaryTools" Orientation="Horizontal" Margin="0,0,4,0">
+      <controls:VisualToolbarLayout Name="VisualToolGroups" MinHeight="{DynamicResource YoakeUiRowHeight}">
+        <WrapPanel Name="VisualPrimaryTools" Orientation="Horizontal" MinHeight="{DynamicResource YoakeUiRowHeight}">
         <ToggleButton Name="VisualToolCrosshair" Classes="visualTool" IsChecked="{Binding Actions[video/tool/crosshair].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/crosshair]}" ToolTip.Tip="Crosshair" AutomationProperties.Name="Crosshair"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Crosshair" Accent="{DynamicResource VisualToolPrimaryBrush}" Detail="{DynamicResource VisualToolDetailBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
         <ToggleButton Name="VisualToolPosition" Classes="visualTool" IsChecked="{Binding Actions[video/tool/position].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/position]}" ToolTip.Tip="Position / timed movement" AutomationProperties.Name="Position / timed movement"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Position" Accent="{DynamicResource VisualToolPrimaryBrush}" Detail="{DynamicResource VisualToolDetailBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
         <ToggleButton Name="VisualToolRotateZ" Classes="visualTool" IsChecked="{Binding Actions[video/tool/rotatez].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/rotatez]}" ToolTip.Tip="Rotate Z" AutomationProperties.Name="Rotate Z"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Rotate" Accent="{DynamicResource VisualToolPrimaryBrush}" Detail="{DynamicResource VisualToolDetailBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
@@ -447,8 +453,8 @@
         <ToggleButton Name="VisualToolShift" Classes="visualTool" IsChecked="{Binding Actions[video/tool/shift].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/shift]}" ToolTip.Tip="Shift position, origin and clip" AutomationProperties.Name="Shift position, origin and clip"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Shift" Accent="{DynamicResource VisualToolPrimaryBrush}" Detail="{DynamicResource VisualToolDetailBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
         <ToggleButton Name="VisualToolTags" Classes="visualTool" IsChecked="{Binding Actions[video/tool/tags].IsChecked, Mode=OneWay}" Command="{Binding Actions[video/tool/tags]}" ToolTip.Tip="Numeric tags" AutomationProperties.Name="Numeric tags"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="Tags" Accent="{DynamicResource VisualToolPrimaryBrush}" Detail="{DynamicResource VisualToolDetailBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></ToggleButton>
         </WrapPanel>
-        <WrapPanel Name="VisualContextTools" Orientation="Horizontal" HorizontalAlignment="Right">
-      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,2,0" Spacing="1"><ComboBox ItemsSource="{Binding PositionModes}" SelectedItem="{Binding PositionMode, Mode=TwoWay}" Width="112" Padding="4,1" ToolTip.Tip="Choose how to set position, movement endpoints or rotation origin" /><Button Name="MoveToggle" Classes="visualTool" Command="{Binding Actions[video/position/toggle-move]}" ToolTip.Tip="Toggle position / movement" AutomationProperties.Name="Toggle position / movement"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="MoveToggle" Accent="{DynamicResource VisualToolPrimaryBrush}" Detail="{DynamicResource VisualToolDetailBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></Button></StackPanel>
+        <WrapPanel Name="VisualContextTools" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+      <StackPanel Orientation="Horizontal" IsVisible="{Binding IsPositionTool}" Margin="0,0,2,0" Spacing="1" VerticalAlignment="Center"><ComboBox ItemsSource="{Binding PositionModes}" SelectedItem="{Binding PositionMode, Mode=TwoWay}" Width="112" Padding="4,1" ToolTip.Tip="Choose how to set position, movement endpoints or rotation origin" /><Button Name="MoveToggle" Classes="visualTool" Command="{Binding Actions[video/position/toggle-move]}" ToolTip.Tip="Toggle position / movement" AutomationProperties.Name="Toggle position / movement"><controls:VisualToolbarGlyph Width="18" Height="18" Glyph="MoveToggle" Accent="{DynamicResource VisualToolPrimaryBrush}" Detail="{DynamicResource VisualToolDetailBrush}" Outline="{DynamicResource AppBackgroundBrush}" /></Button></StackPanel>
       <ComboBox IsVisible="{Binding IsRotateZTool}" ItemsSource="{Binding RotateZModes}" SelectedItem="{Binding RotateZMode, Mode=TwoWay}" Width="114" Padding="4,1" ToolTip.Tip="Rotate with the angle ring or a guide drawn along the video" />
       <ComboBox IsVisible="{Binding IsScaleTool}" ItemsSource="{Binding ScaleModes}" SelectedItem="{Binding ScaleMode, Mode=TwoWay}" Width="126" Padding="4,1" ToolTip.Tip="Choose a scale axis, lock proportions or fit a rectangle" />
       <ComboBox IsVisible="{Binding IsShiftTool}" ItemsSource="{Binding ShiftModes}" SelectedItem="{Binding ShiftMode, Mode=TwoWay}" Width="125" Padding="4,1" ToolTip.Tip="Choose which geometry to translate" />

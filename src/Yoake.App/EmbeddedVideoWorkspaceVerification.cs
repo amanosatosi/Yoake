@@ -74,6 +74,19 @@ internal static class EmbeddedVideoWorkspaceVerification
         var source=model.ActiveEditor!.Document.Serialize();var undo=model.ActiveEditor.Undo.NextUndoName;
         var draft=model.Draft;var audio=model.AudioSourcePath;var samples=model.WaveformSamples;
         await Zoom("37.5%");var small=Read();
+        await Invoke("video/tool/crosshair");await Layout();
+        var stableCanvas=Bounds(Get<Border>("VideoCanvasHost"));
+        var stablePlayback=Bounds(Get<Grid>("VideoPlaybackControls"));
+        var stablePrimary=Bounds(Get<WrapPanel>("VisualPrimaryTools"));
+        var stableToolbar=Bounds(Get<Border>("VisualToolsBar"));
+        foreach(var tool in new[]{"position","rotatez","scale","shift","crosshair"})
+        {
+            await Invoke("video/tool/"+tool);await Layout();
+            Require(Bounds(Get<Border>("VideoCanvasHost"))==stableCanvas&&Bounds(Get<Grid>("VideoPlaybackControls"))==stablePlayback&&
+                Bounds(Get<WrapPanel>("VisualPrimaryTools"))==stablePrimary&&Bounds(Get<Border>("VisualToolsBar"))==stableToolbar,
+                "Switching a one-row visual tool must not shift the canvas, playback or primary toolbar: "+tool);
+        }
+        small=Read();
         await Zoom("50%");var large=Read();
         Require(large.VideoWidth>small.VideoWidth+100&&large.VerticalDivider.X>small.VerticalDivider.X+100,"37.5% to 50% must move the vertical video/editor splitter and widen the workspace column.");
         Require(large.UpperHeight>small.UpperHeight+70&&large.HorizontalDivider.Y>small.HorizontalDivider.Y+70&&large.Grid.Height<small.Grid.Height-70,"37.5% to 50% must move the horizontal workspace/grid splitter and reallocate real panel height.");

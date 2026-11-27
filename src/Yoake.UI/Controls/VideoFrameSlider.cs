@@ -16,7 +16,7 @@ public sealed class VideoFrameSlider : Control
     private IPointer? _capture;
     public int RenderedKeyframeMarks {get;private set;}
     public int KeyframeCount=>Model?.Keyframes.Count??0;
-    public VideoFrameSlider(){Focusable=true;MinHeight=24;ToolTip.SetTip(this,"Seek by frame · Shift+click: nearest keyframe · Wheel: frames · Shift+wheel: keyframes");}
+    public VideoFrameSlider(){Focusable=true;MinHeight=16;ToolTip.SetTip(this,"Seek by frame · Shift+click: nearest keyframe · Wheel: frames · Shift+wheel: keyframes");}
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs e)
     {
         base.OnPropertyChanged(e);if(e.Property==ModelProperty){if(e.OldValue is MainWindowViewModel old)old.PropertyChanged-=Changed;if(Model is {} model)model.PropertyChanged+=Changed;}InvalidateVisual();
@@ -36,7 +36,7 @@ public sealed class VideoFrameSlider : Control
         RenderedKeyframeMarks=0;
         if(Model is not {} model||model.FrameTimes.Count==0)return;var last=-1;
         foreach(var key in model.Keyframes){var pixel=(int)X(key);if(pixel==last)continue;last=pixel;RenderedKeyframeMarks++;context.DrawLine(new Pen(accent,1),new(pixel,2),new(pixel,8));}
-        context.DrawRectangle(accent,null,new Rect(X(model.CurrentFrame)-3,7,6,Math.Max(4,Bounds.Height-10)));
+        context.DrawRectangle(accent,null,new Rect(X(model.CurrentFrame)-3,Math.Max(2,Bounds.Height/2-5),6,Math.Min(12,Math.Max(4,Bounds.Height-4))));
         if(IsFocused)context.DrawRectangle(null,new Pen(accent,1),new Rect(Bounds.Size).Deflate(1));
     }
     private void Seek(double x,KeyModifiers modifiers){if(Model is {} model)_=model.Registry.InvokeAsync("video/seek/frame",new(),FrameAt(x,modifiers.HasFlag(KeyModifiers.Shift)));}
