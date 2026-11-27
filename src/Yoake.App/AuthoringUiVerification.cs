@@ -371,6 +371,7 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private static void CheckSyntax(AssTextBox text)
     {
         var presenter=text.GetVisualDescendants().OfType<AssTextPresenter>().Single();
+        Require(presenter.Cursor?.ToString()=="Ibeam","The custom ASS editor must display the native text selection cursor.");
         var categories=AssSyntax.Tokenize(text.Text!).Select(t=>t.Kind).ToHashSet();
         var painted=presenter.TextLayout.TextLines.SelectMany(l=>l.TextRuns).OfType<ShapedTextRun>()
             .Select(r=>(r.Properties.ForegroundBrush as ISolidColorBrush)?.Color).ToHashSet();
