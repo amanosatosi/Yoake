@@ -46,9 +46,8 @@
     <Style Selector="ComboBox"><Setter Property="MinHeight" Value="{DynamicResource YoakeUiRowHeight}" /></Style>
     <Style Selector="CheckBox"><Setter Property="MinHeight" Value="24" /></Style>
     <Style Selector="Border.document-tab"><Setter Property="Background" Value="{DynamicResource TabBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource DividerBrush}" /></Style>
-    <Style Selector="Border.document-tab.active"><Setter Property="Background" Value="{DynamicResource ActiveTabBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource TabAccentBrush}" /></Style>
-    <Style Selector="Border.document-tab TextBlock.tab-title"><Setter Property="Foreground" Value="{DynamicResource InactiveTabTextBrush}" /></Style>
-    <Style Selector="Border.document-tab.active TextBlock.tab-title"><Setter Property="Foreground" Value="{DynamicResource ActiveTabTextBrush}" /><Setter Property="FontWeight" Value="SemiBold" /></Style>
+    <Style Selector="Border.document-tab.active"><Setter Property="BorderBrush" Value="{DynamicResource TabAccentBrush}" /></Style>
+    <Style Selector="Border.document-tab TextBlock.tab-title"><Setter Property="Foreground" Value="{DynamicResource IconForegroundBrush}" /></Style>
   </Window.Styles>
   <Grid>
     <!-- Reserve 140 DIP for actual rows, plus the 24-DIP header, borders and margins. -->
