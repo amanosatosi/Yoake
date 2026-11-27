@@ -192,7 +192,7 @@ public partial class MainWindow : Window, IEditorDialogs
 
     private void AttachModel()
     {
-        if(_model is not null){MoveVideoHost(false);_model.MotionBlockToggleRequested-=SubtitleText.ToggleMotionBlock;_model.VideoWindowZoomRequested-=ResizeDetachedVideo;_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
+        if(_model is not null){MoveVideoHost(false);_model.MotionBlockToggleRequested-=SubtitleText.ToggleMotionBlock;_model.VideoWindowZoomRequested-=ResizeDetachedVideo;_model.VideoSeekFocusRequested-=SeekFocusRequested;_model.FrameReady-=FrameReady;_model.TextFormattingApplied-=FormattingApplied;_model.SearchSelectionApplied-=SearchSelectionApplied;_model.PropertyChanged-=ModelChanged;_model.GridColumnContentChanged-=QueueGridColumnLayout;_model.WindowCloseRequested-=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged old)old.CollectionChanged-=SelectionChanged;}
         _model=DataContext as MainWindowViewModel;
         UpdateOriginalTextLayout();
         RefreshJapaneseBrackets();
@@ -201,13 +201,13 @@ public partial class MainWindow : Window, IEditorDialogs
         RefreshRecentMedia();
         RefreshRecentTimecodes();
         if(_model is not null){_model.Dialogs=this;_model.MotionBlockToggleRequested+=SubtitleText.ToggleMotionBlock;_model.VideoWindowZoomRequested+=ResizeDetachedVideo;_model.VideoSeekFocusRequested+=SeekFocusRequested;_model.FrameReady+=FrameReady;_model.TextFormattingApplied+=FormattingApplied;_model.SearchSelectionApplied+=SearchSelectionApplied;
-            var widths=_model.GridColumnWidths; // Normalized at the model boundary.
-            var count=Math.Min(widths.Count,ColumnHeader.ColumnDefinitions.Count);
-            for(var i=0;i<count;i++)ColumnHeader.ColumnDefinitions[i].Width=new GridLength(widths[i]);
+            _gridWidthOverrides=_model.GridColumnWidthOverrides.ToArray();
+            _model.GridColumnContentChanged+=QueueGridColumnLayout;
+            QueueGridColumnLayout();
             UpdateWorkspaceView();UpdateEmbeddedVideoHost();
             _model.PropertyChanged+=ModelChanged;_model.WindowCloseRequested+=CloseRequested;if(_model.SelectedEvents is INotifyCollectionChanged collection)collection.CollectionChanged+=SelectionChanged;
             Dispatcher.UIThread.Post(SyncSelection);
-            RefreshAutomationMenu(); StartupDiagnostics.Checkpoint($"MainWindow model attached; {count} column widths applied");}
+            RefreshAutomationMenu(); StartupDiagnostics.Checkpoint("MainWindow model attached; grid layout queued");}
     }
     private int _resizeColumn=-1;
     private double _resizeStart, _resizeWidth;
@@ -215,9 +215,11 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         if(!e.GetCurrentPoint(ColumnHeader).Properties.IsLeftButtonPressed)return;
         var x=e.GetPosition(ColumnHeader).X;double boundary=0;
-        for(var i=0;i<Math.Min(7,ColumnHeader.ColumnDefinitions.Count);i++)
+        for(var i=0;i<GridMetadataColumnCount;i++)
         {
-            boundary+=ColumnHeader.ColumnDefinitions[i].ActualWidth+4;
+            var width=ColumnHeader.ColumnDefinitions[i].ActualWidth;
+            if(width<=0)continue;
+            boundary+=width;
             if(Math.Abs(x-boundary)>7)continue;
             _resizeColumn=i;_resizeStart=e.GetPosition(this).X;_resizeWidth=ColumnHeader.ColumnDefinitions[i].ActualWidth;e.Pointer.Capture(ColumnHeader);e.Handled=true;break;
         }
@@ -229,13 +231,22 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private async void HeaderReleased(object? sender,PointerReleasedEventArgs e)
     {
-        if(_resizeColumn<0)return;_resizeColumn=-1;e.Pointer.Capture(null);
-        if(_model is not null)await _model.Registry.InvokeAsync(CommandIds.GridColumnWidths,new(),ColumnHeader.ColumnDefinitions.Take(7).Select(c=>c.Width.Value/_uiColumnScale).ToArray());
+        if(_resizeColumn<0)return;
+        _gridWidthOverrides[_resizeColumn]=ColumnHeader.ColumnDefinitions[_resizeColumn].Width.Value/_uiColumnScale;
+        _resizeColumn=-1;e.Pointer.Capture(null);
+        if(_model is not null)await _model.Registry.InvokeAsync(CommandIds.GridColumnWidths,new(),(double[])_gridWidthOverrides.Clone());
+        QueueGridColumnLayout();
     }
     private void ApplyRowWidths()
     {
         foreach(var row in SubtitleRows.GetVisualDescendants().OfType<Grid>().Where(g=>g.Tag as string=="SubtitleRow"))
-            for(var i=0;i<Math.Min(7,Math.Min(row.ColumnDefinitions.Count,ColumnHeader.ColumnDefinitions.Count));i++)if(row.ColumnDefinitions[i].Width!=ColumnHeader.ColumnDefinitions[i].Width)row.ColumnDefinitions[i].Width=ColumnHeader.ColumnDefinitions[i].Width;
+        {
+            for(var i=0;i<GridMetadataColumnCount;i++)
+                if(row.ColumnDefinitions[i].Width!=ColumnHeader.ColumnDefinitions[i].Width)row.ColumnDefinitions[i].Width=ColumnHeader.ColumnDefinitions[i].Width;
+            foreach(var child in row.Children)
+                if(Grid.GetColumnSpan(child)==1&&Grid.GetColumn(child)<GridMetadataColumnCount)
+                    child.IsVisible=ColumnHeader.ColumnDefinitions[Grid.GetColumn(child)].Width.Value>0;
+        }
     }
     private void FormattingApplied(object? sender,EventArgs args)
     {
@@ -399,7 +410,7 @@ public partial class MainWindow : Window, IEditorDialogs
     }
     private void ModelChanged(object? sender,PropertyChangedEventArgs e)
     {
-        if(e.PropertyName==nameof(MainWindowViewModel.Events))RevealActiveDocumentTab();
+        if(e.PropertyName==nameof(MainWindowViewModel.Events)){RevealActiveDocumentTab();QueueGridColumnLayout();}
         if(e.PropertyName==nameof(MainWindowViewModel.FastActorEnabled))Dispatcher.UIThread.Post(UpdateFastActorPopup);
         if(e.PropertyName is nameof(MainWindowViewModel.RecentVideoItems) or nameof(MainWindowViewModel.RecentAudioItems))Dispatcher.UIThread.Post(RefreshRecentMedia);
         if(e.PropertyName==nameof(MainWindowViewModel.AutomationMacros))RefreshAutomationMenu();
@@ -581,10 +592,8 @@ public partial class MainWindow : Window, IEditorDialogs
     {
         var size=Application.Current is {} app&&app.Resources.TryGetResource("YoakeUiFontSize",null,out var value)&&value is double fontSize?fontSize:12;
         var scale=size/12;if(Math.Abs(scale-_uiColumnScale)<0.001)return;
-        var factor=scale/_uiColumnScale;_uiColumnScale=scale;
-        foreach(var column in ColumnHeader.ColumnDefinitions.Take(7))
-            if(column.Width.IsAbsolute)column.Width=new GridLength(column.Width.Value*factor);
-        ApplyRowWidths();
+        _uiColumnScale=scale;
+        QueueGridColumnLayout();
     }
     private void UpdateChrome()
     {

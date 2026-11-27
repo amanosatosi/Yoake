@@ -700,6 +700,39 @@ public sealed partial class EditorWorkflowTests : IDisposable
         var path=Path.Combine(_root,"lowercase.ass");File.WriteAllText(path,"[Events]\nFormat: layer,start,end,style,name,marginl,marginr,marginv,effect,text\nDialogue: 0,0:00:00.00,0:00:02.00,Default,Old,0,0,0,,Text\n");Assert.True(_model.OpenSubtitle(path));_model.Draft!.Actor="New";await Command(CommandIds.EditCommit);Assert.Equal("New",_model.Events[0].Actor);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public void ClearingMarginsPublishesZeroWithoutThrowing(string? input)
+    {
+        var draft=_model.Draft!;draft.MarginL="18";draft.MarginR="27";draft.MarginV="36";
+        Assert.True(_model.CommitDraft());
+        draft=_model.Draft!;draft.MarginL=input!;draft.MarginR=input!;draft.MarginV=input!;
+        Assert.Equal("0",_model.SelectedEvent!.DisplayMarginL);
+        Assert.Equal("0",_model.SelectedEvent.DisplayMarginR);
+        Assert.Equal("0",_model.SelectedEvent.DisplayMarginV);
+        Assert.True(_model.CommitDraft());
+        Assert.Equal("0",_model.Events[0].MarginL);
+        Assert.Equal("0",_model.Events[0].MarginR);
+        Assert.Equal("0",_model.Events[0].MarginV);
+    }
+
+    [Fact] public void GridColumnsFollowDocumentContentAndDraftMargins()
+    {
+        var line=_model.Events[0];
+        double[] Layout()=>SubtitleGridColumns.Calculate(_model.Events,s=>s.Length*8,1,new double[10]);
+        var widths=Layout();
+        foreach(var index in new[]{1,5,6,7,8,9})Assert.Equal(0d,widths[index]);
+        var draft=_model.Draft!;draft.Actor="A considerably longer actor";draft.MarginR="123";
+        widths=Layout();Assert.True(widths[5]>100);Assert.True(widths[8]>0);Assert.Equal(0d,widths[7]);
+        Assert.Equal("123",line.DisplayMarginR);
+        Assert.True(_model.CommitDraft());
+        Assert.True(Layout()[8]>0);
+        _model.Draft!.MarginR="";_model.Draft.Actor="";
+        Assert.Equal(0d,Layout()[8]);Assert.Equal(0d,Layout()[5]);
+    }
+
     [Fact] public async Task LargeSelectAllPublishesOneSelectionChange()
     {
         var path=Path.Combine(_root,"large.ass");File.WriteAllText(path,"[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\n"+string.Concat(Enumerable.Range(0,5000).Select(i=>$"Dialogue: 0,0:00:00.00,0:00:02.00,Default,,0,0,0,,Row {i}\n")));Assert.True(_model.OpenSubtitle(path));

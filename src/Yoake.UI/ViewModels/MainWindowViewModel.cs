@@ -175,6 +175,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         if((e.PropertyName is nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))&&SelectedEvent is {} timed)AudioTiming?.Clear(timed);
         if(_activeId is {} editingId&&_documents.TryGetValue(editingId,out var editingState))editingState.Editing?.Cancel();
         try{SelectedEvent?.ShowDraft(Draft?.Values);}catch(ArgumentException){/* Invalid metadata remains editable, never saved. */}
+        if(e.PropertyName is nameof(EventEditDraft.Layer) or nameof(EventEditDraft.Style) or nameof(EventEditDraft.Actor) or nameof(EventEditDraft.Effect) or nameof(EventEditDraft.MarginL) or nameof(EventEditDraft.MarginR) or nameof(EventEditDraft.MarginV) or nameof(EventEditDraft.Start) or nameof(EventEditDraft.End))GridColumnContentChanged?.Invoke();
         InvalidateSubtitlePreview(true);OnPropertyChanged(nameof(PreviewRevision));
         _editBurstDelay?.Cancel();_editBurstDelay?.Dispose();_editBurstDelay=null;
         if(_activeId is not {} draftOwner||!_documents.TryGetValue(draftOwner,out var draftState)||draftState.MediaDraftPauses==0&&!draftState.KaraokeEnabled)
@@ -189,6 +190,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         try{await Task.Delay(900,token);Avalonia.Threading.Dispatcher.UIThread.Post(()=>{if(!token.IsCancellationRequested&&!_disposed&&!IsKaraokeMode)CommitDraft();});}catch(OperationCanceledException){}
     }
+    public event Action? GridColumnContentChanged;
     public IReadOnlyList<AssEvent> Events => _activeSubtitleDocument?.Events ?? (IReadOnlyList<AssEvent>)Array.Empty<AssEvent>();
     public IReadOnlyList<string> StyleNames => _activeId is {} id&&_documents.TryGetValue(id,out var state)?state.StyleNames:[];
     public IReadOnlyList<string> ActorNames => Events.Where(line=>MangetsuMetadata.Kind(line)!=MangetsuMetadataKind.Actor||!MangetsuMetadata.IsAppliedStylesTarget(line.Actor)).Select(l=>l.Actor).Where(s=>s.Length>0).Distinct().Order().ToArray();
@@ -347,6 +349,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             if(namesChanged)state.StyleNames=names;
             if(_activeId==session.Id)
             {
+                GridColumnContentChanged?.Invoke();
                 // Refresh choices before the draft binding selects the renamed
                 // style. Otherwise ComboBox retains an absent/blank selection.
                 if(namesChanged)OnPropertyChanged(nameof(StyleNames));

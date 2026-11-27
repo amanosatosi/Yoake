@@ -15,6 +15,7 @@ public sealed partial class MainWindowViewModel
     public ICommand ThemeCycleCommand => Actions[CommandIds.ViewThemeCycle];
     public ICommand PositionToolCommand => Actions[CommandIds.VideoToolPosition];
     public ICommand ClipToolCommand => Actions[CommandIds.VideoToolClip];
+    public IReadOnlyList<double> GridColumnWidthOverrides=>_settings.GridColumnWidthOverrides??new double[10];
     public IReadOnlyList<double> GridColumnWidths=>_settings.CompactGridColumnWidths??new[]{_settings.GridColumnWidths[0],36,_settings.GridColumnWidths[3],_settings.GridColumnWidths[4],_settings.GridColumnWidths[5],_settings.GridColumnWidths[6],_settings.GridColumnWidths[7]};
     public double AudioWindowSeconds {get=>_activeId is {} id&&_documents.TryGetValue(id,out var state)?state.AudioSpan:_settings.AudioWindowSeconds??20;set=>InvokeAudioSetting("audio/display/zoom",value);}
     public event EventHandler? AudioZoomChanged;
@@ -139,7 +140,9 @@ public sealed partial class MainWindowViewModel
         S(CommandIds.GestureCancel,"Cancel editor gesture",CancelGestureCore);
         R(CommandIds.GridColumnWidths,"Resize subtitle columns",i=>
         {
-            if(i.Parameter is double[] widths&&widths.Length==7&&widths.All(w=>double.IsFinite(w)&&w>=24&&w<=600))
+            if(i.Parameter is double[] automatic&&automatic.Length==10&&automatic.All(w=>double.IsFinite(w)&&(w==0||w>=24&&w<=600)))
+            {_settings=_settings with{GridColumnWidthOverrides=(double[])automatic.Clone()};_settingsStore.Save(_settings);}
+            else if(i.Parameter is double[] widths&&widths.Length==7&&widths.All(w=>double.IsFinite(w)&&w>=24&&w<=600))
             {_settings=_settings with{CompactGridColumnWidths=(double[])widths.Clone()};_settingsStore.Save(_settings);}
             return ValueTask.CompletedTask;
         });

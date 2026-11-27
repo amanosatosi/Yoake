@@ -28,8 +28,10 @@ public abstract class AssRecord : INotifyPropertyChanged
         if (Fields.Length <= i) Array.Resize(ref Fields, Format.Length);
         Fields[i] = value;
         Notify(name is "Name" or "Actor" ? "Actor" : name);
+        OnFieldChanged(name);
         if (name is "Start" or "End") { Notify(name + "Milliseconds"); Notify("Duration"); }
     }
+    protected virtual void OnFieldChanged(string name) { }
     internal void RestoreFields(string[] fields) { Fields = (string[])fields.Clone(); Notify(""); }
     internal string Serialize() => Prefix + string.Join(',', Fields);
     protected void Notify(string name) => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -59,11 +61,25 @@ public sealed class AssEvent : AssRecord
     public string DisplayStart=>(_display??this).Start;
     public string DisplayEnd=>(_display??this).End;
     public string DisplayLayer=>(_display??this).Layer;
+    public string DisplayMarginL=>(_display??this).MarginL;
+    public string DisplayMarginR=>(_display??this).MarginR;
+    public string DisplayMarginV=>(_display??this).MarginV;
+    protected override void OnFieldChanged(string name)
+    {
+        var display=name.ToUpperInvariant() switch
+        {
+            "TEXT"=>nameof(DisplayText),"STYLE"=>nameof(DisplayStyle),"NAME" or "ACTOR"=>nameof(DisplayActor),
+            "EFFECT"=>nameof(DisplayEffect),"START"=>nameof(DisplayStart),"END"=>nameof(DisplayEnd),
+            "LAYER" or "MARKED"=>nameof(DisplayLayer),"MARGINL"=>nameof(DisplayMarginL),
+            "MARGINR"=>nameof(DisplayMarginR),"MARGINV"=>nameof(DisplayMarginV),_=>null
+        };
+        if(display is not null)Notify(display);
+    }
     public void ShowDraft(IReadOnlyDictionary<string,string>? values)
     {
         _display=null;
         if(values is not null){var clone=Clone();foreach(var p in values)clone.Set(p.Key,p.Value);_display=clone;}
-        foreach(var name in new[]{nameof(DisplayText),nameof(DisplayStyle),nameof(DisplayActor),nameof(DisplayEffect),nameof(DisplayStart),nameof(DisplayEnd),nameof(DisplayLayer)})Notify(name);
+        foreach(var name in new[]{nameof(DisplayText),nameof(DisplayStyle),nameof(DisplayActor),nameof(DisplayEffect),nameof(DisplayStart),nameof(DisplayEnd),nameof(DisplayLayer),nameof(DisplayMarginL),nameof(DisplayMarginR),nameof(DisplayMarginV)})Notify(name);
     }
     private string? _startSource, _endSource;
     private long? _startTime, _endTime;
