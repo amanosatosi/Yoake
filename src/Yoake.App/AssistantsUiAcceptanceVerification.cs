@@ -6,6 +6,8 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Yoake.Core.Commands;
 using Yoake.Core.Logging;
+using Yoake.Core.Media;
+using System.Globalization;
 using Yoake.Core.Subtitles;
 using Yoake.UI;
 using Yoake.UI.ViewModels;
@@ -37,6 +39,35 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
     private Task<int?>? _audioTrackResult;
     private CancellationTokenSource? _formattingCancellation;
     private string _before="",_translated="";
+    // Session saving may legitimately update grid-view metadata. Construct
+    // the exact expected source independently of the save and permit no
+    // other changes to event order, payload, formatting or unknown fields.
+    private async Task VerifyViewAwareRoundTrip(string path,string before,string message)
+    {
+        var expected=AssDocument.Parse(before);
+        var row=Math.Max(0,model.Events.ToList().IndexOf(model.SelectedEvent!));
+        var scroll=window.GetSubtitleGridScrollRow();
+        Require(model.SaveActiveSubtitle(path),"Save round-trip fixture: "+message);
+        var saved=model.ActiveEditor!.Document;
+        var view=SubtitleProjectView.Read(saved);
+        var previous=SubtitleProjectView.Read(expected);
+        if(view.ActiveLine!=previous.ActiveLine||view.ScrollPosition!=previous.ScrollPosition)
+        {
+            Require(view.ActiveLine==row&&view.ScrollPosition is >=0&&
+                (scroll is null||view.ScrollPosition==scroll),"Save must capture the actual grid view.");
+            new SubtitleEditor(expected).SetProjectProperties(new Dictionary<string,string>
+            {
+                ["Active Line"]=row.ToString(CultureInfo.InvariantCulture),
+                ["Scroll Position"]=view.ScrollPosition!.Value.ToString(CultureInfo.InvariantCulture)
+            });
+        }
+        var exact=expected.Serialize();
+        Require(saved.Serialize()==exact,"Saving changed source outside the permitted grid fields: "+message);
+        Require(AssDocument.Load(path).Serialize()==exact,"Saved file differs from expected source: "+message);
+        await Invoke("subtitle/close");
+        Require(model.OpenSubtitle(path)&&model.ActiveEditor!.Document.Serialize()==exact,message);
+    }
+
     private T Get<T>(string name) where T:Control=>_assistant!.FindControl<T>(name)??throw new InvalidOperationException("Missing Assistant control: "+name);
     public void Start() { _timer.Tick+=Tick;window.Opened+=(_,_)=>_timer.Start(); }
     private async void Tick(object? sender,EventArgs args)
@@ -102,8 +133,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     _metadata!.Close();var metadataSource=model.ActiveEditor!.Document.Serialize();
                     await Invoke(CommandIds.EditUndo);Require(MangetsuMetadata.Initial(model.ActiveEditor.Document).Length==1,"Actor metadata must undo independently.");
                     await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==metadataSource,"Metadata redo restores exact source.");
-                    var metadataPath=Path.Combine(options.ProfileDirectory!,"metadata.ass");Require(model.SaveActiveSubtitle(metadataPath),"Save metadata.");await Invoke("subtitle/close");Require(model.OpenSubtitle(metadataPath),"Reopen metadata from disk.");
-                    Require(model.ActiveEditor!.Document.Serialize()==metadataSource,"Metadata order and payload survive file round-trip.");
+                    var metadataPath=Path.Combine(options.ProfileDirectory!,"metadata.ass");await VerifyViewAwareRoundTrip(metadataPath,metadataSource,"Metadata order and payload survive file round-trip.");
                     _encoding=new SubtitleEncodingWindow();_encodingResult=_encoding.ShowDialog<int?>(window);return;
                 case 14:
                     var choice=_encoding!.FindControl<AutoCompleteBox>("SubtitleEncoding")!;
@@ -211,7 +241,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                 case 32:
                     Require(model.Events[0].Text==@"{\k10}Bo{\k20}ku{\k30}wa"&&model.Events[1].Text==@"{\k30}{\future(opaque)\bord2}僕{\k30}は","Apply matches timing without changing source syllables or destination overrides.");
                     _kanji!.Close();var matched=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_kanjiBefore,"All accepted timing copies undo in one step.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==matched,"Karaoke matching redo restores exact source.");
-                    var matchedPath=Path.Combine(options.ProfileDirectory!,"matched.ass");Require(model.SaveActiveSubtitle(matchedPath),"Save matched karaoke.");await Invoke("subtitle/close");Require(model.OpenSubtitle(matchedPath)&&model.ActiveEditor.Document.Serialize()==matched,"Matched karaoke round-trips on disk.");
+                    var matchedPath=Path.Combine(options.ProfileDirectory!,"matched.ass");await VerifyViewAwareRoundTrip(matchedPath,matched,"Matched karaoke round-trips on disk.");
                     var sortPath=Path.Combine(options.ProfileDirectory!,"sort-metadata.ass");
                     File.WriteAllText(sortPath,AssDocument.CreateEmpty().Serialize()+
                         "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,mangetsu-style,{\\bord2}\r\n"+
@@ -232,7 +262,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     Require(MangetsuMetadata.Kind(model.Events[0])==MangetsuMetadataKind.Style&&MangetsuMetadata.Kind(model.Events[1])==MangetsuMetadataKind.Actor&&MangetsuMetadata.IsInherited(model.Events[2]),"Sorting must preserve active metadata and imported inheritance order.");
                     Require(model.Events[3].Text=="A"&&model.Events[4].Text==@"{\future(inactive)}"&&model.Events[5].Text=="Z {uketsugu}"&&MangetsuMetadata.Initial(model.ActiveEditor!.Document).Length==2,"Sort dialogue around protected renderer rows without activating late metadata.");
                     var sortedMetadata=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_sortMetadataBefore,"Metadata-aware sort must undo exactly.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==sortedMetadata,"Metadata-aware sort redo must be exact.");
-                    var sortedPath=Path.Combine(options.ProfileDirectory!,"sorted-metadata.ass");Require(model.SaveActiveSubtitle(sortedPath),"Save sorted metadata.");await Invoke("subtitle/close");Require(model.OpenSubtitle(sortedPath)&&model.ActiveEditor.Document.Serialize()==sortedMetadata,"Sorting metadata must round-trip through save/reopen.");
+                    var sortedPath=Path.Combine(options.ProfileDirectory!,"sorted-metadata.ass");await VerifyViewAwareRoundTrip(sortedPath,sortedMetadata,"Sorting metadata must round-trip through save/reopen.");
                     var absolutePath=Path.Combine(options.ProfileDirectory!,"absolute-karaoke.ass");
                     File.WriteAllText(absolutePath,AssDocument.CreateEmpty().Serialize()+
                         "Comment: 0,0:00:00.00,0:00:01.00,Default,,0,0,0,mangetsu-style,{\\bord2}\r\n"+
@@ -249,7 +279,7 @@ internal sealed class AssistantsUiAcceptanceVerification(IClassicDesktopStyleApp
                     var absoluteLines=model.Events.Skip(2).ToArray();Require(absoluteLines.Select(e=>e.Start).SequenceEqual(new[] { "0:00:01.20","0:00:02.00","0:00:01.50" })&&absoluteLines.Select(e=>e.End).SequenceEqual(new[] { "0:00:01.50","0:00:02.20","0:00:04.00" }),"Absolute karaoke starts must retain gaps and backwards resets.");
                     Require(absoluteLines.All(e=>!e.Text.Contains(@"\kt",StringComparison.Ordinal))&&absoluteLines[1].Text.Contains("မြန်မာ",StringComparison.Ordinal)&&absoluteLines[2].Text.Contains("é",StringComparison.Ordinal),"Split timing is relative while Unicode and karaoke tag modes survive.");
                     var absoluteAfter=model.ActiveEditor!.Document.Serialize();await Invoke(CommandIds.EditUndo);Require(model.ActiveEditor.Document.Serialize()==_karaokeAbsoluteBefore,"Absolute splitting undoes in one step.");await Invoke(CommandIds.EditRedo);Require(model.ActiveEditor.Document.Serialize()==absoluteAfter,"Absolute split redo restores exact records.");
-                    var absoluteSaved=Path.Combine(options.ProfileDirectory!,"absolute-split.ass");Require(model.SaveActiveSubtitle(absoluteSaved),"Save split karaoke.");await Invoke("subtitle/close");Require(model.OpenSubtitle(absoluteSaved)&&model.ActiveEditor.Document.Serialize()==absoluteAfter,"Absolute karaoke splitting must round-trip through save/reopen.");
+                    var absoluteSaved=Path.Combine(options.ProfileDirectory!,"absolute-split.ass");await VerifyViewAwareRoundTrip(absoluteSaved,absoluteAfter,"Absolute karaoke splitting must round-trip through save/reopen.");
                     return;
                 case 40:
                     await Invoke(CommandIds.GridInsertAfter);model.Draft!.Text="日本語 é မြန်မာ";await Invoke(CommandIds.EditCommit);
