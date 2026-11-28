@@ -233,7 +233,16 @@ internal sealed class AuthoringUiVerification(MainWindow window, MainWindowViewM
     private void CheckVirtualizedGrid()
     {
         Require(model.Events.Count==20000,"Large-file verification must use all 20,000 events.");
-        var realized=window.FindControl<ListBox>("SubtitleRows")!.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+        var grid=window.FindControl<ListBox>("SubtitleRows")!;
+        var scroll=grid.GetVisualDescendants().OfType<ScrollViewer>().Single();
+        var bar=scroll.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.ScrollBar>()
+            .Single(b=>b.Orientation==Avalonia.Layout.Orientation.Vertical);
+        Require(!scroll.AllowAutoHide&&!scroll.IsDeferredScrollingEnabled&&bar.IsEffectivelyVisible&&bar.IsExpanded&&bar.Maximum>bar.Minimum,
+            "Large subtitle documents must have an already-expanded, live vertical scrollbar without hover or release delays.");
+        var thumb=bar.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.Thumb>().Single();
+        Require(thumb.IsEffectivelyVisible&&thumb.IsHitTestVisible&&thumb.Bounds.Width>0&&thumb.Bounds.Height>0,
+            "The scrollbar thumb must be immediately available to drag.");
+        var realized=grid.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
         Require(realized.Length>0&&realized.Length<100,"Grid must virtualize the large file instead of realizing every event.");
         Require(realized.All(r=>Math.Abs(r.Bounds.Height-26)<0.1),"Recycled mixed-script containers must retain the fixed row height.");
     }
