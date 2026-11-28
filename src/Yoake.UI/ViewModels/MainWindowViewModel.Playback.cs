@@ -11,7 +11,7 @@ public sealed partial class MainWindowViewModel
     private readonly object _subtitleRendererGate = new();
     private MangetsuSubtitleRenderer? _subtitleRenderer;
     private long _subtitleRevision;
-    private long _subtitleRendererRevision = -1;
+    private string? _subtitleRendererSource;
     private bool _clockUpdateFromPlayback;
 
     private CancellationTokenSource? _playbackCancellation;
@@ -302,7 +302,7 @@ public sealed partial class MainWindowViewModel
         {
             lock(_subtitleRendererGate)
             {
-                _subtitleRenderer?.Dispose();_subtitleRenderer=null;_subtitleRendererRevision=-1;
+                _subtitleRenderer?.Dispose();_subtitleRenderer=null;_subtitleRendererSource=null;
             }
         });
     }

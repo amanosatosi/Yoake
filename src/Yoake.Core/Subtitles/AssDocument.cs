@@ -104,6 +104,45 @@ public sealed partial class AssDocument
         var clone=line.Clone();foreach(var p in values)clone.Set(p.Key,p.Value);
         return string.Concat(source.AsSpan(0,span.Start),clone.Serialize().AsSpan(),source.AsSpan(span.Start+span.Length));
     }
+    // Frame-local preview, inspired by the Aegisub/Toshi-ban asynchronous
+    // provider. Keep source format changes, all comments, styles, attachments,
+    // unknown records and the boundary of Mangetsu's initial metadata block.
+    // The saved source and the full-track export path remain unchanged.
+    public string SerializeFramePreview(AssEvent? line,IReadOnlyDictionary<string,string>? values,long timeMs)
+    {
+        var source=Serialize();
+        AssEvent? edited=null;
+        if(line is not null&&values is not null&&_eventSpans.ContainsKey(line))
+        {
+            edited=line.Clone();
+            foreach(var pair in values)edited.Set(pair.Key,pair.Value);
+        }
+        var output=new StringBuilder(Math.Min(source.Length,65536));
+        var copied=0;var initial=true;
+        foreach(var entry in Events)
+        {
+            if(!_eventSpans.TryGetValue(entry,out var span))continue;
+            var current=ReferenceEquals(entry,line)&&edited is not null?edited:entry;
+            var boundary=initial&&MangetsuMetadata.Kind(current)==MangetsuMetadataKind.None;
+            if(boundary)initial=false;
+            // Keep effect-bearing events and invalid/unknown timings conservatively.
+            // The first ordinary event must survive to prevent a later comment
+            // from accidentally becoming an initial Mangetsu metadata definition.
+            var omit=!boundary&&!current.IsComment&&string.IsNullOrEmpty(current.Effect)&&
+                current.StartMilliseconds is {} start&&current.EndMilliseconds is {} end&&
+                (timeMs<start||timeMs>=end);
+            if(!omit&&ReferenceEquals(current,entry))continue;
+            output.Append(source,copied,span.Start-copied);
+            copied=span.Start+span.Length;
+            if(!omit)output.Append(current.Serialize());
+            else
+            {
+                if(copied<source.Length&&source[copied]=='\r')copied++;
+                if(copied<source.Length&&source[copied]=='\n')copied++;
+            }
+        }
+        return output.Append(source,copied,source.Length-copied).ToString();
+    }
     public static AssDocument Load(string path)
         => LoadBytes(File.ReadAllBytes(path));
     public static AssDocument LoadBytes(byte[] bytes)

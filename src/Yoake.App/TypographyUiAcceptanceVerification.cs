@@ -93,6 +93,20 @@ internal static class TypographyUiAcceptanceVerification
                 .SelectMany(r=>r.GlyphRun.GlyphInfos).Select(g=>g.GlyphIndex).ToArray();
             Require(before.SequenceEqual(after)&&input.SourceText==edited,
                 "Selection inside Myanmar text must not reshape, drop or mutate the explicitly selected font's glyphs.");
+            // Cover ordinary app controls and the grid, not just the custom
+            // syntax presenter. The same explicitly selected family must
+            // shape the same text identically across all four surfaces.
+            input.SelectionStart=input.SelectionEnd=0;
+            label.FontFamily=original.FontFamily=grid.FontFamily=input.FontFamily;
+            label.Text=original.Text=grid.SourceText=edited;
+            await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
+            ushort[] MyanmarGlyphs(TextLayout layout)=>layout.TextLines.SelectMany(l=>l.TextRuns).OfType<ShapedTextRun>()
+                .Where(r=>r.Text.Span.IndexOfAnyInRange('\u1000','\u109f')>=0)
+                .SelectMany(r=>r.GlyphRun.GlyphInfos).Select(g=>g.GlyphIndex).ToArray();
+            var reference=MyanmarGlyphs(label.TextLayout);
+            Require(reference.Length>0&&reference.SequenceEqual(MyanmarGlyphs(originalPresenter.TextLayout))&&
+                reference.SequenceEqual(MyanmarGlyphs(inputPresenter.TextLayout))&&reference.SequenceEqual(MyanmarGlyphs(grid.TextLayout)),
+                "Explicit Myanmar font must produce consistent glyph sequences across ordinary controls, Original, editor and grid.");
             using var bitmap=new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width,(int)window.Bounds.Height),new Vector(96,96));
             bitmap.Render(window);bitmap.Save(Path.Combine(options.ProfileDirectory!,"burmese-ui-shaping.png"));
             Console.WriteLine("PASS: actual MUA Office glyph sequence in ordinary text, Original, ASS editor and grid; cached cmap-only trap rejected; Latin font and Burmese source preserved.");

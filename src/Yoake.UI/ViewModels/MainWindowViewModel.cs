@@ -122,6 +122,9 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
         _previewSourceRevision=revision;return _previewSource;
     }
     private byte[]? _decodedPixels;
+    // Owned by the serialized video request gate; never handed to the
+    // compositor, which writes into the separate reusable working buffer.
+    private (IVideoProvider Provider,int Index,DecodedVideoFrame Frame)? _rawPreviewFrame;
     public event EventHandler? FrameReady;
     private bool _disposed;
     private EventEditDraft? _draft;
@@ -615,23 +618,50 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     {
         var session=_media; if (session?.HasVideo!=true || _disposed) return;
         var owner=_activeId;var provider=session.VideoProvider!;
-        var generation=Interlocked.Increment(ref _seekGeneration); var subtitleText=PreviewSource(); var revision=Volatile.Read(ref _subtitleRevision);
+        var generation=Interlocked.Increment(ref _seekGeneration);
+        var revision=Volatile.Read(ref _subtitleRevision);
         var progressiveGesture=allowGestureProgress?_gesture:null;
+        var editingLine=SelectedEvent;var frameLocal=allowGestureProgress&&!IsPlaying;
         try
         {
+            var times=session.FrameTimes;
+            var index=FrameNavigation.AtTime(times,seconds);var frameTime=times[index];
+            string? subtitleText;
+            if(frameLocal)
+            {
+                try{subtitleText=_activeSubtitleDocument?.SerializeFramePreview(editingLine,AudioPreviewValues(),(long)Math.Round(Math.Max(0,frameTime)*1000));}
+                catch(ArgumentException){subtitleText=PreviewSource();}
+            }
+            else subtitleText=PreviewSource();
             await _videoRequestGate.WaitAsync(cancellationToken);
             try
             {
                 if (cancellationToken.IsCancellationRequested || _disposed || generation!=Volatile.Read(ref _seekGeneration) || revision!=Volatile.Read(ref _subtitleRevision) || !ReferenceEquals(session,_media)) return;
-                var index=FrameNavigation.AtTime(session.FrameTimes,seconds);var frameTime=session.FrameTimes[index];
-                var result=await Task.Run(()=> { var frame=provider.GetFrame(index,_decodedPixels);_decodedPixels=frame.Pixels; return (Frame:frame,Error:CompositeSubtitles(frame,frameTime,subtitleText,revision)); });
+                var result=await Task.Run(()=>
+                {
+                    DecodedVideoFrame frame;
+                    if(frameLocal&&_rawPreviewFrame is {} raw&&ReferenceEquals(raw.Provider,provider)&&raw.Index==index)
+                    {
+                        if(_decodedPixels is null||_decodedPixels.Length!=raw.Frame.Pixels.Length)_decodedPixels=new byte[raw.Frame.Pixels.Length];
+                        raw.Frame.Pixels.CopyTo(_decodedPixels,0);
+                        frame=raw.Frame with {Pixels=_decodedPixels};
+                    }
+                    else
+                    {
+                        frame=provider.GetFrame(index,_decodedPixels);_decodedPixels=frame.Pixels;
+                        _rawPreviewFrame=frameLocal?(provider,index,frame with {Pixels=(byte[])frame.Pixels.Clone()}):null;
+                    }
+                    return (Frame:frame,Error:CompositeSubtitles(frame,frameTime,subtitleText,revision));
+                });
                 // During one ongoing gesture, display completed frames even if a
                 // newer pointer sample arrived while rendering. The serial pump
                 // follows with the latest state. Seeks, document/media changes,
                 // cancellation and a different/finished gesture remain fenced.
                 if (cancellationToken.IsCancellationRequested || _disposed || generation!=Volatile.Read(ref _seekGeneration) ||
                     !ReferenceEquals(session,_media) || revision!=Volatile.Read(ref _subtitleRevision)&&
-                    (progressiveGesture is null||!ReferenceEquals(progressiveGesture,_gesture))) return;
+                    !(progressiveGesture is not null&&ReferenceEquals(progressiveGesture,_gesture)||
+                        frameLocal&&progressiveGesture is null&&_gesture is null&&ReferenceEquals(editingLine,SelectedEvent)&&
+                        index==FrameNavigation.AtTime(session.FrameTimes,CurrentTimeSeconds))) return;
                 if(result.Error is not null)
                 {
                     MediaStatus="Subtitle preview failed: "+result.Error;

@@ -89,9 +89,9 @@ public sealed partial class MainWindowViewModel
         lock (_subtitleRendererGate)
         {
             if (_subtitleRenderer is null)
-            { _subtitleRenderer = new MangetsuSubtitleRenderer(source, frame.Width, frame.Height); _subtitleRendererRevision = revision; }
-            else if (_subtitleRendererRevision != revision)
-            { _subtitleRenderer.UpdateTrack(source); _subtitleRendererRevision = revision; }
+            { _subtitleRenderer = new MangetsuSubtitleRenderer(source, frame.Width, frame.Height); _subtitleRendererSource = source; }
+            else if (!string.Equals(_subtitleRendererSource,source,StringComparison.Ordinal))
+            { _subtitleRenderer.UpdateTrack(source); _subtitleRendererSource = source; }
             if (kind == FrameImageKind.Subtitles) return _subtitleRenderer.RenderSubtitles(frame.Width, frame.Height, seconds);
             _subtitleRenderer.Composite(frame, seconds); return frame;
         }
