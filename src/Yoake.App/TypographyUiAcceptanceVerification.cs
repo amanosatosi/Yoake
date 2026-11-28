@@ -77,6 +77,22 @@ internal static class TypographyUiAcceptanceVerification
             input.CaretIndex=sample.IndexOf("မြန်မာ",StringComparison.Ordinal)+2;input.SelectionStart=input.CaretIndex-1;input.SelectionEnd=input.CaretIndex;
             await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);Check(inputPresenter.TextLayout,"selected ASS editor");
             Require(input.SourceText==sample&&original.Text==sample&&grid.SourceText==sample,"Shaping and selection must leave source text unchanged.");
+            // Exercise actual editor changes with an explicit Unicode Myanmar
+            // font, not only fallback from the fixture's Latin face.
+            input.FontFamily=new FontFamily("MUA Office");
+            var edited=sample+" မင်္ဂလာပါ";
+            input.SetCurrentValue(TextBox.TextProperty,edited);
+            await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
+            var before=inputPresenter.TextLayout.TextLines.SelectMany(l=>l.TextRuns).OfType<ShapedTextRun>()
+                .SelectMany(r=>r.GlyphRun.GlyphInfos).Select(g=>g.GlyphIndex).ToArray();
+            Require(before.Length>0&&input.SourceText==edited,"Explicit Unicode font must keep shaped text and publish edits.");
+            input.SelectionStart=edited.IndexOf("မြန်မာ",StringComparison.Ordinal)+1;
+            input.SelectionEnd=input.SelectionStart+1;
+            await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout,DispatcherPriority.Background);
+            var after=inputPresenter.TextLayout.TextLines.SelectMany(l=>l.TextRuns).OfType<ShapedTextRun>()
+                .SelectMany(r=>r.GlyphRun.GlyphInfos).Select(g=>g.GlyphIndex).ToArray();
+            Require(before.SequenceEqual(after)&&input.SourceText==edited,
+                "Selection inside Myanmar text must not reshape, drop or mutate the explicitly selected font's glyphs.");
             using var bitmap=new RenderTargetBitmap(new PixelSize((int)window.Bounds.Width,(int)window.Bounds.Height),new Vector(96,96));
             bitmap.Render(window);bitmap.Save(Path.Combine(options.ProfileDirectory!,"burmese-ui-shaping.png"));
             Console.WriteLine("PASS: actual MUA Office glyph sequence in ordinary text, Original, ASS editor and grid; cached cmap-only trap rejected; Latin font and Burmese source preserved.");

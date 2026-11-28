@@ -104,6 +104,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private AssEvent? _selectedEvent;
     private DocumentMedia? _media;
     private WriteableBitmap? _videoFrame;
+    private (Guid? Document, IVideoProvider Provider, int Index, double Seconds)? _successfulPreviewFrame;
     private WaveformData? _waveformSamples;
     private string _activeVisualTool = "Crosshair";
     private string _subtitleStatus = "Ready";
@@ -246,7 +247,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     public WriteableBitmap? VideoFrame
     {
         get=>_videoFrame;
-        private set { if (ReferenceEquals(_videoFrame,value)) return; var old=_videoFrame; _videoFrame=value; OnPropertyChanged(); old?.Dispose(); }
+        private set { if(value is null)_successfulPreviewFrame=null; if (ReferenceEquals(_videoFrame,value)) return; var old=_videoFrame; _videoFrame=value; OnPropertyChanged(); old?.Dispose(); }
     }
     public WaveformData? WaveformSamples { get=>_waveformSamples; private set=>SetField(ref _waveformSamples,value); }
     public bool HasAudio => _media?.HasAudio == true;
@@ -613,6 +614,7 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
     private async Task RefreshVideoFrameAsync(double seconds,CancellationToken cancellationToken=default,bool allowGestureProgress=false)
     {
         var session=_media; if (session?.HasVideo!=true || _disposed) return;
+        var owner=_activeId;var provider=session.VideoProvider!;
         var generation=Interlocked.Increment(ref _seekGeneration); var subtitleText=PreviewSource(); var revision=Volatile.Read(ref _subtitleRevision);
         var progressiveGesture=allowGestureProgress?_gesture:null;
         try
@@ -621,7 +623,8 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
             try
             {
                 if (cancellationToken.IsCancellationRequested || _disposed || generation!=Volatile.Read(ref _seekGeneration) || revision!=Volatile.Read(ref _subtitleRevision) || !ReferenceEquals(session,_media)) return;
-                var result=await Task.Run(()=> { var index=FrameNavigation.AtTime(session.FrameTimes,seconds);var frame=session.VideoProvider!.GetFrame(index,_decodedPixels);_decodedPixels=frame.Pixels; return (Frame:frame,Error:CompositeSubtitles(frame,session.FrameTimes[index],subtitleText,revision)); });
+                var index=FrameNavigation.AtTime(session.FrameTimes,seconds);var frameTime=session.FrameTimes[index];
+                var result=await Task.Run(()=> { var frame=provider.GetFrame(index,_decodedPixels);_decodedPixels=frame.Pixels; return (Frame:frame,Error:CompositeSubtitles(frame,frameTime,subtitleText,revision)); });
                 // During one ongoing gesture, display completed frames even if a
                 // newer pointer sample arrived while rendering. The serial pump
                 // follows with the latest state. Seeks, document/media changes,
@@ -629,11 +632,27 @@ public sealed partial class MainWindowViewModel : INotifyPropertyChanged, IDispo
                 if (cancellationToken.IsCancellationRequested || _disposed || generation!=Volatile.Read(ref _seekGeneration) ||
                     !ReferenceEquals(session,_media) || revision!=Volatile.Read(ref _subtitleRevision)&&
                     (progressiveGesture is null||!ReferenceEquals(progressiveGesture,_gesture))) return;
+                if(result.Error is not null)
+                {
+                    MediaStatus="Subtitle preview failed: "+result.Error;
+                    // An unsuccessful composite is not a new subtitle frame.
+                    // During an edit at the same timestamp keep the last good
+                    // pixels rather than flashing the whole subtitle layer off.
+                    // Never retain a frame from another video, tab or timestamp.
+                    if(VideoFrame is not null&&_successfulPreviewFrame is {} good&&
+                        good.Document==owner&&ReferenceEquals(good.Provider,provider)&&good.Index==index&&good.Seconds==frameTime)return;
+                }
                 var frame=result.Frame;
                 if(VideoFrame is not {} bitmap||bitmap.PixelSize.Width!=frame.Width||bitmap.PixelSize.Height!=frame.Height)VideoFrame=CreateBitmap(frame);
                 else { using var buffer=bitmap.Lock();for(var y=0;y<frame.Height;y++)Marshal.Copy(frame.Pixels,y*frame.Stride,buffer.Address+y*buffer.RowBytes,frame.Width*4); }
-                DisplayedPreviewRevision=revision;OnPropertyChanged(nameof(DisplayedPreviewRevision));FrameReady?.Invoke(this,EventArgs.Empty);
-                if (result.Error is not null) MediaStatus=result.Error;
+                if(result.Error is null)
+                {
+                    _successfulPreviewFrame=(owner,provider,index,frameTime);
+                    if(MediaStatus.StartsWith("Subtitle preview failed:",StringComparison.Ordinal))MediaStatus=VideoSourcePath??"Ready";
+                }
+                else _successfulPreviewFrame=null;
+                DisplayedPreviewRevision=result.Error is null?revision:-1;
+                OnPropertyChanged(nameof(DisplayedPreviewRevision));FrameReady?.Invoke(this,EventArgs.Empty);
             }
             finally { _videoRequestGate.Release(); }
         }

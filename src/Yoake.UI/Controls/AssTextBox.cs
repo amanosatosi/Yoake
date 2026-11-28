@@ -173,7 +173,14 @@ public sealed class AssTextPresenter : TextPresenter
         {
             var brush=SyntaxBrush(token.Kind);
             var left=token.Start;var right=left+token.Length;
-            if(ShowSelectionHighlight&&SelectionForegroundBrush is not null&&start<right&&end>left)
+            // Selection is a paint operation, not a shaping boundary. In
+            // particular a Myanmar syllable may span several code points;
+            // keep the complete syntax run shaped together and let the native
+            // presenter draw the selection background over the selected range.
+            var myanmar=Text!.AsSpan(left,token.Length).IndexOfAnyInRange('\u1000','\u109f')>=0||
+                Text.AsSpan(left,token.Length).IndexOfAnyInRange('\uaa60','\uaa7f')>=0||
+                Text.AsSpan(left,token.Length).IndexOfAnyInRange('\ua9e0','\ua9ff')>=0;
+            if(!myanmar&&ShowSelectionHighlight&&SelectionForegroundBrush is not null&&start<right&&end>left)
             {
                 Add(left,Math.Min(start,right),brush);
                 Add(Math.Max(left,start),Math.Min(right,end),SelectionForegroundBrush);

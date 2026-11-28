@@ -25,5 +25,14 @@ public sealed partial class EditorWorkflowTests
         Assert.False(await _model.Registry.InvokeAsync("settings/ui-font",new(),new UiFontOptions(null,100)));
         Assert.Equal("Noto Sans Myanmar",_model.UiFontFamily);
         Assert.Equal(source,editor.Document.Serialize());
+        // A font preference is independent of the full preview document.
+        await Command("settings/ui-font",new UiFontOptions("Pyidaungsu",12));
+        _model.Draft!.Text="miriam-dono မြန်မာစာ";
+        var preview=_model.PreviewSource()!;
+        Assert.Contains("miriam-dono မြန်မာစာ",preview);
+        Assert.Equal(editor.Document.Events.Count,Yoake.Core.Subtitles.AssDocument.Parse(preview).Events.Count);
+        Assert.Equal(source,editor.Document.Serialize());
+        await Command("settings/ui-font",new UiFontOptions(null,null));
+        Assert.Equal(preview,_model.PreviewSource());
     }
 }
