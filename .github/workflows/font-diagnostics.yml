@@ -69,19 +69,7 @@ jobs:
             # the pinned input's name table. Later Latin fallback is legitimate.
             $expected = $manifest.fonts | Where-Object { $_.file -eq $font.Name } | Select-Object -First 1
             $first = Select-String -Path "$dest/mangetsu.log" -Pattern 'fontselect: \(' | Select-Object -First 1
-            $pattern = '->\s*' + [regex]::Escape([string]$expected.postscript) + ',\s*0,\s*' + [regex]::Escape([string]$expected.postscript) + '\s*
-          }
-          if ($failed) { throw 'One or more Mangetsu probes failed; see artifacts.' }
-      - uses: actions/upload-artifact@v7
-        if: always()
-        with:
-          name: Myanmar-font-diagnostics
-          path: |
-            artifacts/font-diagnostics
-            !artifacts/font-diagnostics/inputs/**
-            !artifacts/font-diagnostics/**/*.ass
-          if-no-files-found: warn
-
+            $pattern = '->\s*' + [regex]::Escape([string]$expected.postscript) + ',\s*0,\s*' + [regex]::Escape([string]$expected.postscript) + '\s*\z'
             if (-not $expected.postscript -or -not $first -or $first.Line -notmatch $pattern) {
               $failed = $true
               Write-Host "Reference face selection not confirmed for $($font.Name); expected $($expected.postscript)"
