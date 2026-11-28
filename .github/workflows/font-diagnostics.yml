@@ -58,17 +58,36 @@ jobs:
           $exe = (Resolve-Path "$bin/FontDiagnostics.exe").Path
           Copy-Item .ci-cache/native/mangetsu/bin/mangetsu.dll $bin
           Copy-Item .ci-cache/native/mangetsu/resolved-commit.txt "$root/mangetsu-commit.txt"
+          $manifest = Get-Content "$root/font-manifest.json" -Raw | ConvertFrom-Json
           $failed = $false
           foreach ($font in Get-ChildItem "$root/inputs/*.ttf") {
             $dest = Join-Path $root $font.BaseName
             & $exe $font.FullName "$root/samples.txt" $dest mangetsu *> "$dest/mangetsu.log"
             if ($LASTEXITCODE -ne 0) { $failed = $true; Get-Content "$dest/mangetsu.log" }
-            # A nonempty image alone is insufficient: assert the embedded
-            # reference face actually won selection, not Myanmar Text fallback.
-            if (-not (Select-String -Path "$dest/mangetsu.log" -Pattern 'fontselect:.*diagnostic\.ttf' -Quiet)) {
+            # The embedded provider identifies memory fonts by PostScript name,
+            # not by attachment filename. Compare the first selected face with
+            # the pinned input's name table. Later Latin fallback is legitimate.
+            $expected = $manifest.fonts | Where-Object { $_.file -eq $font.Name } | Select-Object -First 1
+            $first = Select-String -Path "$dest/mangetsu.log" -Pattern 'fontselect: \(' | Select-Object -First 1
+            $pattern = '->\s*' + [regex]::Escape([string]$expected.postscript) + ',\s*0,\s*' + [regex]::Escape([string]$expected.postscript) + '\s*
+          }
+          if ($failed) { throw 'One or more Mangetsu probes failed; see artifacts.' }
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: Myanmar-font-diagnostics
+          path: |
+            artifacts/font-diagnostics
+            !artifacts/font-diagnostics/inputs/**
+            !artifacts/font-diagnostics/**/*.ass
+          if-no-files-found: warn
+
+            if (-not $expected.postscript -or -not $first -or $first.Line -notmatch $pattern) {
               $failed = $true
-              Write-Host "Reference face selection not confirmed for $($font.Name)"
+              Write-Host "Reference face selection not confirmed for $($font.Name); expected $($expected.postscript)"
               Get-Content "$dest/mangetsu.log"
+            } else {
+              Write-Host "Confirmed $($font.Name): $($first.Line)"
             }
           }
           if ($failed) { throw 'One or more Mangetsu probes failed; see artifacts.' }

@@ -116,6 +116,29 @@ internal static class Program
                     }
                     using var bitmap=new RenderTargetBitmap(new PixelSize(1100,520),new Vector(96,96));
                     bitmap.Render(window);bitmap.Save(Path.Combine(output,$"{i:D2}-{mode}.png"));
+                    // 32 DIP makes glyph positioning easy to inspect but does
+                    // not reproduce the compact editor's normal font sizes.
+                    // Keep those reference captures and add real UI sizes.
+                    if(mode is "default" or "selected")
+                    {
+                        foreach(var small in new[]{12d,14d,16d})
+                        {
+                            label.FontSize=plain.FontSize=editor.FontSize=grid.FontSize=small;
+                            editor.BetterView=true;
+                            window.UpdateLayout();
+                            var suffix=mode+"-"+small.ToString(CultureInfo.InvariantCulture)+"dip";
+                            DumpLayout(report,suffix+"-label",i,label.TextLayout);
+                            DumpLayout(report,suffix+"-plain",i,plainPresenter.TextLayout);
+                            DumpLayout(report,suffix+"-editor",i,editorPresenter.TextLayout);
+                            DumpLayout(report,suffix+"-grid",i,grid.TextLayout);
+                            using var smallBitmap=new RenderTargetBitmap(new PixelSize(1100,520),new Vector(96,96));
+                            smallBitmap.Render(window);
+                            smallBitmap.Save(Path.Combine(output,$"{i:D2}-{suffix}.png"));
+                        }
+                        editor.BetterView=false;
+                        label.FontSize=plain.FontSize=editor.FontSize=grid.FontSize=em;
+                        window.UpdateLayout();
+                    }
                 }
             }
         }
