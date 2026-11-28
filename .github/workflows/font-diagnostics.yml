@@ -27,15 +27,16 @@ jobs:
           python ci/font_diagnostics.py artifacts/font-diagnostics
           python -m pip freeze > artifacts/font-diagnostics/python-versions.txt
       - name: Build standalone Avalonia probe
-        run: dotnet build tools/FontDiagnostics/FontDiagnostics.csproj -c Release
+        run: dotnet build tools/FontDiagnostics/FontDiagnostics.csproj -c Release -o artifacts/font-diagnostic-host
       - name: Record UI shaping and rendering across all fonts
         shell: pwsh
         run: |
           $root = (Resolve-Path artifacts/font-diagnostics).Path
+          $exe = (Resolve-Path artifacts/font-diagnostic-host/FontDiagnostics.exe).Path
           $failed = $false
           foreach ($font in Get-ChildItem "$root/inputs/*.ttf") {
             $dest = Join-Path $root $font.BaseName
-            dotnet run --project tools/FontDiagnostics/FontDiagnostics.csproj -c Release --no-build -- $font.FullName "$root/samples.txt" $dest ui *> "$dest/ui.log"
+            & $exe $font.FullName "$root/samples.txt" $dest ui *> "$dest/ui.log"
             if ($LASTEXITCODE -ne 0) { $failed = $true; Get-Content "$dest/ui.log" }
           }
           if ($failed) { throw 'One or more UI probes failed; see artifacts.' }
@@ -51,13 +52,16 @@ jobs:
         shell: pwsh
         run: |
           $root = (Resolve-Path artifacts/font-diagnostics).Path
-          $bin = (Resolve-Path tools/FontDiagnostics/bin/Release/net10.0).Path
+          # MSVC setup exports Platform=x64. Launch the exact executable built
+          # earlier, without letting dotnet run re-evaluate the MSBuild path.
+          $bin = (Resolve-Path artifacts/font-diagnostic-host).Path
+          $exe = (Resolve-Path "$bin/FontDiagnostics.exe").Path
           Copy-Item .ci-cache/native/mangetsu/bin/mangetsu.dll $bin
           Copy-Item .ci-cache/native/mangetsu/resolved-commit.txt "$root/mangetsu-commit.txt"
           $failed = $false
           foreach ($font in Get-ChildItem "$root/inputs/*.ttf") {
             $dest = Join-Path $root $font.BaseName
-            dotnet run --project tools/FontDiagnostics/FontDiagnostics.csproj -c Release --no-build -- $font.FullName "$root/samples.txt" $dest mangetsu *> "$dest/mangetsu.log"
+            & $exe $font.FullName "$root/samples.txt" $dest mangetsu *> "$dest/mangetsu.log"
             if ($LASTEXITCODE -ne 0) { $failed = $true; Get-Content "$dest/mangetsu.log" }
           }
           if ($failed) { throw 'One or more Mangetsu probes failed; see artifacts.' }
