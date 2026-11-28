@@ -26,6 +26,8 @@ internal sealed class VideoUiAcceptanceVerification(IClassicDesktopStyleApplicat
     private readonly DispatcherTimer _timer=new(){Interval=TimeSpan.FromMilliseconds(100)};
     private readonly Pointer _pointer=new(927,PointerType.Mouse,true);
     private bool _ready,_ticking;private int _stage;private Task<bool>? _media;
+    private int _loggedStage=-1;
+    private long _stageStarted;
     private AssEvent? _line;private string _source="",_committed="";private long _revision;
     private object? _samples,_frames,_keys;private Guid? _document;
     private string? _prospective;private AssPoint _a,_b;
@@ -41,6 +43,14 @@ internal sealed class VideoUiAcceptanceVerification(IClassicDesktopStyleApplicat
         if(!_ready||_ticking)return;_ticking=true;
         try
         {
+            if(_loggedStage!=_stage)
+            {
+                _loggedStage=_stage;_stageStarted=Environment.TickCount64;
+                StartupDiagnostics.Checkpoint("Video tools acceptance stage "+_stage);
+            }
+            if(_stage==0)options.MarkStartupVerified();
+            if(Environment.TickCount64-_stageStarted>10_000)
+                throw new TimeoutException($"Video tools stage {_stage} stalled: requested={_revision}, displayed={model.DisplayedPreviewRevision}, current={model.PreviewRevision}, media={model.MediaStatus}");
             switch(_stage++)
             {
                 case 0:

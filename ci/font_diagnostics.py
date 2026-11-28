@@ -16,6 +16,32 @@ FONTS = [
 ]
 SAMPLES = ["မြန်မာ", "ကျွန်တော် ပြန်ကြည့်ကြရအောင်", "မင်္ဂလာပါ ပြည်ထောင်စု", "ကျောင်းသားများ", "miriam-dono ရေ", "marshall-sensei မြန်မာ ကျွန်တော် ပြန်ကြည့်ကြရအောင်"]
 
+def write_outline_reference(path, dest, records):
+    # Draw the actual font outlines at the independently shaped glyph origins.
+    # This bypasses Avalonia/Skia and native hinting entirely.
+    from fontTools.ttLib import TTFont
+    from fontTools.pens.svgPathPen import SVGPathPen
+    with TTFont(path) as tt:
+        glyphs = tt.getGlyphSet()
+        order = tt.getGlyphOrder()
+        scale = 32 / tt["head"].unitsPerEm
+        for record in records:
+            if record["language"] != "my" or record["sample"] >= 4:
+                continue
+            x = 12
+            paths = []
+            for g in record["glyphs"]:
+                pen = SVGPathPen(glyphs)
+                glyphs[order[g["glyph"]]].draw(pen)
+                d = pen.getCommands()
+                if d:
+                    paths.append(f'<path transform="translate({x + g["offset_x"]} {75 + g["offset_y"]}) scale({scale} {-scale})" d="{d}"/>')
+                x += g["advance"]
+            width = max(200, int(x + 40))
+            svg = f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="120" viewBox="0 0 {width} 120"><rect width="100%" height="100%" fill="white"/><g fill="black">{"".join(paths)}</g></svg>'
+            (dest / f'{record["sample"]:02d}-hb-outline.svg').write_text(svg, encoding="utf-8")
+
+
 def main():
     import uharfbuzz as hb
     from fontTools.ttLib import TTFont
@@ -69,6 +95,7 @@ def main():
                                  offset_x=p.x_offset*32/face.upem, offset_y=-p.y_offset*32/face.upem)
                             for g,p in zip(buffer.glyph_infos,buffer.glyph_positions)]))
         (dest/"harfbuzz.json").write_text(json.dumps(records,ensure_ascii=False,indent=2),encoding="utf-8")
+        write_outline_reference(path, dest, records)
     (root/"font-manifest.json").write_text(json.dumps(dict(harfbuzz=hb.version_string(),fonts=manifest),ensure_ascii=False,indent=2),encoding="utf-8")
 
 if __name__ == "__main__":

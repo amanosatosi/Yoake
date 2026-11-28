@@ -17,7 +17,7 @@ public sealed unsafe partial class MangetsuSubtitleRenderer : IDisposable
     private byte[] _alphaScratch = [];
     private bool _disposed;
 
-    public MangetsuSubtitleRenderer(string assText, int width, int height)
+    public MangetsuSubtitleRenderer(string assText, int width, int height, byte[]? referenceFont = null)
     {
         if (width <= 0 || height <= 0)
             throw new ArgumentOutOfRangeException(nameof(width));
@@ -28,6 +28,13 @@ public sealed unsafe partial class MangetsuSubtitleRenderer : IDisposable
 
         try
         {
+            // Explicit reference faces are registered before font selection.
+            // Existing editor callers do not use this optional diagnostic input.
+            if(referenceFont is {Length:>0})
+            {
+                fixed(byte* font=referenceFont)
+                    Native.ass_add_font(_library,"diagnostic.ttf",font,referenceFont.Length);
+            }
             _renderer = Native.ass_renderer_init(_library);
             if (_renderer == 0)
                 throw new InvalidOperationException("Mangetsu ass_renderer_init failed.");
@@ -247,6 +254,9 @@ public sealed unsafe partial class MangetsuSubtitleRenderer : IDisposable
 
         [LibraryImport(Library, EntryPoint = "ass_library_done")]
         internal static partial void ass_library_done(nint library);
+
+        [LibraryImport(Library, EntryPoint = "ass_add_font", StringMarshalling = StringMarshalling.Utf8)]
+        internal static partial void ass_add_font(nint library, string name, byte* data, int size);
 
         [LibraryImport(Library, EntryPoint = "ass_renderer_init")]
         internal static partial nint ass_renderer_init(nint library);

@@ -124,12 +124,12 @@ internal static class Program
 
     private static void NativeRender(string font,string family,string[] samples,string output,TextWriter report)
     {
-        // Embed the exact input font in the ASS track instead of relying on
-        // Windows installed-font substitution. Keep full native renderer logs.
+        // Register the exact input bytes before ass_set_fonts initializes the
+        // font selector. ASS font extraction is disabled by default, so merely
+        // including a [Fonts] section did not actually select the test face.
         var header="[Script Info]\nScriptType: v4.00+\nPlayResX: 1100\nPlayResY: 180\n[V4+ Styles]\nFormat: "+
-            string.Join(",",AssDocument.StyleFormat)+"\nStyle: Default,"+family+",32,&H00000000,&H00000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,12,12,12,1\n[Fonts]\nfontname: diagnostic.ttf\n"+
-            string.Join("\n",AssAttachmentCodec.Encode(File.ReadAllBytes(font)))+"\n\n[Events]\nFormat: "+string.Join(",",AssDocument.EventFormat)+"\n";
-        using var renderer=new MangetsuSubtitleRenderer(header,1100,180);
+            string.Join(",",AssDocument.StyleFormat)+"\nStyle: Default,"+family+",32,&H00000000,&H00000000,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,7,12,12,12,1\n\n[Events]\nFormat: "+string.Join(",",AssDocument.EventFormat)+"\n";
+        using var renderer=new MangetsuSubtitleRenderer(header,1100,180,File.ReadAllBytes(font));
         for(var i=0;i<samples.Length;i++)
         {
             var ass=header+"Dialogue: 0,0:00:00.00,0:00:10.00,Default,,0,0,0,,"+samples[i]+"\n";

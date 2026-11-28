@@ -63,6 +63,13 @@ jobs:
             $dest = Join-Path $root $font.BaseName
             & $exe $font.FullName "$root/samples.txt" $dest mangetsu *> "$dest/mangetsu.log"
             if ($LASTEXITCODE -ne 0) { $failed = $true; Get-Content "$dest/mangetsu.log" }
+            # A nonempty image alone is insufficient: assert the embedded
+            # reference face actually won selection, not Myanmar Text fallback.
+            if (-not (Select-String -Path "$dest/mangetsu.log" -Pattern 'fontselect:.*diagnostic\.ttf' -Quiet)) {
+              $failed = $true
+              Write-Host "Reference face selection not confirmed for $($font.Name)"
+              Get-Content "$dest/mangetsu.log"
+            }
           }
           if ($failed) { throw 'One or more Mangetsu probes failed; see artifacts.' }
       - uses: actions/upload-artifact@v7
