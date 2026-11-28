@@ -48,13 +48,13 @@ internal static class EditorErgonomicsVerification
             var button=color.GetVisualDescendants().OfType<Button>().Single();
             Require(color.IsEffectivelyVisible&&color.Bounds.Width>=30&&color.Bounds.Width<=48&&color.Bounds.Height>=24&&color.Bounds.Height<=compact+2&&
                 button.Bounds.Height<=compact+2&&button.Command is not null,"Color buttons keep desktop toolbar density: "+color.Bounds+"; inner button "+button.Bounds);
-            var glyph=color.GetVisualDescendants().OfType<AssColorButtonGlyph>().Single();
-            Require(glyph.IsEffectivelyVisible&&glyph.Bounds.Width==24&&glyph.Bounds.Height==24&&
-                glyph.TranslatePoint(default,color) is {} p&&p.Y>=-0.5&&p.Y+glyph.Bounds.Height<=color.Bounds.Height+0.5,
+            var colorGlyph=color.GetVisualDescendants().OfType<AssColorButtonGlyph>().Single();
+            Require(colorGlyph.IsEffectivelyVisible&&colorGlyph.Bounds.Width==24&&colorGlyph.Bounds.Height==24&&
+                colorGlyph.TranslatePoint(default,color) is {} p&&p.Y>=-0.5&&p.Y+colorGlyph.Bounds.Height<=color.Bounds.Height+0.5,
                 "Original Aegisub color artwork must render on a shared 24-DIP canvas inside the compact button.");
-            Require(glyph.Channel==color.Label&&Equals(glyph.Accent,insert.Foreground)&&glyph.Ink is not null&&
-                !Equals(glyph.Accent,glyph.Ink)&&!glyph.IsHitTestVisible,
-                "ASS color glyph must retain its channel, use the theme primary accent and contrasting ink, and never intercept clicks.");
+            Require(colorGlyph.Channel==color.Label&&Equals(colorGlyph.Accent,insert.Foreground)&&colorGlyph.Ink is not null&&
+                !Equals(colorGlyph.Accent,colorGlyph.Ink)&&!colorGlyph.IsHitTestVisible,
+                "ASS color colorGlyph must retain its channel, use the theme primary accent and contrasting ink, and never intercept clicks.");
         }
         await VerifyStableFocusAsync(window,edit,original);
         Require(model.ActiveEditor.Document.Serialize()==source&&model.ActiveEditor.Undo.NextUndoName==undo,"Editor presentation must not change ASS or undo history.");
