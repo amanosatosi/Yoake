@@ -56,7 +56,12 @@ internal sealed class VideoUiAcceptanceVerification(IClassicDesktopStyleApplicat
                 case 0:
                     Require(!model.Actions["video/tool/clip"].CanExecute(null),"Visual tool command must require loaded video.");
                     var path=Path.Combine(options.ProfileDirectory!,"video-tools.ass");
-                    File.WriteAllText(path,"[Script Info]\nPlayResX: 384\nPlayResY: 288\n[Events]\nFormat: "+string.Join(',',AssDocument.EventFormat)+"\nDialogue: 0,0:00:00.30,0:00:01.40,Default,A,0001,0002,0003,fx,{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語 é\n");
+                    // Mangetsu determines ASS/SSA track type from the styles section.
+                    // Use a complete renderable fixture, while retaining the original
+                    // timing, margins, unknown tag and distortion under test.
+                    File.WriteAllText(path,"[Script Info]\nScriptType: v4.00+\nPlayResX: 384\nPlayResY: 288\n\n[V4+ Styles]\nFormat: "+
+                        string.Join(',',AssDocument.StyleFormat)+"\nStyle: Default,Arial,24,&H00FFFFFF,&H0000FFFF,&H00000000,&H64000000,0,0,0,0,100,100,0,0,1,2,0,2,10,10,10,1\n\n[Events]\nFormat: "+
+                        string.Join(',',AssDocument.EventFormat)+"\nDialogue: 0,0:00:00.30,0:00:01.40,Default,A,0001,0002,0003,fx,{\\future(x)\\distort(1,2,3,4,5,6,7,8)}日本語 é\n");
                     Require(model.OpenSubtitle(path),"Open lossless visual fixture.");
                     _media=model.OpenMediaAsync(Path.Combine(options.VerificationMedia!,"av.avi"));return;
                 case 1:
@@ -136,7 +141,7 @@ internal sealed class VideoUiAcceptanceVerification(IClassicDesktopStyleApplicat
                     _timer.Stop();options.FinishVerification("PASS: separate real-window Video tools acceptance; actual Video A/S/D/F/G/H/J, all vector toolbar radio modes, synchronized menu/toolbars, effective remapped mode shortcut, no-video/foreign/canceled availability, retained draft/source, rectangular pointer-down/live-move/release from no clip, inverse, one-step keyboard undo/redo, capture-loss/tool-switch cancellation, line/bicubic prospective controls/curve/closing and exact committed topology, IME isolation, per-document mode retention and native provider/frame-map retention. Physical display/DPI responsiveness remains manual QA.\n");StartupDiagnostics.Complete();desktop.Shutdown(0);return;
             }
         }
-        catch(Exception exception){_timer.Stop();Program.Fatal("Packaged Video tools acceptance at stage "+(_stage-1),exception);desktop.Shutdown(1);}
+        catch(Exception exception){_timer.Stop();Program.Fatal("Packaged Video tools acceptance at stage "+_loggedStage,exception);desktop.Shutdown(1);}
         finally{_ticking=false;}
     }
     private void Radio(string tool)
