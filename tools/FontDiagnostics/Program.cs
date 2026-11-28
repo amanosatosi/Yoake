@@ -7,8 +7,7 @@ using Avalonia.Media;
 using Avalonia.Media.Fonts;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.TextFormatting;
-using Avalonia.Markup.Xaml.Styling;
-using Avalonia.Themes.Fluent;
+using Avalonia.Markup.Xaml;
 using Avalonia.VisualTree;
 using Yoake.UI;
 using Yoake.UI.Controls;
@@ -17,13 +16,9 @@ using Yoake.Native;
 
 namespace Yoake.FontDiagnostics;
 
-public sealed class DiagnosticApp : Application
+public sealed partial class DiagnosticApp : Application
 {
-    public override void Initialize()
-    {
-        Styles.Add(new FluentTheme());
-        Styles.Add(new StyleInclude(new Uri("avares://Yoake.UI/")) { Source=new Uri("avares://Yoake.UI/Controls/AssEditor.axaml") });
-    }
+    public override void Initialize()=>AvaloniaXamlLoader.Load(this);
 }
 
 internal static class Program
@@ -76,6 +71,7 @@ internal static class Program
     {
         const double em=32;
         report.WriteLine("pipeline\tsample\trun_text\tresolved_family\tglyph\tcluster\tadvance_dip\toffset_x_dip\toffset_y_dip");
+        UiFontResources.Apply(null,12);
         var label=new TextBlock{FontSize=em,Foreground=Brushes.Black};
         var plain=new TextBox{FontSize=em,IsReadOnly=true};
         var editor=new AssTextBox{FontSize=em,BetterView=false};
@@ -97,7 +93,6 @@ internal static class Program
                 foreach(var mode in new[]{"default","selected","reset","reselected"})
                 {
                     UiFontResources.Apply(mode is "selected" or "reselected"?face.FamilyName:null,12);
-                    window.FontFamily=(FontFamily)Application.Current!.Resources["YoakeUiFontFamily"]!;
                     label.Text=plain.Text=grid.SourceText=sample;
                     editor.SourceText=sample;
                     editor.SelectionStart=editor.SelectionEnd=0;
